@@ -1,0 +1,547 @@
+page { 
+  background-color: #ffffff; /* 页面最底层背景色设置为纯白 */
+}
+
+.page-wrapper { 
+  width: 100%; /* 页面容器宽度占满屏幕 */
+  overflow-x: hidden; /* 隐藏水平滚动条，防止页面左右晃动 */
+  padding-bottom: 120px; /* 底部留出120像素空白，防止文字被底部的悬浮按钮挡住 */
+}
+
+/* ================= 沉浸式顶部导航栏 ================= */
+.custom-nav-bar { 
+  position: fixed; /* 固定定位，使得导航栏吸附在屏幕最顶部 */
+  top: 0; /* 距离顶部0像素 */
+  left: 0; /* 距离左侧0像素 */
+  width: 100%; /* 宽度占满整个屏幕 */
+  z-index: 999; /* 层级设置很高，保证不被页面里滚动的图片遮挡 */
+  display: flex; /* 开启弹性布局，方便里面元素对齐 */
+  align-items: center; /* 垂直居中对齐 */
+  padding-left: 15px; /* 左侧留出15像素的内边距 */
+}
+
+.nav-back { 
+  width: 32px; /* 返回按钮的宽度 */
+  height: 32px; /* 返回按钮的高度 */
+  background: rgba(255,255,255,0.8); /* 半透明白色背景 */
+  border-radius: 50%; /* 圆形按钮 */
+  display: flex; /* 开启弹性布局 */
+  justify-content: center; /* 内容水平居中 */
+  align-items: center; /* 内容垂直居中 */
+  backdrop-filter: blur(5px); /* 背景产生毛玻璃模糊高级效果 */
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05); /* 添加微弱的阴影让按钮有立体感 */
+}
+
+.back-arrow { 
+  width: 10px; /* 箭头线条长度 */
+  height: 10px; /* 箭头线条高度 */
+  border-top: 2px solid #333; /* 箭头上半部分线条颜色和粗细 */
+  border-left: 2px solid #333; /* 箭头左半部分线条颜色和粗细 */
+  transform: rotate(-45deg); /* 将方形线条旋转45度形成指向左侧的箭头 */
+  margin-left: 4px; /* 稍微往右微调一下位置，让视觉上居中 */
+}
+
+/* ================= 🚀 极简韩系悬浮双排栏 (真·绝对居中版) ================= */
+.floating-action-bar {
+  position: fixed; /* 固定在屏幕底部 */
+  bottom: calc(0px + env(safe-area-inset-bottom)); /* 避开底部安全区 */
+  
+  /* --- 👇 彻底解决不对称的黑科技 👇 --- */
+  left: 50%; /* 先把整个容器的左边缘强行推到屏幕的正中央 */
+  transform: translateX(-50%); /* 然后让容器向左回退自身宽度的一半，实现毫米级绝对居中 */
+  width: calc(100vw - 40px); /* 宽度使用 100vw（即屏幕物理总宽度）减去40px，彻底无视内部画布和隐藏滚动条 */
+  /* --- 👆 黑科技结束 👆 --- */
+
+  display: flex; /* 弹性布局 */
+  justify-content: space-between; /* 两端对齐 */
+  gap: 12px; /* 两个按钮中间的缝隙 */
+  z-index: 100; /* 保持在最上层 */
+}
+
+.btn-add-half {
+  flex: 1 1 0%; /* 核心修复：强制平分剩余空间，无视内部内容或边框的干扰 */
+  background-color: #ffffff; /* 白色背景 */
+  color: #555555; /* 深灰文字 */
+  text-align: center; /* 文字居中 */
+  padding: 12px 0; /* 撑开高度 */
+  font-family: "Times New Roman", Times, serif; /* 英文字体 */
+  font-size: 14px; /* 字体大小 */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* 悬浮阴影 */
+  box-sizing: border-box; /* 将内边距算在宽度内 */
+}
+
+.btn-buy-half {
+  flex: 1 1 0%; /* 核心修复：强制与左侧按钮保持完全一样的大小 */
+  
+  background-color: #8c8c8c; /* 灰色背景 */
+  color: #ffffff; /* 白色文字 */
+  border: 1px solid #dddddd; /* 1像素灰色边框 */
+  text-align: center; /* 文字居中 */
+  padding: 12px 0; /* 撑开高度，与左侧保持一致 */
+  font-family: "Times New Roman", Times, serif; /* 英文字体 */
+  font-size: 14px; /* 字体大小 */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.04); /* 极弱悬浮阴影 */
+  box-sizing: border-box; /* 核心：确保1px的边框被吞进内部，绝不向外扩张挤压 */
+}
+
+/* ================= 页面主体内容 ================= */
+.main-swiper { 
+  width: 100%; /* 轮播图宽度占满屏幕 */
+  height: 125vw; /* 高度根据宽度按比例自适应 */
+  background-color: #f9f9f9; /* 图片未加载出时的浅灰底色 */
+}
+
+.swiper-img { 
+  width: 100%; /* 图片宽度撑满轮播图 */
+  height: 100%; /* 图片高度撑满轮播图 */
+  display: block; /* 清除图片默认的底部留白 */
+}
+
+.content-wrapper { 
+  padding: 20px 20px 10px 20px; /* 标题文字区域的上、右、下、左内边距 */
+}
+
+.shipping-info { 
+  font-family: "Times New Roman", Times, serif; /* 英文字体 */
+  font-size: 13px; /* 发货信息字体大小 */
+  color: #aaaaaa; /* 浅灰色字体 */
+  margin-bottom: 8px; /* 距离下方元素的底部外边距 */
+}
+
+.detail-title { 
+  font-family: "Times New Roman", Times, serif; /* 标题英文字体 */
+  font-size: 15px; /* 标题字体大小 */
+  color: #555555; /* 深灰色字体 */
+  margin-bottom: 8px; /* 距离下方元素的底部外边距 */
+  line-height: 1.4; /* 标题多行时的行高 */
+}
+
+.detail-price { 
+  font-family: "Times New Roman", Times, serif; /* 价格英文字体 */
+  font-size: 14px; /* 价格字体大小 */
+  color: #999999; /* 浅灰色字体 */
+}
+
+.options-section { 
+  margin-top: 40px; /* 规格选择区距离上方元素的顶部外边距 */
+}
+
+.option-row { 
+  display: flex; /* 开启弹性布局横向排列 */
+  align-items: center; /* 元素垂直居中对齐 */
+  margin-bottom: 20px; /* 距离下方元素的底部外边距 */
+}
+
+.option-label { 
+  width: 70px; /* 标签文字固定宽度 */
+  font-family: "Times New Roman", Times, serif; /* 标签英文字体 */
+  font-size: 14px; /* 标签字体大小 */
+  color: #999999; /* 标签浅灰色字体 */
+}
+
+.size-selector { 
+  flex: 1; /* 规格选择框占据右侧剩余全部空间 */
+  border: 1px solid #eeeeee; /* 极浅的灰色边框 */
+  padding: 12px 15px; /* 选择框上下的内边距 */
+  display: flex; /* 开启弹性布局 */
+  justify-content: space-between; /* 内部文字和图标分别靠左右两边 */
+  align-items: center; /* 内部垂直居中对齐 */
+  background-color: #fdfdfd; /* 极浅的灰色背景 */
+}
+
+.size-text { 
+  font-family: -apple-system, sans-serif; /* 苹果系统默认字体 */
+  font-size: 13px; /* 选中的规格文字大小 */
+  color: #888888; /* 灰色字体 */
+}
+
+.select-icon { 
+  font-size: 12px; /* 右侧上下箭头大小 */
+  color: #888888; /* 右侧上下箭头颜色 */
+}
+
+/* ================= 选项卡切换区 ================= */
+.tabs-wrap { 
+  display: flex; /* 开启弹性布局横向排列 */
+  justify-content: space-between; /* 四个选项卡平均分布 */
+  margin-bottom: 30px; /* 距离下方内容的底部外边距 */
+  margin-top: 40px; /* 距离上方规格选择的顶部外边距 */
+}
+
+.tab-item { 
+  font-family: "Times New Roman", Times, serif; /* 选项卡英文字体 */
+  font-size: 12px; /* 选项卡文字大小 */
+  color: #cccccc; /* 未选中的浅灰色字体 */
+  padding-bottom: 8px; /* 底部内边距，为了让下划线隔开一段距离 */
+  letter-spacing: 0.5px; /* 字母间距，增加高级感 */
+}
+
+.tab-item.active { 
+  color: #555555; /* 选中时的深灰色字体 */
+  border-bottom: 1px solid #555555; /* 选中时的底边黑线 */
+}
+
+/* ================= 🌟 选项卡下方的图文详情区 (全新替换版) ================= */
+.tab-content {
+  width: 100%;
+  min-height: 150px; /* 核心细节：预留足够的最小高度，防止点击切换不同长短的 Tab 时，页面下方内容剧烈上下跳动 */
+  padding: 10px 0 10px 0; /* 顶部留出 10px 呼吸空间，底部留出充足的空白 */
+  box-sizing: border-box;
+}
+
+.desc-content {
+  width: 100%;
+  /* 🌟 注入灵魂：Tab 切换时的丝滑淡入过渡动画 */
+  animation: tabFadeIn 0.35s ease-out forwards;
+}
+
+.desc-line {
+  /* 字体使用系统默认的无衬线体，最契合韩系极简的干净利落 */
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  font-size: 12px;         /* 还原原版的小巧精致感 */
+  color: #777777;          /* 还原原版的低对比度高级灰 */
+  line-height: 2.2;        /* 🌟 原版的排版精髓：2.2 倍极其宽裕的行高，呼吸感拉满 */
+  letter-spacing: 0.5px;   /* 增加微小的字间距，提升文字的清冷感 */
+  word-wrap: break-word;   /* 保证中英文和符号都能优雅换行 */
+}
+
+/* 居中修饰类 */
+.center-text {
+  text-align: center;
+}
+
+/* 模特信息区包裹框 */
+.model-info-box {
+  width: 100%;
+  padding-bottom: 10px;
+}
+
+/* 🌟 Tab 切换专属的淡入微动画 */
+@keyframes tabFadeIn {
+  0% { 
+    opacity: 0; 
+    transform: translateY(4px); /* 初始状态极其轻微地偏下 */
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0);   /* 极速且轻柔地回到原位 */
+  }
+}
+/* ========================================================================= */
+
+/* ================= 长图与关联商品 ================= */
+.lookbook-section { 
+  width: 100%; /* Lookbook区块占满全宽 */
+  margin-top: 10px; /* 顶部距离 */
+}
+
+.lookbook-img { 
+  width: 100%; /* 图片占满全宽 */
+  display: block; /* 清除默认底部留白 */
+  margin-bottom: -1px; /* 消除多张图片拼接时的细微白线 */
+}
+
+.section-title-eng { 
+  font-family: "Times New Roman", Times, serif; /* 英文标题字体 */
+  font-size: 16px; /* 标题字体大小 */
+  color: #333333; /* 标题字体深灰色 */
+  margin-bottom: 20px; /* 标题底部间距 */
+}
+
+.detail-views-section { 
+  width: 100%; /* 细节轮播图区域占满全宽 */
+  padding: 40px 0; /* 上下预留40px内边距 */
+  border-top: 1px solid #f5f5f5; /* 顶部细分割线 */
+}
+
+.detail-views-header { 
+  display: flex; /* 开启弹性布局 */
+  justify-content: space-between; /* 标题和角标左右分开 */
+  align-items: center; /* 垂直居中对齐 */
+  padding: 0 20px; /* 左右内边距20px */
+  margin-bottom: 25px; /* 底部间距25px */
+}
+
+.detail-counter { 
+  font-family: "Times New Roman", Times, serif; /* 角标英文字体 */
+  font-size: 12px; /* 角标字体大小 */
+  color: #cccccc; /* 角标浅灰色 */
+  letter-spacing: 1px; /* 角标字母间距 */
+}
+
+.detail-swiper { 
+  width: 100%; /* 细节轮播图占满全宽 */
+  height: 130vw; /* 细节轮播高度按比例调整 */
+  background-color: #f9f9f9; /* 细节轮播底色 */
+}
+
+.detail-swiper-img { 
+  width: 100%; /* 图片占满全宽 */
+  height: 100%; /* 图片占满全高 */
+  display: block; /* 清除底部留白 */
+}
+
+.related-products-section { 
+  width: 100%; /* 关联商品区占满全宽 */
+  padding: 20px 0 80px 0; /* 预留充足的底部空间 */
+  border-top: 1px solid #f5f5f5; /* 顶部细分割线 */
+}
+
+.related-grid { 
+  display: grid; /* 使用强大的CSS Grid网格布局 */
+  grid-template-columns: repeat(2, 1fr); /* 强制分成相等的两列 */
+  gap: 30px 8px; /* 上下间距30px，左右间距8px */
+  padding: 0 10px; /* 网格整体左右内边距16px */
+  box-sizing: border-box; /* 保证内边距不影响总体宽度 */
+}
+
+.related-item { 
+  width: 100%; /* 每个商品卡片占满网格的格子 */
+  display: flex; /* 开启弹性布局 */
+  flex-direction: column; /* 内部元素纵向排列 */
+}
+
+.related-img { 
+  width: 100%; /* 商品主图占满全宽 */
+  aspect-ratio: 3 / 4; /* 强制锁定3:4的高级图片比例 */
+  display: block; /* 清除底部留白 */
+  background-color: #f9f9f9; /* 图片加载前的底色 */
+  margin-bottom: 10px; /* 图片与下方文字的间距 */
+}
+
+.related-info { 
+  text-align: left; /* 文字全部向左对齐 */
+}
+
+.related-title { 
+  font-family: "Times New Roman", Times, serif; /* 标题英文字体 */
+  font-size: 13px; /* 标题文字大小 */
+  color: #333333; /* 标题深色 */
+  line-height: 1.4; /* 标题行高 */
+  margin-bottom: 6px; /* 标题底部间距 */
+  white-space: normal; /* 允许文字正常换行 */
+}
+
+.related-price { 
+  font-family: "Times New Roman", Times, serif; /* 价格英文字体 */
+  font-size: 13px; /* 价格文字大小 */
+  color: #999999; /* 价格浅灰色 */
+  margin-bottom: 6px; /* 价格底部间距 */
+}
+
+/* ================= 底部 SKU 弹窗样式 (完全保留原生版) ================= */
+.sku-mask { 
+  position: fixed; /* 遮罩层固定定位 */
+  top: 0; /* 从屏幕最上方开始 */
+  left: 0; /* 从屏幕最左方开始 */
+  width: 100%; /* 遮罩层宽度100% */
+  height: 100%; /* 遮罩层高度100% */
+  background: rgba(0,0,0,0.5); /* 半透明黑色遮罩 */
+  z-index: 999; /* 层级位于弹窗之下，页面之上 */
+}
+
+.sku-panel { 
+  position: fixed; /* 弹窗主体固定定位 */
+  bottom: -100%; /* 默认隐藏在屏幕正下方之外 */
+  left: 0; /* 从屏幕左侧开始 */
+  width: 100%; /* 弹窗宽度满屏 */
+  background: #fff; /* 弹窗白色背景 */
+  border-radius: 16px 16px 0 0; /* 左上右上有16px的圆角 */
+  z-index: 1000; /* 最高层级保证不被遮挡 */
+  padding: 20px; /* 弹窗内部上下左右留白 */
+  box-sizing: border-box; /* 保证留白不会撑破屏幕宽度 */
+  transition: all 0.3s ease; /* 弹起和收回的丝滑动画效果 */
+}
+
+.sku-panel.show { 
+  bottom: 0; /* 激活时，底部距离变为0，顺滑弹起 */
+}
+
+.sku-close { 
+  position: absolute; /* 关闭按钮绝对定位 */
+  top: 15px; /* 距离弹窗顶部15px */
+  right: 20px; /* 距离弹窗右侧20px */
+  font-size: 24px; /* 关闭按钮大小 */
+  color: #999; /* 关闭按钮颜色 */
+}
+
+.sku-header { 
+  display: flex; /* 头部商品信息横向排列 */
+  margin-bottom: 20px; /* 头部距离下方选项的间距 */
+}
+
+.sku-img { 
+  width: 80px; /* 弹窗里商品小图的宽度 */
+  height: 80px; /* 弹窗里商品小图的高度 */
+  border-radius: 8px; /* 小图加8px圆角 */
+  margin-right: 15px; /* 小图距离右侧文字的间距 */
+  background: #eee; /* 小图未加载时的底色 */
+}
+
+.sku-main { 
+  flex: 1; /* 右侧文字区占满剩余空间 */
+  display: flex; /* 开启弹性布局 */
+  flex-direction: column; /* 内部文字纵向排列 */
+  justify-content: center; /* 纵向居中 */
+}
+
+.sku-price { 
+  font-size: 18px; /* 弹窗大字价格 */
+  font-weight: bold; /* 价格加粗 */
+  margin-bottom: 5px; /* 价格距下方间距 */
+}
+
+.sku-stock { 
+  font-size: 12px; /* 库存文字大小 */
+  margin-bottom: 5px; /* 库存距下方间距 */
+}
+
+.sku-choose-tip { 
+  font-size: 12px; /* 已选提示文字大小 */
+  color: #666; /* 已选提示深灰色 */
+}
+
+.sku-section { 
+  margin-bottom: 20px; /* 每组规格区域底部间距 */
+}
+
+.sku-title { 
+  font-size: 14px; /* 规格组标题文字大小 */
+  font-weight: bold; /* 规格组标题加粗 */
+  margin-bottom: 10px; /* 距下方选项标签间距 */
+  color: #333; /* 标题深黑色 */
+}
+
+.sku-options { 
+  display: flex; /* 选项标签横向排列 */
+  flex-wrap: wrap; /* 超过一行自动折行 */
+  gap: 10px; /* 每个选项标签之间的间距 */
+}
+
+.sku-tag { 
+  padding: 6px 16px; /* 选项标签的上下左右内边距 */
+  background: #f5f5f5; /* 选项标签未选中时的浅灰底色 */
+  border-radius: 4px; /* 选项标签圆角 */
+  font-size: 13px; /* 选项标签字体大小 */
+  color: #333; /* 选项标签字体颜色 */
+  border: 1px solid transparent; /* 预留透明边框，防止选中时尺寸跳动 */
+}
+
+.sku-tag.active { 
+  background: #fcf0f0; /* 选中时的浅红色背景 */
+  color: #d32f2f; /* 选中时的深红色文字 */
+  border-color: #d32f2f; /* 选中时的红色边框 */
+  font-weight: bold; /* 选中时文字加粗 */
+}
+
+.sku-btn-confirm { 
+  background: #000; /* 确认按钮纯黑背景 */
+  color: #fff; /* 确认按钮纯白文字 */
+  text-align: center; /* 文字居中 */
+  line-height: 44px; /* 行高撑起按钮高度 */
+  border-radius: 22px; /* 极其圆润的半圆角 */
+  font-size: 15px; /* 按钮文字大小 */
+  font-weight: bold; /* 按钮文字加粗 */
+  margin-top: 10px; /* 距离上方区域间距 */
+  margin-bottom: env(safe-area-inset-bottom); /* 自动适配苹果底部黑线，防止误触 */
+}
+
+/* ================= 悬浮动态视频小窗 ================= */
+.floating-video-btn {
+  position: fixed;
+  right: 20px;
+  /* 悬浮在屏幕右下角，距离底部操作栏往上留出充足距离 */
+  bottom: calc(85px + env(safe-area-inset-bottom)); 
+  width: 56px;
+  height: 56px;
+  border-radius: 50%; /* 完美的圆形 */
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15); /* 高级悬浮阴影 */
+  border: 2px solid #ffffff; /* 白边包裹，增加质感 */
+  z-index: 90;
+  background-color: #f0f0f0;
+}
+
+.floating-video-thumb {
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 让缩略图里的视频无视所有点击事件 */
+}
+
+.play-icon-overlay {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.25); /* 覆盖一层淡淡的黑膜，让白色播放键更清晰 */
+  color: rgba(255,255,255,0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 14px;
+  padding-left: 2px; /* 视觉微调，让三角形看起来更居中 */
+}
+
+/* ================= 沉浸式全屏播放弹窗 ================= */
+.video-overlay-mask {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-color: #000000; /* 纯黑沉浸感底色 */
+  z-index: 99999; /* 最高层级，挡住一切 */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.fullscreen-video {
+  width: 100%;
+  height: 100vh; /* 视频高度撑满全屏 */
+}
+
+.close-video-btn {
+  position: absolute;
+  left: 20px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100000;
+  backdrop-filter: blur(5px);
+}
+
+/* ================= 🌟 统一高级感动态文本容器 ================= */
+.tab-content {
+  width: 100%;
+  /* 🚀 核心修改：去掉了 150px 的最小高度限制，让它完全像橡皮筋一样自由伸缩！ */
+  min-height: 0; 
+  /* 稍微减小底部的留白，让文字和下方的图片衔接更紧凑高级 */
+  padding: 5px 0 5px 0; 
+  box-sizing: border-box;
+}
+
+.desc-text {
+  /* 强制统一极简字体 */
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif !important;
+  font-size: 12px !important;       /* 极致精巧的小字号 */
+  color: #777777 !important;        /* 统一的高级冷灰色 */
+  line-height: 2.4 !important;      /* 2.4倍超大呼吸行距（灵魂所在） */
+  letter-spacing: 0.5px !important; /* 微小字间距提升清冷感 */
+  
+  /* 👇 核心黑科技：完美识别后台回车，高度像橡皮筋一样自适应 👇 */
+  white-space: pre-wrap !important; 
+  word-break: break-all !important;
+  display: block !important;        
+  width: 100% !important;
+  
+  /* 切换时的丝滑淡入微动画，绝不生硬 */
+  animation: tabFadeIn 0.35s ease-out forwards;
+}
+
+@keyframes tabFadeIn {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}

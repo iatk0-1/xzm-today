@@ -1,0 +1,47 @@
+page { background-color: #f9f9f9; }
+.checkout-wrapper { width: 100%; padding-bottom: 100px; }
+
+.page-title { font-family: "Times New Roman", Times, serif; font-size: 18px; color: #333333; text-align: center; padding: 25px 0; background-color: #ffffff; letter-spacing: 0.5px; }
+
+/* 收货地址区 */
+.address-section { background-color: #ffffff; margin-top: 10px; padding: 25px 20px; position: relative; }
+/* 模拟信封边缘的经典红蓝虚线 */
+.address-section::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: repeating-linear-gradient(-45deg, #ff4d4f 0, #ff4d4f 20%, transparent 0, transparent 25%, #1890ff 0, #1890ff 45%, transparent 0, transparent 50%); background-size: 60px 3px; }
+
+.empty-address { display: flex; align-items: center; color: #555555; font-size: 14px; }
+.add-icon { width: 24px; height: 24px; background-color: #111111; color: #ffffff; display: flex; justify-content: center; align-items: center; border-radius: 4px; margin-right: 15px; font-weight: 300; }
+
+.real-address { position: relative; padding-right: 20px; }
+.address-user { display: flex; align-items: baseline; margin-bottom: 8px; }
+.name { font-size: 16px; font-weight: bold; color: #333333; margin-right: 15px; }
+.phone { font-size: 14px; color: #666666; font-family: -apple-system, sans-serif; }
+.address-detail { font-size: 13px; color: #666666; line-height: 1.5; }
+.arrow { position: absolute; right: 0; top: 50%; transform: translateY(-50%); color: #cccccc; font-family: "Times New Roman", Times, serif; }
+
+/* 商品清单 */
+.order-items-section { background-color: #ffffff; margin-top: 10px; padding: 20px; }
+.section-label { font-family: "Times New Roman", Times, serif; font-size: 14px; color: #888888; margin-bottom: 20px; letter-spacing: 0.5px; }
+.item-card { display: flex; margin-bottom: 20px; }
+.item-card:last-child { margin-bottom: 0; }
+.item-img { width: 70px; height: 93px; background-color: #f5f5f5; display: block; margin-right: 15px; }
+.item-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.item-title { font-family: "Times New Roman", Times, serif; font-size: 14px; color: #333333; line-height: 1.4; }
+.item-sku { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #aaaaaa; }
+.item-bottom { display: flex; justify-content: space-between; align-items: center; }
+.item-price { font-family: "Times New Roman", Times, serif; font-size: 14px; color: #333333; }
+.item-count { font-family: -apple-system, sans-serif; font-size: 13px; color: #888888; }
+
+/* 价格明细 */
+.summary-section { background-color: #ffffff; margin-top: 10px; padding: 20px; }
+.summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; }
+.sum-label { font-family: "Times New Roman", Times, serif; font-size: 13px; color: #888888; }
+.sum-value { font-family: "Times New Roman", Times, serif; font-size: 13px; color: #555555; }
+.total-row { margin-top: 15px; padding-top: 15px; border-top: 1px solid #f5f5f5; margin-bottom: 0; }
+.total-val { font-size: 16px; color: #111111; font-weight: bold; }
+
+/* 底部支付栏 */
+.bottom-pay-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 65px; padding-bottom: constant(safe-area-inset-bottom); padding-bottom: env(safe-area-inset-bottom); background-color: #ffffff; border-top: 1px solid #eeeeee; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; box-sizing: border-box; z-index: 100; }
+.pay-total { display: flex; align-items: baseline; }
+.pay-label { font-family: "Times New Roman", Times, serif; font-size: 12px; color: #888888; margin-right: 10px; }
+.pay-price { font-family: "Times New Roman", Times, serif; font-size: 18px; color: #111111; font-weight: bold; }
+.btn-pay { background-color: #111111; color: #ffffff; font-family: -apple-system, sans-serif; font-size: 13px; height: 44px; line-height: 44px; padding: 0 35px; border-radius: 2px; letter-spacing: 1px; }

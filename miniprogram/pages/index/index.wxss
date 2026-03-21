@@ -1,0 +1,173 @@
+/* 页面背景设为纯白 */
+page {
+  background-color: #ffffff; 
+}
+
+/* 整体容器：顶部留出50px是为了避开手机顶部的信号栏和胶囊按钮，左右边距缩小到10px */
+.container {
+  padding: 100px 15px 120px 15px; 
+  box-sizing: border-box;
+}
+
+/* 顶部导航栏：强制左右分开 */
+.header-nav {
+  display: flex;
+  justify-content: space-between; /* 核心代码：让 Logo 和菜单被推向两边 */
+  align-items: baseline; /* 让左边的大字和右边的小字在底部对齐，更高级 */
+  padding-bottom:25px; 
+  width: 100%;
+}
+
+/* Logo：使用经典衬线体，字距缩小，尺寸放大 */
+.logo {
+  font-family: "Times New Roman", Times, serif; 
+  font-size: 26px;
+  letter-spacing: 0.5px;
+  color: #888888; 
+}
+
+/* 右侧菜单：同样使用衬线体，浅灰色 */
+.nav-links text {
+  font-family: "Times New Roman", Times, serif; 
+  font-size: 14px;
+  color: #888888;
+  margin-left: 12px; 
+}
+
+/* 商品网格 - 升级为 Grid 布局 */
+.product-grid {
+  display: grid; /* 启用网格模式 */
+  grid-template-columns: 1fr 1fr; /* 强制分成两等份的列 */
+  grid-column-gap: 8px; /* 列与列之间精确留出 8px 的缝隙（还原之前的高级感窄缝） */
+  width: 100%;
+}
+
+/* 单个商品外框 */
+.product-item {
+  width: 100%; /* 直接占满所在的网格单元 */
+  margin-bottom: 40px; 
+}
+
+/* 图片 */
+.product-img {
+  width: 100%;
+  display: block; 
+}
+
+/* 商品名：衬线体，缩小字号，让英文排版更紧凑 */
+.product-title {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12px;
+  color: #333333;
+  margin-top: 12px;
+  text-align: left;
+  line-height: 1.3; 
+}
+
+/* 商品价格：浅灰色 */
+.product-price {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12px;
+  color: #999999; 
+  margin-top: 6px;
+  text-align: left;
+}
+
+/* --- 底部小红书风格导航栏 --- */
+.bottom-tab-bar {
+  position: fixed; /* 悬浮魔术：把它死死钉在屏幕最底部 */
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 85px; /* 给足高度 */
+  background-color: #ffffff;
+  display: flex;
+  justify-content: space-around; /* 让菜单均匀分布 */
+  align-items: center; 
+  padding-bottom: 20px; /* 避开苹果手机底部的横线安全区 */
+  border-top: 1px solid #f2f2f2;
+  z-index: 999; /* 保证它永远在最上层，不被图片盖住 */
+}
+
+/* 文字菜单的默认样子 */
+.tab-item {
+  font-family: -apple-system, sans-serif;
+  font-size: 16px;
+  color: #999999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+/* 选中的菜单（比如首页）变成黑色加粗 */
+.tab-item.active {
+  color: #333333;
+  font-weight: bold;
+}
+
+/* 核心：老板专属的红色加号按钮 */
+.red-plus-btn {
+  width: 48px;
+  height: 32px;
+  background-color: #ff2442; /* 极其正宗的标志性红色 */
+  color: #ffffff;
+  border-radius: 8px; /* 完美的圆角矩形 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 1; /* 让加号完美居中 */
+  margin-top: -2px; /* 稍微往上微调一点点视觉 */
+}
+
+/* --- 追加的瀑布流样式 --- */
+.waterfall-container {
+  padding: 10px;
+  column-count: 2; /* 核心黑科技：劈成两列 */
+  column-gap: 10px;
+  /* 留出底部导航的距离，防止被挡住 */
+  padding-bottom: 80px; 
+}
+.product-item {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  break-inside: avoid; /* 核心规避：防卡片被劈成两半 */
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+.product-img { width: 100%; display: block; border-radius: 8px 8px 0 0; }
+.product-info { padding: 10px; }
+.product-title { font-size: 13px; color: #333; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-bottom: 8px; }
+.product-bottom { display: flex; justify-content: space-between; align-items: center; }
+.product-price { font-size: 15px; font-weight: bold; color: #000; }
+/* ================= 删掉原来的 .btn-add-cart，替换为这个 ================= */
+.add-cart-icon {
+  width: 23px;     /* 图标宽度，大小可以根据你下载的图标稍微微调 */
+  height: 23px;    /* 图标高度 */
+  display: block;   /* 消除图片底部的空白间隙 */
+  
+  /* 为了让这个小图标在卡片右下角更容易被点到，我们需要人为放大它的“点击区域”，但不能改变图标本身的大小 */
+  padding: 5px;    /* 给图标四周加一圈“透明的保护垫”，把点击范围扩大一倍！极度增强用户体验 */
+  box-sizing: content-box; /* 核心规避：让 padding 不会挤压图标本身的大小 */
+  
+  margin-right: -5px; /* 利用负边距，把放大的点击区域巧妙地抵消掉，保证它看起来还在右下角边缘 */
+}
+
+/* --- 追加的半屏弹窗样式 --- */
+.sku-mask { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
+.sku-panel { position: fixed; bottom: -100%; left: 0; width: 100%; background: #fff; border-radius: 16px 16px 0 0; z-index: 1000; padding: 20px; box-sizing: border-box; transition: all 0.3s ease-in-out; }
+.sku-panel.show { bottom: 0; }
+.sku-close { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #999; padding: 5px; }
+.sku-header { display: flex; margin-bottom: 20px; }
+.sku-img { width: 90px; height: 90px; border-radius: 8px; background: #eee; margin-right: 15px; }
+.sku-price { color: #000; font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+.sku-stock, .sku-choose-tip { color: #999; font-size: 12px; margin-bottom: 3px; }
+.sku-section { margin-bottom: 30px; }
+.sku-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; }
+.sku-options { display: flex; flex-wrap: wrap; }
+.sku-tag { padding: 6px 15px; background: #f5f5f5; color: #333; border-radius: 4px; font-size: 13px; margin-right: 10px; margin-bottom: 10px; }
+.sku-tag.active { background: #000; color: #fff; }
+.sku-btn-confirm { width: 100%; background: #000; color: #fff; text-align: center; padding: 12px 0; border-radius: 25px; font-size: 16px; font-weight: bold; }

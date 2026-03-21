@@ -1,0 +1,76 @@
+page {
+  background-color: #f7f8fa;
+}
+
+/* 顶部搜索栏吸顶 */
+.search-bar {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  background-color: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+}
+.search-input {
+  flex: 1;
+  height: 36px;
+  background-color: #f5f5f5;
+  border-radius: 18px;
+  padding: 0 15px;
+  font-size: 14px;
+}
+.search-btn {
+  margin-left: 15px;
+  font-size: 15px;
+  color: #333333;
+  font-weight: bold;
+}
+
+.result-box {
+  padding: 15px;
+}
+.empty-tip {
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  margin-top: 50px;
+}
+
+/* ====== 🚀 核心修复：纯 CSS 高级小红书双列瀑布流 ====== */
+.goods-list {
+  column-count: 2;         /* 分为两列 */
+  column-gap: 10px;        /* 两列的间距 */
+}
+.goods-item {
+  break-inside: avoid;     /* 防止卡片被硬生生切断 */
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+.goods-img {
+  width: 100%;
+  display: block;
+  background-color: #f0f0f0; /* 图片加载前的骨架底色 */
+}
+.goods-info {
+  padding: 10px;
+}
+.goods-title {
+  font-size: 13px;
+  color: #333;
+  line-height: 1.4;
+  margin-bottom: 6px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2; /* 最多显示两行，多余省略号 */
+  overflow: hidden;
+}
+.goods-price {
+  font-size: 14px;
+  color: #111;
+  font-weight: bold;
+}

@@ -1,0 +1,61 @@
+<view class="cart-wrapper">
+  
+  <view class="page-header">Shopping Cart</view>
+
+  <view class="empty-state" wx:if="{{cartList.length === 0}}">
+    <view class="empty-text">您的购物车中没有商品</view>
+  </view>
+
+  <block wx:else>
+    <view class="cart-list">
+      <view class="cart-item" wx:for="{{cartList}}" wx:key="_id">
+        
+        <view class="checkbox {{item.selected ? 'checked' : ''}}" bindtap="toggleSelect" data-index="{{index}}">
+          <view class="check-inner" wx:if="{{item.selected}}"></view>
+        </view>
+
+        <image class="item-img" src="{{item.image}}" mode="aspectFill"></image>
+
+        <view class="item-info">
+          <view class="item-title">{{item.title}}</view>
+          
+          <view class="item-sku" wx:if="{{item.selectedColor || item.selectedSize}}">
+            {{item.selectedColor ? 'Color: ' + item.selectedColor : ''}} 
+            {{item.selectedColor && item.selectedSize ? ' / ' : ''}} 
+            {{item.selectedSize ? 'Size: ' + item.selectedSize : ''}}
+          </view>
+          <view class="item-sku" wx:else>默认规格</view>
+          
+          <view class="item-bottom">
+            <view class="item-price">¥ {{item.finalPrice || item.price}}</view>
+            
+            <view class="stepper">
+              <view class="step-btn" bindtap="changeCount" data-index="{{index}}" data-type="minus">-</view>
+              <view class="step-num">{{item.count}}</view>
+              <view class="step-btn" bindtap="changeCount" data-index="{{index}}" data-type="add">+</view>
+            </view>
+          </view>
+        </view>
+
+      </view>
+    </view>
+
+    <view class="bottom-bar">
+      <view class="select-all" bindtap="toggleAll">
+        <view class="checkbox {{isAllSelected ? 'checked' : ''}}">
+          <view class="check-inner" wx:if="{{isAllSelected}}"></view>
+        </view>
+        <text>全选</text>
+      </view>
+
+      <view class="total-section">
+        <view class="total-price">
+          <text class="label">Total:</text> 
+          <text class="price-num">¥ {{totalPrice}}</text>
+        </view>
+        <view class="btn-checkout" bindtap="goToCheckout">CHECK OUT ({{totalCount}})</view>
+      </view>
+    </view>
+  </block>
+
+</view>

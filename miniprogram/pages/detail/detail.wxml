@@ -1,0 +1,122 @@
+<view class="page-wrapper" style="padding-top: {{navHeight}}px;">
+  
+  <view class="custom-nav-bar" style="padding-top: {{statusBarHeight}}px; height: 44px;">
+    <view class="nav-back" bindtap="goBack">
+      <view class="back-arrow"></view>
+    </view>
+  </view>
+
+  <swiper class="main-swiper" indicator-dots="true" indicator-color="rgba(0,0,0,0.15)" indicator-active-color="#111" circular="true">
+    <swiper-item wx:for="{{bannerImgs}}" wx:key="*this">
+      <image class="swiper-img" src="{{item}}" mode="aspectFill"></image>
+    </swiper-item>
+  </swiper>
+
+  <view class="content-wrapper">
+    <!-- <view class="shipping-info" wx:if="{{product.shippingInfo}}">{{product.shippingInfo}}</view> 发货时间暂时不写 -->
+    <view class="detail-title">{{product.title}}</view>
+    <view class="detail-price">¥ {{product.displayPrice || product.price}}</view>
+
+    <view class="options-section" bindtap="openSkuPanel" data-action="cart">
+      <view class="size-selector">
+        <text class="size-text" style="color: #333;">{{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</text>
+        <text class="select-icon">↕</text>
+      </view>
+    </view>
+<!-- 暂时注释掉 后面再决定要不要留 -->
+<!--  
+    <view class="tabs-wrap">
+      <view class="tab-item {{currentTab === 0 ? 'active' : ''}}" bindtap="switchTab" data-index="0">商品详情</view>
+      <view class="tab-item {{currentTab === 1 ? 'active' : ''}}" bindtap="switchTab" data-index="1">保养与材质</view>
+      <view class="tab-item {{currentTab === 2 ? 'active' : ''}}" bindtap="switchTab" data-index="2">尺码指南</view>
+      <view class="tab-item {{currentTab === 3 ? 'active' : ''}}" bindtap="switchTab" data-index="3">温馨提示</view>
+    </view>
+
+    <view class="tab-content">
+      <text class="desc-text" wx:if="{{currentTab === 0}}">{{product.description || '暂无详细介绍'}}</text>
+      <text class="desc-text" wx:if="{{currentTab === 1}}">{{product.fabricCare || '暂无材质保养说明'}}</text>
+      <text class="desc-text" wx:if="{{currentTab === 2}}">{{product.sizeChartTip || '暂无尺码指南'}}</text>
+      <text class="desc-text" wx:if="{{currentTab === 3}}">{{product.warmTips || '暂无温馨提示'}}</text>
+    </view>
+    -->
+  </view> 
+
+  <view class="lookbook-section" wx:if="{{lookbookImgs && lookbookImgs.length > 0}}">
+    <image class="lookbook-img" wx:for="{{lookbookImgs}}" wx:key="*this" src="{{item}}" mode="widthFix"></image>
+  </view>
+
+  <view class="detail-views-section" wx:if="{{detailImgs && detailImgs.length > 0}}">
+    <view class="detail-views-header">
+      <text class="detail-title-eng">Detail Views</text>
+      <text class="detail-counter">{{currentDetailIndex}} / {{detailImgs.length}}</text>
+    </view>
+    <swiper class="detail-swiper" bindchange="onDetailSwiperChange" next-margin="25px">
+      <swiper-item class="detail-swiper-item" wx:for="{{detailImgs}}" wx:key="*this">
+        <image class="detail-swiper-img" src="{{item}}" mode="aspectFill"></image>
+      </swiper-item>
+    </swiper>
+  </view>
+
+  <view class="related-products-section" wx:if="{{relatedProducts.length > 0}}">
+    <view class="section-title-eng" style="text-align: left; padding-left: 20px;">关联商品</view>
+    <view class="related-grid">
+      <view class="related-item" wx:for="{{relatedProducts}}" wx:key="_id" bindtap="goToRelatedDetail" data-id="{{item._id}}">
+        <image class="related-img" src="{{item.image}}" mode="aspectFill"></image>
+        <view class="related-info">
+          <view class="related-title">{{item.title}}</view>
+          <view class="related-price">¥ {{item.displayPrice || item.price}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view class="floating-action-bar">
+  <view class="btn-add-half" bindtap="openSkuPanel" data-action="cart">加入购物车</view>
+  <view class="btn-buy-half" bindtap="openSkuPanel" data-action="buy">立即购买</view>
+</view>
+
+<view class="sku-mask" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
+
+<view class="sku-panel {{showSku ? 'show' : ''}}">
+  <view class="sku-close" catchtap="closeSkuPanel">×</view>
+  <view class="sku-header">
+    <image class="sku-img" src="{{product.image}}" mode="aspectFill"></image>
+    <view class="sku-main">
+      <view class="sku-price" style="color: #d32f2f;">¥ {{currentSkuPrice || product.displayPrice || product.price}}</view>
+      <view class="sku-stock" style="color: {{currentSkuStock === 0 ? 'red' : '#999'}};">库存: {{currentSkuStock !== null ? currentSkuStock : '请选择规格'}}</view>
+      <view class="sku-choose-tip">已选: {{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y style="max-height: 50vh;">
+    <view class="sku-section" wx:if="{{uniqueColors.length > 0}}">
+      <view class="sku-title">颜色</view>
+      <view class="sku-options">
+        <view class="sku-tag {{selectedColor === item ? 'active' : ''}}" wx:for="{{uniqueColors}}" wx:key="*this" bindtap="selectColor" data-color="{{item}}">{{item}}</view>
+      </view>
+    </view>
+
+    <view class="sku-section" wx:if="{{uniqueSizes.length > 0}}">
+      <view class="sku-title">尺码</view>
+      <view class="sku-options">
+        <view class="sku-tag {{selectedSize === item ? 'active' : ''}}" wx:for="{{uniqueSizes}}" wx:key="*this" bindtap="selectSize" data-size="{{item}}">{{item}}</view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="sku-btn-confirm" bindtap="confirmSkuAction">
+    {{skuAction === 'buy' ? '下一步：立即购买' : '确定加入购物车'}}
+  </view>
+</view>
+
+<view class="floating-video-btn" wx:if="{{product.videoUrl}}" bindtap="openVideoOverlay">
+  <video class="floating-video-thumb" src="{{product.videoUrl}}" autoplay loop muted show-play-btn="{{false}}" controls="{{false}}" object-fit="cover"></video>
+  <!-- 这个播放三角不显示 暂时留着位置 -->
+  <view class="play-icon-overlay"></view>
+</view>
+
+<view class="video-overlay-mask" wx:if="{{showVideo}}" catchtap="closeVideoOverlay">
+  <view class="close-video-btn" catchtap="closeVideoOverlay" style="top: {{statusBarHeight + 10}}px;">×</view>
+  <video id="mainFullscreenVideo" class="fullscreen-video" src="{{product.videoUrl}}" autoplay loop controls object-fit="contain" catchtap="doNothing" show-fullscreen-btn="{{false}}"></video>
+</view>

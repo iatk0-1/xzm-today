@@ -1,0 +1,92 @@
+<view class="container">
+  
+  <view class="header-nav">
+    <view class="logo">现在买</view>
+    <view class="nav-links">
+      <text bindtap="goToSearch">查找</text>
+      <text bindtap="goToCart">购物车</text>
+      <text class="active" style="font-weight: bold; color: #000;">上新</text>
+    </view>
+  </view>
+
+  <view class="waterfall-container">
+    <view class="product-item" wx:for="{{productList}}" wx:key="_id" bindtap="goToDetail" data-id="{{item._id}}">
+      <image class="product-img" src="{{item.image}}" mode="widthFix"></image>
+      
+      <view class="product-info">
+        <view class="product-title">{{item.title}}</view>
+        <view class="product-bottom">
+          <view class="product-price">¥ {{item.displayPrice || item.price}}</view>
+          <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
+            <view class="product-bottom">
+              <image 
+                class="add-cart-icon" 
+                src="/images/add-cart.png" 
+                catchtap="openSkuPanel" 
+                data-product="{{item}}" 
+                mode="aspectFit"
+              ></image>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view class="bottom-tab-bar">
+    <view class="tab-item active">首页</view>
+    <view class="tab-item" bindtap="goToMarket">市集</view>
+    
+    <view class="tab-item" wx:if="{{isAdmin}}" bindtap="goToAdmin">
+      <view class="red-plus-btn">+</view>
+    </view>
+    
+    <view class="tab-item">消息</view>
+    <view class="tab-item">我</view>
+  </view>
+</view>
+
+<view class="sku-mask" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
+<view class="sku-panel {{showSku ? 'show' : ''}}">
+  <view class="sku-close" catchtap="closeSkuPanel">×</view>
+  
+  <view class="sku-header" wx:if="{{currentProduct}}">
+    <image class="sku-img" src="{{currentProduct.image}}" mode="aspectFill"></image>
+    <view class="sku-main">
+      <view class="sku-price" style="color: #d32f2f;">
+        ¥ {{currentSkuPrice || currentProduct.displayPrice || currentProduct.price || '0.00'}}
+      </view>
+      <view class="sku-stock" style="color: {{currentSkuStock === 0 ? 'red' : '#999'}};">
+        库存: {{currentSkuStock !== null ? currentSkuStock : '请选择规格'}}
+      </view>
+      <view class="sku-choose-tip">已选: {{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y style="max-height: 50vh;">
+    <view class="sku-section" wx:if="{{uniqueColors.length > 0}}">
+      <view class="sku-title">颜色</view>
+      <view class="sku-options">
+        <view 
+          class="sku-tag {{selectedColor === item ? 'active' : ''}}" 
+          wx:for="{{uniqueColors}}" 
+          wx:key="*this" 
+          bindtap="selectColor" 
+          data-color="{{item}}">{{item}}</view>
+      </view>
+    </view>
+
+    <view class="sku-section" wx:if="{{uniqueSizes.length > 0}}">
+      <view class="sku-title">尺码</view>
+      <view class="sku-options">
+        <view 
+          class="sku-tag {{selectedSize === item ? 'active' : ''}}" 
+          wx:for="{{uniqueSizes}}" 
+          wx:key="*this" 
+          bindtap="selectSize" 
+          data-size="{{item}}">{{item}}</view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="sku-btn-confirm" bindtap="confirmAddToCart">加入购物车</view>
+</view>

@@ -1,0 +1,11 @@
+// 云函数入口文件
+const cloud = require('wx-server-sdk')
+cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
+
+// 云函数入口函数：专门用来获取当前用户的 OpenID
+exports.main = async (event, context) => {
+  const wxContext = cloud.getWXContext()
+  return {
+    openid: wxContext.OPENID
+  }
+}

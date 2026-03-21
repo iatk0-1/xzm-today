@@ -1,0 +1,44 @@
+page { background-color: #ffffff; }
+.cart-wrapper { width: 100%; padding-bottom: 120px; }
+
+/* 顶部标题 */
+.page-header { font-family: "Times New Roman", Times, serif; font-size: 20px; color: #333333; text-align: center; padding: 30px 0; border-bottom: 1px solid #f5f5f5; letter-spacing: 0.5px; }
+
+/* 空购物车 */
+.empty-state { padding: 80px 0; text-align: center; }
+.empty-text { font-family: -apple-system, sans-serif; font-size: 14px; color: #999999; }
+
+/* 购物车列表 */
+.cart-list { padding: 0 20px; }
+.cart-item { display: flex; align-items: center; padding: 30px 0; border-bottom: 1px solid #f5f5f5; }
+
+/* 纯手工高级单选框：不再是绿色的打勾，而是极简的黑框与黑心圆 */
+.checkbox { width: 16px; height: 16px; border: 1px solid #cccccc; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 15px; transition: all 0.2s; }
+.checkbox.checked { border-color: #111111; }
+.check-inner { width: 8px; height: 8px; background-color: #111111; border-radius: 50%; }
+
+/* 商品图 */
+.item-img { width: 80px; height: 106px; background-color: #f9f9f9; display: block; margin-right: 15px; }
+
+/* 商品信息 */
+.item-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; height: 106px; }
+.item-title { font-family: "Times New Roman", Times, serif; font-size: 14px; color: #333333; line-height: 1.4; }
+.item-sku { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #aaaaaa; margin-top: 5px; }
+
+/* 价格与加减器同行分布 */
+.item-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
+.item-price { font-family: "Times New Roman", Times, serif; font-size: 14px; color: #555555; }
+
+/* 极简数量加减器 */
+.stepper { display: flex; align-items: center; border: 1px solid #eeeeee; }
+.step-btn { width: 28px; height: 28px; display: flex; justify-content: center; align-items: center; font-family: -apple-system, sans-serif; font-size: 14px; color: #888888; }
+.step-num { width: 35px; height: 28px; display: flex; justify-content: center; align-items: center; font-family: "Times New Roman", Times, serif; font-size: 13px; color: #333333; border-left: 1px solid #eeeeee; border-right: 1px solid #eeeeee; }
+
+/* ====== 底部浮动结算栏 ====== */
+.bottom-bar { position: fixed; bottom: 85px; /* 避开你自定义的底部导航栏 */ left: 0; width: 100%; height: 60px; background-color: #ffffff; border-top: 1px solid #eeeeee; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; box-sizing: border-box; z-index: 100; }
+.select-all { display: flex; align-items: center; font-family: "Times New Roman", Times, serif; font-size: 13px; color: #666666; }
+.total-section { display: flex; align-items: center; }
+.total-price { display: flex; align-items: baseline; margin-right: 20px; }
+.label { font-family: "Times New Roman", Times, serif; font-size: 12px; color: #999999; margin-right: 8px; }
+.price-num { font-family: "Times New Roman", Times, serif; font-size: 16px; color: #111111; font-weight: bold; }
+.btn-checkout { background-color: #111111; color: #ffffff; font-family: -apple-system, sans-serif; font-size: 12px; height: 40px; line-height: 40px; padding: 0 25px; border-radius: 2px; letter-spacing: 0.5px; }

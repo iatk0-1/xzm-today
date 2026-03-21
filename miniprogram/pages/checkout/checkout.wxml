@@ -1,0 +1,67 @@
+<view class="checkout-wrapper">
+  
+  <view class="page-title">Checkout</view>
+
+  <view class="address-section" bindtap="chooseAddress">
+    <view class="empty-address" wx:if="{{!address}}">
+      <view class="add-icon">+</view>
+      <text>请选择微信收货地址</text>
+    </view>
+    
+    <view class="real-address" wx:else>
+      <view class="address-user">
+        <text class="name">{{address.userName}}</text>
+        <text class="phone">{{address.telNumber}}</text>
+      </view>
+      <view class="address-detail">{{address.detailInfo}}</view>
+      <view class="arrow">></view>
+    </view>
+  </view>
+
+  <view class="order-items-section">
+    <view class="section-label">Order Items</view>
+    
+    <view class="item-card" wx:for="{{checkoutItems}}" wx:key="_id">
+      <image class="item-img" src="{{item.image}}" mode="aspectFill"></image>
+      <view class="item-info">
+        <view class="item-title">{{item.title}}</view>
+        
+        <view class="item-sku">
+          {{item.selectedColor ? 'Color: ' + item.selectedColor : ''}} 
+          {{item.selectedColor && item.selectedSize ? ' / ' : ''}} 
+          {{item.selectedSize ? 'Size: ' + item.selectedSize : ''}}
+          {{!item.selectedColor && !item.selectedSize ? '默认规格' : ''}}
+        </view>
+        
+        <view class="item-bottom">
+          <view class="item-price">¥ {{item.finalPrice || item.price}}</view>
+          <view class="item-count">x {{item.count}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="summary-section">
+    <view class="summary-row">
+      <text class="sum-label">Subtotal</text>
+      <text class="sum-value">¥ {{totalPrice}}</text>
+    </view>
+    <view class="summary-row">
+      <text class="sum-label">Shipping</text>
+      <text class="sum-value">¥ 0.00</text>
+    </view>
+    <view class="summary-row total-row">
+      <text class="sum-label">Total</text>
+      <text class="sum-value total-val">¥ {{totalPrice}}</text>
+    </view>
+  </view>
+
+  <view class="bottom-pay-bar">
+    <view class="pay-total">
+      <text class="pay-label">Total</text>
+      <text class="pay-price">¥ {{totalPrice}}</text>
+    </view>
+    <view class="btn-pay" bindtap="submitOrder">PAY NOW</view>
+  </view>
+
+</view>

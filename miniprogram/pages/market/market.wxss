@@ -1,0 +1,73 @@
+page { background-color: #ffffff; }
+.market-wrapper { padding-bottom: 120px; }
+
+/* 头部策展区 */
+.header-section { text-align: center; padding: 25px 0 35px; }
+.page-title { 
+  font-family: "Times New Roman", Times, serif; 
+  font-size: 22px; color: #111111; letter-spacing: 1px; 
+}
+.page-subtitle { 
+  font-family: -apple-system, sans-serif; font-size: 10px; 
+  color: #999999; margin-top: 8px; letter-spacing: 3px; text-transform: uppercase; 
+}
+
+/* ================= 🚀 核心：非对称瀑布流 ================= */
+.masonry-grid {
+  padding: 0 15px;
+  column-count: 2;         /* 强制分为两列 */
+  column-gap: 15px;        /* 中间的巨大留白，呼吸感来源 */
+}
+
+.wish-card {
+  break-inside: avoid;     /* 绝不让卡片被从中间切断 */
+  margin-bottom: 30px;     /* 上下卡片的巨大留白 */
+  background: #ffffff;
+}
+
+.card-img {
+  width: 100%; display: block; 
+  background: #f9f9f9; border-radius: 2px;
+}
+
+.card-content { padding: 12px 0 0 0; }
+
+.card-desc {
+  font-family: -apple-system, sans-serif; font-size: 12px; color: #333333;
+  line-height: 1.5; margin-bottom: 12px;
+  /* 文本截断：最多显示两行，超出显示省略号，保持版面整洁 */
+  display: -webkit-box; -webkit-line-clamp: 2; 
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* ================= 🚀 核心：极简进度条系统 ================= */
+.progress-section { margin-top: 10px; }
+.progress-bar {
+  width: 100%; height: 2px; background: #f0f0f0; margin-bottom: 8px;
+}
+.progress-fill {
+  height: 100%; background: #111111; transition: width 0.4s ease-out;
+}
+.progress-text {
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: -apple-system, sans-serif; font-size: 10px; color: #888888; letter-spacing: 0.5px;
+}
+.heart-btn { font-size: 16px; color: #111111; padding-right: 15px; }
+
+/* 已上架的黑底购买按钮 */
+.btn-buy-black {
+  width: 100%; text-align: center; background: #111111; color: #ffffff;
+  font-family: "Times New Roman", Times, serif; font-size: 11px; 
+  padding: 10px 0; letter-spacing: 1.5px;
+}
+
+/* 悬浮发布按钮 */
+.fab-upload {
+  position: fixed; right: 20px; bottom: calc(85px + env(safe-area-inset-bottom));
+  width: 50px; height: 50px; background-color: #111111; border-radius: 50%;
+  display: flex; justify-content: center; align-items: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 100; transition: transform 0.2s;
+}
+.fab-upload:active { transform: scale(0.9); }
+.fab-icon { color: #ffffff; font-size: 24px; font-weight: 300; position: relative; top: -2px; }
+.empty-state { text-align: center; color: #cccccc; font-size: 12px; padding: 60px 0; }

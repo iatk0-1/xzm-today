@@ -1,0 +1,41 @@
+<view class="market-wrapper">
+  
+  <view class="header-section">
+    <view class="page-title">Curation Market</view>
+    <view class="page-subtitle">探索 · 许愿 · 为你寻觅</view>
+  </view>
+
+  <view class="masonry-grid" wx:if="{{wishes.length > 0}}">
+    <view class="wish-card" wx:for="{{wishes}}" wx:key="_id">
+      
+      <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
+      
+      <view class="card-content">
+        <view class="card-desc">{{item.content}}</view>
+        
+        <view class="progress-section" wx:if="{{!item.linkedProductId}}">
+          <view class="progress-bar">
+            <view class="progress-fill" style="width: {{ (item.likes / 50) * 100 }}%; max-width: 100%;"></view>
+          </view>
+          
+          <view class="progress-text">
+            <text class="heart-btn" bindtap="handleLike" data-index="{{index}}">{{item.isLiked ? '♥' : '♡'}}</text>
+            <text>热度 {{item.likes || 0}} / 50</text>
+          </view>
+        </view>
+
+        <view class="buy-section" wx:else>
+          <view class="btn-buy-black" bindtap="goToProduct" data-id="{{item.linkedProductId}}">BUY NOW</view>
+        </view>
+      </view>
+
+    </view>
+  </view>
+
+  <view class="empty-state" wx:else>暂无心愿，点击右下角成为第一个策展人</view>
+
+  <view class="fab-upload" bindtap="uploadWish">
+    <view class="fab-icon">+</view>
+  </view>
+
+</view>
