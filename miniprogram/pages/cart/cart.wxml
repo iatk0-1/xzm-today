@@ -28,7 +28,7 @@
 
               <!-- 复选框：禁用商品显示为禁用状态 -->
               <view class="checkbox {{item.selected && !item.disabled ? 'checked' : ''}} {{item.disabled ? 'disabled' : ''}}"
-                    catchtouchstart="onInterceptTap" catchtap="toggleSelect" data-index="{{index}}">
+                    catchtap="toggleSelect" data-index="{{index}}">
                 <view class="check-inner" wx:if="{{item.selected && !item.disabled}}"></view>
               </view>
 
@@ -48,7 +48,7 @@
                   <view class="item-price">¥ {{item.finalPrice || item.price}}</view>
 
                   <!-- 数量选择器：禁用商品隐藏 -->
-                  <view class="stepper" wx:if="{{!item.disabled}}" catchtouchstart="onInterceptTap">
+                  <view class="stepper" wx:if="{{!item.disabled}}">
                     <view class="step-btn" catchtap="changeCount" data-index="{{index}}" data-type="minus">-</view>
                     <view class="step-num">{{item.count}}</view>
                     <view class="step-btn" catchtap="changeCount" data-index="{{index}}" data-type="add">+</view>

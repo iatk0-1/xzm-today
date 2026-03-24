@@ -281,14 +281,6 @@ Page({
     });
   },
 
-  // 拦截复选框和加减器的触摸事件，阻止触发滑动
-  onInterceptTap: function(e) {
-    // 关闭滑动
-    this.closeOtherSlide();
-    // 阻止事件传播
-    return false;
-  },
-
   // 点击商品项
   onItemTap: function(e) {
     const index = e.currentTarget.dataset.index;

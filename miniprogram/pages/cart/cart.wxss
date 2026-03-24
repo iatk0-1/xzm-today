@@ -76,12 +76,9 @@ page { background-color: #ffffff; }
 .item-price { font-family: "Times New Roman", Times, serif; font-size: 14px; color: #555555; }
 
 /* 极简数量加减器 */
-.stepper { display: flex; align-items: center; border: 1px solid #eeeeee; touch-action: pan-y; }
+.stepper { display: flex; align-items: center; border: 1px solid #eeeeee; }
 .step-btn { width: 28px; height: 28px; display: flex; justify-content: center; align-items: center; font-family: -apple-system, sans-serif; font-size: 14px; color: #888888; }
 .step-num { width: 35px; height: 28px; display: flex; justify-content: center; align-items: center; font-family: "Times New Roman", Times, serif; font-size: 13px; color: #333333; border-left: 1px solid #eeeeee; border-right: 1px solid #eeeeee; }
-
-/* 阻止加减器和复选框触发滑动 */
-.stepper, .checkbox { touch-action: pan-y; }
 
 /* ====== 底部浮动结算栏 ====== */
 .bottom-bar { position: fixed; bottom:0px; /* 避开你自定义的底部导航栏 */ left: 0; width: 100%; height: 85px; background-color: #ffffff; border-top: 1px solid #eeeeee; display: flex; justify-content: space-between; align-items: center; padding: 0 20px 20px 20px; box-sizing: border-box; z-index: 100; }
