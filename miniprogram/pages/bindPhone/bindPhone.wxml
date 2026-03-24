@@ -1,0 +1,41 @@
+<!-- miniprogram/pages/bindPhone/bindPhone.wxml -->
+<view class="bind-phone-container">
+  <view class="header-section">
+    <view class="title">绑定手机号</view>
+    <view class="subtitle">为了保障您的账号安全，方便跨设备使用</view>
+  </view>
+
+  <view class="content-section">
+    <view class="info-card">
+      <view class="info-icon">📱</view>
+      <view class="info-text">
+        <view class="info-title">为什么要绑定手机号？</view>
+        <view class="info-desc">绑定后可通过手机号登录 APP、网页端，多设备同步购物车和订单信息</view>
+      </view>
+    </view>
+
+    <button class="btn-bind" open-type="getPhoneNumber" bindgetphonenumber="getPhoneNumber">
+      <view class="btn-content">
+        <view class="btn-icon">🔐</view>
+        <view class="btn-text">微信快捷绑定</view>
+      </view>
+    </button>
+
+    <view class="divider">
+      <view class="divider-line"></view>
+      <view class="divider-text">或</view>
+      <view class="divider-line"></view>
+    </view>
+
+    <button class="btn-skip" bindtap="skip">暂不绑定</button>
+  </view>
+
+  <view class="tips-section">
+    <view class="tips">绑定即表示您同意我们的</view>
+    <view class="links">
+      <text class="link">《用户协议》</text>
+      <text>和</text>
+      <text class="link">《隐私政策》</text>
+    </view>
+  </view>
+</view>

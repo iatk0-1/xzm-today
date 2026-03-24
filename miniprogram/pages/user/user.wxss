@@ -1,0 +1,203 @@
+page {
+  background-color: #f8f9fa;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+}
+
+.profile-container {
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+}
+
+/* 头部名片 */
+.header-section {
+  padding: 0 40rpx 60rpx;
+  background-color: #ffffff;
+  margin-bottom: 20rpx;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+}
+
+.avatar-box {
+  width: 130rpx;
+  height: 130rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: #f0f0f0;
+  margin-right: 30rpx;
+  border: 1rpx solid #eeeeee;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.nickname {
+  font-size: 38rpx;
+  font-weight: 800;
+  color: #1a1a1a;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.user-tag {
+  display: inline-block;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 22rpx;
+  color: #ffffff;
+  background-color: #1a1a1a;
+  padding: 4rpx 16rpx;
+  border-radius: 6rpx;
+}
+
+/* 订单模块 */
+.order-section {
+  background-color: #ffffff;
+  margin: 0 20rpx 20rpx;
+  border-radius: 20rpx;
+  padding: 30rpx 30rpx 40rpx;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 40rpx;
+}
+
+.section-header .title {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1a1a1a;
+}
+
+.section-header .view-all {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+/* ================= 订单滑动图标区 ================= */
+.order-scroll-grid {
+  width: 100%;
+  white-space: nowrap; /* 强制所有图标排成一排 */
+}
+
+.grid-item {
+  display: inline-flex; /* 配合 nowrap，让容器可以排列 */
+  flex-direction: column;
+  align-items: center;
+  width: 25%; /* 🚀 灵魂一步：强制每个图标占四分之一，完美保持原来的视觉间距！ */
+  vertical-align: top; 
+}
+
+.icon-box {
+  font-size: 48rpx; /* 稍微放大一点点 emoji 更好看 */
+  margin-bottom: 12rpx;
+  opacity: 0.9;
+}
+
+.grid-item text {
+  font-size: 24rpx;
+  color: #555555;
+}
+
+.icon-box {
+  font-size: 44rpx; 
+  margin-bottom: 12rpx;
+  opacity: 0.9;
+}
+
+.grid-item text {
+  font-size: 24rpx;
+  color: #555555;
+}
+
+/* 菜单列表 */
+.menu-list {
+  background-color: #ffffff;
+  margin: 0 20rpx;
+  border-radius: 20rpx;
+  padding: 10rpx 30rpx;
+}
+
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx 0;
+  font-size: 28rpx;
+  color: #333333;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-item .arrow {
+  color: #cccccc;
+  font-family: "Times New Roman", Times, serif;
+}
+
+/* 微信客服按钮重置原生样式 */
+.contact-btn {
+  background-color: transparent;
+  line-height: inherit;
+  margin: 0;
+  border-radius: 0;
+  text-align: left;
+}
+.contact-btn::after {
+  border: none;
+}
+
+/* ==================
+   底部 TabBar
+================== */
+.bottom-tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100rpx;
+  background-color: #ffffff;
+  display: flex;
+  z-index: 100;
+  border-top: 1rpx solid rgba(0,0,0,0.04);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  color: #999;
+}
+
+.bottom-tab-bar .active {
+  color: #1a1a1a;
+  font-weight: 800;
+}
+
+.admin-portal { flex: 1; }
+
+.red-plus-btn {
+  width: 80rpx;
+  height: 80rpx;
+  background-color: #1a1a1a; 
+  color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44rpx;
+  font-weight: 300;
+  transform: translateY(-16rpx); 
+  box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.2);
+}

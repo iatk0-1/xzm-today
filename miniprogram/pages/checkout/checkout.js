@@ -1,16 +1,28 @@
-const db = wx.cloud.database();
+// miniprogram/pages/checkout/checkout.js
+const api = require('../../utils/api');
 
 Page({
   data: {
-    address: null,       // 用来装微信返回的收货地址
-    checkoutItems: [],   // 从购物车传过来的商品
-    totalPrice: 0        // 订单总价
+    address: null,
+    checkoutItems: [],
+    totalPrice: 0
   },
 
-  onLoad: function() {
-    let items = wx.getStorageSync('checkoutItems') || [];
-    
-    // 🚀 修复：像购物车那样，优先读取 finalPrice 并强制转换为数字
+  onLoad: async function() {
+    // 优先从本地存储获取（立即购买模式），如果没有则从后端获取（购物车结算模式）
+    let localItems = wx.getStorageSync('checkoutItems') || [];
+
+    if (localItems && localItems.length > 0) {
+      // 立即购买模式，使用本地数据
+      this.loadLocalCheckoutItems(localItems);
+    } else {
+      // 购物车结算模式，从后端获取选中商品
+      await this.loadCartSelectedItems();
+    }
+  },
+
+  // 加载本地结算商品（立即购买模式）
+  loadLocalCheckoutItems: function(items) {
     let total = 0;
     items.forEach(item => {
       let currentPrice = Number(item.finalPrice || item.price || 0);
@@ -19,20 +31,64 @@ Page({
 
     this.setData({
       checkoutItems: items,
-      totalPrice: total.toFixed(2) // 保留两位小数
+      totalPrice: total.toFixed(2)
     });
   },
 
-  // ====== 核心魔法：一键呼出微信收货地址 ======
+  // 从后端获取购物车选中商品
+  loadCartSelectedItems: async function() {
+    wx.showLoading({ title: '加载中...' });
+    try {
+      const res = await api.get('/cart/selected');
+      wx.hideLoading();
+
+      const cartItems = res.items || [];
+
+      // 转换后端数据格式到前端格式
+      const checkoutItems = cartItems.map(item => ({
+        id: item.id,
+        productId: item.productId,
+        skuId: item.skuId,
+        name: item.productName,
+        image: item.productImage,
+        coverUrl: item.productImage,
+        selectedColor: item.color || '默认',
+        selectedSize: item.size || '均码',
+        price: Number(item.price),
+        finalPrice: Number(item.price),
+        count: item.count,
+        selected: item.selected
+      }));
+
+      let total = 0;
+      checkoutItems.forEach(item => {
+        let currentPrice = Number(item.finalPrice || item.price || 0);
+        total += (currentPrice * item.count);
+      });
+
+      this.setData({
+        checkoutItems: checkoutItems,
+        totalPrice: total.toFixed(2)
+      });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载结算商品失败:', err);
+      wx.showToast({ title: '加载失败', icon: 'none' });
+    }
+  },
+
+  // 选择收货地址
   chooseAddress: function() {
     wx.chooseAddress({
       success: (res) => {
-        // 用户同意并选择了地址，存进我们的 data 里
         this.setData({
           address: {
-            userName: res.userName,
-            telNumber: res.telNumber,
-            detailInfo: res.provinceName + res.cityName + res.countyName + res.detailInfo
+            recipient: res.userName,
+            phone: res.telNumber,
+            province: res.provinceName,
+            city: res.cityName,
+            district: res.countyName,
+            detail: res.detailInfo
           }
         });
       },
@@ -42,8 +98,8 @@ Page({
     });
   },
 
-  // ====== 终极提交订单 & 拉起微信支付 ======
-  submitOrder: function() {
+  // 提交订单 & 拉起微信支付
+  submitOrder: async function() {
     const { address, checkoutItems, totalPrice } = this.data;
 
     if (!address) {
@@ -51,84 +107,95 @@ Page({
       return;
     }
 
-    wx.showLoading({ title: '正在呼叫微信支付...' });
+    if (!checkoutItems || checkoutItems.length === 0) {
+      wx.showToast({ title: '购物车为空', icon: 'none' });
+      return;
+    }
 
-    // 1. 先把订单写进我们的云端总账本
-    db.collection('orders').add({
-      data: {
-        items: checkoutItems,
-        address: address,
-        totalPrice: totalPrice,
-        status: '待付款', 
-        createTime: db.serverDate()
-      },
-      success: res => {
-        const orderId = res._id; 
-        
-        // 微信支付的金额单位是“分”，所以要把你的 159.00 乘以 100 变成 15900
-        const totalFeeCents = parseInt(parseFloat(totalPrice) * 100);
+    wx.showLoading({ title: '创建订单...' });
 
-        // 2. 呼叫我们刚才写好的云端收银员
-        wx.cloud.callFunction({
-          name: 'payOrder',
-          data: {
-            outTradeNo: 'an' + Date.now() + Math.floor(Math.random() * 1000),
-            totalFee: totalFeeCents
+    try {
+      // 构造后端要求的订单格式（包含 SKU 快照数据）
+      const orderItems = checkoutItems.map(item => {
+        return {
+          skuId: item.skuId || 0,
+          qty: item.count,
+          salePrice: Number(item.finalPrice || item.price),
+          pool: 'main',
+          // SKU 快照数据（下单时保存，后续不会随商品修改而变化）
+          skuSpec: item.selectedColor || '默认',
+          skuSize: item.selectedSize || '均码',
+          productName: item.name,
+          productImage: item.image || item.coverUrl
+        };
+      });
+
+      // 构造收货地址
+      const orderData = {
+        items: orderItems,
+        recipientName: address.recipient,
+        recipientPhone: address.phone,
+        recipientProvince: address.province,
+        recipientCity: address.city,
+        recipientDistrict: address.district,
+        recipientDetail: address.detail
+      };
+
+      // 1. 创建订单
+      const orderRes = await api.post('/orders', orderData);
+      const orderId = orderRes.id;
+
+      // 2. 调用微信支付预下单
+      wx.showLoading({ title: '准备支付...' });
+      const payRes = await api.post(`/orders/${orderId}/pay/wechat`);
+
+      // 3. 拉起微信支付
+      // 后端返回可能是 package (原始 JSON) 或 packageValue (JSON 序列化后)
+      const packageValue = payRes.package || payRes.packageValue;
+      if (payRes && packageValue) {
+        wx.requestPayment({
+          timeStamp: payRes.timeStamp.toString(),
+          nonceStr: payRes.nonceStr,
+          package: packageValue,
+          signType: payRes.signType || 'RSA',
+          paySign: payRes.paySign,
+          success: (successRes) => {
+            wx.showToast({ title: '支付成功!', icon: 'success' });
+            // 清除本地结算数据
+            wx.removeStorageSync('checkoutItems');
+            // 清除购物车选中商品
+            api.delete('/cart/selected').catch(() => {});
+            setTimeout(() => {
+              wx.reLaunch({ url: '/pages/index/index' });
+            }, 1500);
           },
-          success: payRes => {
-            wx.hideLoading();
-            console.log('云端收银员返回的数据:', payRes); // 内部测试用
-
-            const result = payRes.result;
-            
-            // 拦截点 1：如果云端根本没生成支付参数（通常是因为商户号没授权完成）
-            if (!result || !result.payment) {
-               wx.showModal({
-                 title: '云端下单失败',
-                 content: result ? (result.returnMsg || result.errCodeDes || '未知错误') : '未能获取支付参数',
-                 showCancel: false
-               });
-               return;
+          fail: (err) => {
+            if (err.errMsg === 'requestPayment:fail cancel') {
+              wx.showToast({ title: '您手动取消了支付', icon: 'none' });
+            } else {
+              wx.showModal({
+                title: '支付失败',
+                content: err.errMsg,
+                showCancel: false
+              });
             }
-
-            const payment = result.payment;
-            
-            // 3. 见证奇迹的时刻：真正在手机底部拉起密码键盘！
-            wx.requestPayment({
-              ...payment,
-              success: (successRes) => {
-                wx.showToast({ title: '支付成功！', icon: 'success' });
-                db.collection('orders').doc(orderId).update({ data: { status: '待发货' } });
-                wx.removeStorageSync('cart');
-                wx.removeStorageSync('checkoutItems');
-                setTimeout(() => { wx.switchTab({ url: '/pages/index/index' }); }, 1500);
-              },
-              fail: (err) => {
-                // 拦截点 2：把真正的报错原因弹到你的手机屏幕上！
-                if (err.errMsg === 'requestPayment:fail cancel') {
-                  wx.showToast({ title: '您手动取消了支付', icon: 'none' });
-                } else {
-                  // 如果不是手动取消，绝对是底层参数报错，立刻弹窗显示！
-                  wx.showModal({
-                    title: '支付唤起失败',
-                    content: err.errMsg,
-                    showCancel: false
-                  });
-                }
-              }
-            })
-          },
-          fail: err => {
-            wx.hideLoading();
-            wx.showModal({ title: '网络呼叫失败', content: err.toString(), showCancel: false });
           }
-        })
-      },
-      fail: err => {
-        wx.hideLoading();
-        wx.showToast({ title: '订单生成失败', icon: 'none' });
+        });
+      } else {
+        wx.showModal({
+          title: '支付准备失败',
+          content: '未能获取支付参数',
+          showCancel: false
+        });
       }
-    });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('订单创建失败:', err);
+      wx.showModal({
+        title: '订单创建失败',
+        content: typeof err === 'object' ? JSON.stringify(err) : String(err),
+        showCancel: false
+      });
+    }
   }
-  
-})
+});

@@ -1,175 +1,369 @@
-const ADMIN_OPENID = 'owehQ3RIu5bhzKM0HtEX7gxqU2Jw'; 
+// miniprogram/pages/index/index.js
+const api = require('../../utils/api');
+const auth = require('../../utils/auth');
+const app = getApp();
 
 Page({
-
-  // 1. 跳转到搜索页
-  goToSearch: function() {
-    wx.navigateTo({ 
-      url: '/pages/search/search' 
-    });
-  },
-
-  // 2. 跳转到购物车页
-  goToCart: function() {
-    // ⚠️ 这里有一个极其重要的分支：
-    // 如果你的购物车 (cart) 是在底部那一排固定的 TabBar 里面，必须用 switchTab：
-    wx.switchTab({
-      url: '/pages/cart/cart',
-      fail: (err) => {
-        // 如果购物车不是底部 TabBar，switchTab 会失败，我们自动降级用 navigateTo
-        wx.navigateTo({
-          url: '/pages/cart/cart'
-        });
-      }
-    });
-  },
-
   data: {
+    // 1. 顶部大厂导航栏适配参数
+    navTop: 0,
+    navHeight: 0,
+    totalNavHeight: 0,
+
+    // 2. 小红书同款交互参数
+    currentMainTab: '上新',
+    showStall: false,
+    showTag: false,
+    selectedStall: '',
+    selectedTag: '',
+    stallList: [], // 从后端加载，初始为空
+    tagList: [], // 从后端加载，初始为空
+
+    // 3. 商品与权限参数
+    isAdmin: false,
+    productList: [],
+
+    // 4. 底部 SKU (颜色/尺码) 弹窗参数
     showSku: false,
     currentProduct: null,
-    isAdmin: false,
-    productList: [] ,// 新增：这个空盒子用来装我们从云端拉下来的真实衣服数据
-    uniqueColors: [],   // 解析出来的所有颜色
-    uniqueSizes: [],    // 解析出来的所有尺码
-    selectedColor: '',  // 顾客当前选中的颜色
-    selectedSize: '',   // 顾客当前选中的尺码
-    currentSkuPrice: null, // 选中规格后的具体价格
-    currentSkuStock: null, // 选中规格后的具体库存
+    uniqueColors: [],
+    uniqueSizes: [],
+    selectedColor: '',
+    selectedSize: '',
+    currentSkuPrice: null,
+    currentSkuStock: null
   },
 
   onLoad: function() {
     this.checkAdmin();
+
+    const menuButtonInfo = wx.getMenuButtonBoundingClientRect();
+    this.setData({
+      navTop: menuButtonInfo.top,
+      navHeight: menuButtonInfo.height,
+      totalNavHeight: menuButtonInfo.bottom + 40
+    });
+
+    // 等待认证完成后加载所有数据
+    this.waitForAuthAndLoad();
   },
 
-  // 重点！每次回到首页（比如上架完成后退回来），都会自动执行这个函数重新拉取数据
   onShow: function() {
+    // 每次显示页面时检查管理员状态
+    this.checkAdmin();
+
+    // 等待认证完成后加载商品
+    if (app.globalData.isAuthReady) {
+      this.checkAdmin(); // 认证完成后再次检查
+      this.getProductsList();
+    } else {
+      this.waitForAuthAndLoad();
+    }
+  },
+
+  // 等待认证完成并加载数据
+  waitForAuthAndLoad: function() {
+    // 检查是否已经认证完成
+    if (app.globalData.isAuthReady) {
+      console.log('认证已完成，直接加载数据');
+      this.checkAdmin();
+      this.loadAllData();
+      return;
+    }
+
+    // 显示加载提示
+    wx.showLoading({ title: '加载中...' });
+
+    // 等待认证完成
+    const checkAuth = () => {
+      if (app.globalData.isAuthReady) {
+        wx.hideLoading();
+        console.log('认证完成，开始加载数据');
+        this.checkAdmin();
+        this.loadAllData();
+      } else {
+        // 最多等待 5 秒
+        setTimeout(checkAuth, 500);
+      }
+    };
+
+    checkAuth();
+
+    // 超时处理
+    setTimeout(() => {
+      wx.hideLoading();
+      if (!app.globalData.isAuthReady) {
+        console.log('认证超时，使用访客模式加载数据');
+        this.checkAdmin();
+        this.loadAllData();
+      }
+    }, 5000);
+  },
+
+  // 加载所有数据（商品、档口、标签）
+  loadAllData: function() {
     this.getProductsList();
+    this.loadStallList();
+    this.loadTagList();
   },
 
-  // 去云端把所有衣服拿下来
-  getProductsList: function() {
-    wx.cloud.database().collection('products')
-      .orderBy('createTime', 'desc') // 让最新上架的衣服排在最前面！
-      .get({
-        success: (res) => {
-          this.setData({
-            productList: res.data // 把拿到的真实数据塞进 productList 盒子里
-          });
-        },
-        fail: (err) => {
-          console.error('拉取衣服失败啦', err);
-        }
-      })
+  // 从后端 API 获取商品列表
+  getProductsList: async function() {
+    wx.showLoading({ title: '加载中...' });
+
+    try {
+      // 构建查询参数
+      const params = {
+        status: 'on',  // 只获取上架商品
+        limit: 100,
+        offset: 0
+      };
+
+      // 如果选择了档口，按档口筛选（使用 stall 参数）
+      if (this.data.selectedStall) {
+        params.stall = this.data.selectedStall;
+      }
+
+      // 如果选择了标签，按标签筛选（使用 tag 参数）
+      if (this.data.selectedTag) {
+        params.tag = this.data.selectedTag;
+      }
+
+      const res = await api.get('/products/search', params);
+
+      wx.hideLoading();
+      this.setData({ productList: res || [] });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('拉取商品失败:', err);
+      // 不弹窗，允许空列表显示
+      this.setData({ productList: [] });
+    }
   },
 
+  // 从后端 API 获取档口列表
+  loadStallList: async function() {
+    try {
+      const stalls = await api.get('/stalls');
+      // 在档口列表前添加"全部分区"选项
+      const stallListWithAll = [{ id: 'all', name: '全部' }, ...stalls];
+      this.setData({ stallList: stallListWithAll });
+    } catch (err) {
+      console.error('加载档口列表失败:', err);
+      // 失败时显示默认列表
+      this.setData({
+        stallList: [
+          { id: 'all', name: '全部' }
+        ]
+      });
+    }
+  },
+
+  // 从后端 API 获取标签列表
+  loadTagList: async function() {
+    try {
+      const tags = await api.get('/tags');
+      // 在标签列表前添加"全部分类"选项
+      const tagListWithAll = [{ id: 'all', name: '全部' }, ...tags];
+      this.setData({ tagList: tagListWithAll });
+    } catch (err) {
+      console.error('加载标签列表失败:', err);
+      // 失败时显示默认列表
+      this.setData({
+        tagList: [
+          { id: 'all', name: '全部' }
+        ]
+      });
+    }
+  },
+
+  // 检查管理员（使用本地 auth 模块）
   checkAdmin: function() {
-    wx.cloud.callFunction({
-      name: 'getOpenId',
+    if (auth.isAdmin()) {
+      this.setData({ isAdmin: true });
+    }
+  },
+
+  // 小红书灵魂交互逻辑
+  handleMainTabChange(e) {
+    const tabName = e.currentTarget.dataset.tab;
+
+    if (tabName === '档口') {
+      // 点击档口时，隐藏分类面板
+      this.setData({
+        currentMainTab: '档口',
+        showStall: true,
+        showTag: false
+      });
+    } else if (tabName === '分类') {
+      // 点击分类时，隐藏档口面板
+      this.setData({
+        currentMainTab: '分类',
+        showTag: true,
+        showStall: false
+      });
+    } else if (tabName === '上新') {
+      this.setData({
+        currentMainTab: '上新',
+        showStall: false,
+        showTag: false,
+        selectedStall: '',
+        selectedTag: ''
+      });
+      this.getProductsList();
+    }
+  },
+
+  closeStallPanel() {
+    if (this.data.selectedStall) {
+      this.setData({ currentMainTab: '档口', showStall: false });
+    } else {
+      this.setData({ currentMainTab: '上新', showStall: false });
+    }
+  },
+
+  closeTagPanel() {
+    if (this.data.selectedTag) {
+      this.setData({ currentMainTab: '分类', showTag: false });
+    } else {
+      this.setData({ currentMainTab: '上新', showTag: false });
+    }
+  },
+
+  selectStall(e) {
+    const stallId = e.currentTarget.dataset.stall;
+    const stallName = e.currentTarget.dataset.name;
+
+    this.setData({
+      selectedStall: stallId === 'all' ? '' : stallId,
+      selectedStallName: stallId === 'all' ? '' : stallName,
+      showStall: false,
+      currentMainTab: '档口'
+    });
+
+    // 切换档口后重新加载商品（后端会自动记录用户使用历史）
+    this.getProductsList();
+
+    if (stallId === 'all') {
+      wx.showToast({ title: '已显示全部', icon: 'none' });
+    } else {
+      wx.showToast({ title: '已切换至：' + stallName, icon: 'none' });
+    }
+  },
+
+  selectTag(e) {
+    const tagId = e.currentTarget.dataset.tag;
+    const tagName = e.currentTarget.dataset.name;
+
+    this.setData({
+      selectedTag: tagId === 'all' ? '' : tagId,
+      selectedTagName: tagId === 'all' ? '' : tagName,
+      showTag: false,
+      currentMainTab: '分类'
+    });
+
+    // 切换标签后重新加载商品（后端会自动记录用户使用历史）
+    this.getProductsList();
+
+    if (tagId === 'all') {
+      wx.showToast({ title: '已显示全部', icon: 'none' });
+    } else {
+      wx.showToast({ title: '已切换至：' + tagName, icon: 'none' });
+    }
+  },
+
+  // 基础跳转功能
+  goToSearch: function() { wx.navigateTo({ url: '/pages/search/search' }); },
+  goToCart: function() { wx.navigateTo({ url: '/pages/cart/cart' }); },
+  goToDetail: function(e) { wx.navigateTo({ url: '/pages/detail/detail?id=' + e.currentTarget.dataset.id }); },
+  goToMarket: function() { wx.reLaunch({ url: '/pages/market/market' }); },
+  goToUser: function() { wx.reLaunch({ url: '/pages/user/user' }); },
+  goToIndex: function() { wx.reLaunch({ url: '/pages/index/index' }); },
+  goToMessage: function() { wx.showToast({ title: '功能开发中...', icon: 'none' }); },
+
+  // 老板专属入口（与 user.js 保持一致）
+  goToAdmin: function() {
+    wx.showActionSheet({
+      itemList: ['发布新商品', '订单发货管理', '商品上下架管理'],
+      itemColor: '#111111',
       success: (res) => {
-        if (res.result.openid === ADMIN_OPENID) {
-          this.setData({ isAdmin: true });
+        if (res.tapIndex === 0) {
+          wx.navigateTo({ url: '/pages/admin/admin' });
+        } else if (res.tapIndex === 1) {
+          wx.navigateTo({ url: '/pages/adminOrder/adminOrder' });
+        } else if (res.tapIndex === 2) {
+          wx.navigateTo({ url: '/pages/adminProduct/adminProduct' });
         }
       }
     });
   },
 
-  // 稍微改造一下：点击衣服时，顺便把这件衣服的专属ID带过去，方便后面详情页用
-  goToDetail: function(e) {
-    const productId = e.currentTarget.dataset.id;
-    wx.navigateTo({
-      url: '/pages/detail/detail?id=' + productId
-    })
-  },
-
-  goToAdmin: function() {
-    wx.navigateTo({
-      url: '/pages/admin/admin'
-    })
-  },
-
-  // ====== 前面是 goToAdmin 等代码 ======
-
-  // 核心新增：点击市集按钮的跳转逻辑
-  goToMarket: function() {
-    // 方案A：如果你在 app.json 里配置了 tabBar，必须用 switchTab
-    wx.switchTab({
-      url: '/pages/market/market',
-      fail: () => {
-        // 方案B（防坑保底）：如果你纯粹是自定义的底部栏，switchTab 会失败。系统会自动无缝切换用 reLaunch 跳转！
-        wx.reLaunch({
-          url: '/pages/market/market'
-        })
-      }
-    })
-  },
-
-  // --- 购物车弹窗逻辑升级版 ---
-  
-  // 1. 打开弹窗，并瞬间拆解后台传来的 SKU 矩阵
+  // SKU 选规格与购物车逻辑
   openSkuPanel(e) {
     const product = e.currentTarget.dataset.product;
     let colors = [];
     let sizes = [];
 
-    // 如果这个商品有我们在后台设置的高级矩阵
     if (product.skuMatrix && product.skuMatrix.length > 0) {
-      // 提取出所有不重复的颜色和尺码
-      colors = [...new Set(product.skuMatrix.map(s => s.color))];
-      sizes = [...new Set(product.skuMatrix.map(s => s.size))];
+      // 后端返回：color (颜色), size (尺码)
+      colors = [...new Set(product.skuMatrix.map(s => s.color || ''))];
+      sizes = [...new Set(product.skuMatrix.map(s => s.size || ''))];
+      // 过滤空值
+      colors = colors.filter(c => c);
+      sizes = sizes.filter(s => s);
     }
 
     this.setData({
       currentProduct: product,
       uniqueColors: colors,
       uniqueSizes: sizes,
-      // 如果某种规格只有一个选项，为了用户体验，系统自动帮他选中
       selectedColor: colors.length === 1 ? colors[0] : '',
       selectedSize: sizes.length === 1 ? sizes[0] : '',
       currentSkuPrice: null,
       currentSkuStock: null,
       showSku: true
     });
-    
-    this.checkSkuMatch(); // 检查一下自动选中后是否能匹配出价格
+    this.checkSkuMatch();
   },
 
   closeSkuPanel() {
     this.setData({ showSku: false });
   },
 
-  // 2. 顾客点击颜色
   selectColor(e) {
     this.setData({ selectedColor: e.currentTarget.dataset.color });
     this.checkSkuMatch();
   },
 
-  // 3. 顾客点击尺码
   selectSize(e) {
     this.setData({ selectedSize: e.currentTarget.dataset.size });
     this.checkSkuMatch();
   },
 
-  // 4. 核心算价引擎：颜色和尺码都选了，就去矩阵里找价格和库存！
   checkSkuMatch() {
     const { currentProduct, selectedColor, selectedSize } = this.data;
     if (selectedColor && selectedSize && currentProduct.skuMatrix) {
-      // 在矩阵里精确匹配这一条
-      const match = currentProduct.skuMatrix.find(s => s.color === selectedColor && s.size === selectedSize);
+      const match = currentProduct.skuMatrix.find(s =>
+        s.color === selectedColor && s.size === selectedSize
+      );
       if (match) {
-        this.setData({ currentSkuPrice: match.price, currentSkuStock: match.stock });
+        this.setData({
+          currentSkuPrice: match.price,
+          currentSkuStock: match.stock,
+          currentSkuId: match.skuId
+        });
       } else {
-        // 如果没找到（比如某个颜色没有某个尺码）
-        this.setData({ currentSkuPrice: null, currentSkuStock: 0 }); 
+        this.setData({ currentSkuPrice: null, currentSkuStock: 0, currentSkuId: null });
       }
     }
   },
 
-  // 5. 确认加购（带严格拦截机制）
-  confirmAddToCart() {
-    const { currentProduct, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, uniqueColors, uniqueSizes } = this.data;
+  confirmAddToCart(e) {
+    const actionType = e.currentTarget.dataset.action;
+
+    const { currentProduct, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuId, uniqueColors, uniqueSizes } = this.data;
     if (!currentProduct) return;
 
-    // 严密拦截：必须要选全颜色和尺码才能加购
     if (uniqueColors.length > 0 && !selectedColor) {
       return wx.showToast({ title: '请选择颜色', icon: 'none' });
     }
@@ -180,33 +374,53 @@ Page({
       return wx.showToast({ title: '该规格已售罄', icon: 'none' });
     }
 
-    // 组装带详细规格的购物车数据
-    let cart = wx.getStorageSync('cart') || [];
-    
-    // 购物车的查重不仅要看商品ID，还要看颜色和尺码是不是一样
-    let existIndex = cart.findIndex(item => 
-      item._id === currentProduct._id && 
-      item.selectedColor === selectedColor && 
-      item.selectedSize === selectedSize
-    );
+    // 使用后端返回的 id 字段
+    const productId = currentProduct.id || currentProduct._id;
 
-    if (existIndex > -1) {
-      cart[existIndex].count += 1;
+    if (actionType === 'buy') {
+      this.setData({ showSku: false });
+      // 立即购买模式，使用本地存储传递数据
+      const finalItem = {
+        productId: productId,
+        skuId: currentSkuId,
+        name: currentProduct.name,
+        coverUrl: currentProduct.coverUrl,
+        selectedColor: selectedColor,
+        selectedSize: selectedSize,
+        finalPrice: currentSkuPrice,
+        price: Number(currentSkuPrice || currentProduct.price || currentProduct.retailPrice || 0),
+        count: 1,
+        selected: true
+      };
+      wx.setStorageSync('checkoutItems', [finalItem]);
+      wx.navigateTo({ url: '/pages/checkout/checkout' });
     } else {
-      cart.push({ 
-        ...currentProduct, 
-        selectedColor: selectedColor, // 把选中的颜色印在订单上
-        selectedSize: selectedSize,   // 把选中的尺码印在订单上
-        finalPrice: currentSkuPrice,  // 使用选中规格的具体价格
-        count: 1, 
-        selected: true 
-      });
+      // 加入购物车模式，调用后端 API
+      wx.showLoading({ title: '添加中...' });
+
+      const cartData = {
+        productId: productId,
+        skuId: currentSkuId || 0,
+        color: selectedColor || '默认',
+        size: selectedSize || '均码',
+        count: 1
+      };
+
+      api.post('/cart/items', cartData)
+        .then(() => {
+          wx.hideLoading();
+          wx.showToast({ title: '已加入购物车', icon: 'success' });
+          this.setData({ showSku: false });
+        })
+        .catch(err => {
+          wx.hideLoading();
+          console.error('添加购物车失败:', err);
+          if (err.error === 'UNAUTHORIZED') {
+            wx.showToast({ title: '请先登录', icon: 'none' });
+          } else {
+            wx.showToast({ title: '添加失败', icon: 'none' });
+          }
+        });
     }
-
-    wx.setStorageSync('cart', cart);
-    this.setData({ showSku: false });
-    wx.showToast({ title: '已加入购物车', icon: 'success' });
-  },
-
-}) 
-
+  }
+});

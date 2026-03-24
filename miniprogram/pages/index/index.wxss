@@ -1,173 +1,510 @@
-/* 页面背景设为纯白 */
+/* ==================
+   全局基础设定
+================== */
 page {
-  background-color: #ffffff; 
-}
-
-/* 整体容器：顶部留出50px是为了避开手机顶部的信号栏和胶囊按钮，左右边距缩小到10px */
-.container {
-  padding: 100px 15px 120px 15px; 
+  background-color: #f8f9fa;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  color: #1a1a1a;
+  font-size: 28rpx;
+  line-height: 1.5;
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
-/* 顶部导航栏：强制左右分开 */
-.header-nav {
-  display: flex;
-  justify-content: space-between; /* 核心代码：让 Logo 和菜单被推向两边 */
-  align-items: baseline; /* 让左边的大字和右边的小字在底部对齐，更高级 */
-  padding-bottom:25px; 
-  width: 100%;
+/* 统一的按钮点击轻微缩放动画 */
+.btn-hover, .nav-cart-right:active, .tab-item:active {
+  opacity: 0.7;
+  transform: scale(0.98);
+  transition: all 0.2s ease;
 }
 
-/* Logo：使用经典衬线体，字距缩小，尺寸放大 */
-.logo {
-  font-family: "Times New Roman", Times, serif; 
-  font-size: 26px;
-  letter-spacing: 0.5px;
-  color: #888888; 
-}
-
-/* 右侧菜单：同样使用衬线体，浅灰色 */
-.nav-links text {
-  font-family: "Times New Roman", Times, serif; 
-  font-size: 14px;
-  color: #888888;
-  margin-left: 12px; 
-}
-
-/* 商品网格 - 升级为 Grid 布局 */
-.product-grid {
-  display: grid; /* 启用网格模式 */
-  grid-template-columns: 1fr 1fr; /* 强制分成两等份的列 */
-  grid-column-gap: 8px; /* 列与列之间精确留出 8px 的缝隙（还原之前的高级感窄缝） */
-  width: 100%;
-}
-
-/* 单个商品外框 */
-.product-item {
-  width: 100%; /* 直接占满所在的网格单元 */
-  margin-bottom: 40px; 
-}
-
-/* 图片 */
-.product-img {
-  width: 100%;
-  display: block; 
-}
-
-/* 商品名：衬线体，缩小字号，让英文排版更紧凑 */
-.product-title {
-  font-family: "Times New Roman", Times, serif;
-  font-size: 12px;
-  color: #333333;
-  margin-top: 12px;
-  text-align: left;
-  line-height: 1.3; 
-}
-
-/* 商品价格：浅灰色 */
-.product-price {
-  font-family: "Times New Roman", Times, serif;
-  font-size: 12px;
-  color: #999999; 
-  margin-top: 6px;
-  text-align: left;
-}
-
-/* --- 底部小红书风格导航栏 --- */
-.bottom-tab-bar {
-  position: fixed; /* 悬浮魔术：把它死死钉在屏幕最底部 */
-  bottom: 0;
+/* ==================
+   大厂级自定义导航栏
+================== */
+.custom-nav-bar {
+  position: fixed;
+  top: 0;
   left: 0;
   width: 100%;
-  height: 85px; /* 给足高度 */
-  background-color: #ffffff;
-  display: flex;
-  justify-content: space-around; /* 让菜单均匀分布 */
-  align-items: center; 
-  padding-bottom: 20px; /* 避开苹果手机底部的横线安全区 */
-  border-top: 1px solid #f2f2f2;
-  z-index: 999; /* 保证它永远在最上层，不被图片盖住 */
+  background-color: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px); /* 磨砂玻璃效果 */
+  z-index: 1000;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.03);
+  box-sizing: border-box;
 }
 
-/* 文字菜单的默认样子 */
-.tab-item {
-  font-family: -apple-system, sans-serif;
-  font-size: 16px;
-  color: #999999;
+.nav-top-row {
   display: flex;
-  justify-content: center;
   align-items: center;
-  height: 100%;
+  padding-left: 30rpx;
+  /* 右侧留出绝对死区，绝不覆盖微信官方的胶囊按钮 */
+  padding-right: 190rpx; 
 }
 
-/* 选中的菜单（比如首页）变成黑色加粗 */
-.tab-item.active {
-  color: #333333;
+.nav-top-row .logo {
+  font-size: 34rpx;
+  font-weight: 800;
+  margin-right: 30rpx;
+  white-space: nowrap;
+}
+
+.search-box {
+  flex: 1;
+  height: 100%;
+  background-color: #f5f5f5;
+  border-radius: 100rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 24rpx;
+  color: #999;
+  font-size: 26rpx;
+}
+
+.search-placeholder {
+  margin-left: 10rpx;
+}
+
+/* ==================
+   第二行：小红书高级排版
+================== */
+.nav-bottom-row {
+  display: flex;
+  justify-content: space-between; 
+  align-items: center;
+  padding: 10rpx 40rpx 20rpx 40rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.nav-tabs-left {
+  display: flex;
+  align-items: center;
+  gap: 40rpx; 
+}
+
+.nav-tabs-left .tab-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 未选中状态 */
+.nav-tabs-left .tab-item text {
+  /* 🚀 核心修复：锁死字号和行高，不要让 active 状态改变大小 */
+  font-size: 32rpx; 
+  line-height: 44rpx; 
+  color: #999;
+  transition: color 0.2s ease;
+}
+
+/* 选中状态：大字重磅 */
+.nav-tabs-left .tab-item.active text {
+  font-weight: bold;
+  color: #1a1a1a;
+  /* 绝对不要在这里写 font-size: xxxrpx */
+}
+
+/* 底部动效小黑条 */
+.nav-tabs-left .tab-item .line {
+  width: 32rpx;
+  height: 6rpx;
+  background-color: #1a1a1a;
+  border-radius: 4rpx;
+  margin-top: 6rpx;
+  transform: scaleX(0); /* 默认缩小消失 */
+  opacity: 0;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav-tabs-left .tab-item.active .line {
+  transform: scaleX(1); /* 选中时弹出 */
+  opacity: 1;
+}
+
+/* 购物车胶囊 */
+.nav-cart-right {
+  font-size: 24rpx;
+  color: #333;
+  background-color: #f5f5f5;
+  padding: 12rpx 28rpx;
+  border-radius: 40rpx;
+  font-weight: bold;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+/* ==================
+   档口下拉面板 (Stall Panel)
+================== */
+.stall-mask {
+  position: fixed;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 998; /* 在导航栏下方一层 */
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stall-mask.fade-in {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.3s ease;
+}
+
+.stall-panel {
+  position: fixed;
+  left: 0;
+  width: 100%;
+  background: #ffffff;
+  z-index: 999;
+  padding: 30rpx 40rpx 40rpx;
+  border-radius: 0 0 32rpx 32rpx; /* 下部圆角 */
+  box-sizing: border-box;
+  box-shadow: 0 10rpx 20rpx rgba(0,0,0,0.05);
+  transform: translateY(-100%); /* 默认收起 */
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stall-panel.slide-down {
+  transform: translateY(0); /* 滑下 */
+}
+
+.stall-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+}
+
+.stall-tag {
+  padding: 16rpx 36rpx;
+  background-color: #f5f5f5;
+  color: #666;
+  font-size: 26rpx;
+  border-radius: 100rpx;
+  transition: all 0.2s;
+}
+
+.stall-tag.active {
+  background-color: #1a1a1a;
+  color: #ffffff;
   font-weight: bold;
 }
 
-/* 核心：老板专属的红色加号按钮 */
-.red-plus-btn {
-  width: 48px;
-  height: 32px;
-  background-color: #ff2442; /* 极其正宗的标志性红色 */
-  color: #ffffff;
-  border-radius: 8px; /* 完美的圆角矩形 */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 26px;
-  font-weight: 300;
-  line-height: 1; /* 让加号完美居中 */
-  margin-top: -2px; /* 稍微往上微调一点点视觉 */
-}
-
-/* --- 追加的瀑布流样式 --- */
+/* ==================
+   瀑布流商品卡片
+================== */
 .waterfall-container {
-  padding: 10px;
-  column-count: 2; /* 核心黑科技：劈成两列 */
-  column-gap: 10px;
-  /* 留出底部导航的距离，防止被挡住 */
-  padding-bottom: 80px; 
-}
-.product-item {
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 10px;
-  break-inside: avoid; /* 核心规避：防卡片被劈成两半 */
-  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-}
-.product-img { width: 100%; display: block; border-radius: 8px 8px 0 0; }
-.product-info { padding: 10px; }
-.product-title { font-size: 13px; color: #333; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-bottom: 8px; }
-.product-bottom { display: flex; justify-content: space-between; align-items: center; }
-.product-price { font-size: 15px; font-weight: bold; color: #000; }
-/* ================= 删掉原来的 .btn-add-cart，替换为这个 ================= */
-.add-cart-icon {
-  width: 23px;     /* 图标宽度，大小可以根据你下载的图标稍微微调 */
-  height: 23px;    /* 图标高度 */
-  display: block;   /* 消除图片底部的空白间隙 */
-  
-  /* 为了让这个小图标在卡片右下角更容易被点到，我们需要人为放大它的“点击区域”，但不能改变图标本身的大小 */
-  padding: 5px;    /* 给图标四周加一圈“透明的保护垫”，把点击范围扩大一倍！极度增强用户体验 */
-  box-sizing: content-box; /* 核心规避：让 padding 不会挤压图标本身的大小 */
-  
-  margin-right: -5px; /* 利用负边距，把放大的点击区域巧妙地抵消掉，保证它看起来还在右下角边缘 */
+  column-count: 2; /* CSS3 多列布局实现瀑布流 */
+  column-gap: 20rpx;
+  padding: 20rpx 20rpx 0 20rpx;
+  box-sizing: border-box;
+  width: 100%;
 }
 
-/* --- 追加的半屏弹窗样式 --- */
-.sku-mask { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
-.sku-panel { position: fixed; bottom: -100%; left: 0; width: 100%; background: #fff; border-radius: 16px 16px 0 0; z-index: 1000; padding: 20px; box-sizing: border-box; transition: all 0.3s ease-in-out; }
-.sku-panel.show { bottom: 0; }
-.sku-close { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #999; padding: 5px; }
-.sku-header { display: flex; margin-bottom: 20px; }
-.sku-img { width: 90px; height: 90px; border-radius: 8px; background: #eee; margin-right: 15px; }
-.sku-price { color: #000; font-size: 20px; font-weight: bold; margin-bottom: 5px; }
-.sku-stock, .sku-choose-tip { color: #999; font-size: 12px; margin-bottom: 3px; }
-.sku-section { margin-bottom: 30px; }
-.sku-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; }
-.sku-options { display: flex; flex-wrap: wrap; }
-.sku-tag { padding: 6px 15px; background: #f5f5f5; color: #333; border-radius: 4px; font-size: 13px; margin-right: 10px; margin-bottom: 10px; }
-.sku-tag.active { background: #000; color: #fff; }
-.sku-btn-confirm { width: 100%; background: #000; color: #fff; text-align: center; padding: 12px 0; border-radius: 25px; font-size: 16px; font-weight: bold; }
+.product-item {
+  break-inside: avoid; /* 防止卡片被硬生生切成两截 */
+  background-color: #ffffff;
+  border-radius: 20rpx;
+  margin-bottom: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.03);
+}
+
+.product-img {
+  width: 100%;
+  display: block;
+}
+
+.product-info {
+  padding: 20rpx;
+}
+
+.product-title {
+  font-size: 26rpx;
+  color: #333;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 15rpx;
+  font-weight: 500;
+}
+
+.product-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.product-price {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+
+.btn-add-cart {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background-color: #f8f8f8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-cart-icon {
+  width: 30rpx;
+  height: 30rpx;
+  opacity: 0.8;
+}
+
+/* ==================
+   底部 TabBar
+================== */
+.bottom-tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100rpx;
+  background-color: #ffffff;
+  display: flex;
+  z-index: 100;
+  border-top: 1rpx solid rgba(0,0,0,0.04);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  color: #999;
+}
+
+.bottom-tab-bar .active {
+  color: #1a1a1a;
+  font-weight: 800;
+}
+
+.admin-portal { flex: 1; }
+
+.red-plus-btn {
+  width: 80rpx;
+  height: 80rpx;
+  background-color: #1a1a1a; 
+  color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44rpx;
+  font-weight: 300;
+  transform: translateY(-16rpx); /* 向上凸起一点 */
+  box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.2);
+}
+
+/* ==================
+   底部 SKU (选规格) 弹窗
+================== */
+.sku-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sku-mask.fade-in {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.3s ease;
+}
+
+.sku-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: #ffffff;
+  border-radius: 32rpx 32rpx 0 0;
+  z-index: 1001;
+  padding: 40rpx;
+  box-sizing: border-box;
+  transform: translateY(100%);
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+}
+
+.sku-panel.slide-up {
+  transform: translateY(0);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sku-close {
+  position: absolute;
+  top: 24rpx;
+  right: 24rpx;
+  font-size: 46rpx;
+  color: #999;
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sku-header {
+  display: flex;
+  margin-bottom: 40rpx;
+}
+
+.sku-img {
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 12rpx;
+  margin-right: 30rpx;
+  background-color: #f5f5f5;
+  border: 1rpx solid #eee;
+}
+
+.sku-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.sku-price {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin-bottom: 8rpx;
+}
+
+.sku-stock {
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 8rpx;
+}
+
+.out-of-stock {
+  color: #d32f2f; /* 没货标红 */
+}
+
+.sku-choose-tip {
+  font-size: 24rpx;
+  color: #333;
+  background-color: #f8f8f8;
+  padding: 6rpx 16rpx;
+  border-radius: 6rpx;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.sku-scroll-area {
+  max-height: 55vh;
+  margin-bottom: 30rpx;
+}
+
+.sku-title {
+  font-size: 26rpx;
+  color: #1a1a1a;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+
+.sku-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+  margin-bottom: 40rpx;
+}
+
+.sku-tag {
+  padding: 12rpx 36rpx;
+  background-color: #f5f5f5;
+  color: #333;
+  border-radius: 100rpx;
+  font-size: 26rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.2s ease;
+}
+
+.sku-tag.active {
+  background-color: #1a1a1a; /* 选中纯黑 */
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.sku-btn-confirm {
+  width: 100%;
+  height: 90rpx;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border-radius: 100rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  font-weight: 700;
+  box-shadow: 0 10rpx 20rpx rgba(0, 0, 0, 0.15);
+}
+
+.sku-btn-confirm.disabled {
+  background-color: #e0e0e0 !important;
+  color: #999 !important;
+  box-shadow: none;
+}
+
+/* ==================
+   新增：SKU 面板双按钮样式
+================== */
+.sku-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx; /* 两个按钮中间的间隙 */
+  width: 100%;
+}
+
+.sku-btn-cart {
+  flex: 1;
+  height: 90rpx;
+  border-radius: 100rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  font-weight: 700;
+  background-color: #f5f5f5; /* 浅灰底色，代表次要操作 */
+  color: #1a1a1a;
+  transition: all 0.2s;
+}
+
+.sku-btn-buy {
+  flex: 1;
+  height: 90rpx;
+  border-radius: 100rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  font-weight: 700;
+  background-color: #1a1a1a; /* 纯黑底色，吸引视觉焦点促单 */
+  color: #ffffff;
+  box-shadow: 0 10rpx 20rpx rgba(0, 0, 0, 0.15);
+  transition: all 0.2s;
+}
+
+.sku-btn-cart:active, .sku-btn-buy:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+

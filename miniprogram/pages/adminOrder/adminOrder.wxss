@@ -1,0 +1,38 @@
+page { background-color: #f0f0f0; height: 100vh; display: flex; flex-direction: column; }
+.admin-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* 顶部 Tab */
+.tabs-bar { display: flex; background-color: #ffffff; padding: 0 10rpx; }
+.tab-item { flex: 1; text-align: center; font-size: 28rpx; color: #888; padding: 30rpx 0; position: relative; transition: color 0.2s ease; }
+.tab-item.active { font-weight: bold; color: #000000; }
+.active-line { position: absolute; bottom: 10rpx; left: 50%; transform: translateX(-50%); width: 40rpx; height: 6rpx; background-color: #ffffff; border-radius: 4rpx; }
+
+.order-scroll-area { flex: 1; padding: 20rpx; box-sizing: border-box; }
+
+.empty-state { padding: 100px 0; text-align: center; color: #999; font-size: 14px; }
+
+/* 管理员卡片 */
+.admin-card { background-color: #ffffff; border-radius: 12rpx; padding: 30rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05); }
+
+.card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #eee; padding-bottom: 20rpx; margin-bottom: 20rpx; }
+.order-id { font-size: 22rpx; color: #999; font-family: "Times New Roman", Times, serif; }
+.order-status { font-size: 26rpx; font-weight: bold; color: #333; }
+.order-status.urgent { color: #d32f2f; }
+
+/* 客户信息区（突出显示） */
+.buyer-info { background: #fafafa; padding: 20rpx; border-radius: 8rpx; margin-bottom: 20rpx; position: relative; }
+.buyer-name { font-size: 28rpx; font-weight: bold; color: #111; margin-bottom: 8rpx; }
+.buyer-phone { font-size: 26rpx; color: #666; font-weight: normal; margin-left: 10rpx; font-family: -apple-system, sans-serif; }
+.buyer-addr { font-size: 24rpx; color: #444; line-height: 1.4; }
+.copy-tip { position: absolute; right: 20rpx; top: 20rpx; font-size: 20rpx; color: #1890ff; border: 1px solid #1890ff; padding: 2rpx 10rpx; border-radius: 6rpx; }
+
+/* 商品微缩预览 */
+.goods-preview { display: flex; align-items: center; margin-bottom: 24rpx; overflow-x: auto; }
+.goods-img { width: 80rpx; height: 80rpx; border-radius: 8rpx; margin-right: 15rpx; background: #eee; flex-shrink: 0; }
+.goods-count { font-size: 24rpx; color: #999; margin-left: auto; }
+
+/* 底部操作 */
+.card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f5f5f5; padding-top: 24rpx; }
+.money { font-size: 28rpx; font-weight: bold; color: #111; font-family: "Times New Roman", Times, serif; }
+.action-btn { background: #111; color: #fff; padding: 0 40rpx; height: 60rpx; line-height: 60rpx; border-radius: 30rpx; font-size: 26rpx; font-weight: bold; }
+.shipped-info { font-size: 24rpx; color: #52c41a; font-family: -apple-system, sans-serif; }

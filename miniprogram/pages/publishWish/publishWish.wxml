@@ -1,0 +1,30 @@
+<view class="publish-wrapper">
+  
+  <view class="upload-section" bindtap="chooseImage">
+    <image wx:if="{{tempImagePath}}" src="{{tempImagePath}}" mode="aspectFill" class="preview-img"></image>
+    <view wx:else class="upload-placeholder">
+      <view class="upload-icon">+</view>
+      <text class="upload-text">上传你想求购的商品图</text>
+    </view>
+  </view>
+
+  <view class="form-section">
+    <view class="input-group">
+      <input class="input-title" placeholder="品牌 / 款式名称" placeholder-class="ph-style" bindinput="inputTitle" value="{{title}}" />
+    </view>
+
+    <view class="input-group">
+      <textarea class="input-desc" placeholder="描述你的具体需求：如尺码、颜色、新旧程度要求等..." placeholder-class="ph-style" bindinput="inputDesc" value="{{content}}" maxlength="200" auto-height></textarea>
+    </view>
+
+    <view class="input-group price-group">
+      <text class="price-label">期望预算 ¥</text>
+      <input type="digit" class="input-price" placeholder="0.00 (选填)" placeholder-class="ph-style" bindinput="inputPrice" value="{{expectedPrice}}" />
+    </view>
+  </view>
+
+  <view class="bottom-action">
+    <view class="btn-publish {{tempImagePath && title ? '' : 'disabled'}}" bindtap="submitWish">发 布 求 购</view>
+  </view>
+
+</view>

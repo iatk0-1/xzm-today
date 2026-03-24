@@ -1,0 +1,41 @@
+<view class="admin-wrapper">
+
+  <view class="tabs-bar">
+    <view class="tab-item {{currentTab === item ? 'active' : ''}}" wx:for="{{tabs}}" wx:key="*this" bindtap="switchTab" data-tab="{{item}}">
+      {{item}}
+      <view class="active-line" wx:if="{{currentTab === item}}"></view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="order-scroll-area">
+    <view class="empty-state" wx:if="{{orders.length === 0 && !isLoading}}">
+      <view class="empty-text">当前分类下没有订单</view>
+    </view>
+
+    <view class="admin-card" wx:for="{{orders}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+      <view class="card-header">
+        <text class="order-id">单号：{{item.id}}</text>
+        <text class="order-status {{item.status === 'paid' ? 'urgent' : ''}}">{{item.statusDisplay || item.status}}</text>
+      </view>
+
+      <view class="buyer-info" catchtap="copyAddress" data-order="{{item}}">
+        <view class="buyer-name">{{item.recipientName}} <text class="buyer-phone">{{item.recipientPhone}}</text></view>
+        <view class="buyer-addr">{{item.recipientAddress}}</view>
+        <view class="copy-tip">点击复制收件信息</view>
+      </view>
+
+      <view class="goods-preview">
+        <image class="goods-img" wx:for="{{item.items}}" wx:for-item="goods" wx:key="id" src="{{goods.productImage}}" mode="aspectFill"></image>
+        <view class="goods-count">共 {{item.items.length}} 件商品</view>
+      </view>
+
+      <view class="card-footer">
+        <text class="money">收款：¥ {{item.totalPrice || item.payAmount}}</text>
+        <view class="action-btn" wx:if="{{item.status === 'paid'}}" catchtap="shipOrder" data-id="{{item.id}}">去发货</view>
+        <view class="shipped-info" wx:if="{{item.status === 'shipped' && item.trackingNumber}}">
+          单号：{{item.trackingNumber}}
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

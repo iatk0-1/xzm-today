@@ -1,0 +1,144 @@
+<!-- miniprogram/pages/afterSaleApply/afterSaleApply.wxml -->
+<view class="page-wrapper">
+
+  <!-- 顶部订单信息 -->
+  <view class="order-info-section" wx:if="{{order}}">
+    <view class="order-header">
+      <text class="order-id">订单号：{{order.id}}</text>
+      <text class="order-status">{{order.statusDisplay}}</text>
+    </view>
+  </view>
+
+  <!-- 选择订单项 -->
+  <view class="section">
+    <view class="section-title">选择商品</view>
+    <view class="goods-list">
+      <view
+        class="goods-item {{selectedItemId === item.id ? 'selected' : ''}}"
+        wx:for="{{orderItems}}"
+        wx:key="id"
+        bindtap="selectItem"
+        data-item="{{item}}">
+        <image class="goods-img" src="{{item.productImage}}" mode="aspectFill"></image>
+        <view class="goods-info">
+          <view class="goods-title">{{item.productName}}</view>
+          <view class="goods-sku">{{item.productSpec || '默认颜色'}} / {{item.productSize || '均码'}}</view>
+          <view class="goods-price-row">
+            <text class="price">¥ {{item.salePrice}}</text>
+            <text class="stock-qty">购买数量：{{item.qty}}</text>
+          </view>
+        </view>
+        <view class="radio-circle" wx:if="{{selectedItemId !== item.id}}"></view>
+        <view class="radio-circle-checked" wx:if="{{selectedItemId === item.id}}">✓</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 选择售后类型 -->
+  <view class="section">
+    <view class="section-title">售后类型</view>
+    <view class="type-selector">
+      <view
+        class="type-item {{afterSaleType === 'refund' ? 'selected' : ''}}"
+        bindtap="selectType"
+        data-type="refund">
+        <view class="type-title">仅退款</view>
+        <view class="type-desc">未收到货或卖家未发货时选择</view>
+        <view class="radio-circle" wx:if="{{afterSaleType !== 'refund'}}"></view>
+        <view class="radio-circle-checked" wx:if="{{afterSaleType === 'refund'}}">✓</view>
+      </view>
+      <view
+        class="type-item {{afterSaleType === 'return_refund' ? 'selected' : ''}}"
+        bindtap="selectType"
+        data-type="return_refund">
+        <view class="type-title">退货退款</view>
+        <view class="type-desc">已收到货需要退货时选择</view>
+        <view class="radio-circle" wx:if="{{afterSaleType !== 'return_refund'}}"></view>
+        <view class="radio-circle-checked" wx:if="{{afterSaleType === 'return_refund'}}">✓</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 选择退款数量 -->
+  <view class="section" wx:if="{{selectedItem}}">
+    <view class="section-title">退款数量</view>
+    <view class="quantity-selector">
+      <view class="quantity-btn" bindtap="decreaseQty">-</view>
+      <view class="quantity-value">{{refundQty}}</view>
+      <view class="quantity-btn" bindtap="increaseQty">+</view>
+    </view>
+    <view class="quantity-tip">最多可退 {{selectedItem.qty}} 件</view>
+  </view>
+
+  <!-- 退款金额 -->
+  <view class="section">
+    <view class="section-title">退款金额</view>
+    <view class="refund-amount-wrapper">
+      <view class="currency-symbol">¥</view>
+      <input
+        class="refund-amount-input"
+        type="digit"
+        placeholder="请输入退款金额"
+        value="{{refundAmountInput}}"
+        bindinput="onRefundAmountInput"/>
+      <view class="max-refund-tip">最多可退 ¥ {{maxRefundAmount}}</view>
+    </view>
+  </view>
+
+  <!-- 售后原因 -->
+  <view class="section">
+    <view class="section-title">售后原因</view>
+    <view class="reason-tags">
+      <view
+        class="reason-tag {{reason === item ? 'selected' : ''}}"
+        wx:for="{{reasonOptions}}"
+        wx:key="*this"
+        bindtap="selectReason"
+        data-reason="{{item}}">
+        {{item}}
+      </view>
+    </view>
+    <textarea
+      class="reason-textarea"
+      placeholder="请详细描述售后原因（选填）"
+      value="{{reasonText}}"
+      bindinput="onReasonInput"
+      maxlength="500"/>
+  </view>
+
+  <!-- 上传凭证图片 -->
+  <view class="section">
+    <view class="section-title">凭证图片（选填）</view>
+    <view class="evidence-uploader">
+      <view
+        class="image-preview"
+        wx:for="{{evidenceImages}}"
+        wx:key="*this"
+        bindtap="previewImage"
+        data-index="{{index}}">
+        <image class="evidence-image" src="{{item}}" mode="aspectFill"></image>
+        <view class="image-delete" catchtap="deleteImage" data-index="{{index}}">×</view>
+      </view>
+      <view class="upload-btn" bindtap="uploadImage" wx:if="{{evidenceImages.length < 9}}">
+        <view class="upload-icon">+</view>
+        <view class="upload-text">上传凭证</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="submit-bar">
+    <view class="submit-info">
+      <text class="submit-label">合计退款</text>
+      <text class="submit-amount">¥ {{refundAmountInput || '0.00'}}</text>
+    </view>
+    <view class="submit-btn" bindtap="submitAfterSale">提交申请</view>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading-state" wx:if="{{isLoading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+</view>

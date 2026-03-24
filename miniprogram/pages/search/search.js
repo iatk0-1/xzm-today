@@ -1,49 +1,80 @@
-const db = wx.cloud.database();
+// miniprogram/pages/search/search.js
+const api = require('../../utils/api');
 
 Page({
   data: {
-    keyword: '',    // 用户输入的词
-    results: [],    // 搜出来的商品
-    searched: false // 是否已经点过搜索了
+    keyword: '',
+    results: [],
+    searched: false,
+    recentSearches: [],
+    showHistory: false,  // 控制搜索历史下拉框显示/隐藏
+    focus: true  // 搜索框获得焦点
   },
 
-  // 🚀 核心升级 1：页面刚打开时，自动去拉取所有商品，告别白屏！
+  // 页面刚打开时，自动去拉取所有商品
   onLoad: function() {
     this.fetchAllProducts();
+    this.loadRecentSearches();
   },
 
-  // 专门用来拉取全部商品的方法
-  fetchAllProducts: function() {
+  // 加载最近搜索记录
+  loadRecentSearches: async function() {
+    try {
+      const res = await api.get('/users/me/usage/searches?limit=10');
+      this.setData({ recentSearches: res || [] });
+    } catch (err) {
+      console.error('加载搜索历史失败:', err);
+    }
+  },
+
+  // 改造：从后端 API 获取全部商品
+  fetchAllProducts: async function() {
     wx.showLoading({ title: '加载中...' });
-    // 按创建时间倒序排列（新上架的排在最前面）
-    db.collection('products').orderBy('createTime', 'desc').get({
-      success: res => {
-        wx.hideLoading();
-        this.setData({ 
-          results: res.data,
-          searched: false // 此时不算做“搜索失败”，所以不显示空提示
-        });
-      },
-      fail: err => {
-        wx.hideLoading();
-        console.error('获取全部商品失败：', err);
-      }
-    });
+
+    try {
+      const res = await api.get('/products/search', {
+        status: 'on',
+        limit: 100,
+        offset: 0
+      });
+
+      wx.hideLoading();
+      this.setData({
+        results: res,
+        searched: false
+      });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('获取商品失败:', err);
+    }
   },
 
-  // 1. 监听键盘输入
+  // 监听键盘输入
   onInput: function(e) {
     const val = e.detail.value;
     this.setData({ keyword: val });
-    
-    // 🚀 核心升级 2：如果用户把搜索框里的字全删了，自动恢复显示所有商品
+
+    // 如果用户把搜索框里的字全删了，自动恢复显示所有商品
     if (!val.trim()) {
       this.fetchAllProducts();
     }
   },
 
-  // 2. 点击搜索按钮或键盘回车
-  doSearch: function() {
+  // 搜索框获得焦点
+  onSearchFocus: function() {
+    this.setData({ showHistory: true });
+  },
+
+  // 搜索框失去焦点
+  onSearchBlur: function() {
+    // 延迟隐藏，给点击事件留出时间
+    setTimeout(() => {
+      this.setData({ showHistory: false });
+    }, 200);
+  },
+
+  // 改造：搜索商品
+  doSearch: async function() {
     const word = this.data.keyword.trim();
     if (!word) {
       wx.showToast({ title: '请输入关键词', icon: 'none' });
@@ -53,30 +84,71 @@ Page({
     wx.showLoading({ title: '全网搜索中...' });
     this.setData({ searched: true });
 
-    // 去 products 集合里模糊匹配商品标题
-    db.collection('products').where({
-      title: db.RegExp({
-        regexp: word,
-        options: 'i', // 忽略大小写
-      })
-    }).get({
-      success: res => {
-        wx.hideLoading();
-        this.setData({ results: res.data });
-      },
-      fail: err => {
-        wx.hideLoading();
-        wx.showToast({ title: '搜索失败，请重试', icon: 'none' });
-        console.error('搜索报错：', err);
+    try {
+      const res = await api.get('/products/search', {
+        keyword: word,
+        limit: 100
+      });
+
+      wx.hideLoading();
+      this.setData({ results: res });
+      // 搜索成功后重新加载历史记录
+      this.loadRecentSearches();
+    } catch (err) {
+      wx.hideLoading();
+      console.error('搜索失败:', err);
+      wx.showToast({ title: '搜索失败', icon: 'none' });
+    }
+  },
+
+  // 点击历史搜索词
+  onSearchHistoryTap: function(e) {
+    const keyword = e.currentTarget.dataset.keyword;
+    this.setData({
+      keyword: keyword,
+      showHistory: false,
+      searched: true
+    }, () => {
+      this.doSearch();
+    });
+  },
+
+  // 删除单条搜索历史
+  deleteSearchHistory: async function(e) {
+    const keyword = e.currentTarget.dataset.keyword;
+    try {
+      await api.delete('/users/me/usage/searches', { keyword: keyword });
+      this.loadRecentSearches();
+    } catch (err) {
+      console.error('删除搜索历史失败:', err);
+    }
+  },
+
+  // 清空所有搜索历史
+  clearAllSearches: async function() {
+    wx.showModal({
+      title: '确认清空',
+      content: '确定要清空所有搜索记录吗？',
+      confirmColor: '#111111',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await api.delete('/users/me/usage/searches/all');
+            this.setData({ recentSearches: [] });
+            wx.showToast({ title: '已清空', icon: 'success' });
+          } catch (err) {
+            wx.showToast({ title: '操作失败', icon: 'none' });
+          }
+        }
       }
     });
   },
 
-  // 3. 点击商品跳转到详情页
+  // 跳转到商品详情页
   goToDetail: function(e) {
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
       url: `/pages/detail/detail?id=${id}`
     });
   }
-})
+});

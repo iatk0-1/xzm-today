@@ -1,24 +1,42 @@
 <view class="search-page">
   <view class="search-bar">
-    <input 
-      class="search-input" 
-      placeholder="输入衣服名称、关键词..." 
-      bindinput="onInput" 
-      confirm-type="search" 
+    <input
+      class="search-input"
+      placeholder="输入衣服名称、关键词..."
+      bindinput="onInput"
+      confirm-type="search"
       bindconfirm="doSearch"
       auto-focus="true"
+      value="{{keyword}}"
+      bindfocus="onSearchFocus"
+      bindblur="onSearchBlur"
     />
     <view class="search-btn" bindtap="doSearch">搜索</view>
   </view>
 
+  <!-- 搜索历史下拉框 -->
+  <view class="search-history-dropdown {{showHistory ? 'show' : ''}}" wx:if="{{recentSearches.length > 0}}">
+    <view class="history-header">
+      <view class="history-title">最近搜索</view>
+      <view class="history-clear" bindtap="clearAllSearches">清空</view>
+    </view>
+    <view class="history-list">
+      <view class="history-item" wx:for="{{recentSearches}}" wx:key="*this" bindtap="onSearchHistoryTap" data-keyword="{{item}}">
+        {{item}}
+        <text class="delete-icon" catchtap="deleteSearchHistory" data-keyword="{{item}}">×</text>
+      </view>
+    </view>
+  </view>
+
   <view class="result-box">
+    <!-- 搜索后的结果展示 -->
     <view wx:if="{{results.length === 0 && searched}}" class="empty-tip">没有找到相关的衣服哦~</view>
-    
+
     <view class="goods-list" wx:if="{{results.length > 0}}">
-      <view class="goods-item" wx:for="{{results}}" wx:key="_id" bindtap="goToDetail" data-id="{{item._id}}">
-        <image class="goods-img" src="{{item.image}}" mode="widthFix"></image>
+      <view class="goods-item" wx:for="{{results}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+        <image class="goods-img" src="{{item.coverUrl || item.image}}" mode="widthFix"></image>
         <view class="goods-info">
-          <view class="goods-title">{{item.title}}</view>
+          <view class="goods-title">{{item.name || item.title}}</view>
           <view class="goods-price">¥ {{item.displayPrice || item.price || '0.00'}}</view>
         </view>
       </view>

@@ -1,0 +1,61 @@
+<view class="admin-wrapper">
+  
+  <view class="tabs-bar">
+    <view class="tab-item {{currentTab === 'unlinked' ? 'active' : ''}}" bindtap="switchTab" data-tab="unlinked">
+      待寻觅 (求同款)
+      <view class="active-line" wx:if="{{currentTab === 'unlinked'}}"></view>
+    </view>
+    <view class="tab-item {{currentTab === 'linked' ? 'active' : ''}}" bindtap="switchTab" data-tab="linked">
+      已上架 (收割中)
+      <view class="active-line" wx:if="{{currentTab === 'linked'}}"></view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="wish-scroll-area">
+    
+    <view class="empty-state" wx:if="{{wishes.length === 0 && !isLoading}}">
+      <view class="empty-text">暂时没有心愿数据</view>
+    </view>
+
+    <view class="wish-card" wx:for="{{wishes}}" wx:key="_id">
+      
+      <view class="rank-badge {{index < 3 && currentTab === 'unlinked' ? 'top3' : ''}}" wx:if="{{currentTab === 'unlinked'}}">
+        TOP {{index + 1}}
+      </view>
+
+      <view class="card-main">
+        <image class="wish-img" src="{{item.image}}" mode="aspectFill"></image>
+        <view class="wish-info">
+          <view class="wish-content">{{item.content}}</view>
+          
+          <view class="wish-data">
+            <text class="fire-icon">🔥</text>
+            <text class="likes-count">热度值: {{item.likes || 0}}</text>
+          </view>
+          
+          <view class="linked-id" wx:if="{{item.linkedProductId}}">
+            已绑定商品: {{item.linkedProductId}}
+          </view>
+        </view>
+      </view>
+
+      <view class="card-footer">
+        <view class="time">许愿时间: {{item.createTimeStr}}</view>
+        
+        <view class="action-group">
+          <view class="btn-ghost" bindtap="deleteWish" data-id="{{item._id}}">删除</view>
+          
+          <view class="btn-solid" wx:if="{{currentTab === 'unlinked'}}" bindtap="bindProduct" data-id="{{item._id}}">
+            魔法绑定 🪄
+          </view>
+          
+          <view class="btn-ghost" wx:if="{{currentTab === 'linked'}}" bindtap="unbindProduct" data-id="{{item._id}}">
+            解除绑定
+          </view>
+        </view>
+      </view>
+
+    </view>
+
+  </scroll-view>
+</view>

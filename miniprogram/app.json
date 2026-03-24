@@ -7,7 +7,16 @@
     "pages/market/market",
     "pages/cart/cart",
     "pages/checkout/checkout",
-    "pages/search/search"
+    "pages/search/search",
+    "pages/user/user",
+    "pages/orderList/orderList",
+    "pages/orderDetail/orderDetail",
+    "pages/afterSaleApply/afterSaleApply",
+    "pages/adminOrder/adminOrder",
+    "pages/adminProduct/adminProduct",
+    "pages/adminWish/adminWish",
+    "pages/publishWish/publishWish",
+    "pages/bindPhone/bindPhone"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",

@@ -60,7 +60,7 @@
   <view class="related-products-section" wx:if="{{relatedProducts.length > 0}}">
     <view class="section-title-eng" style="text-align: left; padding-left: 20px;">关联商品</view>
     <view class="related-grid">
-      <view class="related-item" wx:for="{{relatedProducts}}" wx:key="_id" bindtap="goToRelatedDetail" data-id="{{item._id}}">
+      <view class="related-item" wx:for="{{relatedProducts}}" wx:key="id" bindtap="goToRelatedDetail" data-id="{{item.id}}">
         <image class="related-img" src="{{item.image}}" mode="aspectFill"></image>
         <view class="related-info">
           <view class="related-title">{{item.title}}</view>
@@ -105,7 +105,13 @@
     </view>
   </scroll-view>
 
-  <view class="sku-btn-confirm" bindtap="confirmSkuAction">
+  <!-- 已售罄 -->
+  <view class="sku-btn-confirm disabled" wx:if="{{currentSkuStock === 0}}">
+    已售罄
+  </view>
+
+  <!-- 有库存或尚未选择规格：显示操作按钮 -->
+  <view class="sku-btn-confirm" wx:if="{{currentSkuStock > 0 || currentSkuStock === null}}" bindtap="confirmSkuAction" data-action="{{skuAction}}">
     {{skuAction === 'buy' ? '下一步：立即购买' : '确定加入购物车'}}
   </view>
 </view>

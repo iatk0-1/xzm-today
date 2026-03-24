@@ -7,13 +7,13 @@
       <view class="add-icon">+</view>
       <text>请选择微信收货地址</text>
     </view>
-    
+
     <view class="real-address" wx:else>
       <view class="address-user">
-        <text class="name">{{address.userName}}</text>
-        <text class="phone">{{address.telNumber}}</text>
+        <text class="name">{{address.recipient}}</text>
+        <text class="phone">{{address.phone}}</text>
       </view>
-      <view class="address-detail">{{address.detailInfo}}</view>
+      <view class="address-detail">{{address.province}}{{address.city}}{{address.district}}{{address.detail}}</view>
       <view class="arrow">></view>
     </view>
   </view>
@@ -21,10 +21,10 @@
   <view class="order-items-section">
     <view class="section-label">Order Items</view>
     
-    <view class="item-card" wx:for="{{checkoutItems}}" wx:key="_id">
-      <image class="item-img" src="{{item.image}}" mode="aspectFill"></image>
+    <view class="item-card" wx:for="{{checkoutItems}}" wx:key="id">
+      <image class="item-img" src="{{item.coverUrl || item.image}}" mode="aspectFill"></image>
       <view class="item-info">
-        <view class="item-title">{{item.title}}</view>
+        <view class="item-title">{{item.name || item.title}}</view>
         
         <view class="item-sku">
           {{item.selectedColor ? 'Color: ' + item.selectedColor : ''}} 

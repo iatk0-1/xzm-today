@@ -1,92 +1,136 @@
-<view class="container">
-  
-  <view class="header-nav">
-    <view class="logo">现在买</view>
-    <view class="nav-links">
-      <text bindtap="goToSearch">查找</text>
-      <text bindtap="goToCart">购物车</text>
-      <text class="active" style="font-weight: bold; color: #000;">上新</text>
+<view class="container" style="padding-top: {{totalNavHeight}}px;">
+
+  <view class="custom-nav-bar" style="padding-top: {{navTop}}px;">
+
+    <view class="nav-top-row" style="height: {{navHeight}}px;">
+      <view class="logo">现在买</view>
+      <view class="search-box" bindtap="goToSearch">
+        <icon class="search-icon" type="search" size="14" color="#999"></icon>
+        <text class="search-placeholder">搜索心仪款式 / 找同款</text>
+      </view>
+    </view>
+
+    <view class="nav-bottom-row">
+      <view class="nav-tabs-left">
+        <view class="tab-item {{currentMainTab === '上新' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="上新">
+          <text>上新</text>
+          <view class="line"></view> </view>
+
+        <view class="tab-item {{currentMainTab === '档口' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="档口">
+          <text>档口</text>
+          <view class="line"></view>
+        </view>
+
+        <view class="tab-item {{currentMainTab === '分类' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="分类">
+          <text>分类</text>
+          <view class="line"></view>
+        </view>
+      </view>
+
+      <view class="nav-cart-right" bindtap="goToCart">
+        <text>购物车</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="stall-mask {{showStall ? 'fade-in' : ''}}" wx:if="{{showStall}}" catchtap="closeStallPanel"></view>
+  <view class="stall-panel {{showStall ? 'slide-down' : ''}}" style="top: {{totalNavHeight}}px;">
+    <view class="stall-grid">
+      <view
+        class="stall-tag {{selectedStall === item.id || (selectedStall === '' && item.id === 'all') ? 'active' : ''}}"
+        wx:for="{{stallList}}"
+        wx:key="id"
+        bindtap="selectStall"
+        data-stall="{{item.id}}"
+        data-name="{{item.name}}">
+        {{item.name}}
+      </view>
+    </view>
+  </view>
+
+  <!-- 分类标签面板 -->
+  <view class="stall-mask {{showTag ? 'fade-in' : ''}}" wx:if="{{showTag}}" catchtap="closeTagPanel"></view>
+  <view class="stall-panel {{showTag ? 'slide-down' : ''}}" style="top: {{totalNavHeight}}px;">
+    <view class="stall-grid">
+      <view
+        class="stall-tag {{selectedTag === item.id || (selectedTag === '' && item.id === 'all') ? 'active' : ''}}"
+        wx:for="{{tagList}}"
+        wx:key="id"
+        bindtap="selectTag"
+        data-tag="{{item.id}}"
+        data-name="{{item.name}}">
+        {{item.name}}
+      </view>
     </view>
   </view>
 
   <view class="waterfall-container">
-    <view class="product-item" wx:for="{{productList}}" wx:key="_id" bindtap="goToDetail" data-id="{{item._id}}">
-      <image class="product-img" src="{{item.image}}" mode="widthFix"></image>
-      
+    <view class="product-item" wx:for="{{productList}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+      <image class="product-img" src="{{item.coverUrl || item.image}}" mode="widthFix" lazy-load="true"></image>
       <view class="product-info">
-        <view class="product-title">{{item.title}}</view>
+        <view class="product-title">{{item.name || item.title}}</view>
         <view class="product-bottom">
-          <view class="product-price">¥ {{item.displayPrice || item.price}}</view>
+          <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
           <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
-            <view class="product-bottom">
-              <image 
-                class="add-cart-icon" 
-                src="/images/add-cart.png" 
-                catchtap="openSkuPanel" 
-                data-product="{{item}}" 
-                mode="aspectFit"
-              ></image>
-            </view>
+            <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
           </view>
         </view>
       </view>
     </view>
   </view>
+
+  <!-- 自定义底部导航栏 -->
   <view class="bottom-tab-bar">
-    <view class="tab-item active">首页</view>
+    <view class="tab-item active" bindtap="goToIndex">首页</view>
     <view class="tab-item" bindtap="goToMarket">市集</view>
-    
-    <view class="tab-item" wx:if="{{isAdmin}}" bindtap="goToAdmin">
+    <view class="tab-item admin-portal" wx:if="{{isAdmin}}" bindtap="goToAdmin">
       <view class="red-plus-btn">+</view>
     </view>
-    
-    <view class="tab-item">消息</view>
-    <view class="tab-item">我</view>
+    <view class="tab-item" bindtap="goToMessage">信息</view>
+    <view class="tab-item" bindtap="goToUser">我</view>
   </view>
 </view>
 
-<view class="sku-mask" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
-<view class="sku-panel {{showSku ? 'show' : ''}}">
+<view class="sku-mask {{showSku ? 'fade-in' : ''}}" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
+
+<view class="sku-panel {{showSku ? 'slide-up' : ''}}">
   <view class="sku-close" catchtap="closeSkuPanel">×</view>
-  
+
   <view class="sku-header" wx:if="{{currentProduct}}">
-    <image class="sku-img" src="{{currentProduct.image}}" mode="aspectFill"></image>
+    <image class="sku-img" src="{{currentProduct.coverUrl || currentProduct.image}}" mode="aspectFill"></image>
     <view class="sku-main">
-      <view class="sku-price" style="color: #d32f2f;">
-        ¥ {{currentSkuPrice || currentProduct.displayPrice || currentProduct.price || '0.00'}}
+      <view class="sku-price">
+        ¥{{currentSkuPrice || currentProduct.retailPrice || currentProduct.displayPrice || '0.00'}}
       </view>
-      <view class="sku-stock" style="color: {{currentSkuStock === 0 ? 'red' : '#999'}};">
-        库存: {{currentSkuStock !== null ? currentSkuStock : '请选择规格'}}
+      <view class="sku-stock {{currentSkuStock === 0 ? 'out-of-stock' : ''}}">
+        库存：{{currentSkuStock !== null ? currentSkuStock : '请选择规格'}}
       </view>
-      <view class="sku-choose-tip">已选: {{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
+      <view class="sku-choose-tip">已选：{{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
     </view>
   </view>
 
-  <scroll-view scroll-y style="max-height: 50vh;">
+  <scroll-view scroll-y class="sku-scroll-area">
     <view class="sku-section" wx:if="{{uniqueColors.length > 0}}">
       <view class="sku-title">颜色</view>
       <view class="sku-options">
-        <view 
-          class="sku-tag {{selectedColor === item ? 'active' : ''}}" 
-          wx:for="{{uniqueColors}}" 
-          wx:key="*this" 
-          bindtap="selectColor" 
-          data-color="{{item}}">{{item}}</view>
+        <view class="sku-tag {{selectedColor === item ? 'active' : ''}}" wx:for="{{uniqueColors}}" wx:key="*this" bindtap="selectColor" data-color="{{item}}">{{item}}</view>
       </view>
     </view>
 
     <view class="sku-section" wx:if="{{uniqueSizes.length > 0}}">
       <view class="sku-title">尺码</view>
       <view class="sku-options">
-        <view 
-          class="sku-tag {{selectedSize === item ? 'active' : ''}}" 
-          wx:for="{{uniqueSizes}}" 
-          wx:key="*this" 
-          bindtap="selectSize" 
-          data-size="{{item}}">{{item}}</view>
+        <view class="sku-tag {{selectedSize === item ? 'active' : ''}}" wx:for="{{uniqueSizes}}" wx:key="*this" bindtap="selectSize" data-size="{{item}}">{{item}}</view>
       </view>
     </view>
   </scroll-view>
 
-  <view class="sku-btn-confirm" bindtap="confirmAddToCart">加入购物车</view>
+  <view class="sku-actions" wx:if="{{currentSkuStock !== 0}}">
+    <view class="sku-btn-cart" bindtap="confirmAddToCart" data-action="cart">加入购物车</view>
+    <view class="sku-btn-buy" bindtap="confirmAddToCart" data-action="buy">立即购买</view>
+  </view>
+
+  <view class="sku-btn-confirm disabled" wx:else>
+    已售罄
+  </view>
 </view>

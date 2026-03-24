@@ -3,23 +3,23 @@
 
   <view class="form-group">
     <view class="label"><text class="required">*</text>商品图片 (首图自动设为封面，长按可拖拽排序)</view>
-    
+
     <movable-area class="drag-area" style="height: {{dragAreaHeight}}px;">
-      <movable-view 
-        wx:for="{{mediaList}}" 
-        wx:key="id" 
-        class="drag-item {{dragIndex === index ? 'is-dragging' : ''}}" 
-        x="{{item.x}}" 
-        y="{{item.y}}" 
-        direction="all" 
+      <movable-view
+        wx:for="{{mediaList}}"
+        wx:key="id"
+        class="drag-item {{dragIndex === index ? 'is-dragging' : ''}}"
+        x="{{item.x}}"
+        y="{{item.y}}"
+        direction="all"
         out-of-bounds="true"
         bindlongpress="onDragStart"
         bindchange="onDragMove"
         bindtouchend="onDragEnd"
         data-index="{{index}}"
-        animation="{{dragIndex !== index}}" 
+        animation="{{dragIndex !== index}}"
         disabled="{{dragIndex !== index}}">
-        
+
         <view class="img-box">
           <image src="{{item.url}}" mode="aspectFill" class="media-img"></image>
           <view class="cover-tag" wx:if="{{index === 0}}">封面</view>
@@ -35,30 +35,71 @@
 
   <view class="form-group">
     <view class="label"><text class="required">*</text>商品名称</view>
-    <input class="input-box" placeholder="例如: 经典藏青百褶裙" value="{{title}}" bindinput="onInput" data-field="title" />
+    <input class="input-box" placeholder="例如：经典藏青百褶裙" value="{{title}}" bindinput="onInput" data-field="title" />
   </view>
 
-  <view class="form-group tag-section">
-    <view class="label">档口分类 (可多选)</view>
+  <!-- 所属档口 -->
+  <view class="form-group stall-section" style="position: relative; z-index: 100;">
+    <view class="label">所属档口 (可多选)</view>
     <view class="tags-display">
-      <block wx:for="{{selectedTags}}" wx:key="*this">
+      <block wx:for="{{selectedStalls}}" wx:key="id">
         <view class="tag-capsule active-tag">
-          {{item}} <text class="remove-icon" bindtap="removeTag" data-tag="{{item}}">×</text>
+          {{item.name}} <text class="remove-icon" catchtap="removeStall" data-id="{{item.id}}">×</text>
         </view>
       </block>
     </view>
-    <view class="tag-input-row">
-      <input class="input-box tag-input" placeholder="输入新档口/分类..." value="{{tagInput}}" bindinput="onInput" data-field="tagInput" bindconfirm="addTag" />
-      <view class="btn-add-tag" bindtap="addTag">添加</view>
+    <!-- 历史档口记录 -->
+    <view class="history-section" wx:if="{{recentStalls.length > 0}}">
+      <view class="history-label">最近使用</view>
+      <scroll-view scroll-x class="history-scroll" enable-flex>
+        <view class="history-item" wx:for="{{recentStalls}}" wx:key="id" bindtap="selectRecentStall" data-item="{{item}}">
+          {{item.name}}
+        </view>
+      </scroll-view>
     </view>
-    <view class="history-tags-area" wx:if="{{historyTags.length > 0}}">
-      <view class="sub-label">快速选择历史分类：</view>
-      <view class="tags-display">
-        <block wx:for="{{historyTags}}" wx:key="*this">
-          <view class="tag-capsule history-tag" bindtap="selectHistoryTag" data-tag="{{item}}">
-            {{item}}
-          </view>
-        </block>
+    <view class="search-input-row">
+      <input class="input-box tag-input" placeholder="输入档口名称搜索..." value="{{stallSearchKeyword}}" bindinput="onStallSearchInput" />
+    </view>
+    <view class="search-results floating-dropdown" wx:if="{{showStallSearch}}">
+      <view class="search-result-item" wx:for="{{stallSearchResults}}" wx:key="id" bindtap="selectStall" data-item="{{item}}">
+        {{item.name}}
+      </view>
+      <view class="search-empty-item" wx:if="{{showStallCreate}}" bindtap="createStall">
+        <text>新增档口：</text>
+        <text class="add-new-text">{{stallSearchKeyword}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 标签分类 -->
+  <view class="form-group tag-section" style="position: relative; z-index: 99;">
+    <view class="label">标签分类 (可多选)</view>
+    <view class="tags-display">
+      <block wx:for="{{selectedTags}}" wx:key="id">
+        <view class="tag-capsule active-tag">
+          {{item.name}} <text class="remove-icon" catchtap="removeTag" data-id="{{item.id}}">×</text>
+        </view>
+      </block>
+    </view>
+    <!-- 历史标签记录 -->
+    <view class="history-section" wx:if="{{recentTags.length > 0}}">
+      <view class="history-label">最近使用</view>
+      <scroll-view scroll-x class="history-scroll" enable-flex>
+        <view class="history-item" wx:for="{{recentTags}}" wx:key="id" bindtap="selectRecentTag" data-item="{{item}}">
+          {{item.name}}
+        </view>
+      </scroll-view>
+    </view>
+    <view class="search-input-row">
+      <input class="input-box tag-input" placeholder="输入标签名称搜索..." value="{{tagSearchKeyword}}" bindinput="onTagSearchInput" />
+    </view>
+    <view class="search-results floating-dropdown" wx:if="{{showTagSearch}}">
+      <view class="search-result-item" wx:for="{{tagSearchResults}}" wx:key="id" bindtap="selectTag" data-item="{{item}}">
+        {{item.name}}
+      </view>
+      <view class="search-empty-item" wx:if="{{showTagCreate}}" bindtap="createTag">
+        <text>新增标签：</text>
+        <text class="add-new-text">{{tagSearchKeyword}}</text>
       </view>
     </view>
   </view>
@@ -80,7 +121,7 @@
       </view>
     </view>
     <view class="tag-input-row">
-      <input class="input-box tag-input" placeholder="例如: 燕麦色..." value="{{colorInput}}" bindinput="onInput" data-field="colorInput" bindconfirm="addColor"/>
+      <input class="input-box tag-input" placeholder="例如：燕麦色..." value="{{colorInput}}" bindinput="onInput" data-field="colorInput" bindconfirm="addColor"/>
       <view class="btn-add-tag" bindtap="addColor">添加颜色</view>
     </view>
   </view>
@@ -92,8 +133,11 @@
       <input class="batch-input" type="number" placeholder="批量库存" value="{{batchStock}}" bindinput="onInput" data-field="batchStock" />
       <view class="btn-batch" bindtap="applyBatch">一键填充</view>
     </view>
-    <view class="sku-row" wx:for="{{skuList}}" wx:key="index">
-      <view class="sku-name">{{item.color}} - {{item.size}}</view>
+    <view class="sku-row" wx:for="{{skuList}}" wx:if="{{!item._toBeRemoved}}" wx:key="index">
+      <view class="sku-delete" catchtap="removeSku" data-index="{{index}}">−</view>
+      <view class="sku-name">
+        {{item.color}} - {{item.size}}
+      </view>
       <input class="sku-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onSkuInput" data-index="{{index}}" data-field="price" />
       <input class="sku-input" type="number" placeholder="库存" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" />
     </view>
@@ -102,7 +146,7 @@
   <view class="divider">--- 以下为高级选填项 (丰富详情页) ---</view>
   <view class="form-group">
     <view class="label">预计发货时间</view>
-    <input class="input-box" placeholder="例如: 付款后 48 小时内发货" value="{{shippingInfo}}" bindinput="onInput" data-field="shippingInfo" />
+    <input class="input-box" placeholder="例如：付款后 48 小时内发货" value="{{shippingInfo}}" bindinput="onInput" data-field="shippingInfo" />
   </view>
 
   <view class="form-group">
@@ -112,17 +156,17 @@
 
   <view class="form-group">
     <view class="label">材质保养 (Fabric & Care)</view>
-    <textarea class="textarea-box" placeholder="例如: 100% 纯棉。建议手洗，不可漂白，阴凉处悬挂晾干..." value="{{fabricCare}}" bindinput="onInput" data-field="fabricCare" maxlength="-1"></textarea>
+    <textarea class="textarea-box" placeholder="例如：100% 纯棉。建议手洗，不可漂白，阴凉处悬挂晾干..." value="{{fabricCare}}" bindinput="onInput" data-field="fabricCare" maxlength="-1"></textarea>
   </view>
 
   <view class="form-group">
     <view class="label">尺码指南 (Size Chart)</view>
-    <textarea class="textarea-box" placeholder="例如: S码 裙长80 腰围64 (支持回车换行排版)..." value="{{sizeChartTip}}" bindinput="onInput" data-field="sizeChartTip" maxlength="-1"></textarea>
+    <textarea class="textarea-box" placeholder="例如：S 码 裙长 80 腰围 64 (支持回车换行排版)..." value="{{sizeChartTip}}" bindinput="onInput" data-field="sizeChartTip" maxlength="-1"></textarea>
   </view>
 
   <view class="form-group">
     <view class="label">温馨提示 (Tip / Q&A)</view>
-    <textarea class="textarea-box" placeholder="例如: 深色衣物首次洗涤可能轻微浮色，属正常现象..." value="{{warmTips}}" bindinput="onInput" data-field="warmTips" maxlength="-1"></textarea>
+    <textarea class="textarea-box" placeholder="例如：深色衣物首次洗涤可能轻微浮色，属正常现象..." value="{{warmTips}}" bindinput="onInput" data-field="warmTips" maxlength="-1"></textarea>
   </view>
   <view class="form-group">
     <view class="label">商品动态展示视频 (选填，单视频)</view>
@@ -134,7 +178,7 @@
       <view class="delete-btn" catchtap="removeVideo">×</view>
     </view>
   </view>
-  
+
   <view class="form-group">
     <view class="label">Lookbook 详情长图 (选填，多张)</view>
     <view class="multi-image-box">
@@ -154,13 +198,13 @@
   <view class="form-group">
     <view class="label">搭配商品 (Shop the Look)</view>
     <view class="related-list" wx:if="{{manualRelated.length > 0}}">
-      <view class="related-item" wx:for="{{manualRelated}}" wx:key="_id">
-        <image class="related-img" src="{{item.image}}" mode="aspectFill"></image>
+      <view class="related-item" wx:for="{{manualRelated}}" wx:key="id">
+        <image class="related-img" src="{{item.coverUrl}}" mode="aspectFill"></image>
         <view class="related-info">
-          <view class="related-title">{{item.title}}</view>
-          <view class="related-price">¥ {{item.displayPrice || item.price}}</view>
+          <view class="related-title">{{item.name}}</view>
+          <view class="related-price">¥ {{item.displayPrice || item.retailPrice}}</view>
         </view>
-        <view class="btn-remove-related" bindtap="removeRelated" data-id="{{item._id}}">移除</view>
+        <view class="btn-remove-related" bindtap="removeRelated" data-id="{{item.id}}">移除</view>
       </view>
     </view>
     <view class="btn-add-related" bindtap="openRelatedModal">+ 添加搭配商品</view>
@@ -176,23 +220,23 @@
     <view class="modal-title">选择搭配商品</view>
     <view class="modal-close" catchtap="closeRelatedModal">×</view>
   </view>
-  
+
   <view class="search-bar-wrap">
     <input class="search-input" placeholder="输入商品名称快速查找..." value="{{searchKeyword}}" bindinput="onSearchInput" />
   </view>
 
   <scroll-view scroll-y class="product-scroll-list">
-    <view class="product-row" wx:for="{{filteredProducts}}" wx:key="_id" bindtap="toggleRelated" data-item="{{item}}">
+    <view class="product-row" wx:for="{{filteredProducts}}" wx:key="id" bindtap="toggleRelated" data-item="{{item}}">
       <view class="checkbox {{item.selected ? 'checked' : ''}}"></view>
-      <image class="row-img" src="{{item.image}}" mode="aspectFill"></image>
+      <image class="row-img" src="{{item.coverUrl}}" mode="aspectFill"></image>
       <view class="row-info">
-        <view class="row-title">{{item.title}}</view>
-        <view class="row-price">¥ {{item.displayPrice || item.price}}</view>
+        <view class="row-title">{{item.name}}</view>
+        <view class="row-price">¥ {{item.displayPrice || item.retailPrice}}</view>
       </view>
     </view>
     <view wx:if="{{filteredProducts.length === 0}}" class="empty-tip">未找到相关商品</view>
   </scroll-view>
-  
+
   <view class="modal-footer">
     <view class="btn-confirm-modal" bindtap="confirmRelated">确认选择</view>
   </view>

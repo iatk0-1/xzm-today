@@ -1,0 +1,36 @@
+<view class="admin-wrapper">
+  <scroll-view scroll-y class="product-scroll-area">
+
+    <view class="empty-state" wx:if="{{products.length === 0 && !isLoading}}">
+      <view class="empty-text">系统里还没有任何商品</view>
+    </view>
+
+    <view class="product-card" wx:for="{{products}}" wx:key="id">
+
+      <view class="card-main" bindtap="editProduct" data-id="{{item.id}}">
+        <image class="product-img" src="{{item.coverUrl}}" mode="aspectFill"></image>
+        <view class="product-info">
+          <view class="product-title">{{item.name}}</view>
+          <view class="product-price">¥ {{item.displayPrice || item.retailPrice}}</view>
+          <view class="product-tags">
+            <text class="tag" wx:if="{{item.tags && item.tags.length > 0}}">{{item.tags[0]}}</text>
+            <text class="tag status-tag {{item.status === 'off' ? 'offline' : 'online'}}">
+              {{item.status === 'off' ? '已下架' : '售卖中'}}
+            </text>
+          </view>
+        </view>
+      </view>
+
+      <view class="card-footer">
+        <view class="time">上架时间：{{item.createTimeStr || '早期数据'}}</view>
+        <view class="action-group">
+          <view class="btn-ghost" catchtap="toggleStatus" data-id="{{item.id}}" data-status="{{item.status}}">
+            {{item.status === 'off' ? '重新上架' : '下架'}}
+          </view>
+          <view class="btn-danger" catchtap="deleteProduct" data-id="{{item.id}}">删除</view>
+        </view>
+      </view>
+
+    </view>
+  </scroll-view>
+</view>

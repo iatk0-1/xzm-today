@@ -1,0 +1,102 @@
+<view class="detail-wrapper" wx:if="{{!isLoading && order}}">
+
+  <view class="status-header">
+    <view class="status-title">{{order.status}}</view>
+    <view class="status-desc" wx:if="{{order.status === 'pending'}}">
+      <text>请尽快完成支付，超时将自动取消</text>
+      <text wx:if="{{countdownText}}" class="countdown-timer">{{countdownText}}</text>
+    </view>
+    <view class="status-desc" wx:if="{{order.status === 'paid'}}">主理人正在为您精心打包中...</view>
+    <view class="status-desc" wx:if="{{order.status === 'shipped'}}">包裹正飞奔向您，请耐心等待</view>
+  </view>
+
+  <view class="info-card address-card" wx:if="{{order.recipientName}}">
+    <view class="location-icon">📍</view>
+    <view class="address-content">
+      <view class="user-row">
+        <text class="name">{{order.recipientName}}</text>
+        <text class="phone">{{order.recipientPhone}}</text>
+      </view>
+      <view class="detail-row">{{order.recipientAddress}}</view>
+    </view>
+  </view>
+
+  <view class="info-card goods-card">
+    <view class="shop-title">Curation Market</view>
+    <view class="goods-item" wx:for="{{order.items}}" wx:key="id">
+      <image class="goods-img" src="{{item.productImage}}" mode="aspectFill"></image>
+      <view class="goods-info">
+        <view class="goods-title">{{item.productName}}</view>
+        <view class="goods-sku">{{item.productSpec || '默认颜色'}} / {{item.productSize || '均码'}}</view>
+        <view class="goods-price-row">
+          <text class="price">¥ {{item.salePrice}}</text>
+          <text class="count">x {{item.qty}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="money-breakdown">
+      <view class="money-row">
+        <text class="money-label">商品总价</text>
+        <text class="money-val">¥ {{order.totalPrice}}</text>
+      </view>
+      <view class="money-row">
+        <text class="money-label">运费</text>
+        <text class="money-val">¥ 0.00</text>
+      </view>
+      <view class="money-row total">
+        <text class="money-label">实付款</text>
+        <text class="money-val final">¥ {{order.payAmount}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="info-card order-info-card">
+    <view class="info-row">
+      <text class="info-label">订单编号</text>
+      <view class="info-val-box">
+        <text class="info-val">{{order.id}}</text>
+        <view class="btn-copy" bindtap="copyOrderSn">复制</view>
+      </view>
+    </view>
+    <view class="info-row">
+      <text class="info-label">下单时间</text>
+      <text class="info-val">{{order.createdAt}}</text>
+    </view>
+  </view>
+
+  <!-- 售后记录区域 -->
+  <view class="info-card after-sale-card" wx:if="{{afterSaleRecords && afterSaleRecords.length > 0}}">
+    <view class="section-title">售后记录</view>
+    <view class="after-sale-list">
+      <view
+        class="after-sale-item"
+        wx:for="{{afterSaleRecords}}"
+        wx:key="id"
+        bindtap="viewAfterSaleDetail"
+        data-id="{{item.id}}">
+        <view class="after-sale-header">
+          <text class="after-sale-type">{{item.typeDisplay}}</text>
+          <text class="after-sale-status status-{{item.status}}">{{item.statusDisplay}}</text>
+        </view>
+        <view class="after-sale-info">
+          <text class="after-sale-qty">数量：{{item.qty}}</text>
+          <text class="after-sale-amount">退款：¥ {{item.refundAmount}}</text>
+        </view>
+        <view class="after-sale-reason" wx:if="{{item.reason}}">{{item.reason}}</view>
+        <view class="after-sale-time">{{item.createdAt}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-action-bar">
+    <button class="btn-ghost" open-type="contact">联系主理人</button>
+
+    <view class="btn-solid" wx:if="{{order.status === 'pending'}}" bindtap="payOrder">立即支付</view>
+    <view class="btn-ghost" wx:if="{{order.status === 'pending'}}" bindtap="cancelOrder">取消订单</view>
+
+    <view class="btn-solid" wx:if="{{order.status === 'shipped'}}" bindtap="confirmReceipt">确认收货</view>
+    <view class="btn-ghost" wx:if="{{order.status === 'completed' || order.status === 'paid'}}" bindtap="requestRefund">申请售后</view>
+  </view>
+
+</view>

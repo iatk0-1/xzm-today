@@ -434,7 +434,7 @@ page {
   font-weight: bold; /* 选中时文字加粗 */
 }
 
-.sku-btn-confirm { 
+.sku-btn-confirm {
   background: #000; /* 确认按钮纯黑背景 */
   color: #fff; /* 确认按钮纯白文字 */
   text-align: center; /* 文字居中 */
@@ -444,6 +444,41 @@ page {
   font-weight: bold; /* 按钮文字加粗 */
   margin-top: 10px; /* 距离上方区域间距 */
   margin-bottom: env(safe-area-inset-bottom); /* 自动适配苹果底部黑线，防止误触 */
+}
+
+.sku-btn-confirm.disabled {
+  background: #cccccc; /* 售罄时灰色背景 */
+  cursor: not-allowed; /* 鼠标变成禁止手势 */
+}
+
+.sku-actions {
+  display: flex; /* 开启弹性布局 */
+  gap: 12px; /* 两个按钮之间的间距 */
+  margin-top: 10px; /* 距离上方区域间距 */
+  margin-bottom: env(safe-area-inset-bottom); /* 自动适配苹果底部黑线 */
+}
+
+.sku-btn-cart {
+  flex: 1; /* 加入购物车按钮占据剩余空间 */
+  background: #ffffff; /* 白色背景 */
+  color: #333333; /* 深色文字 */
+  text-align: center; /* 文字居中 */
+  line-height: 44px; /* 行高撑起按钮高度 */
+  border-radius: 22px; /* 圆润角 */
+  font-size: 15px; /* 按钮文字大小 */
+  font-weight: bold; /* 按钮文字加粗 */
+  border: 1px solid #dddddd; /* 浅灰色边框 */
+}
+
+.sku-btn-buy {
+  flex: 1; /* 立即购买按钮占据剩余空间 */
+  background: #000000; /* 纯黑背景 */
+  color: #ffffff; /* 白色文字 */
+  text-align: center; /* 文字居中 */
+  line-height: 44px; /* 行高撑起按钮高度 */
+  border-radius: 22px; /* 圆润角 */
+  font-size: 15px; /* 按钮文字大小 */
+  font-weight: bold; /* 按钮文字加粗 */
 }
 
 /* ================= 悬浮动态视频小窗 ================= */

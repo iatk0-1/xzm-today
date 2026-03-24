@@ -1,0 +1,76 @@
+<view class="page-wrapper">
+
+  <view class="tabs-bar-wrapper">
+    <view class="fixed-tab {{currentTab === '全部' ? 'active' : ''}}" bindtap="switchTab" data-tab="全部">
+      全部
+      <view class="active-line" wx:if="{{currentTab === '全部'}}"></view>
+    </view>
+
+    <view class="tab-divider"></view>
+
+    <scroll-view scroll-x class="scroll-tabs" enhanced show-scrollbar="{{false}}">
+      <view
+        class="scroll-tab-item {{currentTab === item ? 'active' : ''}}"
+        wx:for="{{tabs}}"
+        wx:key="*this"
+        wx:if="{{item !== '全部'}}"
+        bindtap="switchTab"
+        data-tab="{{item}}">
+        {{item}}
+        <view class="active-line" wx:if="{{currentTab === item}}"></view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <scroll-view scroll-y class="order-scroll-area">
+
+    <view class="empty-state" wx:if="{{orders.length === 0 && !isLoading}}">
+      <view class="empty-icon">📝</view>
+      <view class="empty-text">暂无相关订单</view>
+    </view>
+
+    <view class="order-card" wx:for="{{orders}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+
+      <view class="card-header">
+        <text class="order-sn">订单号：{{item.id}}</text>
+        <view class="status-wrapper">
+          <text class="order-status {{item.status === 'paid' ? 'highlight' : ''}}">{{item.statusDisplay}}</text>
+          <text class="after-sale-badge" wx:if="{{item.hasAfterSale}}">售后</text>
+        </view>
+      </view>
+
+      <view class="goods-list">
+        <view class="goods-item" wx:for="{{item.items}}" wx:for-item="goods" wx:key="id">
+          <image class="goods-img" src="{{goods.productImage}}" mode="aspectFill"></image>
+          <view class="goods-info">
+            <view class="goods-title">{{goods.productName}}</view>
+            <view class="goods-sku">
+              {{goods.productSpec || '默认颜色'}} / {{goods.productSize || '均码'}}
+            </view>
+            <view class="goods-price-row">
+              <text class="price">¥ {{goods.salePrice}}</text>
+              <text class="count">x {{goods.qty}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="card-footer">
+        <view class="total-row">
+          <text class="total-label">实付款</text>
+          <text class="total-price">¥ {{item.payAmount}}</text>
+        </view>
+
+        <view class="action-row">
+          <button class="btn-ghost" open-type="contact">联系客服</button>
+
+          <view class="btn-solid" wx:if="{{item.status === 'pending'}}" catchtap="payOrder" data-id="{{item.id}}">立即支付</view>
+          <view class="btn-ghost" wx:if="{{item.status === 'pending'}}" catchtap="cancelOrder" data-id="{{item.id}}">取消订单</view>
+          <view class="btn-solid" wx:if="{{item.status === 'shipped'}}" catchtap="confirmReceipt" data-id="{{item.id}}">确认收货</view>
+        </view>
+      </view>
+
+    </view>
+  </scroll-view>
+
+</view>

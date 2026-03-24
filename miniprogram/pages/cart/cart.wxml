@@ -1,5 +1,5 @@
 <view class="cart-wrapper">
-  
+
   <view class="page-header">Shopping Cart</view>
 
   <view class="empty-state" wx:if="{{cartList.length === 0}}">
@@ -8,39 +8,68 @@
 
   <block wx:else>
     <view class="cart-list">
-      <view class="cart-item" wx:for="{{cartList}}" wx:key="_id">
-        
-        <view class="checkbox {{item.selected ? 'checked' : ''}}" bindtap="toggleSelect" data-index="{{index}}">
-          <view class="check-inner" wx:if="{{item.selected}}"></view>
+      <view class="cart-item-container" wx:for="{{cartList}}" wx:key="id" wx:for-item="item" wx:for-index="index">
+        <!-- 删除按钮（固定在右侧） -->
+        <view class="delete-btn-wrapper" catchtap="deleteItem" data-index="{{index}}">
+          <view class="delete-btn">删除</view>
         </view>
 
-        <image class="item-img" src="{{item.image}}" mode="aspectFill"></image>
+        <!-- 商品内容 -->
+        <view class="cart-item-wrapper {{item.disabled ? 'disabled' : ''}} {{index === currentSlideIndex ? 'sliding' : ''}}"
+              style="transform: translateX({{index === currentSlideIndex ? slideOut : 0}}px);"
+              bindtouchstart="onTouchStart" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd"
+              catchtap="onItemTap" data-index="{{index}}">
+          <view class="cart-item">
+              <!-- 状态标签 -->
+              <view class="status-tag sold-out" wx:if="{{item.stockStatus === 'out_of_stock' && item.validityStatus === 'valid'}}">已售罄</view>
+              <view class="status-tag invalid" wx:if="{{item.productStatus === 'off' || (item.validityStatus === 'invalid' && item.productStatus !== 'off')}}">已下架</view>
+              <view class="status-tag changed" wx:if="{{item.validityStatus === 'changed'}}">已过期</view>
+              <view class="status-tag removed" wx:if="{{item.validityStatus === 'removed'}}">规格已移除</view>
 
-        <view class="item-info">
-          <view class="item-title">{{item.title}}</view>
-          
-          <view class="item-sku" wx:if="{{item.selectedColor || item.selectedSize}}">
-            {{item.selectedColor ? 'Color: ' + item.selectedColor : ''}} 
-            {{item.selectedColor && item.selectedSize ? ' / ' : ''}} 
-            {{item.selectedSize ? 'Size: ' + item.selectedSize : ''}}
-          </view>
-          <view class="item-sku" wx:else>默认规格</view>
-          
-          <view class="item-bottom">
-            <view class="item-price">¥ {{item.finalPrice || item.price}}</view>
-            
-            <view class="stepper">
-              <view class="step-btn" bindtap="changeCount" data-index="{{index}}" data-type="minus">-</view>
-              <view class="step-num">{{item.count}}</view>
-              <view class="step-btn" bindtap="changeCount" data-index="{{index}}" data-type="add">+</view>
+              <!-- 复选框：禁用商品显示为禁用状态 -->
+              <view class="checkbox {{item.selected && !item.disabled ? 'checked' : ''}} {{item.disabled ? 'disabled' : ''}}"
+                    catchtouchstart="onInterceptTap" catchtap="toggleSelect" data-index="{{index}}">
+                <view class="check-inner" wx:if="{{item.selected && !item.disabled}}"></view>
+              </view>
+
+              <image class="item-img" src="{{item.coverUrl || item.image}}" mode="aspectFill"></image>
+
+              <view class="item-info">
+                <view class="item-title">{{item.name || item.title}}</view>
+
+                <view class="item-sku" wx:if="{{item.selectedColor || item.selectedSize}}">
+                  {{item.selectedColor ? 'Color: ' + item.selectedColor : ''}}
+                  {{item.selectedColor && item.selectedSize ? ' / ' : ''}}
+                  {{item.selectedSize ? 'Size: ' + item.selectedSize : ''}}
+                </view>
+                <view class="item-sku" wx:else>默认规格</view>
+
+                <view class="item-bottom">
+                  <view class="item-price">¥ {{item.finalPrice || item.price}}</view>
+
+                  <!-- 数量选择器：禁用商品隐藏 -->
+                  <view class="stepper" wx:if="{{!item.disabled}}" catchtouchstart="onInterceptTap">
+                    <view class="step-btn" catchtap="changeCount" data-index="{{index}}" data-type="minus">-</view>
+                    <view class="step-num">{{item.count}}</view>
+                    <view class="step-btn" catchtap="changeCount" data-index="{{index}}" data-type="add">+</view>
+                  </view>
+
+                  <!-- 禁用商品提示 -->
+                  <view class="disabled-tip" wx:else>
+                    <text wx:if="{{item.productStatus === 'off'}}">商品已下架</text>
+                    <text wx:if="{{item.stockStatus === 'out_of_stock' && item.validityStatus === 'valid'}}">暂时缺货</text>
+                    <text wx:if="{{item.validityStatus === 'invalid' && item.productStatus !== 'off'}}">SKU 已失效</text>
+                    <text wx:if="{{item.validityStatus === 'changed'}}">规格已变更</text>
+                    <text wx:if="{{item.validityStatus === 'removed'}}">规格已移除</text>
+                  </view>
+                </view>
+              </view>
             </view>
           </view>
         </view>
-
       </view>
-    </view>
 
-    <view class="bottom-bar">
+      <view class="bottom-bar">
       <view class="select-all" bindtap="toggleAll">
         <view class="checkbox {{isAllSelected ? 'checked' : ''}}">
           <view class="check-inner" wx:if="{{isAllSelected}}"></view>
@@ -50,10 +79,10 @@
 
       <view class="total-section">
         <view class="total-price">
-          <text class="label">Total:</text> 
+          <text class="label">Total:</text>
           <text class="price-num">¥ {{totalPrice}}</text>
         </view>
-        <view class="btn-checkout" bindtap="goToCheckout">CHECK OUT ({{totalCount}})</view>
+        <view class="btn-checkout {{totalCount === 0 ? 'disabled' : ''}}" bindtap="goToCheckout">CHECK OUT ({{totalCount}})</view>
       </view>
     </view>
   </block>
