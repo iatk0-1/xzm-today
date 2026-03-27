@@ -371,7 +371,7 @@ Page({
       const fileType = filePath.toLowerCase().endsWith('.mp4') ? 'video' : 'image';
 
       wx.uploadFile({
-        url: 'http://localhost:8080/api/v1/admin/files/upload',
+        url: 'http://101.34.57.84:8080/api/v1/admin/files/upload',
         filePath: filePath,
         name: 'file',
         fileType: fileType,

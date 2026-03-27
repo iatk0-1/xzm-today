@@ -70,7 +70,7 @@ Page({
     const token = wx.getStorageSync('accessToken') || '';
     return new Promise((resolve, reject) => {
       wx.uploadFile({
-        url: 'http://localhost:8080/api/v1/files/upload-wish',
+        url: 'http://101.34.57.84:8080/api/v1/files/upload-wish',
         filePath: filePath,
         name: 'file',
         header: {
