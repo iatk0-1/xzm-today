@@ -4,7 +4,7 @@ const auth = require('./utils/auth');
 App({
   onLaunch: function () {
     // 云开发已移除，改用后端 API
-    console.log('小程序启动，后端 API: http://101.34.57.84:8080/api/v1');
+    console.log('小程序启动，后端 API: http://localhost:8080/api/v1');
 
     // 初始化登录状态
     this.initAuth();

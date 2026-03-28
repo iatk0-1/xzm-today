@@ -1,7 +1,7 @@
 // miniprogram/utils/config.js
 module.exports = {
   // 后端 API 基础 URL - 测试环境
-  API_BASE_URL: 'http://101.34.57.84:8080/api/v1',
+  API_BASE_URL: 'http://localhost:8080/api/v1',
 
   // 小程序 AppID
   MINIAPP_APPID: 'wx7692230ac8ecdaa8',

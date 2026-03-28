@@ -31,7 +31,7 @@
 
       <view class="card-footer">
         <text class="money">收款：¥ {{item.totalPrice || item.payAmount}}</text>
-        <view class="action-btn" wx:if="{{item.status === 'paid'}}" catchtap="shipOrder" data-id="{{item.id}}">去发货</view>
+        <view class="action-btn" wx:if="{{item.status === 'paid'}}" catchtap="shipOrder" data-id="{{item.id}}" data-order="{{item}}">去发货</view>
         <view class="shipped-info" wx:if="{{item.status === 'shipped' && item.trackingNumber}}">
           单号：{{item.trackingNumber}}
         </view>

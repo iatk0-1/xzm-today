@@ -9,7 +9,9 @@ Page({
     order: null,
     isLoading: true,
     countdownText: '',
-    afterSaleRecords: []
+    afterSaleRecords: [],
+    shipment: null,
+    logisticsTrace: null
   },
 
   onLoad: function(options) {
@@ -40,6 +42,11 @@ Page({
       // 加载售后记录
       this.loadAfterSaleRecords(orderId);
 
+      // 如果是已发货订单，加载物流信息
+      if (res.status === 'shipped') {
+        this.loadShipmentInfo(orderId);
+      }
+
       // 如果是待支付订单，启动倒计时
       if (res.status === 'pending' && res.createdAt) {
         this.startCountdown(res.createdAt);
@@ -54,7 +61,7 @@ Page({
   // 加载售后记录
   loadAfterSaleRecords: async function(orderId) {
     try {
-      const res = await api.get('/api/v1/after-sales', { orderId: orderId });
+      const res = await api.get('/after-sales', { orderId: orderId });
       const records = (res.items || []).map(item => ({
         ...item,
         typeDisplay: item.type === 'refund' ? '仅退款' : '退货退款',
@@ -75,6 +82,35 @@ Page({
       'refunded': '已退款'
     };
     return map[status] || status;
+  },
+
+  // 加载物流信息
+  loadShipmentInfo: async function(orderId) {
+    try {
+      // 获取发货单列表
+      const shipments = await api.get(`/orders/${orderId}/shipments`);
+      if (shipments && shipments.length > 0) {
+        const shipment = shipments[0];  // 取第一个发货单
+        this.setData({ shipment });
+
+        // 获取物流轨迹
+        this.loadLogisticsTrace(orderId);
+      }
+    } catch (err) {
+      console.error('加载物流信息失败:', err);
+    }
+  },
+
+  // 加载物流轨迹
+  loadLogisticsTrace: async function(orderId) {
+    try {
+      const trace = await api.get(`/orders/${orderId}/shipments/trace`);
+      if (trace && trace.list && trace.list.length > 0) {
+        this.setData({ logisticsTrace: trace });
+      }
+    } catch (err) {
+      console.error('加载物流轨迹失败:', err);
+    }
   },
 
   // 启动支付倒计时

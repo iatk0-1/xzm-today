@@ -120,3 +120,18 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
 .btn-ghost { margin: 0; padding: 0 36rpx; height: 64rpx; line-height: 62rpx; font-size: 26rpx; color: #333; background: #fff; border: 1rpx solid #ddd; border-radius: 32rpx; }
 .btn-ghost::after { display: none; }
 .btn-solid { padding: 0 36rpx; height: 64rpx; line-height: 64rpx; font-size: 26rpx; color: #fff; background: #1a1a1a; border-radius: 32rpx; font-weight: bold; }
+
+/* 物流信息卡片 */
+.logistics-card { margin-top: 0; }
+.logistics-info { background-color: #fafafa; border-radius: 12rpx; padding: 20rpx; }
+.logistics-row { display: flex; justify-content: space-between; margin-bottom: 16rpx; font-size: 24rpx; }
+.logistics-row:last-child { margin-bottom: 0; }
+.logistics-label { color: #999; }
+.logistics-val { color: #333; font-family: -apple-system, sans-serif; }
+
+/* 物流轨迹 */
+.trace-title { font-size: 26rpx; font-weight: 600; color: #111; margin: 20rpx 0 16rpx; }
+.trace-list { display: flex; flex-direction: column; gap: 20rpx; }
+.trace-item { display: flex; gap: 16rpx; }
+.trace-time { width: 100rpx; flex-shrink: 0; font-size: 22rpx; color: #999; }
+.trace-content { flex: 1; font-size: 24rpx; color: #333; line-height: 1.5; }

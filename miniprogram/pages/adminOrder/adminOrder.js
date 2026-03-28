@@ -66,26 +66,118 @@ Page({
   // 改造：发货
   shipOrder: async function(e) {
     const orderId = e.currentTarget.dataset.id;
+    const order = e.currentTarget.dataset.order;
 
+    wx.showModal({
+      title: '选择发货方式',
+      editable: false,
+      confirmText: '电子面单',
+      confirmColor: '#111111',
+      showCancel: true,
+      cancelText: '手动填单',
+      success: async (res) => {
+        if (res.confirm) {
+          // 电子面单模式 - 需要先在微信物流开放平台配置模板和网点
+          await this.shipWithElectronicWaybill(orderId, order);
+        } else if (res.cancel) {
+          // 手动填单模式
+          await this.shipWithManualWaybill(orderId);
+        }
+      }
+    });
+  },
+
+  // 电子面单发货（微信分配运单号模式）
+  shipWithElectronicWaybill: async function(orderId, order) {
+    wx.showLoading({ title: '创建面单中...', mask: true });
+
+    try {
+      // 如果 order.items 不存在，先获取订单详情
+      let items = order.items || [];
+      if (items.length === 0) {
+        const detailRes = await api.get(`/orders/${orderId}`);
+        items = detailRes.items || [];
+      }
+
+      // 调用电子面单下单接口（微信分配运单号模式）
+      const shipmentRes = await api.post(`/orders/${orderId}/shipments`, {
+        expressCode: 'ZTO',        // 中通快递
+        expressNo: '',             // 空，由微信分配
+        items: items.map(item => ({
+          orderItemId: item.id,
+          qty: item.qty
+        })),
+        useElectronicWaybill: true  // 使用电子面单
+      });
+
+      wx.hideLoading();
+
+      // 显示面单 PDF 预览
+      if (shipmentRes.pdfShowUrl) {
+        wx.showModal({
+          title: '面单已生成',
+          content: '运单号：' + shipmentRes.expressNo + '，请点击确认打开面单打印',
+          confirmText: '打印面单',
+          confirmColor: '#111111',
+          success: (res) => {
+            if (res.confirm) {
+              // 预览 PDF 面单
+              wx.previewImage({
+                urls: [shipmentRes.pdfShowUrl],
+                success: () => {
+                  wx.showToast({ title: '请尽快打印面单', icon: 'none', duration: 2000 });
+                }
+              });
+            }
+          }
+        });
+      } else {
+        wx.showToast({
+          title: '发货成功！运单号：' + shipmentRes.expressNo,
+          icon: 'success'
+        });
+      }
+
+      this.loadOrders();
+    } catch (err) {
+      wx.hideLoading();
+      wx.showModal({
+        title: '发货失败',
+        content: err.message || '电子面单下单失败',
+        showCancel: false
+      });
+      console.error(err);
+    }
+  },
+
+  // 手动填单发货
+  shipWithManualWaybill: async function(orderId) {
     wx.showModal({
       title: '填写快递单号',
       editable: true,
-      placeholderText: '例如：顺丰 SF123456789',
+      placeholderText: '中通快递单号，例如：755308483428',
       confirmColor: '#111111',
       success: async (res) => {
         if (res.confirm && res.content) {
           wx.showLoading({ title: '同步物流中...' });
 
           try {
-            // 创建发货单
+            // 先获取订单详情获取商品项
+            const detailRes = await api.get(`/orders/${orderId}`);
+            const items = detailRes.items || [];
+
+            // 创建发货单 - 固定使用中通快递
             await api.post(`/orders/${orderId}/shipments`, {
-              expressCode: res.content,
-              expressCompany: '',
-              note: ''
+              expressCode: 'ZTO',        // 中通快递编码
+              expressNo: res.content.trim(),  // 快递单号
+              items: items.map(item => ({
+                orderItemId: item.id,
+                qty: item.qty
+              }))
             });
 
             wx.hideLoading();
-            wx.showToast({ title: '发货成功!', icon: 'success' });
+            wx.showToast({ title: '发货成功！物流信息已同步到微信', icon: 'success' });
             this.loadOrders();
           } catch (err) {
             wx.hideLoading();

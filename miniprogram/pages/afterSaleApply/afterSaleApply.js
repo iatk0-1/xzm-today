@@ -242,7 +242,7 @@ Page({
       };
 
       console.log('提交售后申请:', requestData);
-      await api.post('/api/v1/after-sales', requestData);
+      await api.post('/after-sales', requestData);
 
       wx.hideLoading();
       wx.showModal({

@@ -65,6 +65,36 @@
     </view>
   </view>
 
+  <!-- 物流信息区域 -->
+  <view class="info-card logistics-card" wx:if="{{shipment}}">
+    <view class="section-title">物流信息</view>
+    <view class="logistics-info">
+      <view class="logistics-row">
+        <text class="logistics-label">快递公司</text>
+        <text class="logistics-val">{{shipment.expressCode === 'ZTO' ? '中通快递' : shipment.expressCode}}</text>
+      </view>
+      <view class="logistics-row">
+        <text class="logistics-label">快递单号</text>
+        <text class="logistics-val">{{shipment.expressNo}}</text>
+      </view>
+      <view class="logistics-row" wx:if="{{shipment.shippedAt}}">
+        <text class="logistics-label">发货时间</text>
+        <text class="logistics-val">{{shipment.shippedAt}}</text>
+      </view>
+    </view>
+
+    <!-- 物流轨迹 -->
+    <view class="logistics-trace" wx:if="{{logisticsTrace && logisticsTrace.list && logisticsTrace.list.length > 0}}">
+      <view class="trace-title">物流轨迹</view>
+      <view class="trace-list">
+        <view class="trace-item" wx:for="{{logisticsTrace.list}}" wx:key="time">
+          <view class="trace-time">{{item.time}}</view>
+          <view class="trace-content">{{item.content}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
   <!-- 售后记录区域 -->
   <view class="info-card after-sale-card" wx:if="{{afterSaleRecords && afterSaleRecords.length > 0}}">
     <view class="section-title">售后记录</view>
