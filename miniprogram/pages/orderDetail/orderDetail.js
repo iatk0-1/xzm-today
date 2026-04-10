@@ -10,8 +10,8 @@ Page({
     isLoading: true,
     countdownText: '',
     afterSaleRecords: [],
-    shipment: null,
-    logisticsTrace: null
+    shipments: [],       // 多个发货单（支持分批发货）
+    logisticsTraceList: []  // 多个发货单的物流轨迹
   },
 
   onLoad: function(options) {
@@ -42,8 +42,8 @@ Page({
       // 加载售后记录
       this.loadAfterSaleRecords(orderId);
 
-      // 如果是已发货订单，加载物流信息
-      if (res.status === 'shipped') {
+      // 如果是已发货或发货中订单，加载物流信息（支持分批发货）
+      if (res.status === 'shipped' || res.status === 'paid') {
         this.loadShipmentInfo(orderId);
       }
 
@@ -84,32 +84,61 @@ Page({
     return map[status] || status;
   },
 
-  // 加载物流信息
+  // 加载物流信息（支持分批发货）
   loadShipmentInfo: async function(orderId) {
     try {
       // 获取发货单列表
       const shipments = await api.get(`/orders/${orderId}/shipments`);
       if (shipments && shipments.length > 0) {
-        const shipment = shipments[0];  // 取第一个发货单
-        this.setData({ shipment });
+        this.setData({ shipments });
 
-        // 获取物流轨迹
-        this.loadLogisticsTrace(orderId);
+        // 获取所有发货单的物流轨迹
+        this.loadLogisticsTraceList(orderId);
       }
     } catch (err) {
       console.error('加载物流信息失败:', err);
     }
   },
 
-  // 加载物流轨迹
-  loadLogisticsTrace: async function(orderId) {
+  // 加载多个发货单的物流轨迹列表
+  loadLogisticsTraceList: async function(orderId) {
     try {
-      const trace = await api.get(`/orders/${orderId}/shipments/trace`);
-      if (trace && trace.list && trace.list.length > 0) {
-        this.setData({ logisticsTrace: trace });
+      const traceList = await api.get(`/orders/${orderId}/shipments/trace`);
+      if (traceList && traceList.length > 0) {
+        this.setData({ logisticsTraceList: traceList });
       }
     } catch (err) {
       console.error('加载物流轨迹失败:', err);
+    }
+  },
+
+  // 查看单个发货单的物流轨迹
+  viewShipmentTrace: async function(e) {
+    const shipmentId = e.currentTarget.dataset.id;
+    try {
+      const trace = await api.get(`/shipments/${shipmentId}/trace`);
+      if (trace) {
+        wx.showModal({
+          title: '物流轨迹',
+          content: trace.list ? trace.list.map(node => node.description).join('\n') : '暂无物流信息',
+          showCancel: false
+        });
+      }
+    } catch (err) {
+      wx.showToast({ title: '加载失败', icon: 'none' });
+    }
+  },
+
+  // 预览面单 PDF
+  previewWaybill: function(e) {
+    const url = e.currentTarget.dataset.url;
+    if (url) {
+      wx.previewImage({
+        urls: [url],
+        success: () => {
+          wx.showToast({ title: '请尽快打印面单', icon: 'none', duration: 2000 });
+        }
+      });
     }
   },
 

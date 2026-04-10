@@ -16,7 +16,9 @@
     "pages/adminProduct/adminProduct",
     "pages/adminWish/adminWish",
     "pages/publishWish/publishWish",
-    "pages/bindPhone/bindPhone"
+    "pages/bindPhone/bindPhone",
+    "pages/shipPartial/shipPartial",
+    "pages/unbindOrder/unbindOrder"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",

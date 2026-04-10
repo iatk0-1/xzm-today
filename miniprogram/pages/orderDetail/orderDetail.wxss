@@ -129,6 +129,76 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
 .logistics-label { color: #999; }
 .logistics-val { color: #333; font-family: -apple-system, sans-serif; }
 
+/* 发货单列表（支持分批发货） */
+.shipment-list { display: flex; flex-direction: column; gap: 24rpx; margin-top: 20rpx; }
+.shipment-item {
+  background-color: #fafafa;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  border: 1rpx solid #f0f0f0;
+}
+.shipment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx dashed #e0e0e0;
+}
+.shipment-index {
+  font-size: 26rpx;
+  font-weight: bold;
+  color: #111;
+}
+.shipment-time {
+  font-size: 22rpx;
+  color: #999;
+}
+.shipment-info {
+  margin-bottom: 20rpx;
+}
+.shipment-info .info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+  font-size: 24rpx;
+}
+.shipment-info .info-row:last-child { margin-bottom: 0; }
+.shipment-info .label { color: #999; }
+.shipment-info .value { color: #333; font-family: -apple-system, sans-serif; }
+
+/* 发货单商品列表 */
+.shipment-items {
+  background-color: #fff;
+  border-radius: 8rpx;
+  padding: 16rpx;
+  margin-bottom: 16rpx;
+}
+.shipment-goods {
+  display: flex;
+  justify-content: space-between;
+  font-size: 24rpx;
+  padding: 8rpx 0;
+  border-bottom: 1rpx dashed #f0f0f0;
+}
+.shipment-goods:last-child { border-bottom: none; }
+.shipment-goods .goods-name { color: #666; }
+.shipment-goods .goods-qty { color: #333; font-weight: bold; }
+
+/* 面单预览按钮 */
+.pdf-action {
+  margin-bottom: 16rpx;
+}
+.btn-preview {
+  background-color: #1890ff;
+  color: #fff;
+  font-size: 24rpx;
+  padding: 12rpx 24rpx;
+  border-radius: 20rpx;
+  height: auto;
+  line-height: 1.5;
+}
+
 /* 物流轨迹 */
 .trace-title { font-size: 26rpx; font-weight: 600; color: #111; margin: 20rpx 0 16rpx; }
 .trace-list { display: flex; flex-direction: column; gap: 20rpx; }

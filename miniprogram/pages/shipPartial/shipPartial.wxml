@@ -1,0 +1,80 @@
+<!-- miniprogram/pages/shipPartial/shipPartial.wxml -->
+<view class="container">
+  <!-- 合并发货提示 -->
+  <view class="merge-tip" wx:if="{{isMerge}}">
+    <text>合并发货模式 - 共 {{orderIds.length}} 个订单，{{items.length}} 件商品</text>
+  </view>
+
+  <!-- 发货模式提示（选择后才显示） -->
+  <view class="mode-banner {{mode}}" wx:if="{{hasSelectedShipping}}">
+    <text wx:if="{{mode === 'electronic'}}">电子面单模式 - 自动生成运单号</text>
+    <text wx:if="{{mode === 'manual'}}">手动填单 - 单号：{{expressNo}}</text>
+  </view>
+
+  <!-- 快递公司选择 -->
+  <view class="express-select">
+    <text class="label">快递公司：</text>
+    <picker mode="selector" range="{{expressCodes}}" value="{{expressCodeIndex}}" bindchange="onExpressCodeChange">
+      <view class="picker">
+        {{expressCodes[expressCodeIndex]}}
+      </view>
+    </picker>
+  </view>
+
+  <!-- 商品列表 -->
+  <view class="items-title">选择本次发货的商品</view>
+
+  <view class="ship-list">
+    <view class="ship-item-container" wx:for="{{items}}" wx:key="id" wx:for-item="item" wx:for-index="index">
+      <view class="ship-item {{item.canShip ? '' : 'shipped'}}">
+        <!-- 商品图片 -->
+        <view class="item-image-wrapper">
+          <image class="item-img" src="{{item.productImage}}" mode="aspectFill"></image>
+          <!-- 已发货商品加灰色遮罩 -->
+          <view class="item-shipped-mask" wx:if="{{!item.canShip}}">
+            <text class="shipped-text">已发货</text>
+          </view>
+        </view>
+
+        <!-- 商品信息 -->
+        <view class="item-info">
+          <view class="item-title">{{item.productName}}</view>
+          <view class="item-sku">{{item.productSpec}} / {{item.productSize}}</view>
+          <view class="item-order-id" wx:if="{{isMerge}}">订单号：{{item.orderId}}</view>
+          <view class="item-max-qty" wx:if="{{item.canShip}}">最多可发：{{item.maxShipQty}} 件</view>
+          <view class="item-shipped-info" wx:if="{{!item.canShip}}">
+            <text>已发货 {{item.shippedQty}}/{{item.qty}} 件</text>
+          </view>
+        </view>
+
+        <!-- 数量控制 -->
+        <view class="item-control {{item.canShip ? '' : 'disabled'}}">
+          <view class="stepper" wx:if="{{item.canShip}}">
+            <view class="step-btn" catchtap="decreaseQuantity" data-index="{{index}}">-</view>
+            <view class="step-num">{{item.shipQty}}</view>
+            <view class="step-btn" catchtap="increaseQuantity" data-index="{{index}}">+</view>
+          </view>
+          <view class="shipped-qty" wx:if="{{!item.canShip}}">
+            <text>0</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 快捷操作 -->
+  <view class="quick-actions">
+    <button class="btn-select-all" bindtap="selectAll">全选</button>
+    <button class="btn-clear-all" bindtap="clearAll">清空</button>
+  </view>
+
+  <!-- 发货统计 -->
+  <view class="summary">
+    <text>本次共发：{{totalShipQty}} 件</text>
+  </view>
+
+  <!-- 提交按钮 -->
+  <button class="btn-submit" bindtap="submitShipment" disabled="{{totalShipQty === 0 || isSubmitting}}">
+    {{isSubmitting ? '发货中...' : '确认发货'}}
+  </button>
+</view>

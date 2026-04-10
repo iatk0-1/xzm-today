@@ -1,5 +1,6 @@
 <view class="admin-wrapper">
 
+  <!-- 顶部标签栏 -->
   <view class="tabs-bar">
     <view class="tab-item {{currentTab === item ? 'active' : ''}}" wx:for="{{tabs}}" wx:key="*this" bindtap="switchTab" data-tab="{{item}}">
       {{item}}
@@ -7,35 +8,96 @@
     </view>
   </view>
 
-  <scroll-view scroll-y class="order-scroll-area">
-    <view class="empty-state" wx:if="{{orders.length === 0 && !isLoading}}">
-      <view class="empty-text">当前分类下没有订单</view>
+  <!-- 选择模式工具栏 -->
+  <view class="select-toolbar" wx:if="{{selectMode}}">
+    <view class="toolbar-left">
+      <text class="selected-count">已选 {{selectedOrders.length}} 个订单</text>
+      <text class="merge-hint" wx:if="{{canMerge}}">✓ 可合并发货</text>
+      <text class="merge-error" wx:if="{{!canMerge && selectedOrders.length > 1}}">{{mergeError}}</text>
     </view>
+    <view class="toolbar-right">
+      <button class="btn-merge" bindtap="mergeShipOrders" disabled="{{!canMerge}}">合并发货</button>
+      <button class="btn-cancel" bindtap="toggleSelectMode">取消选择</button>
+    </view>
+  </view>
 
-    <view class="admin-card" wx:for="{{orders}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
-      <view class="card-header">
-        <text class="order-id">单号：{{item.id}}</text>
-        <text class="order-status {{item.status === 'paid' ? 'urgent' : ''}}">{{item.statusDisplay || item.status}}</text>
+  <!-- 订单列表（普通 view，支持自然滚动） -->
+  <view class="order-scroll-area">
+    <view class="scroll-content">
+      <view class="empty-state" wx:if="{{orders.length === 0 && !isLoading}}">
+        <view class="empty-text">当前分类下没有订单</view>
       </view>
 
-      <view class="buyer-info" catchtap="copyAddress" data-order="{{item}}">
-        <view class="buyer-name">{{item.recipientName}} <text class="buyer-phone">{{item.recipientPhone}}</text></view>
-        <view class="buyer-addr">{{item.recipientAddress}}</view>
-        <view class="copy-tip">点击复制收件信息</view>
-      </view>
+      <!-- 订单卡片（聚合显示） -->
+      <view class="admin-card {{selectMode ? 'select-mode' : ''}}" wx:for="{{orders}}" wx:for-item="item" wx:for-index="idx" wx:key="shipmentId || item.orderIds[0]">
+        <!-- 选择框（选择模式下显示） -->
+        <view class="order-checkbox" wx:if="{{selectMode}}" catchtap="toggleOrderSelection" data-id="{{item.orderIds[0]}}" data-order="{{item}}">
+          <view class="checkbox {{item._selected ? 'checked' : ''}}">
+            <view class="check-icon" wx:if="{{item._selected}}">✓</view>
+          </view>
+        </view>
 
-      <view class="goods-preview">
-        <image class="goods-img" wx:for="{{item.items}}" wx:for-item="goods" wx:key="id" src="{{goods.productImage}}" mode="aspectFill"></image>
-        <view class="goods-count">共 {{item.items.length}} 件商品</view>
-      </view>
+        <!-- 卡片内容（选择模式下通过 CSS 禁用点击） -->
+        <view class="card-content" bindtap="goToDetail" data-id="{{item.orderIds[0]}}">
+          <view class="card-header">
+            <text class="order-id" wx:if="{{item.type === 'single'}}">单号：{{item.orderIds[0]}}</text>
+            <text class="order-id" wx:if="{{item.type === 'merged'}}">合并发货 ({{item.orderIds.length}} 个订单)</text>
+            <text class="order-status {{item.statuses.indexOf('paid') > -1 ? 'urgent' : ''}}">{{item.statuses.join(', ')}}</text>
+          </view>
 
-      <view class="card-footer">
-        <text class="money">收款：¥ {{item.totalPrice || item.payAmount}}</text>
-        <view class="action-btn" wx:if="{{item.status === 'paid'}}" catchtap="shipOrder" data-id="{{item.id}}" data-order="{{item}}">去发货</view>
-        <view class="shipped-info" wx:if="{{item.status === 'shipped' && item.trackingNumber}}">
-          单号：{{item.trackingNumber}}
+          <view class="buyer-info" catchtap="copyAddress" data-order="{{item}}">
+            <view class="buyer-name">{{item.recipientName}} <text class="buyer-phone">{{item.recipientPhone}}</text></view>
+            <view class="buyer-addr">{{item.recipientAddress}}</view>
+            <view class="copy-tip">点击复制收件信息</view>
+          </view>
+
+          <view class="goods-preview">
+            <!-- 显示所有商品，已发货的加灰色遮罩 -->
+            <view class="goods-img-wrapper" wx:for="{{item.items}}" wx:for-item="goods" wx:key="orderItemId">
+              <image class="goods-img" src="{{goods.productImage}}" mode="aspectFill"></image>
+              <!-- 已发货商品加灰色遮罩 -->
+              <view class="goods-shipped-mask" wx:if="{{!goods.canShip}}">
+                <text class="shipped-text">已发货</text>
+              </view>
+            </view>
+            <view class="goods-count">共 {{item.items.length}} 件商品</view>
+          </view>
+
+          <view class="card-footer">
+            <text class="money">收款：¥ {{item.totalPrice}}</text>
+            <text class="ship-info">已发 {{item.shippedQty}}/{{item.totalQty}} 件</text>
+          </view>
+        </view>
+
+        <!-- 操作按钮（选择模式下隐藏） -->
+        <view class="card-actions" wx:if="{{!selectMode}}">
+          <!-- 还有待发货商品：显示"去发货"或"继续发货" -->
+          <view wx:if="{{item.shippedQty < item.totalQty}}">
+            <view class="action-btn primary" catchtap="shipOrder" data-id="{{item.orderIds[0]}}" data-order="{{item}}">
+              {{item.shippedQty > 0 ? '继续发货' : '去发货'}}
+            </view>
+            <!-- 合并发货的订单，显示"解绑"入口 -->
+            <view wx:if="{{item.type === 'merged' && item.shipmentId}}"
+                  class="action-btn-unbind"
+                  catchtap="goToUnbind"
+                  data-shipment-id="{{item.shipmentId}}">
+              解绑订单
+            </view>
+          </view>
+          <!-- 已全部发完：显示"已发完" -->
+          <view wx:if="{{item.shippedQty >= item.totalQty}}"
+                class="action-btn disabled" style="background-color: #ccc; cursor: not-allowed;">
+            已发完
+          </view>
         </view>
       </view>
     </view>
-  </scroll-view>
+  </view>
+
+  <!-- 底部选择模式切换按钮 -->
+  <view class="bottom-toolbar" wx:if="{{currentTab === '待发货'}}">
+    <button class="btn-select-mode" bindtap="toggleSelectMode">
+      {{selectMode ? '完成选择' : '多选合并发货'}}
+    </button>
+  </view>
 </view>

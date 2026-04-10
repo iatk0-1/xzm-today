@@ -1,0 +1,301 @@
+/* miniprogram/pages/shipPartial/shipPartial.wxss */
+.container {
+  padding: 0;
+  padding-bottom: 150rpx;
+}
+
+/* 发货模式提示 */
+.mode-banner {
+  background-color: #e6f7ff;
+  color: #1890ff;
+  padding: 20rpx;
+  border-radius: 8rpx;
+  text-align: center;
+  font-size: 26rpx;
+  margin-bottom: 20rpx;
+  border: 1px solid #91d5ff;
+}
+.mode-banner.manual {
+  background-color: #f5f5f5;
+  color: #666;
+  border-color: #ddd;
+}
+
+/* 合并发货提示 */
+.merge-tip {
+  background-color: #f6ffed;
+  color: #52c41a;
+  padding: 20rpx;
+  border-radius: 8rpx;
+  text-align: center;
+  font-size: 26rpx;
+  margin-bottom: 20rpx;
+  border: 1px solid #b7eb8f;
+}
+
+/* 快递公司选择 */
+.express-select {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  padding: 20rpx 30rpx;
+  border-radius: 8rpx;
+  margin-bottom: 30rpx;
+}
+.express-select .label {
+  font-size: 28rpx;
+  color: #333;
+  margin-right: 20rpx;
+}
+.express-select .picker {
+  flex: 1;
+  font-size: 28rpx;
+  color: #1890ff;
+  padding: 10rpx 20rpx;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+}
+
+/* 商品标题 */
+.items-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+  margin: 20rpx 20rpx;
+}
+
+/* 商品列表 */
+.ship-list {
+  padding: 0;
+}
+
+.ship-item-container {
+  width: 100%;
+  height: 200rpx;
+  position: relative;
+  margin-bottom: 1rpx;
+  overflow: hidden;
+  background: #fff;
+}
+
+.ship-item {
+  display: flex;
+  align-items: center;
+  padding: 30rpx 20rpx;
+  height: 100%;
+  box-sizing: border-box;
+  border-bottom: 1rpx solid #f5f5f5;
+  width: 100%;
+  position: relative;
+}
+
+/* 已发货商品样式 */
+.ship-item.shipped {
+  opacity: 0.6;
+  background-color: #f9f9f9;
+}
+
+/* 商品图片包装器 */
+.item-image-wrapper {
+  position: relative;
+  width: 160rpx;
+  height: 186rpx;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+/* 商品图 */
+.item-img {
+  width: 100%;
+  height: 100%;
+  background-color: #f9f9f9;
+}
+
+/* 已发货灰色遮罩层 */
+.item-shipped-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(128, 128, 128, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+.shipped-text {
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: bold;
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 10rpx 20rpx;
+  border-radius: 8rpx;
+}
+
+/* 已发货商品信息 */
+.item-shipped-info {
+  font-size: 20rpx;
+  color: #999;
+}
+
+/* 商品图 */
+.item-img {
+  width: 160rpx;
+  height: 186rpx;
+  background-color: #f9f9f9;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+/* 商品信息 */
+.item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 140rpx;
+  padding: 10rpx 0;
+  min-width: 0;
+}
+
+.item-title {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.4;
+}
+
+.item-sku {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 22rpx;
+  color: #999;
+}
+
+.item-order-id {
+  font-size: 22rpx;
+  color: #1890ff;
+  font-family: -apple-system, sans-serif;
+}
+
+.item-max-qty {
+  font-family: -apple-system, sans-serif;
+  font-size: 20rpx;
+  color: #999;
+}
+
+/* 数量控制区域 */
+.item-control {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  flex-shrink: 0;
+  margin-left: 20rpx;
+}
+
+/* 已发货商品的控制区域禁用样式 */
+.item-control.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* 已发货数量显示 */
+.shipped-qty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100rpx;
+  height: 56rpx;
+  font-size: 26rpx;
+  color: #999;
+}
+
+/* 极简数量加减器 */
+.stepper {
+  display: flex;
+  align-items: center;
+  border: 1rpx solid #eeeeee;
+}
+
+.step-btn {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: -apple-system, sans-serif;
+  font-size: 28rpx;
+  color: #888;
+}
+
+.step-num {
+  width: 70rpx;
+  height: 56rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 26rpx;
+  color: #333;
+  border-left: 1rpx solid #eeeeee;
+  border-right: 1rpx solid #eeeeee;
+}
+
+/* 快捷操作 */
+.quick-actions {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 40rpx;
+  margin-bottom: 40rpx;
+}
+
+.btn-select-all, .btn-clear-all {
+  background-color: #fff;
+  color: #1890ff;
+  border: 1px solid #1890ff;
+  font-size: 26rpx;
+  padding: 15rpx 40rpx;
+  border-radius: 30rpx;
+  height: auto;
+  line-height: 1.5;
+}
+
+.btn-clear-all {
+  color: #999;
+  border-color: #ddd;
+}
+
+/* 发货统计 */
+.summary {
+  background-color: #f5f5f5;
+  padding: 30rpx;
+  border-radius: 8rpx;
+  text-align: center;
+  margin-bottom: 40rpx;
+}
+
+.summary text {
+  font-size: 30rpx;
+  color: #333;
+  font-weight: bold;
+}
+
+/* 提交按钮 */
+.btn-submit {
+  background-color: #111;
+  color: #fff;
+  font-size: 32rpx;
+  padding: 30rpx;
+  border-radius: 30rpx;
+  height: auto;
+  line-height: 1.5;
+  position: fixed;
+  bottom: 50rpx;
+  left: 30rpx;
+  right: 30rpx;
+}
+
+.btn-submit[disabled] {
+  background-color: #ccc;
+}
