@@ -317,6 +317,11 @@ Page({
 
       // 刷新订单列表
       this.loadOrders();
+
+      // 跳转到合并组发货页面
+      setTimeout(() => {
+        this.doMergeShip(mergeGroupId);
+      }, 500);
     } catch (err) {
       wx.showModal({
         title: '添加失败',
