@@ -37,6 +37,19 @@
         <view class="order-amount">
           <text>实付款：¥ {{item.payAmount}}</text>
         </view>
+
+        <!-- 商品列表 -->
+        <view class="goods-list">
+          <view class="goods-item" wx:for="{{item.items}}" wx:for-item="goods" wx:key="id">
+            <image class="goods-img" src="{{goods.productImage}}" mode="aspectFill"></image>
+            <view class="goods-info">
+              <view class="goods-name">{{goods.productName}}</view>
+              <view class="goods-spec">{{goods.productSpec}} {{goods.productSize}}</view>
+              <view class="goods-price">¥ {{goods.salePrice}} × {{goods.qty}}</view>
+            </view>
+          </view>
+        </view>
+
         <view class="order-actions" wx:if="{{mergeGroup.status === 'active'}}">
           <button class="btn-unbind" bindtap="unbindOrder" data-order-id="{{item.id}}">解绑</button>
         </view>
