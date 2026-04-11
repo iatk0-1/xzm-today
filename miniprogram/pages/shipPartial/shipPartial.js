@@ -190,11 +190,11 @@ Page({
     }
   },
 
-  // 全选
+  // 全选（只全选可发货的商品）
   selectAll: function() {
     const items = this.data.items.map(item => ({
       ...item,
-      shipQty: item.maxShipQty
+      shipQty: item.canShip ? item.maxShipQty : 0
     }));
     this.setData({ items }, () => {
       this.updateTotalShipQty();
@@ -231,7 +231,8 @@ Page({
   submitShipment: async function() {
     if (this.data.isSubmitting) return;
 
-    const shippingItems = this.data.items.filter(item => item.shipQty > 0);
+    // 只筛选可以发货且选择了数量的商品
+    const shippingItems = this.data.items.filter(item => item.canShip && item.shipQty > 0);
 
     if (shippingItems.length === 0) {
       wx.showToast({ title: '请选择至少一件商品', icon: 'none' });
@@ -299,7 +300,14 @@ Page({
 
   // 执行提交发货
   doSubmitShipment: async function() {
-    const shippingItems = this.data.items.filter(item => item.shipQty > 0);
+    // 只筛选可以发货且选择了数量的商品
+    const shippingItems = this.data.items.filter(item => item.canShip && item.shipQty > 0);
+
+    if (shippingItems.length === 0) {
+      wx.showToast({ title: '请选择至少一件商品', icon: 'none' });
+      this.setData({ isSubmitting: false });
+      return;
+    }
 
     this.setData({ isSubmitting: true });
     wx.showLoading({ title: '发货中...', mask: true });
