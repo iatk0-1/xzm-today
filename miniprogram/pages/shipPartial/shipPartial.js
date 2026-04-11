@@ -103,6 +103,7 @@ Page({
         const res = await api.get(`/shipments/${this.data.shipmentId}/items`);
         allItems = res.items.map(item => ({
           ...item,
+          id: item.orderItemId,  // 将 orderItemId 映射到 id，用于提交
           orderId: item.orderId,
           maxShipQty: item.canShipQty,  // 可发货数量
           shipQty: 0,  // 本次发货数量，默认 0
@@ -119,6 +120,7 @@ Page({
           const res = await api.get(`/shipments/${firstOrderDetail.shipmentId}/items`);
           allItems = res.items.map(item => ({
             ...item,
+            id: item.orderItemId,  // 将 orderItemId 映射到 id，用于提交
             orderId: item.orderId,
             maxShipQty: item.canShipQty,  // 可发货数量
             shipQty: 0,  // 本次发货数量，默认 0
