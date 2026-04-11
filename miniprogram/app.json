@@ -18,7 +18,8 @@
     "pages/publishWish/publishWish",
     "pages/bindPhone/bindPhone",
     "pages/shipPartial/shipPartial",
-    "pages/unbindOrder/unbindOrder"
+    "pages/unbindOrder/unbindOrder",
+    "pages/mergeGroupDetail/mergeGroupDetail"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",

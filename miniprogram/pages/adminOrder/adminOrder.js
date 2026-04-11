@@ -388,7 +388,9 @@ Page({
 
   // 进入合并组详情页
   goToMergeGroupDetail: function(e) {
+    console.log('goToMergeGroupDetail called, e=', e);
     const mergeGroupId = e.currentTarget.dataset.mergeGroupId;
+    console.log('mergeGroupId=', mergeGroupId);
     wx.navigateTo({
       url: `/pages/mergeGroupDetail/mergeGroupDetail?mergeGroupId=${mergeGroupId}`
     });
@@ -396,7 +398,9 @@ Page({
 
   // 进入解绑页面（从合并组解绑）
   goToUnbindFromMerge: function(e) {
+    console.log('goToUnbindFromMerge called, e=', e);
     const mergeGroupId = e.currentTarget.dataset.mergeGroupId;
+    console.log('mergeGroupId=', mergeGroupId);
     wx.navigateTo({
       url: `/pages/mergeGroupDetail/mergeGroupDetail?mergeGroupId=${mergeGroupId}`
     });
