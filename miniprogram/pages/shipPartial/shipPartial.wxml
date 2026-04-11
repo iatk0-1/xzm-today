@@ -29,7 +29,7 @@
       <view class="ship-item {{item.canShip ? '' : 'shipped'}}">
         <!-- 商品图片 -->
         <view class="item-image-wrapper">
-          <image class="item-img" src="{{item.productImage}}" mode="aspectFill"></image>
+          <image class="item-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
           <!-- 已发货商品加灰色遮罩 -->
           <view class="item-shipped-mask" wx:if="{{!item.canShip}}">
             <text class="shipped-text">已发货</text>

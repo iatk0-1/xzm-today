@@ -20,6 +20,7 @@ Page({
     selectedSize: '',
     currentSkuPrice: null,
     currentSkuStock: null,
+    currentSkuImage: null,
     showVideo: false
   },
 
@@ -174,7 +175,8 @@ Page({
       showSku: true,
       skuAction: action,
       selectedColor: initialColor,
-      selectedSize: initialSize
+      selectedSize: initialSize,
+      currentSkuImage: product.coverUrl
     });
 
     // 如果已自动选中（单颜色 + 单尺码），检查 SKU 匹配
@@ -210,18 +212,20 @@ Page({
         s.color === selectedColor && s.size === selectedSize
       );
       if (match) {
-        // 有 SKU 信息，使用 SKU 的价格和库存
+        // 有 SKU 信息，使用 SKU 的价格、库存和图片
         this.setData({
           currentSkuPrice: match.price,
           currentSkuStock: match.stock,
-          currentSkuId: match.skuId
+          currentSkuId: match.skuId,
+          currentSkuImage: match.imageUrl || product.coverUrl
         });
       } else {
         // 没有匹配的 SKU 信息，库存为 0，价格使用商品展示价格
         this.setData({
           currentSkuPrice: product.retailPrice || product.displayPrice,
           currentSkuStock: 0,
-          currentSkuId: null
+          currentSkuId: null,
+          currentSkuImage: product.coverUrl
         });
       }
     }
@@ -252,12 +256,13 @@ Page({
 
     if (action === 'buy') {
       this.setData({ showSku: false });
-      // 立即购买模式，仍然使用本地存储传递数据
+      // 立即购买模式，使用本地存储传递数据
       const finalItem = {
         productId: productId,
         skuId: currentSkuId,
         name: product.name,
-        coverUrl: product.coverUrl,
+        image: product.coverUrl,
+        coverUrl: currentSkuImage || product.coverUrl,  // 优先使用 SKU 图片
         selectedColor: finalColor,
         selectedSize: finalSize,
         finalPrice: currentSkuPrice || product.retailPrice || product.displayPrice,

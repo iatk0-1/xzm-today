@@ -42,18 +42,18 @@ Page({
           skuId: item.skuId,
           name: item.productName,
           image: item.productImage,
-          coverUrl: item.productImage,
+          coverUrl: item.skuImageUrl || item.productImage,  // 优先使用 SKU 图片
           selectedColor: item.color || '默认',
           selectedSize: item.size || '均码',
           price: Number(item.price),
           finalPrice: Number(item.price),
-          count: isDisabled ? 0 : item.count,  // 售罄/无效/下架商品数量重置为 0
-          selected: isDisabled ? false : item.selected,  // 售罄/无效/下架商品不能选中
-          disabled: isDisabled,  // 禁用标志
-          stockStatus: item.stockStatus,  // 库存状态
-          validityStatus: item.validityStatus,  // 有效性状态
-          stockMain: item.stockMain,  // 主库存数量
-          productStatus: item.productStatus  // 商品状态：on/off
+          count: isDisabled ? 0 : item.count,
+          selected: isDisabled ? false : item.selected,
+          disabled: isDisabled,
+          stockStatus: item.stockStatus,
+          validityStatus: item.validityStatus,
+          stockMain: item.stockMain,
+          productStatus: item.productStatus
         };
       });
 

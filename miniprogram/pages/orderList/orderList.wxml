@@ -41,7 +41,7 @@
 
       <view class="goods-list">
         <view class="goods-item" wx:for="{{item.items}}" wx:for-item="goods" wx:key="id">
-          <image class="goods-img" src="{{goods.productImage}}" mode="aspectFill"></image>
+          <image class="goods-img" src="{{goods.skuImageUrl || goods.productImage}}" mode="aspectFill"></image>
           <view class="goods-info">
             <view class="goods-title">{{goods.productName}}</view>
             <view class="goods-sku">

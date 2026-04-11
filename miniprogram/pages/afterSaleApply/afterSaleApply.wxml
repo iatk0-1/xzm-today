@@ -19,7 +19,7 @@
         wx:key="id"
         bindtap="selectItem"
         data-item="{{item}}">
-        <image class="goods-img" src="{{item.productImage}}" mode="aspectFill"></image>
+        <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
         <view class="goods-info">
           <view class="goods-title">{{item.productName}}</view>
           <view class="goods-sku">{{item.productSpec || '默认颜色'}} / {{item.productSize || '均码'}}</view>

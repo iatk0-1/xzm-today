@@ -51,7 +51,7 @@ Page({
         skuId: item.skuId,
         name: item.productName,
         image: item.productImage,
-        coverUrl: item.productImage,
+        coverUrl: item.skuImageUrl || item.productImage,  // 优先使用 SKU 图片
         selectedColor: item.color || '默认',
         selectedSize: item.size || '均码',
         price: Number(item.price),

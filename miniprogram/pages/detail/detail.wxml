@@ -81,7 +81,7 @@
 <view class="sku-panel {{showSku ? 'show' : ''}}">
   <view class="sku-close" catchtap="closeSkuPanel">×</view>
   <view class="sku-header">
-    <image class="sku-img" src="{{product.image}}" mode="aspectFill"></image>
+    <image class="sku-img" src="{{currentSkuImage || product.image}}" mode="aspectFill"></image>
     <view class="sku-main">
       <view class="sku-price" style="color: #d32f2f;">¥ {{currentSkuPrice || product.displayPrice || product.price}}</view>
       <view class="sku-stock" style="color: {{currentSkuStock === 0 ? 'red' : '#999'}};">库存: {{currentSkuStock !== null ? currentSkuStock : '请选择规格'}}</view>

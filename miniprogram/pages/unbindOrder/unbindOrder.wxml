@@ -23,7 +23,7 @@
       <!-- 商品信息 -->
       <view class="goods-list">
         <view class="goods-item" wx:for="{{order.items}}" wx:key="orderItemId" wx:for-item="item" wx:for-index="itemIndex">
-          <image class="goods-img" src="{{item.productImage}}" mode="aspectFill"></image>
+          <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
           <view class="goods-info">
             <view class="goods-name">{{item.productName}}</view>
             <view class="goods-spec">{{item.productSpec}} / {{item.productSize}}</view>

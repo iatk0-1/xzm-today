@@ -24,7 +24,7 @@
   <view class="info-card goods-card">
     <view class="shop-title">Curation Market</view>
     <view class="goods-item" wx:for="{{order.items}}" wx:key="id">
-      <image class="goods-img" src="{{item.productImage}}" mode="aspectFill"></image>
+      <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
       <view class="goods-info">
         <view class="goods-title">{{item.productName}}</view>
         <view class="goods-sku">{{item.productSpec || '默认颜色'}} / {{item.productSize || '均码'}}</view>
@@ -91,7 +91,7 @@
         <!-- 发货单商品列表 -->
         <view class="shipment-items">
           <view class="shipment-goods" wx:for="{{item.items}}" wx:for-item="goodsItem" wx:key="id">
-            <image class="goods-img" src="{{goodsItem.productImage}}" mode="aspectFill"></image>
+            <image class="goods-img" src="{{goodsItem.skuImageUrl || goodsItem.productImage}}" mode="aspectFill"></image>
             <view class="goods-info">
               <view class="goods-title">{{goodsItem.productName || '商品'}}</view>
               <view class="goods-sku">

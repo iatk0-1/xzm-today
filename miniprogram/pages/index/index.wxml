@@ -97,7 +97,7 @@
   <view class="sku-close" catchtap="closeSkuPanel">×</view>
 
   <view class="sku-header" wx:if="{{currentProduct}}">
-    <image class="sku-img" src="{{currentProduct.coverUrl || currentProduct.image}}" mode="aspectFill"></image>
+    <image class="sku-img" src="{{currentSkuImage || currentProduct.coverUrl || currentProduct.image}}" mode="aspectFill"></image>
     <view class="sku-main">
       <view class="sku-price">
         ¥{{currentSkuPrice || currentProduct.retailPrice || currentProduct.displayPrice || '0.00'}}

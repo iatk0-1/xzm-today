@@ -54,7 +54,7 @@
           <view class="goods-preview">
             <!-- 显示所有商品，已发货的加灰色遮罩 -->
             <view class="goods-img-wrapper" wx:for="{{item.items}}" wx:for-item="goods" wx:key="orderItemId">
-              <image class="goods-img" src="{{goods.productImage}}" mode="aspectFill"></image>
+              <image class="goods-img" src="{{goods.skuImageUrl || goods.productImage}}" mode="aspectFill"></image>
               <!-- 已发货商品加灰色遮罩 -->
               <view class="goods-shipped-mask" wx:if="{{!goods.canShip}}">
                 <text class="shipped-text">已发货</text>

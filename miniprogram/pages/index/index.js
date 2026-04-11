@@ -31,7 +31,8 @@ Page({
     selectedColor: '',
     selectedSize: '',
     currentSkuPrice: null,
-    currentSkuStock: null
+    currentSkuStock: null,
+    currentSkuImage: null
   },
 
   onLoad: function() {
@@ -321,6 +322,7 @@ Page({
       selectedSize: sizes.length === 1 ? sizes[0] : '',
       currentSkuPrice: null,
       currentSkuStock: null,
+      currentSkuImage: product.coverUrl || product.image,
       showSku: true
     });
     this.checkSkuMatch();
@@ -347,13 +349,21 @@ Page({
         s.color === selectedColor && s.size === selectedSize
       );
       if (match) {
+        // 有 SKU 信息，使用 SKU 的价格、库存和图片
         this.setData({
           currentSkuPrice: match.price,
           currentSkuStock: match.stock,
-          currentSkuId: match.skuId
+          currentSkuId: match.skuId,
+          currentSkuImage: match.imageUrl || (currentProduct.coverUrl || currentProduct.image)
         });
       } else {
-        this.setData({ currentSkuPrice: null, currentSkuStock: 0, currentSkuId: null });
+        // 没有匹配的 SKU 信息，库存为 0，使用商品封面图
+        this.setData({
+          currentSkuPrice: null,
+          currentSkuStock: 0,
+          currentSkuId: null,
+          currentSkuImage: currentProduct.coverUrl || currentProduct.image
+        });
       }
     }
   },
@@ -384,7 +394,8 @@ Page({
         productId: productId,
         skuId: currentSkuId,
         name: currentProduct.name,
-        coverUrl: currentProduct.coverUrl,
+        image: currentProduct.coverUrl,
+        coverUrl: currentSkuImage || currentProduct.coverUrl,  // 优先使用 SKU 图片
         selectedColor: selectedColor,
         selectedSize: selectedSize,
         finalPrice: currentSkuPrice,
