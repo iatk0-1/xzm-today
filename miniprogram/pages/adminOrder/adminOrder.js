@@ -215,10 +215,10 @@ Page({
     const order = e.currentTarget.dataset.order;
     const orderId = order.orderIds ? order.orderIds[0] : order.id;
 
-    // 如果是合并发货且有 shipmentId，跳转到合并发货页面
-    if (order.type === 'merged' && order.shipmentId && order.shippedQty < order.totalQty) {
+    // 如果是合并发货且有 mergeGroupId，跳转到合并发货页面
+    if (order.type === 'merged' && order.mergeGroupId && order.shippedQty < order.totalQty) {
       wx.navigateTo({
-        url: `/pages/shipPartial/shipPartial?shipmentId=${order.shipmentId}&orderIds=${order.orderIds.join(',')}&isMerge=true`
+        url: `/pages/shipPartial/shipPartial?mergeGroupId=${order.mergeGroupId}&orderIds=${order.orderIds.join(',')}&isMerge=true`
       });
     } else {
       // 单订单发货
@@ -235,69 +235,102 @@ Page({
       return;
     }
 
-    // 检查选中的订单是否有共同的发货单
-    const shipmentIds = new Set();
+    // 检查选中的订单是否已有合并组
+    const mergeGroupIds = new Set();
     for (const orderId of this.data.selectedOrders) {
       const order = this.data.orders.find(o => {
         const oid = o.orderIds ? o.orderIds[0] : o.id;
         return String(oid) === String(orderId);
       });
-      if (order && order.shipmentId) {
-        shipmentIds.add(order.shipmentId);
+      if (order && order.mergeGroupId) {
+        mergeGroupIds.add(order.mergeGroupId);
       }
     }
 
-    // 如果有多个不同的发货单，不允许合并
-    if (shipmentIds.size > 1) {
+    // 如果有多个不同的合并组，不允许合并
+    if (mergeGroupIds.size > 1) {
       wx.showModal({
         title: '无法合并',
-        content: '选中的订单属于多个不同的发货单，不支持合并多个发货单',
+        content: '选中的订单已属于不同的合并组，不支持跨合并组操作',
         showCancel: false
       });
       return;
     }
 
-    // 如果有共同的发货单，提示用户将新订单关联到已有发货单
-    if (shipmentIds.size === 1) {
-      const shipmentId = Array.from(shipmentIds)[0];
+    // 如果已有合并组，直接跳转
+    if (mergeGroupIds.size === 1) {
+      const mergeGroupId = Array.from(mergeGroupIds)[0];
       wx.showModal({
         title: '确认合并发货',
-        content: `选中的订单已关联到发货单 #${shipmentId}，将把未关联的订单添加到此发货单`,
-        confirmText: '确认',
+        content: `选中的订单已属于合并组 #${mergeGroupId}，是否继续发货？`,
+        confirmText: '去发货',
         success: (res) => {
           if (res.confirm) {
-            this.doMergeShip(shipmentId);
+            this.doMergeShip(mergeGroupId);
           }
         }
       });
     } else {
-      // 没有发货单，正常合并
+      // 没有合并组，创建新的
       wx.showModal({
         title: '确认合并发货',
-        content: `将合并 ${this.data.selectedOrders.length} 个订单，请选择要发货的商品`,
-        confirmText: '确认',
+        content: `将创建合并组合并 ${this.data.selectedOrders.length} 个订单`,
+        confirmText: '确认创建',
         success: (res) => {
           if (res.confirm) {
-            this.doMergeShip(null);
+            this.createAndMerge();
           }
         }
       });
     }
   },
 
+  // 创建合并组并合并
+  createAndMerge: async function() {
+    wx.showLoading({ title: '创建中...' });
+
+    try {
+      // 获取第一个订单的收货信息用于创建合并组
+      const firstOrderId = parseInt(this.data.selectedOrders[0]);
+      const firstOrder = await api.get(`/orders/${firstOrderId}`);
+
+      // 创建合并组
+      const mergeGroup = await api.post('/merge-groups', {
+        userId: firstOrder.userId,
+        recipientName: firstOrder.recipientName,
+        recipientPhone: firstOrder.recipientPhone,
+        recipientAddress: firstOrder.recipientAddress ||
+          (firstOrder.recipientProvince || '') +
+          (firstOrder.recipientCity || '') +
+          (firstOrder.recipientDistrict || '') +
+          (firstOrder.recipientDetail || '')
+      });
+
+      // 将选中的订单添加到合并组
+      await api.post(`/merge-groups/${mergeGroup.id}/orders`, this.data.selectedOrders.map(id => parseInt(id)));
+
+      wx.hideLoading();
+      this.doMergeShip(mergeGroup.id);
+    } catch (err) {
+      wx.hideLoading();
+      wx.showModal({
+        title: '创建失败',
+        content: err.message || '未知错误',
+        showCancel: false
+      });
+    }
+  },
+
   // 执行合并发货（跳转到分批发货页面，让用户选择每次发哪些商品）
-  doMergeShip: function(shipmentId) {
+  doMergeShip: function(mergeGroupId) {
     if (this.data.selectedOrders.length === 0) {
       wx.showToast({ title: '请选择订单', icon: 'none' });
       return;
     }
 
-    // 直接跳转到 shipPartial 页面，不预先选择发货方式
+    // 跳转到 shipPartial 页面，传递 mergeGroupId
     const orderIds = this.data.selectedOrders.join(',');
-    let url = `/pages/shipPartial/shipPartial?orderIds=${orderIds}&isMerge=true`;
-    if (shipmentId) {
-      url += `&shipmentId=${shipmentId}`;
-    }
+    const url = `/pages/shipPartial/shipPartial?mergeGroupId=${mergeGroupId}&orderIds=${orderIds}&isMerge=true`;
     wx.navigateTo({
       url: url,
       fail: (err) => {
@@ -350,6 +383,14 @@ Page({
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
       url: `/pages/orderDetail/orderDetail?id=${id}`
+    });
+  },
+
+  // 进入合并组详情页
+  goToMergeGroupDetail: function(e) {
+    const mergeGroupId = e.currentTarget.dataset.mergeGroupId;
+    wx.navigateTo({
+      url: `/pages/mergeGroupDetail/mergeGroupDetail?mergeGroupId=${mergeGroupId}`
     });
   },
 

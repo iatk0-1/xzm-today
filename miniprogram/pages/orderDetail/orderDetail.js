@@ -87,8 +87,8 @@ Page({
   // 加载物流信息（支持分批发货）
   loadShipmentInfo: async function(orderId) {
     try {
-      // 获取发货单列表
-      const shipments = await api.get(`/orders/${orderId}/shipments`);
+      // 获取订单维度的发货单列表（只包含当前订单的商品）
+      const shipments = await api.get(`/orders/${orderId}/shipments/detail`);
       if (shipments && shipments.length > 0) {
         this.setData({ shipments });
 
@@ -105,7 +105,12 @@ Page({
     try {
       const traceList = await api.get(`/orders/${orderId}/shipments/trace`);
       if (traceList && traceList.length > 0) {
-        this.setData({ logisticsTraceList: traceList });
+        // 将物流轨迹按 shipmentId 映射，方便查找
+        const traceMap = {};
+        traceList.forEach(trace => {
+          traceMap[trace.shipmentId] = trace;
+        });
+        this.setData({ logisticsTraceMap: traceMap });
       }
     } catch (err) {
       console.error('加载物流轨迹失败:', err);

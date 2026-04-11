@@ -1,5 +1,5 @@
-page { background-color: #f7f8fa; height: 100vh; display: flex; flex-direction: column; }
-.page-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+page { background-color: #f7f8fa; }
+.page-wrapper { display: flex; flex-direction: column; min-height: 100vh; }
 
 /* 顶部 Tab 栏 */
 /* ================= 顶部滑动 Tab 栏 ================= */
@@ -71,7 +71,7 @@ page { background-color: #f7f8fa; height: 100vh; display: flex; flex-direction: 
 }
 
 /* 滚动区域 */
-.order-scroll-area { flex: 1; padding: 20rpx; box-sizing: border-box; }
+.order-scroll-area { flex: 1; padding: 20rpx; box-sizing: border-box; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
 /* 空状态 */
 .empty-state { padding: 150rpx 0; text-align: center; }

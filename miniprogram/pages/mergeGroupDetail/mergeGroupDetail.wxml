@@ -1,0 +1,82 @@
+<view class="container">
+
+  <!-- 合并组信息 -->
+  <view class="info-card">
+    <view class="card-title">合并组 #{{mergeGroup.id}}</view>
+    <view class="info-row">
+      <text class="label">收货人</text>
+      <text class="value">{{mergeGroup.recipientName}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">联系电话</text>
+      <text class="value">{{mergeGroup.recipientPhone}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">收货地址</text>
+      <text class="value">{{mergeGroup.recipientAddress}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">状态</text>
+      <text class="value status-{{mergeGroup.status}}">{{mergeGroup.status === 'active' ? '进行中' : '已完成'}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">创建时间</text>
+      <text class="value">{{mergeGroup.createdAt}}</text>
+    </view>
+  </view>
+
+  <!-- 订单列表 -->
+  <view class="section">
+    <view class="section-title">订单列表（{{orders.length}}个）</view>
+    <view class="order-list">
+      <view class="order-item" wx:for="{{orders}}" wx:key="id">
+        <view class="order-header">
+          <text class="order-id">订单 #{{item.id}}</text>
+          <text class="order-status status-{{item.status}}">{{item.status === 'paid' ? '待发货' : (item.status === 'shipped' ? '已发货' : item.status)}}</text>
+        </view>
+        <view class="order-amount">
+          <text>实付款：¥ {{item.payAmount}}</text>
+        </view>
+        <view class="order-actions" wx:if="{{mergeGroup.status === 'active'}}">
+          <button class="btn-unbind" bindtap="unbindOrder" data-order-id="{{item.id}}">解绑</button>
+        </view>
+      </view>
+    </view>
+    <view class="add-order-btn" wx:if="{{mergeGroup.status === 'active'}}">
+      <button class="btn-primary" bindtap="addOrder">添加订单</button>
+    </view>
+  </view>
+
+  <!-- 发货记录 -->
+  <view class="section">
+    <view class="section-title">发货记录（{{shipments.length}}次）</view>
+    <view class="shipment-list" wx:if="{{shipments.length > 0}}">
+      <view class="shipment-item" wx:for="{{shipments}}" wx:key="id">
+        <view class="shipment-header">
+          <text class="shipment-index">发货单 #{{index + 1}}</text>
+          <text class="shipment-time">{{item.shippedAt}}</text>
+        </view>
+        <view class="shipment-info">
+          <view class="info-row">
+            <text class="label">快递公司</text>
+            <text class="value">{{item.expressCode === 'ZTO' ? '中通快递' : item.expressCode}}</text>
+          </view>
+          <view class="info-row">
+            <text class="label">快递单号</text>
+            <text class="value">{{item.expressNo}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="empty-state" wx:else>
+      <text>暂无发货记录</text>
+    </view>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar" wx:if="{{mergeGroup.status === 'active'}}">
+    <button class="btn-complete" bindtap="completeMergeGroup" wx:if="{{canComplete}}">完成合并组</button>
+    <button class="btn-ship" bindtap="shipNow">去发货</button>
+  </view>
+
+</view>

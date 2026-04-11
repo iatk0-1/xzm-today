@@ -364,6 +364,19 @@ page {
   white-space: nowrap;
   margin-top: 15rpx;
 }
+.action-btn-outline {
+  background: transparent;
+  color: #1890ff;
+  border: 1rpx solid #1890ff;
+  padding: 0 40rpx;
+  height: 58rpx;
+  line-height: 58rpx;
+  border-radius: 30rpx;
+  font-size: 26rpx;
+  font-weight: bold;
+  white-space: nowrap;
+  margin-top: 15rpx;
+}
 .shipped-info {
   font-size: 24rpx;
   color: #52c41a;

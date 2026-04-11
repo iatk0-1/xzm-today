@@ -76,7 +76,13 @@
             <view class="action-btn primary" catchtap="shipOrder" data-id="{{item.orderIds[0]}}" data-order="{{item}}">
               {{item.shippedQty > 0 ? '继续发货' : '去发货'}}
             </view>
-            <!-- 合并发货的订单，显示"解绑"入口 -->
+            <!-- 合并发货的订单，显示"查看合并组"和"解绑订单"入口 -->
+            <view wx:if="{{item.type === 'merged' && item.mergeGroupId}}"
+                  class="action-btn-outline"
+                  catchtap="goToMergeGroupDetail"
+                  data-merge-group-id="{{item.mergeGroupId}}">
+              查看合并组
+            </view>
             <view wx:if="{{item.type === 'merged' && item.shipmentId}}"
                   class="action-btn-unbind"
                   catchtap="goToUnbind"

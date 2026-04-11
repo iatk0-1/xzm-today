@@ -17,6 +17,7 @@ Page({
     orderId: null,
     orderIds: [],      // 支持多个订单（合并发货）
     shipmentId: null,  // 发货单 ID（如果是合并发货）
+    mergeGroupId: null, // 合并组 ID（新合并组逻辑）
     isMerge: false,    // 是否为合并发货模式
     mode: null,        // 'electronic' 或 'manual'，用户选择商品后才设置
     expressNo: '',
@@ -34,11 +35,13 @@ Page({
     const isMerge = options.isMerge === 'true';
     const orderIds = isMerge ? options.orderIds.split(',') : [options.orderId];
     const shipmentId = options.shipmentId ? parseInt(options.shipmentId) : null;
+    const mergeGroupId = options.mergeGroupId ? parseInt(options.mergeGroupId) : null;
 
     this.setData({
       orderId: options.orderId,
       orderIds: orderIds,
       shipmentId: shipmentId,
+      mergeGroupId: mergeGroupId,
       isMerge: isMerge
     });
 
@@ -49,46 +52,8 @@ Page({
       wx.setNavigationBarTitle({ title: '分批发货' });
     }
 
-    // 如果有 shipmentId 和 orderIds，先预关联订单，再加载商品
-    if (this.data.shipmentId && this.data.orderIds && this.data.orderIds.length > 0) {
-      this.linkOrdersAndLoadItems();
-    } else {
-      this.loadOrderItems();
-    }
-  },
-
-  // 预关联订单并加载商品
-  linkOrdersAndLoadItems: async function() {
-    wx.showLoading({ title: '加载中...' });
-
-    try {
-      // 筛选出需要关联的订单（不在发货单中的订单）
-      // 先获取发货单当前关联的订单
-      const shipment = await api.get(`/shipments/${this.data.shipmentId}`);
-      const existingOrderIds = shipment.orderIds || [];
-
-      // 找出需要关联的订单
-      const ordersToLink = this.data.orderIds
-        .map(id => parseInt(id))
-        .filter(id => !existingOrderIds.includes(id));
-
-      // 如果有需要关联的订单，调用接口预关联
-      if (ordersToLink.length > 0) {
-        console.log('linkOrdersToShipment:', ordersToLink);
-        await api.post(`/shipments/${this.data.shipmentId}/orders/link`, ordersToLink);
-      }
-
-      // 加载商品
-      await this.loadOrderItems();
-    } catch (err) {
-      wx.showModal({
-        title: '加载失败',
-        content: err.message || '未知错误',
-        showCancel: false
-      });
-    } finally {
-      wx.hideLoading();
-    }
+    // 加载商品
+    this.loadOrderItems();
   },
 
   // 加载订单商品（支持多订单）
@@ -98,80 +63,84 @@ Page({
     try {
       let allItems = [];
 
-      // 如果有 shipmentId，从发货单加载所有商品（包括已发货的）
-      if (this.data.shipmentId) {
-        const res = await api.get(`/shipments/${this.data.shipmentId}/items`);
-        allItems = res.items.map(item => ({
-          ...item,
-          id: item.orderItemId,  // 将 orderItemId 映射到 id，用于提交
-          orderId: item.orderId,
-          maxShipQty: item.canShipQty,  // 可发货数量
-          shipQty: 0,  // 本次发货数量，默认 0
-          canShip: item.canShip  // 是否可发货
-        }));
-      } else if (this.data.isMerge && this.data.orderIds.length > 0) {
-        // 合并模式：先检查是否有现有的发货单
-        // 取第一个订单 ID 查询是否有发货单
-        const firstOrderId = parseInt(this.data.orderIds[0]);
-        const firstOrderDetail = await api.get(`/orders/${firstOrderId}`);
+      // 如果有 mergeGroupId，从合并组加载所有订单的商品
+      if (this.data.mergeGroupId) {
+        // 获取合并组详情
+        const mergeGroup = await api.get(`/merge-groups/${this.data.mergeGroupId}`);
+        const orderIds = mergeGroup.orders.map(o => o.id);
 
-        if (firstOrderDetail.shipmentId) {
-          // 有发货单，从发货单加载所有商品
-          const res = await api.get(`/shipments/${firstOrderDetail.shipmentId}/items`);
-          allItems = res.items.map(item => ({
-            ...item,
-            id: item.orderItemId,  // 将 orderItemId 映射到 id，用于提交
-            orderId: item.orderId,
-            maxShipQty: item.canShipQty,  // 可发货数量
-            shipQty: 0,  // 本次发货数量，默认 0
-            canShip: item.canShip  // 是否可发货
-          }));
-        } else {
-          // 没有发货单，获取所有订单的商品（都是可发货的）
-          for (const orderId of this.data.orderIds) {
-            const detail = await api.get(`/orders/${orderId}`);
+        // 获取所有订单的商品
+        for (const orderId of orderIds) {
+          const detail = await api.get(`/orders/${orderId}`);
 
-            const orderItems = detail.items.map(item => ({
-              ...item,
-              orderId: orderId,  // 保留订单 ID 用于提交
-              maxShipQty: item.qty,  // 可发货数量
-              shipQty: 0,  // 本次发货数量，默认 0
-              shippedQty: 0,  // 已发货数量
-              canShip: true  // 可发货
-            }));
-            allItems.push(...orderItems);
-          }
-        }
-      } else {
-        // 单订单模式：获取订单的商品
-        const detail = await api.get(`/orders/${this.data.orderId}`);
-
-        // 检查订单是否已关联发货单
-        if (detail.shipmentId) {
-          // 有发货单，从发货单加载所有商品（包括已发货的）
-          const res = await api.get(`/shipments/${detail.shipmentId}/items`);
-          allItems = res.items.map(item => ({
-            ...item,
-            orderId: item.orderId,
-            maxShipQty: item.canShipQty,  // 可发货数量
-            shipQty: 0,  // 本次发货数量，默认 0
-            canShip: item.canShip  // 是否可发货
-          }));
-        } else {
-          // 没有发货单，所有商品都可发货
           const orderItems = detail.items.map(item => ({
             ...item,
-            orderId: this.data.orderId,
+            id: item.id,  // 订单项 ID
+            orderId: orderId,
             maxShipQty: item.qty,  // 可发货数量
             shipQty: 0,  // 本次发货数量，默认 0
             shippedQty: 0,  // 已发货数量
             canShip: true  // 可发货
           }));
+          allItems.push(...orderItems);
+        }
+
+        this.setData({ items: allItems, orderIds: orderIds });
+      } else if (this.data.shipmentId) {
+        // 合并发货且有发货单 ID，从发货单加载
+        const shipment = await api.get(`/shipments/${this.data.shipmentId}`);
+        const orderIds = this.data.orderIds || [this.data.orderId];
+
+        // 获取所有订单的商品
+        for (const orderId of orderIds) {
+          const detail = await api.get(`/orders/${orderId}`);
+
+          // 筛选出该订单已关联到发货单的商品
+          const shipmentItems = shipment.items.filter(item => item.orderId === orderId);
+          const orderItems = shipmentItems.map(item => ({
+            ...item,
+            id: item.orderItemId,
+            orderId: orderId,
+            maxShipQty: item.canShipQty,
+            shipQty: 0,
+            shippedQty: item.shipQty,
+            canShip: item.canShip
+          }));
+          allItems.push(...orderItems);
+        }
+
+        this.setData({ items: allItems });
+      } else {
+        // 单订单发货
+        const detail = await api.get(`/orders/${this.data.orderId}`);
+
+        if (detail.shipmentId) {
+          // 已有关联的发货单，从发货单加载可发货商品
+          const shipment = await api.get(`/shipments/${detail.shipmentId}`);
+          const orderItems = shipment.items.map(item => ({
+            ...item,
+            id: item.orderItemId,
+            orderId: this.data.orderId,
+            maxShipQty: item.canShipQty,
+            shipQty: 0,
+            canShip: item.canShip
+          }));
+          allItems = orderItems;
+        } else {
+          // 没有发货单，所有商品都可发货
+          const orderItems = detail.items.map(item => ({
+            ...item,
+            orderId: this.data.orderId,
+            maxShipQty: item.qty,
+            shipQty: 0,
+            shippedQty: 0,
+            canShip: true
+          }));
           allItems = orderItems;
         }
-      }
 
-      this.setData({ items: allItems });
+        this.setData({ items: allItems });
+      }
     } catch (err) {
       wx.showToast({ title: '加载失败', icon: 'none' });
       console.error('loadOrderItems error:', err);
@@ -346,8 +315,8 @@ Page({
 
       if (this.data.mode === 'electronic') {
         // 电子面单模式 - 自动生成运单号
-        // 合并发货时，调用统一的 /shipments 接口
-        const apiPath = this.data.isMerge ? '/shipments' : `/orders/${this.data.orderId}/shipments`;
+        // 统一使用 /shipments 接口
+        const apiPath = '/shipments';
 
         // 准备请求数据
         const requestData = {
@@ -357,10 +326,16 @@ Page({
           useElectronicWaybill: true
         };
 
-        // 合并发货时，传递所有订单 ID（包括没有选中商品的订单）
-        if (this.data.isMerge && this.data.orderIds && this.data.orderIds.length > 0) {
-          // 转换为数字数组
+        // 传递订单 ID（单订单或多订单）
+        if (this.data.orderId) {
+          requestData.orderIds = [parseInt(this.data.orderId)];
+        } else if (this.data.orderIds && this.data.orderIds.length > 0) {
           requestData.orderIds = this.data.orderIds.map(id => parseInt(id));
+        }
+
+        // 传递合并组 ID（如果有）
+        if (this.data.mergeGroupId) {
+          requestData.mergeGroupId = parseInt(this.data.mergeGroupId);
         }
 
         shipmentRes = await api.post(apiPath, requestData);
@@ -378,7 +353,8 @@ Page({
         }
       } else {
         // 手动填单模式
-        const apiPath = this.data.isMerge ? '/shipments' : `/orders/${this.data.orderId}/shipments`;
+        // 统一使用 /shipments 接口
+        const apiPath = '/shipments';
 
         // 准备请求数据
         const requestData = {
@@ -387,10 +363,16 @@ Page({
           items: submitItems
         };
 
-        // 合并发货时，传递所有订单 ID（包括没有选中商品的订单）
-        if (this.data.isMerge && this.data.orderIds && this.data.orderIds.length > 0) {
-          // 转换为数字数组
+        // 传递订单 ID（单订单或多订单）
+        if (this.data.orderId) {
+          requestData.orderIds = [parseInt(this.data.orderId)];
+        } else if (this.data.orderIds && this.data.orderIds.length > 0) {
           requestData.orderIds = this.data.orderIds.map(id => parseInt(id));
+        }
+
+        // 传递合并组 ID（如果有）
+        if (this.data.mergeGroupId) {
+          requestData.mergeGroupId = parseInt(this.data.mergeGroupId);
         }
 
         shipmentRes = await api.post(apiPath, requestData);

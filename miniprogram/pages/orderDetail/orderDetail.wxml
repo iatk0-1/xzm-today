@@ -91,8 +91,15 @@
         <!-- 发货单商品列表 -->
         <view class="shipment-items">
           <view class="shipment-goods" wx:for="{{item.items}}" wx:for-item="goodsItem" wx:key="id">
-            <text class="goods-name">{{goodsItem.productName || '商品'}}</text>
-            <text class="goods-qty">× {{goodsItem.qty}}</text>
+            <image class="goods-img" src="{{goodsItem.productImage}}" mode="aspectFill"></image>
+            <view class="goods-info">
+              <view class="goods-title">{{goodsItem.productName || '商品'}}</view>
+              <view class="goods-sku">
+                <text wx:if="{{goodsItem.spec}}">{{goodsItem.spec}}</text>
+                <text wx:if="{{goodsItem.size}}"> / {{goodsItem.size}}</text>
+              </view>
+              <view class="goods-qty">× {{goodsItem.shipQty}}</view>
+            </view>
           </view>
         </view>
 
@@ -102,12 +109,12 @@
         </view>
 
         <!-- 物流轨迹 -->
-        <view class="logistics-trace" wx:if="{{logisticsTraceList[index] && logisticsTraceList[index].list && logisticsTraceList[index].list.length > 0}}">
+        <view class="logistics-trace" wx:if="{{logisticsTraceMap[item.id] && logisticsTraceMap[item.id].nodes && logisticsTraceMap[item.id].nodes.length > 0}}">
           <view class="trace-title">物流轨迹</view>
           <view class="trace-list">
-            <view class="trace-item" wx:for="{{logisticsTraceList[index].list}}" wx:key="time">
+            <view class="trace-item" wx:for="{{logisticsTraceMap[item.id].nodes}}" wx:key="time">
               <view class="trace-time">{{item.time}}</view>
-              <view class="trace-content">{{item.content}}</view>
+              <view class="trace-content">{{item.description}}</view>
             </view>
           </view>
         </view>

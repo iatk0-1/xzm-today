@@ -22,7 +22,7 @@
     </scroll-view>
   </view>
 
-  <scroll-view scroll-y class="order-scroll-area">
+  <scroll-view scroll-y class="order-scroll-area" style="height: 100%;">
 
     <view class="empty-state" wx:if="{{orders.length === 0 && !isLoading}}">
       <view class="empty-icon">📝</view>
