@@ -394,7 +394,15 @@ Page({
     });
   },
 
-  // 进入解绑页面
+  // 进入解绑页面（从合并组解绑）
+  goToUnbindFromMerge: function(e) {
+    const mergeGroupId = e.currentTarget.dataset.mergeGroupId;
+    wx.navigateTo({
+      url: `/pages/mergeGroupDetail/mergeGroupDetail?mergeGroupId=${mergeGroupId}`
+    });
+  },
+
+  // 进入解绑页面（从发货单解绑）
   goToUnbind: function(e) {
     const shipmentId = e.currentTarget.dataset.shipmentId;
     wx.navigateTo({
