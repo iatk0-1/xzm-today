@@ -115,14 +115,15 @@ Page({
         const detail = await api.get(`/orders/${this.data.orderId}`);
 
         if (detail.shipmentId) {
-          // 已有关联的发货单，从发货单加载可发货商品
-          const shipment = await api.get(`/shipments/${detail.shipmentId}`);
-          const orderItems = shipment.items.map(item => ({
+          // 已有关联的发货单，从发货单加载所有商品（包括已发货和未发货）
+          const shipmentItems = await api.get(`/shipments/${detail.shipmentId}/items`);
+          const orderItems = shipmentItems.items.map(item => ({
             ...item,
             id: item.orderItemId,
             orderId: this.data.orderId,
             maxShipQty: item.canShipQty,
             shipQty: 0,
+            shippedQty: item.shippedQty,
             canShip: item.canShip
           }));
           allItems = orderItems;
