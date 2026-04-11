@@ -79,8 +79,8 @@ Page({
             orderId: orderId,
             maxShipQty: item.qty,  // 可发货数量
             shipQty: 0,  // 本次发货数量，默认 0
-            shippedQty: 0,  // 已发货数量
-            canShip: true  // 可发货
+            shippedQty: item.shippedQty || 0,  // 已发货数量
+            canShip: (item.shippedQty || 0) < item.qty  // 已发货的商品不可再发
           }));
           allItems.push(...orderItems);
         }
