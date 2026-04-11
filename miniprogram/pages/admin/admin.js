@@ -39,16 +39,28 @@ Page({
     recentTags: [],
     historyTags: ['春装新款', '半身裙', '外套', '内搭'],
 
-    sizeOptions: [
-      { name: '均码', selected: false }, { name: 'XS', selected: false },
-      { name: 'S', selected: false }, { name: 'M', selected: false },
-      { name: 'L', selected: false }, { name: 'XL', selected: false }, { name: 'XXL', selected: false }
-    ],
+    // 尺码相关
+    sizeCategoryList: [],  // 所有尺码类型
+    currentSizeCategoryId: null,  // 当前选中的尺码类型 ID
+    currentSizeCategoryName: '',  // 当前选中的尺码类型名称
+    sizeOptions: [],  // 当前尺码类型下的尺码列表
+
+    // 尺码配置弹窗相关
+    showSizeModal: false,
+    newSizeCategoryName: '',
+    newCategoryName: '',
+    newSizeName: '',
     colors: [],
     colorInput: '',
     skuList: [],
     batchPrice: '',
     batchStock: '',
+    batchImage: '',
+
+    // 批量设置弹窗相关
+    showBatchModal: false,
+    batchSelectedColors: [],
+    batchSelectedSizes: [],
 
     lookbookImgs: [],
     detailImgs: [],
@@ -66,6 +78,8 @@ Page({
     this.refreshGrid();
     // 加载历史档口和标签
     this.loadRecentStallsAndTags();
+    // 加载尺码类型和尺码
+    this.loadSizeCategories();
 
     // 如果是编辑模式，加载商品详情
     if (options && options.editId) {
@@ -103,18 +117,50 @@ Page({
       const product = res.product || res;
       const skusFromApi = res.skus || [];
 
-      // 从 skus 数组中提取 SKU 数据，保留 skuId
-      // 注意：历史数据的 spec 字段可能包含组合值（如 "蓝色/S"），需要直接使用
+      // 从 skus 数组中提取 SKU 数据，保留 skuId 和 sizeId
       const skuMatrix = skusFromApi.map(sku => ({
         skuId: sku.id,
         color: sku.spec || '默认',
         size: sku.size || '均码',
         price: sku.retailPrice,
-        stock: sku.stockMain
+        stock: sku.stockMain,
+        image: sku.imageUrl || '',
+        sizeId: sku.sizeId || null
       }));
 
       console.log('商品详情:', product);
       console.log('SKU Matrix:', skuMatrix);
+
+      // 处理尺码类型：优先使用商品的 sizeCategoryId，如果没有则从 SKU 的 sizeId 推断
+      let currentSizeCategoryId = product.sizeCategoryId || null;
+      let currentSizeCategoryName = '';
+
+      // 如果有 sizeCategoryId，查找对应的类型名称
+      if (currentSizeCategoryId && this.data.sizeCategoryList.length > 0) {
+        const category = this.data.sizeCategoryList.find(c => c.id === currentSizeCategoryId);
+        if (category) {
+          currentSizeCategoryName = category.name;
+        } else {
+          // 类型不存在（可能已被删除），清除 sizeCategoryId
+          currentSizeCategoryId = null;
+        }
+      }
+
+      // 如果没有 sizeCategoryId 但有 SKU 数据，尝试从 SKU 的 sizeId 推断
+      if (!currentSizeCategoryId && skuMatrix.length > 0 && skuMatrix.some(s => s.sizeId)) {
+        // 收集所有有效的 sizeId
+        const sizeIds = skuMatrix.filter(s => s.sizeId).map(s => s.sizeId);
+        // 遍历所有尺码类型，找到包含这些 sizeId 的类型
+        for (const category of this.data.sizeCategoryList) {
+          const categorySizeIds = (category.sizes || []).map(s => s.id);
+          const matchCount = sizeIds.filter(id => categorySizeIds.includes(id)).length;
+          if (matchCount > 0) {
+            currentSizeCategoryId = category.id;
+            currentSizeCategoryName = category.name;
+            break;
+          }
+        }
+      }
 
       // 填充基本信息
       const formData = {
@@ -188,7 +234,7 @@ Page({
       }
 
       // 处理尺码和颜色
-      let sizeOptions = this.data.sizeOptions.map(s => ({ ...s, selected: false }));
+      let sizeOptions = [];
       let colors = [];
       let skuList = [];
 
@@ -197,28 +243,49 @@ Page({
         const sizes = [...new Set(skuMatrix.map(s => s.size))];
         const colors_set = [...new Set(skuMatrix.map(s => s.color))];
 
-        // 设置选中的尺码
-        sizeOptions = sizeOptions.map(s => ({
-          ...s,
-          selected: sizes.includes(s.name)
-        }));
+        // 如果有尺码类型，使用该类型下的尺码列表
+        if (currentSizeCategoryId) {
+          const category = this.data.sizeCategoryList.find(c => c.id === currentSizeCategoryId);
+          if (category) {
+            sizeOptions = (category.sizes || []).map(size => ({
+              id: size.id,
+              name: size.name,
+              selected: sizes.includes(size.name)
+            }));
+          }
+        }
+
+        // 如果没有尺码类型或尺码类型下没有匹配的尺码，使用 SKU 中的实际尺码值
+        if (sizeOptions.length === 0) {
+          sizeOptions = sizes.map(sizeName => ({
+            name: sizeName,
+            selected: true
+          }));
+        }
 
         // 设置颜色（过滤掉"默认颜色"）
         colors = colors_set.filter(c => c && c !== '默认颜色');
 
-        // 填充 SKU 列表（保留 skuId 用于更新）
+        // 填充 SKU 列表（保留 skuId 和 sizeId 用于更新）
         skuList = skuMatrix.map(sku => ({
           skuId: sku.skuId || null,
           color: sku.color,
           size: sku.size,
           price: String(sku.price),
-          stock: String(sku.stock)
+          stock: String(sku.stock),
+          image: sku.image || '',
+          sizeId: sku.sizeId || null
         }));
+      } else {
+        // 如果没有 SKU 数据，保持默认的尺码选项
+        sizeOptions = this.data.sizeOptions;
       }
 
       this.setData({
         ...formData,
         mediaList: mediaList,
+        currentSizeCategoryId,
+        currentSizeCategoryName,
         sizeOptions: sizeOptions,
         colors: colors,
         skuList: skuList,
@@ -467,15 +534,17 @@ Page({
       const res = await api.get(`/stalls/search?keyword=${encodeURIComponent(keyword)}`);
       // 过滤掉已选择的档口
       const selectedIds = this.data.selectedStalls.map(s => s.id);
-      const filtered = res.filter(s => !selectedIds.includes(s.id));
+      const filtered = (res.results || []).filter(s => !selectedIds.includes(s.id));
+      // 如果没有精确匹配，显示新增按钮
+      const hasExactMatch = res.exactMatch || false;
       this.setData({
-        showStallSearch: true,
+        showStallSearch: filtered.length > 0,
         stallSearchResults: filtered,
-        showStallCreate: filtered.length === 0 && keyword.trim()
+        showStallCreate: !hasExactMatch && keyword.trim()
       });
     } catch (err) {
       console.error('搜索档口失败:', err);
-      this.setData({ showStallCreate: false });
+      this.setData({ showStallSearch: false, showStallCreate: false });
     }
   },
 
@@ -514,15 +583,17 @@ Page({
       const res = await api.get(`/tags/search?keyword=${encodeURIComponent(keyword)}`);
       // 过滤掉已选择的标签
       const selectedIds = this.data.selectedTags.map(t => t.id);
-      const filtered = res.filter(t => !selectedIds.includes(t.id));
+      const filtered = (res.results || []).filter(t => !selectedIds.includes(t.id));
+      // 如果没有精确匹配，显示新增按钮
+      const hasExactMatch = res.exactMatch || false;
       this.setData({
-        showTagSearch: true,
+        showTagSearch: filtered.length > 0,
         tagSearchResults: filtered,
-        showTagCreate: filtered.length === 0 && keyword.trim()
+        showTagCreate: !hasExactMatch && keyword.trim()
       });
     } catch (err) {
       console.error('搜索标签失败:', err);
-      this.setData({ showTagCreate: false });
+      this.setData({ showTagSearch: false, showTagCreate: false });
     }
   },
 
@@ -593,6 +664,200 @@ Page({
     }
   },
 
+  // ================= 尺码配置相关 =================
+  // 加载尺码类型和尺码
+  loadSizeCategories: async function() {
+    try {
+      const res = await api.get('/sizes/categories');
+      console.log('尺码类型和尺码:', res);
+
+      // 默认选择第一个尺码类型
+      let currentSizeCategoryId = null;
+      let currentSizeCategoryName = '';
+      let sizeOptions = [];
+
+      if (res && res.length > 0) {
+        currentSizeCategoryId = res[0].id;
+        currentSizeCategoryName = res[0].name;
+        sizeOptions = (res[0].sizes || []).map(size => ({
+          id: size.id,
+          name: size.name,
+          selected: false
+        }));
+      }
+
+      this.setData({
+        sizeCategoryList: res || [],
+        currentSizeCategoryId,
+        currentSizeCategoryName,
+        sizeOptions
+      });
+    } catch (err) {
+      console.error('加载尺码类型失败:', err);
+    }
+  },
+
+  // 打开尺码配置弹窗
+  openSizeModal: function() {
+    this.setData({
+      showSizeModal: true,
+      newSizeCategoryName: '',
+      newCategoryName: '',
+      newSizeName: ''
+    });
+  },
+
+  // 关闭尺码配置弹窗
+  closeSizeModal: function() {
+    this.setData({ showSizeModal: false });
+  },
+
+  // 切换尺码类型
+  switchSizeCategory: function(e) {
+    const categoryId = e.currentTarget.dataset.id;
+    const category = this.data.sizeCategoryList.find(c => c.id === categoryId);
+
+    if (category) {
+      const sizeOptions = (category.sizes || []).map(size => ({
+        id: size.id,
+        name: size.name,
+        selected: this.data.sizeOptions.find(s => s.name === size.name)?.selected || false
+      }));
+
+      this.setData({
+        currentSizeCategoryId: categoryId,
+        currentSizeCategoryName: category.name,
+        sizeOptions
+      });
+    }
+  },
+
+  // 新增尺码类型
+  addSizeCategory: async function() {
+    const name = this.data.newCategoryName.trim();
+    if (!name) {
+      wx.showToast({ title: '请输入类型名称', icon: 'none' });
+      return;
+    }
+
+    try {
+      await api.post('/sizes/categories', { name });
+      wx.showToast({ title: '添加成功', icon: 'success' });
+
+      // 重新加载尺码类型
+      await this.loadSizeCategories();
+      this.setData({ newCategoryName: '' });
+    } catch (err) {
+      console.error('创建尺码类型失败:', err);
+      wx.showToast({ title: '创建失败', icon: 'none' });
+    }
+  },
+
+  // 删除尺码类型
+  deleteSizeCategory: async function(e) {
+    const categoryId = e.currentTarget.dataset.id;
+
+    wx.showModal({
+      title: '确认删除',
+      content: '删除后将同时删除该类型下的所有尺码，确定吗？',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await api.delete(`/sizes/categories/${categoryId}`);
+            wx.showToast({ title: '删除成功', icon: 'success' });
+
+            // 重新加载尺码类型
+            await this.loadSizeCategories();
+          } catch (err) {
+            console.error('删除尺码类型失败:', err);
+            wx.showToast({ title: '删除失败', icon: 'none' });
+          }
+        }
+      }
+    });
+  },
+
+  // 新增尺码
+  addSize: async function() {
+    const name = this.data.newSizeName.trim();
+    if (!name) {
+      wx.showToast({ title: '请输入尺码名称', icon: 'none' });
+      return;
+    }
+
+    // 检查是否已存在
+    const exists = this.data.sizeOptions.find(s => s.name === name);
+    if (exists) {
+      wx.showToast({ title: '该尺码已存在', icon: 'none' });
+      return;
+    }
+
+    try {
+      const res = await api.post(`/sizes/categories/${this.data.currentSizeCategoryId}/sizes`, { name });
+      wx.showToast({ title: '添加成功', icon: 'success' });
+
+      // 添加新尺码到列表
+      const newSize = {
+        id: res.size.id,
+        name: res.size.name,
+        selected: false
+      };
+      this.setData({
+        sizeOptions: [...this.data.sizeOptions, newSize],
+        newSizeName: ''
+      });
+
+      // 更新当前尺码类型的 sizes 列表
+      const categoryIndex = this.data.sizeCategoryList.findIndex(c => c.id === this.data.currentSizeCategoryId);
+      if (categoryIndex !== -1) {
+        const category = this.data.sizeCategoryList[categoryIndex];
+        category.sizes = [...(category.sizes || []), res.size];
+        const sizeCategoryList = [...this.data.sizeCategoryList];
+        sizeCategoryList[categoryIndex] = category;
+        this.setData({ sizeCategoryList });
+      }
+    } catch (err) {
+      console.error('创建尺码失败:', err);
+      wx.showToast({ title: '创建失败', icon: 'none' });
+    }
+  },
+
+  // 删除尺码
+  deleteSize: async function(e) {
+    const sizeId = e.currentTarget.dataset.id;
+    const sizeName = e.currentTarget.dataset.name;
+
+    wx.showModal({
+      title: '确认删除',
+      content: `确定要删除尺码"${sizeName}"吗？`,
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await api.delete(`/sizes/sizes/${sizeId}`);
+            wx.showToast({ title: '删除成功', icon: 'success' });
+
+            // 从列表中移除
+            const sizeOptions = this.data.sizeOptions.filter(s => s.id !== sizeId);
+            this.setData({ sizeOptions });
+
+            // 同时更新当前尺码类型的 sizes 列表
+            const categoryIndex = this.data.sizeCategoryList.findIndex(c => c.id === this.data.currentSizeCategoryId);
+            if (categoryIndex !== -1) {
+              const category = this.data.sizeCategoryList[categoryIndex];
+              category.sizes = (category.sizes || []).filter(s => s.id !== sizeId);
+              const sizeCategoryList = [...this.data.sizeCategoryList];
+              sizeCategoryList[categoryIndex] = category;
+              this.setData({ sizeCategoryList });
+            }
+          } catch (err) {
+            console.error('删除尺码失败:', err);
+            wx.showToast({ title: '删除失败', icon: 'none' });
+          }
+        }
+      }
+    });
+  },
+
   // ================= SKU 删除 =================
   removeSku(e) {
     const index = e.currentTarget.dataset.index;
@@ -645,10 +910,12 @@ Page({
         let existItem = oldSkuList.find(old => old.color === c && old.size === s);
         newSkuList.push({
           skuId: existItem ? existItem.skuId : null,  // 保留 skuId，新增组合为 null
+          sizeId: existItem ? existItem.sizeId : null,  // 保留 sizeId
           color: c,
           size: s,
           price: existItem ? existItem.price : '',
-          stock: existItem ? existItem.stock : ''
+          stock: existItem ? existItem.stock : '',
+          image: existItem ? (existItem.image || '') : ''
         });
       });
     });
@@ -663,10 +930,12 @@ Page({
         // 这个 SKU 不在新矩阵中，但有 skuId（可能已被引用），需要保留
         newSkuList.push({
           skuId: oldItem.skuId,
+          sizeId: oldItem.sizeId || null,
           color: oldItem.color,
           size: oldItem.size,
           price: oldItem.price,
           stock: oldItem.stock,
+          image: oldItem.image || '',
           _toBeRemoved: true  // 标记：前端隐藏，提交后端时会被标记为 disabled
         });
       }
@@ -676,22 +945,160 @@ Page({
   },
 
   applyBatch() {
-    const { batchPrice, batchStock, skuList } = this.data;
-    if (!batchPrice && !batchStock) {
+    // 打开批量设置弹窗
+    const { skuList, colors, sizeOptions } = this.data;
+    const selectedSizes = sizeOptions.filter(s => s.selected).map(s => s.name);
+
+    this.setData({
+      batchPrice: '',
+      batchStock: '',
+      batchImage: '',
+      batchSelectedColors: colors.map(c => ({ name: c, selected: false })),
+      batchSelectedSizes: selectedSizes.map(s => ({ name: s, selected: false })),
+      showBatchModal: true
+    });
+  },
+
+  // 批量设置弹窗相关方法
+  toggleBatchColor(e) {
+    const index = e.currentTarget.dataset.index;
+    const key = `batchSelectedColors[${index}].selected`;
+    this.setData({ [key]: !this.data.batchSelectedColors[index].selected });
+  },
+
+  toggleBatchSize(e) {
+    const index = e.currentTarget.dataset.index;
+    const key = `batchSelectedSizes[${index}].selected`;
+    this.setData({ [key]: !this.data.batchSelectedSizes[index].selected });
+  },
+
+  // 全选/取消全选颜色
+  toggleSelectAllColors() {
+    const allSelected = this.data.batchSelectedColors.every(c => c.selected);
+    const updatedColors = this.data.batchSelectedColors.map(c => ({
+      ...c,
+      selected: !allSelected
+    }));
+    this.setData({ batchSelectedColors: updatedColors });
+  },
+
+  // 全选/取消全选尺码
+  toggleSelectAllSizes() {
+    const allSelected = this.data.batchSelectedSizes.every(s => s.selected);
+    const updatedSizes = this.data.batchSelectedSizes.map(s => ({
+      ...s,
+      selected: !allSelected
+    }));
+    this.setData({ batchSelectedSizes: updatedSizes });
+  },
+
+  closeBatchModal() {
+    this.setData({ showBatchModal: false });
+  },
+
+  confirmBatch() {
+    const { batchPrice, batchStock, batchImage, batchSelectedColors, batchSelectedSizes, skuList } = this.data;
+
+    if (!batchPrice && !batchStock && !batchImage) {
       return wx.showToast({ title: '请输入值', icon: 'none' });
     }
-    let newList = skuList.map(item => ({
-      ...item,
-      price: batchPrice || item.price,
-      stock: batchStock || item.stock
-    }));
-    this.setData({ skuList: newList });
+
+    // 获取选中的颜色和尺码
+    const selectedColors = batchSelectedColors.filter(c => c.selected).map(c => c.name);
+    const selectedSizes = batchSelectedSizes.filter(s => s.selected).map(s => s.name);
+
+    if (selectedColors.length === 0 && selectedSizes.length === 0) {
+      return wx.showToast({ title: '请选择要批量设置的 SKU', icon: 'none' });
+    }
+
+    // 匹配符合条件的 SKU 并更新
+    let newList = skuList.map(item => {
+      const colorMatch = selectedColors.length === 0 || selectedColors.includes(item.color);
+      const sizeMatch = selectedSizes.length === 0 || selectedSizes.includes(item.size);
+
+      if (colorMatch && sizeMatch) {
+        return {
+          ...item,
+          price: batchPrice || item.price,
+          stock: batchStock || item.stock,
+          image: batchImage || item.image
+        };
+      }
+      return item;
+    });
+
+    this.setData({ skuList: newList, showBatchModal: false });
+    wx.showToast({ title: '批量设置成功', icon: 'success' });
   },
 
   onSkuInput(e) {
     const { index, field } = e.currentTarget.dataset;
     const key = `skuList[${index}].${field}`;
     this.setData({ [key]: e.detail.value });
+  },
+
+  // 上传 SKU 图片
+  uploadSkuImage(e) {
+    const index = e.currentTarget.dataset.index;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['camera', 'album'],
+      success: (res) => {
+        const tempFilePath = res.tempFiles[0].tempFilePath;
+        wx.showLoading({ title: '上传图片中...' });
+
+        this.uploadFile(tempFilePath, 'image/jpeg')
+          .then(url => {
+            wx.hideLoading();
+            const key = `skuList[${index}].image`;
+            this.setData({ [key]: url });
+            wx.showToast({ title: '上传成功', icon: 'success' });
+          })
+          .catch(err => {
+            wx.hideLoading();
+            console.error('图片上传失败:', err);
+            wx.showToast({ title: '上传失败', icon: 'none' });
+          });
+      },
+      fail: (err) => {
+        console.error('选择图片失败:', err);
+      }
+    });
+  },
+
+  removeSkuImage(e) {
+    const index = e.currentTarget.dataset.index;
+    const key = `skuList[${index}].image`;
+    this.setData({ [key]: '' });
+  },
+
+  // 批量设置弹窗图片选择
+  chooseBatchImage() {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['camera', 'album'],
+      success: (res) => {
+        const tempFilePath = res.tempFiles[0].tempFilePath;
+        wx.showLoading({ title: '上传图片中...' });
+
+        this.uploadFile(tempFilePath, 'image/jpeg')
+          .then(url => {
+            wx.hideLoading();
+            this.setData({ batchImage: url });
+            wx.showToast({ title: '上传成功', icon: 'success' });
+          })
+          .catch(err => {
+            wx.hideLoading();
+            console.error('图片上传失败:', err);
+            wx.showToast({ title: '上传失败', icon: 'none' });
+          });
+      },
+      fail: (err) => {
+        console.error('选择图片失败:', err);
+      }
+    });
   },
 
   // ================= 关联商品 =================
@@ -805,12 +1212,14 @@ Page({
           size: sku.size || '均码',
           barcode: '',
           retailPrice: Number(sku.price),
-          stockMain: Number(sku.stock) || 0
+          stockMain: Number(sku.stock) || 0,
+          imageUrl: sku.image || null,
+          sizeId: sku.sizeId || null
         };
         // 编辑模式下，如果有 skuId，需要传递给后端
         if (editId && sku.skuId) {
           skuData.id = sku.skuId;
-          console.log(`SKU ${sku.color}-${sku.size} 有 skuId=${sku.skuId}`);
+          console.log(`SKU ${sku.color}-${sku.size} 有 skuId=${sku.skuId}, sizeId=${sku.sizeId}`);
         } else {
           console.log(`SKU ${sku.color}-${sku.size} 没有 skuId (editId=${editId}, sku.skuId=${sku.skuId})`);
         }
@@ -838,6 +1247,7 @@ Page({
         fabricCare: fabricCare || null,
         sizeChartTip: sizeChartTip || null,
         warmTips: warmTips || null,
+        sizeCategoryId: this.data.currentSizeCategoryId || null,
         skus: skus
       };
 

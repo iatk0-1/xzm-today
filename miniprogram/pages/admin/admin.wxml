@@ -60,13 +60,16 @@
     <view class="search-input-row">
       <input class="input-box tag-input" placeholder="输入档口名称搜索..." value="{{stallSearchKeyword}}" bindinput="onStallSearchInput" />
     </view>
-    <view class="search-results floating-dropdown" wx:if="{{showStallSearch}}">
+    <view class="search-results floating-dropdown" wx:if="{{showStallSearch || showStallCreate}}">
       <view class="search-result-item" wx:for="{{stallSearchResults}}" wx:key="id" bindtap="selectStall" data-item="{{item}}">
         {{item.name}}
       </view>
-      <view class="search-empty-item" wx:if="{{showStallCreate}}" bindtap="createStall">
-        <text>新增档口：</text>
-        <text class="add-new-text">{{stallSearchKeyword}}</text>
+      <view class="search-empty-item" wx:if="{{stallSearchResults.length === 0 && showStallCreate}}" bindtap="createStall">
+        <text>暂无相关档口，</text>
+        <text class="add-new-text">新增"{{stallSearchKeyword}}"</text>
+      </view>
+      <view class="search-result-item" wx:if="{{stallSearchResults.length > 0 && showStallCreate}}" bindtap="createStall" style="color: #007aff; font-weight: bold;">
+        + 新增档口："{{stallSearchKeyword}}"
       </view>
     </view>
   </view>
@@ -93,19 +96,30 @@
     <view class="search-input-row">
       <input class="input-box tag-input" placeholder="输入标签名称搜索..." value="{{tagSearchKeyword}}" bindinput="onTagSearchInput" />
     </view>
-    <view class="search-results floating-dropdown" wx:if="{{showTagSearch}}">
+    <view class="search-results floating-dropdown" wx:if="{{showTagSearch || showTagCreate}}">
       <view class="search-result-item" wx:for="{{tagSearchResults}}" wx:key="id" bindtap="selectTag" data-item="{{item}}">
         {{item.name}}
       </view>
-      <view class="search-empty-item" wx:if="{{showTagCreate}}" bindtap="createTag">
-        <text>新增标签：</text>
-        <text class="add-new-text">{{tagSearchKeyword}}</text>
+      <view class="search-empty-item" wx:if="{{tagSearchResults.length === 0 && showTagCreate}}" bindtap="createTag">
+        <text>暂无相关标签，</text>
+        <text class="add-new-text">新增"{{tagSearchKeyword}}"</text>
+      </view>
+      <view class="search-result-item" wx:if="{{tagSearchResults.length > 0 && showTagCreate}}" bindtap="createTag" style="color: #007aff; font-weight: bold;">
+        + 新增标签："{{tagSearchKeyword}}"
       </view>
     </view>
   </view>
 
   <view class="form-group">
     <view class="label"><text class="required">*</text>可选尺码 (点击多选)</view>
+    <view class="size-type-display" wx:if="{{currentSizeCategoryId}}">
+      <text class="size-type-name">{{currentSizeCategoryName}}</text>
+      <view class="switch-size-btn" bindtap="openSizeModal">切换尺码</view>
+    </view>
+    <view class="size-type-display" wx:else>
+      <text class="size-type-name" style="color: #999;">暂无尺码类型</text>
+      <view class="switch-size-btn" bindtap="openSizeModal">配置尺码</view>
+    </view>
     <view class="size-options">
       <view class="size-box {{item.selected ? 'active' : ''}}" wx:for="{{sizeOptions}}" wx:key="name" bindtap="toggleSize" data-index="{{index}}">
         {{item.name}}
@@ -127,16 +141,31 @@
   </view>
 
   <view class="sku-matrix-section" wx:if="{{skuList.length > 0}}">
-    <view class="label" style="color:#d32f2f;">SKU 价格与库存 (将自动计算展示价)</view>
+    <view class="label" style="color:#d32f2f;">SKU 价格、库存与图片</view>
+    <!-- 批量设置按钮 -->
     <view class="batch-row">
-      <input class="batch-input" type="digit" placeholder="批量价格" value="{{batchPrice}}" bindinput="onInput" data-field="batchPrice" />
-      <input class="batch-input" type="number" placeholder="批量库存" value="{{batchStock}}" bindinput="onInput" data-field="batchStock" />
-      <view class="btn-batch" bindtap="applyBatch">一键填充</view>
+      <view class="btn-batch" style="background: #007aff;" bindtap="applyBatch">批量设置</view>
     </view>
+    <!-- 标题行 -->
+    <view class="sku-header-row">
+      <view class="sku-delete" style="visibility: hidden;">−</view>
+      <view class="sku-header">SKU</view>
+      <view class="sku-header-img">图片</view>
+      <view class="sku-header">价格</view>
+      <view class="sku-header">库存</view>
+    </view>
+    <!-- SKU 列表 -->
     <view class="sku-row" wx:for="{{skuList}}" wx:if="{{!item._toBeRemoved}}" wx:key="index">
       <view class="sku-delete" catchtap="removeSku" data-index="{{index}}">−</view>
       <view class="sku-name">
         {{item.color}} - {{item.size}}
+      </view>
+      <view class="sku-image-upload" wx:if="{{item.image}}" bindtap="uploadSkuImage" data-index="{{index}}">
+        <image class="sku-image-preview" src="{{item.image}}" mode="aspectFill"></image>
+        <view class="sku-image-delete" catchtap="removeSkuImage" data-index="{{index}}">×</view>
+      </view>
+      <view class="sku-image-upload" wx:else bindtap="uploadSkuImage" data-index="{{index}}">
+        <text class="sku-image-placeholder">+</text>
       </view>
       <input class="sku-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onSkuInput" data-index="{{index}}" data-field="price" />
       <input class="sku-input" type="number" placeholder="库存" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" />
@@ -239,5 +268,110 @@
 
   <view class="modal-footer">
     <view class="btn-confirm-modal" bindtap="confirmRelated">确认选择</view>
+  </view>
+</view>
+
+<!-- 批量设置弹窗 -->
+<view class="modal-mask" wx:if="{{showBatchModal}}" catchtap="closeBatchModal"></view>
+<view class="batch-modal {{showBatchModal ? 'show' : ''}}">
+  <view class="modal-header">
+    <view class="modal-title">批量设置 SKU</view>
+    <view class="modal-close" catchtap="closeBatchModal">×</view>
+  </view>
+
+  <scroll-view scroll-y class="batch-scroll">
+    <view class="batch-section">
+      <view class="batch-section-header">
+        <view class="batch-section-title">选择要设置的颜色</view>
+        <view class="batch-select-all" bindtap="toggleSelectAllColors">全选</view>
+      </view>
+      <view class="batch-options">
+        <view class="batch-option {{item.selected ? 'active' : ''}}" wx:for="{{batchSelectedColors}}" wx:key="name" bindtap="toggleBatchColor" data-index="{{index}}">
+          {{item.name}}
+        </view>
+      </view>
+    </view>
+
+    <view class="batch-section">
+      <view class="batch-section-header">
+        <view class="batch-section-title">选择要设置的尺码</view>
+        <view class="batch-select-all" bindtap="toggleSelectAllSizes">全选</view>
+      </view>
+      <view class="batch-options">
+        <view class="batch-option {{item.selected ? 'active' : ''}}" wx:for="{{batchSelectedSizes}}" wx:key="name" bindtap="toggleBatchSize" data-index="{{index}}">
+          {{item.name}}
+        </view>
+      </view>
+    </view>
+
+    <view class="batch-section">
+      <view class="batch-section-title">设置价格、库存、图片</view>
+      <view class="batch-inputs-row">
+        <input class="batch-input-wide" type="digit" placeholder="价格（选填）" value="{{batchPrice}}" bindinput="onInput" data-field="batchPrice" />
+        <input class="batch-input-wide" type="number" placeholder="库存（选填）" value="{{batchStock}}" bindinput="onInput" data-field="batchStock" />
+      </view>
+      <view class="batch-image-section">
+        <view class="batch-image-preview" wx:if="{{batchImage}}" bindtap="chooseBatchImage">
+          <image class="batch-image" src="{{batchImage}}" mode="aspectFill"></image>
+          <view class="batch-image-replace">点击更换</view>
+        </view>
+        <view class="batch-image-upload" wx:else bindtap="chooseBatchImage">
+          <text class="batch-image-placeholder">+ 选择图片</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="modal-footer">
+    <view class="btn-confirm-modal" bindtap="confirmBatch">应用设置</view>
+  </view>
+</view>
+
+<!-- 尺码配置弹窗 -->
+<view class="modal-mask" wx:if="{{showSizeModal}}" catchtap="closeSizeModal"></view>
+<view class="size-modal {{showSizeModal ? 'show' : ''}}">
+  <view class="modal-header">
+    <view class="modal-title">尺码配置</view>
+    <view class="modal-close" catchtap="closeSizeModal">×</view>
+  </view>
+
+  <scroll-view scroll-y class="size-scroll">
+    <!-- 尺码类型选择 -->
+    <view class="size-section">
+      <view class="section-header">
+        <view class="section-title">选择尺码类型</view>
+      </view>
+      <view class="category-list">
+        <view class="category-item {{item.id === currentSizeCategoryId ? 'active' : ''}}" wx:for="{{sizeCategoryList}}" wx:key="id" bindtap="switchSizeCategory" data-id="{{item.id}}">
+          {{item.name}}
+          <view class="delete-category" catchtap="deleteSizeCategory" data-id="{{item.id}}">×</view>
+        </view>
+        <view class="add-category-input">
+          <input class="category-input" placeholder="新增类型..." value="{{newCategoryName}}" bindinput="onInput" data-field="newCategoryName" />
+          <view class="btn-add-category" bindtap="addSizeCategory">+</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 当前类型下的尺码列表 -->
+    <view class="size-section">
+      <view class="section-header">
+        <view class="section-title">当前类型尺码</view>
+      </view>
+      <view class="size-list">
+        <view class="size-item" wx:for="{{sizeOptions}}" wx:key="name">
+          <text>{{item.name}}</text>
+          <view class="delete-size" catchtap="deleteSize" data-id="{{item.id}}" data-name="{{item.name}}">×</view>
+        </view>
+        <view class="add-size-input">
+          <input class="size-input" placeholder="新增尺码..." value="{{newSizeName}}" bindinput="onInput" data-field="newSizeName" />
+          <view class="btn-add-size" bindtap="addSize">+</view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="modal-footer">
+    <view class="btn-confirm-modal" bindtap="closeSizeModal">完成</view>
   </view>
 </view>
