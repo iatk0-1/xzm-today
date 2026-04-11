@@ -79,13 +79,13 @@
             <!-- 合并发货的订单，显示"查看合并组"和"解绑订单"入口 -->
             <view wx:if="{{item.type === 'merged' && item.mergeGroupId}}"
                   class="action-btn-outline"
-                  catchtap="goToMergeGroupDetail"
+                  bindtap="goToMergeGroupDetail"
                   data-merge-group-id="{{item.mergeGroupId}}">
               查看合并组
             </view>
             <view wx:if="{{item.mergeGroupId}}"
                   class="action-btn-unbind"
-                  catchtap="goToUnbindFromMerge"
+                  bindtap="goToUnbindFromMerge"
                   data-merge-group-id="{{item.mergeGroupId}}">
               解绑订单
             </view>
