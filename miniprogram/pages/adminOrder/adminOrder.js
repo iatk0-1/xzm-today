@@ -237,6 +237,9 @@ Page({
 
     // 检查选中的订单是否已有合并组
     const mergeGroupIds = new Set();
+    const ordersWithMergeGroup = [];  // 已有合并组的订单
+    const ordersWithoutMergeGroup = [];  // 没有合并组的订单
+
     for (const orderId of this.data.selectedOrders) {
       const order = this.data.orders.find(o => {
         const oid = o.orderIds ? o.orderIds[0] : o.id;
@@ -244,6 +247,9 @@ Page({
       });
       if (order && order.mergeGroupId) {
         mergeGroupIds.add(order.mergeGroupId);
+        ordersWithMergeGroup.push(orderId);
+      } else {
+        ordersWithoutMergeGroup.push(orderId);
       }
     }
 
@@ -257,19 +263,35 @@ Page({
       return;
     }
 
-    // 如果已有合并组，直接跳转
+    // 如果已有合并组，将没有合并组的订单添加到该合并组
     if (mergeGroupIds.size === 1) {
       const mergeGroupId = Array.from(mergeGroupIds)[0];
-      wx.showModal({
-        title: '确认合并发货',
-        content: `选中的订单已属于合并组 #${mergeGroupId}，是否继续发货？`,
-        confirmText: '去发货',
-        success: (res) => {
-          if (res.confirm) {
-            this.doMergeShip(mergeGroupId);
+
+      if (ordersWithoutMergeGroup.length > 0) {
+        // 有订单需要添加到现有合并组
+        wx.showModal({
+          title: '确认合并发货',
+          content: `将把 ${ordersWithoutMergeGroup.length} 个订单添加到合并组 #${mergeGroupId}，是否继续？`,
+          confirmText: '确认添加',
+          success: async (res) => {
+            if (res.confirm) {
+              await this.addOrdersToMergeGroup(mergeGroupId, ordersWithoutMergeGroup);
+            }
           }
-        }
-      });
+        });
+      } else {
+        // 所有订单都已属于该合并组，直接跳转发货
+        wx.showModal({
+          title: '确认合并发货',
+          content: `选中的订单已属于合并组 #${mergeGroupId}，是否继续发货？`,
+          confirmText: '去发货',
+          success: (res) => {
+            if (res.confirm) {
+              this.doMergeShip(mergeGroupId);
+            }
+          }
+        });
+      }
     } else {
       // 没有合并组，创建新的
       wx.showModal({
@@ -282,6 +304,27 @@ Page({
           }
         }
       });
+    }
+  },
+
+  // 添加订单到现有合并组
+  addOrdersToMergeGroup: async function(mergeGroupId, orderIds) {
+    wx.showLoading({ title: '添加中...' });
+
+    try {
+      await api.post(`/merge-groups/${mergeGroupId}/orders`, orderIds.map(id => parseInt(id)));
+      wx.showToast({ title: '添加成功', icon: 'success' });
+
+      // 刷新订单列表
+      this.loadOrders();
+    } catch (err) {
+      wx.showModal({
+        title: '添加失败',
+        content: err.message || '未知错误',
+        showCancel: false
+      });
+    } finally {
+      wx.hideLoading();
     }
   },
 
