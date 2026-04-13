@@ -97,6 +97,28 @@
   font-size: 26rpx;
   color: #666;
   font-family: monospace;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.waybill-type-tag {
+  display: inline-block;
+  font-size: 22rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 8rpx;
+  margin-top: 8rpx;
+}
+
+.waybill-type-tag.electronic {
+  background-color: #e6f7ff;
+  color: #1890ff;
+  border: 1rpx solid #91d5ff;
+}
+
+.waybill-type-tag.custom {
+  background-color: #f5f5f5;
+  color: #666;
+  border: 1rpx solid #ddd;
 }
 
 /* 打印设置 */

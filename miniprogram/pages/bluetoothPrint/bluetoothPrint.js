@@ -12,6 +12,7 @@ Page({
     expressNo: '',
     imageWidth: 0,
     imageHeight: 0,
+    waybillType: '',  // 'electronic' 或 'custom'
 
     // 蓝牙相关
     connected: false,
@@ -70,7 +71,8 @@ Page({
             expressCode: waybill.expressCode,
             expressNo: waybill.expressNo,
             imageWidth: waybill.width,
-            imageHeight: waybill.height
+            imageHeight: waybill.height,
+            waybillType: waybill.waybillType || 'custom'
           });
         }
       } else {
@@ -81,7 +83,8 @@ Page({
           expressCode: res.expressCode,
           expressNo: res.expressNo,
           imageWidth: res.width,
-          imageHeight: res.height
+          imageHeight: res.height,
+          waybillType: res.waybillType || 'custom'
         });
       }
     } catch (err) {
