@@ -25,24 +25,24 @@
     </view>
   </view>
 
-  <!-- 添加打印员 -->
+  <!-- 当前用户绑定状态 -->
   <view class="section">
     <view class="section-header">
-      <text class="section-title">添加打印员</text>
+      <text class="section-title">我的绑定状态</text>
     </view>
-    <view class="add-form">
-      <view class="form-item">
-        <input class="input" placeholder="请输入打印员 OpenID" value="{{inputOpenid}}" bindinput="onInput" data-field="inputOpenid" />
+    <view class="current-user-section">
+      <view class="user-info">
+        <text class="user-openid">当前 OpenID：{{currentOpenid}}</text>
+        <text class="user-status {{isPrinter ? 'bound' : 'unbound'}}">
+          {{isPrinter ? '已是打印员' : '还不是打印员'}}
+        </text>
       </view>
-      <view class="btn-add" bindtap="bindPrinter">绑定打印员</view>
-    </view>
-    <view class="tips">
-      <view class="tip-title">如何获取 OpenID？</view>
-      <view class="tip-content">
-        1. 让打印员在小程序中登录<br/>
-        2. 在个人中心或设置页面查看 OpenID<br/>
-        3. 或通过微信 API 获取
-      </view>
+      <button class="btn-bind-self" bindtap="bindSelf" wx:if="{{!isPrinter}}">
+        绑定为打印员
+      </button>
+      <button class="btn-unbind-self" bindtap="unbindSelf" wx:if="{{isPrinter}}">
+        解绑打印员
+      </button>
     </view>
   </view>
 

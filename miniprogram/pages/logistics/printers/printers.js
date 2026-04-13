@@ -1,16 +1,19 @@
 // miniprogram/pages/logistics/printers/printers.js
 const api = require('../../../utils/api');
+const auth = require('../../../utils/auth');
 
 Page({
   data: {
     printers: [],        // 已绑定的打印员 OpenID 列表
     accounts: [],        // 已绑定的物流账号列表
-    inputOpenid: ''      // 输入框中的 OpenID
+    currentOpenid: '',   // 当前用户 OpenID
+    isPrinter: false     // 当前用户是否已是打印员
   },
 
   onLoad: function() {
     this.loadPrinters();
     this.loadBoundAccounts();
+    this.loadCurrentPrinterInfo();
   },
 
   // 加载打印员列表
@@ -45,6 +48,23 @@ Page({
     }
   },
 
+  // 加载当前用户打印员信息
+  loadCurrentPrinterInfo: async function() {
+    try {
+      const res = await api.get('/logistics/current-printer');
+      this.setData({
+        currentOpenid: res.openid || '未知',
+        isPrinter: res.isPrinter || false
+      });
+    } catch (err) {
+      console.error('加载当前用户信息失败:', err);
+      this.setData({
+        currentOpenid: '加载失败',
+        isPrinter: false
+      });
+    }
+  },
+
   // 获取快递公司名称（需要缓存快递公司列表）
   getDeliveryName: function(deliveryId) {
     const deliveryMap = {
@@ -61,44 +81,57 @@ Page({
     return deliveryMap[deliveryId] || deliveryId;
   },
 
-  // 输入框输入
-  onInput: function(e) {
-    const field = e.currentTarget.dataset.field;
-    const value = e.detail.value;
-    this.setData({ [field]: value });
+  // 绑定当前用户为打印员
+  bindSelf: async function() {
+    wx.showModal({
+      title: '确认绑定',
+      content: '确定要将自己绑定为打印员吗？',
+      confirmColor: '#1890ff',
+      success: async (res) => {
+        if (res.confirm) {
+          wx.showLoading({ title: '绑定中...', mask: true });
+          try {
+            await api.post('/logistics/bind-current-printer');
+            wx.hideLoading();
+            wx.showToast({ title: '绑定成功', icon: 'success' });
+            // 刷新状态
+            this.loadCurrentPrinterInfo();
+            this.loadPrinters();
+          } catch (err) {
+            wx.hideLoading();
+            wx.showToast({ title: err.message || '绑定失败', icon: 'none' });
+          }
+        }
+      }
+    });
   },
 
-  // 绑定打印员
-  bindPrinter: async function() {
-    const openid = this.data.inputOpenid.trim();
-    if (!openid) {
-      wx.showToast({ title: '请输入 OpenID', icon: 'none' });
-      return;
-    }
-
-    // 检查是否已经绑定
-    if (this.data.printers.includes(openid)) {
-      wx.showToast({ title: '该打印员已绑定', icon: 'none' });
-      return;
-    }
-
-    wx.showLoading({ title: '绑定中...', mask: true });
-    try {
-      await api.post('/logistics/printers/bind', {
-        openid: openid,
-        bind: true
-      });
-      wx.hideLoading();
-      wx.showToast({ title: '绑定成功', icon: 'success' });
-      this.setData({ inputOpenid: '' });
-      this.loadPrinters();
-    } catch (err) {
-      wx.hideLoading();
-      wx.showToast({ title: err.message || '绑定失败', icon: 'none' });
-    }
+  // 解绑当前用户
+  unbindSelf: async function() {
+    wx.showModal({
+      title: '确认解绑',
+      content: '确定要解绑打印员身份吗？',
+      confirmColor: '#ff4d4f',
+      success: async (res) => {
+        if (res.confirm) {
+          wx.showLoading({ title: '解绑中...', mask: true });
+          try {
+            await api.post('/logistics/unbind-current-printer');
+            wx.hideLoading();
+            wx.showToast({ title: '解绑成功', icon: 'success' });
+            // 刷新状态
+            this.loadCurrentPrinterInfo();
+            this.loadPrinters();
+          } catch (err) {
+            wx.hideLoading();
+            wx.showToast({ title: err.message || '解绑失败', icon: 'none' });
+          }
+        }
+      }
+    });
   },
 
-  // 解绑打印员
+  // 解绑其他打印员
   unbindPrinter: async function(e) {
     const openid = e.currentTarget.dataset.openid;
 
@@ -117,6 +150,10 @@ Page({
             wx.hideLoading();
             wx.showToast({ title: '解绑成功', icon: 'success' });
             this.loadPrinters();
+            // 如果解绑的是自己，刷新状态
+            if (openid === this.data.currentOpenid) {
+              this.loadCurrentPrinterInfo();
+            }
           } catch (err) {
             wx.hideLoading();
             wx.showToast({ title: err.message || '解绑失败', icon: 'none' });
