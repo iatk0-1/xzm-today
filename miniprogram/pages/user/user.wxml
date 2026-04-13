@@ -14,7 +14,7 @@
 
   <view class="order-section">
     <view class="section-header" bindtap="goToOrderList" data-status="all">
-      <text class="title">My Orders</text>
+      <text class="title">我的订单</text>
       <text class="view-all">查看全部 ></text>
     </view>
 

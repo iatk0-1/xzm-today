@@ -23,22 +23,33 @@
         <text class="select-icon">↕</text>
       </view>
     </view>
-<!-- 暂时注释掉 后面再决定要不要留 -->
-<!--  
-    <view class="tabs-wrap">
-      <view class="tab-item {{currentTab === 0 ? 'active' : ''}}" bindtap="switchTab" data-index="0">商品详情</view>
-      <view class="tab-item {{currentTab === 1 ? 'active' : ''}}" bindtap="switchTab" data-index="1">保养与材质</view>
-      <view class="tab-item {{currentTab === 2 ? 'active' : ''}}" bindtap="switchTab" data-index="2">尺码指南</view>
-      <view class="tab-item {{currentTab === 3 ? 'active' : ''}}" bindtap="switchTab" data-index="3">温馨提示</view>
-    </view>
+<!-- 四段提示信息-->
+<view class="aura-tabs-container" wx:if="{{product.description || product.fabricCare || product.sizeChartTip || product.warmTips}}">
+      
+      <view class="aura-tabs-header">
+        <view class="aura-tab {{currentAuraTab === 'desc' ? 'active' : ''}}" wx:if="{{product.description}}" bindtap="switchAuraTab" data-tab="desc">详情</view>
+        <view class="aura-tab {{currentAuraTab === 'fabric' ? 'active' : ''}}" wx:if="{{product.fabricCare}}" bindtap="switchAuraTab" data-tab="fabric">材质</view>
+        <view class="aura-tab {{currentAuraTab === 'size' ? 'active' : ''}}" wx:if="{{product.sizeChartTip}}" bindtap="switchAuraTab" data-tab="size">尺码</view>
+        <view class="aura-tab {{currentAuraTab === 'tips' ? 'active' : ''}}" wx:if="{{product.warmTips}}" bindtap="switchAuraTab" data-tab="tips">提示</view>
+      </view>
 
-    <view class="tab-content">
-      <text class="desc-text" wx:if="{{currentTab === 0}}">{{product.description || '暂无详细介绍'}}</text>
-      <text class="desc-text" wx:if="{{currentTab === 1}}">{{product.fabricCare || '暂无材质保养说明'}}</text>
-      <text class="desc-text" wx:if="{{currentTab === 2}}">{{product.sizeChartTip || '暂无尺码指南'}}</text>
-      <text class="desc-text" wx:if="{{currentTab === 3}}">{{product.warmTips || '暂无温馨提示'}}</text>
+      <view class="aura-tabs-content">
+        <view class="aura-tab-panel" wx:if="{{product.description && currentAuraTab === 'desc'}}">
+          <text class="panel-text">{{product.description}}</text>
+        </view>
+        <view class="aura-tab-panel" wx:if="{{product.fabricCare && currentAuraTab === 'fabric'}}">
+          <text class="panel-text">{{product.fabricCare}}</text>
+        </view>
+        <view class="aura-tab-panel" wx:if="{{product.sizeChartTip && currentAuraTab === 'size'}}">
+          <text class="panel-text">{{product.sizeChartTip}}</text>
+        </view>
+        <view class="aura-tab-panel" wx:if="{{product.warmTips && currentAuraTab === 'tips'}}">
+          <text class="panel-text">{{product.warmTips}}</text>
+        </view>
+      </view>
+      
     </view>
-    -->
+    <!--四段提示信息-->
   </view> 
 
   <view class="lookbook-section" wx:if="{{lookbookImgs && lookbookImgs.length > 0}}">

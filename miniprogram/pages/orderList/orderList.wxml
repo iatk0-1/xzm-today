@@ -45,7 +45,7 @@
           <view class="goods-info">
             <view class="goods-title">{{goods.productName}}</view>
             <view class="goods-sku">
-              {{goods.productSpec || '默认颜色'}} / {{goods.productSize || '均码'}}
+              {{goods.productSpec || '图片色'}} / {{goods.productSize || '均码'}}
             </view>
             <view class="goods-price-row">
               <text class="price">¥ {{goods.salePrice}}</text>

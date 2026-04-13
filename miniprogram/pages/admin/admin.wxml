@@ -141,34 +141,39 @@
   </view>
 
   <view class="sku-matrix-section" wx:if="{{skuList.length > 0}}">
-    <view class="label" style="color:#d32f2f;">SKU 价格、库存与图片</view>
-    <!-- 批量设置按钮 -->
-    <view class="batch-row">
-      <view class="btn-batch" style="background: #007aff;" bindtap="applyBatch">批量设置</view>
+    <view class="label">SKU 明细</view>
+
+    <view class="sku-console-row">
+      <input class="console-input" type="digit" placeholder="价格" model:value="{{quickPrice}}" />
+      <input class="console-input" type="number" placeholder="库存" model:value="{{quickStock}}" />
+      
+      <view class="console-img-btn" bindtap="chooseQuickImage">
+        <image wx:if="{{quickImage}}" src="{{quickImage}}" mode="aspectFill"></image>
+        <text wx:else class="icon-camera">📷</text>
+      </view>
+      
+      <view class="btn-quick-fill" bindtap="applyQuickFillAll">一键填充</view>
+      <view class="btn-advanced-batch" bindtap="applyBatch">批量设置</view>
     </view>
-    <!-- 标题行 -->
-    <view class="sku-header-row">
-      <view class="sku-delete" style="visibility: hidden;">−</view>
-      <view class="sku-header">SKU</view>
-      <view class="sku-header-img">图片</view>
-      <view class="sku-header">价格</view>
-      <view class="sku-header">库存</view>
-    </view>
-    <!-- SKU 列表 -->
-    <view class="sku-row" wx:for="{{skuList}}" wx:if="{{!item._toBeRemoved}}" wx:key="index">
-      <view class="sku-delete" catchtap="removeSku" data-index="{{index}}">−</view>
-      <view class="sku-name">
-        {{item.color}} - {{item.size}}
+
+    <view class="minimal-sku-list">
+      <view class="minimal-sku-row" wx:for="{{skuList}}" wx:if="{{!item._toBeRemoved}}" wx:key="index">
+        <view class="sku-left">
+          <view class="sku-del" catchtap="removeSku" data-index="{{index}}">×</view>
+          <text class="sku-name-text">{{item.color}} / {{item.size}}</text>
+        </view>
+
+        <view class="sku-right">
+          <input class="mini-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onSkuInput" data-index="{{index}}" data-field="price" />
+          <input class="mini-input" type="number" placeholder="无限" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" />
+          
+          <view class="mini-img-upload" bindtap="uploadSkuImage" data-index="{{index}}">
+            <image wx:if="{{item.image}}" src="{{item.image}}" mode="aspectFill"></image>
+            <text class="icon-plus" wx:else>+</text>
+            <view wx:if="{{item.image}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
+          </view>
+        </view>
       </view>
-      <view class="sku-image-upload" wx:if="{{item.image}}" bindtap="uploadSkuImage" data-index="{{index}}">
-        <image class="sku-image-preview" src="{{item.image}}" mode="aspectFill"></image>
-        <view class="sku-image-delete" catchtap="removeSkuImage" data-index="{{index}}">×</view>
-      </view>
-      <view class="sku-image-upload" wx:else bindtap="uploadSkuImage" data-index="{{index}}">
-        <text class="sku-image-placeholder">+</text>
-      </view>
-      <input class="sku-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onSkuInput" data-index="{{index}}" data-field="price" />
-      <input class="sku-input" type="number" placeholder="库存" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" />
     </view>
   </view>
 
@@ -275,17 +280,18 @@
 <view class="modal-mask" wx:if="{{showBatchModal}}" catchtap="closeBatchModal"></view>
 <view class="batch-modal {{showBatchModal ? 'show' : ''}}">
   <view class="modal-header">
-    <view class="modal-title">批量设置 SKU</view>
+    <view class="modal-title">批量设置</view>
     <view class="modal-close" catchtap="closeBatchModal">×</view>
   </view>
 
   <scroll-view scroll-y class="batch-scroll">
     <view class="batch-section">
       <view class="batch-section-header">
-        <view class="batch-section-title">选择要设置的颜色</view>
-        <view class="batch-select-all" bindtap="toggleSelectAllColors">全选</view>
+        <view class="batch-section-title">选择颜色</view>
+        
       </view>
       <view class="batch-options">
+        <view class="batch-select-all" bindtap="toggleSelectAllColors">全选</view>
         <view class="batch-option {{item.selected ? 'active' : ''}}" wx:for="{{batchSelectedColors}}" wx:key="name" bindtap="toggleBatchColor" data-index="{{index}}">
           {{item.name}}
         </view>
@@ -294,36 +300,39 @@
 
     <view class="batch-section">
       <view class="batch-section-header">
-        <view class="batch-section-title">选择要设置的尺码</view>
-        <view class="batch-select-all" bindtap="toggleSelectAllSizes">全选</view>
+        <view class="batch-section-title">选择尺码</view>
+        
       </view>
       <view class="batch-options">
+        <view class="batch-select-all" bindtap="toggleSelectAllSizes">全选</view>
         <view class="batch-option {{item.selected ? 'active' : ''}}" wx:for="{{batchSelectedSizes}}" wx:key="name" bindtap="toggleBatchSize" data-index="{{index}}">
           {{item.name}}
         </view>
       </view>
     </view>
 
-    <view class="batch-section">
-      <view class="batch-section-title">设置价格、库存、图片</view>
+    <view class="batch-section" style="border-bottom: none;">
+      <view class="batch-section-title" style="margin-bottom: 12px;">设置参数 (留空则不修改该项)</view>
+      
       <view class="batch-inputs-row">
-        <input class="batch-input-wide" type="digit" placeholder="价格（选填）" value="{{batchPrice}}" bindinput="onInput" data-field="batchPrice" />
-        <input class="batch-input-wide" type="number" placeholder="库存（选填）" value="{{batchStock}}" bindinput="onInput" data-field="batchStock" />
+        <input class="batch-input-wide" type="digit" placeholder="价格 (可选)" value="{{batchPrice}}" bindinput="onInput" data-field="batchPrice" />
+        <input class="batch-input-wide" type="number" placeholder="库存 (可选)" value="{{batchStock}}" bindinput="onInput" data-field="batchStock" />
       </view>
+      
       <view class="batch-image-section">
-        <view class="batch-image-preview" wx:if="{{batchImage}}" bindtap="chooseBatchImage">
-          <image class="batch-image" src="{{batchImage}}" mode="aspectFill"></image>
-          <view class="batch-image-replace">点击更换</view>
+        <view class="batch-image-preview" wx:if="{{batchImage}}">
+          <image class="batch-image" src="{{batchImage}}" mode="aspectFill" bindtap="chooseBatchImage"></image>
+          <view class="batch-image-del" catchtap="onInput" data-field="batchImage" data-value="">×</view>
         </view>
         <view class="batch-image-upload" wx:else bindtap="chooseBatchImage">
-          <text class="batch-image-placeholder">+ 选择图片</text>
+          <text class="icon-camera">📷 选择图片</text>
         </view>
       </view>
     </view>
   </scroll-view>
 
   <view class="modal-footer">
-    <view class="btn-confirm-modal" bindtap="confirmBatch">应用设置</view>
+    <view class="btn-confirm-modal" bindtap="confirmBatch">应用批量设置</view>
   </view>
 </view>
 

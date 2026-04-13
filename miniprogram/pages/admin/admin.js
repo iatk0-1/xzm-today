@@ -56,6 +56,9 @@ Page({
     batchPrice: '',
     batchStock: '',
     batchImage: '',
+    quickPrice: '',
+    quickStock: '',
+    quickImage: '',
 
     // 批量设置弹窗相关
     showBatchModal: false,
@@ -263,8 +266,8 @@ Page({
           }));
         }
 
-        // 设置颜色（过滤掉"默认颜色"）
-        colors = colors_set.filter(c => c && c !== '默认颜色');
+        // 设置颜色（过滤掉"图片色"）
+        colors = colors_set.filter(c => c && c !== '图片色');
 
         // 填充 SKU 列表（保留 skuId 和 sizeId 用于更新）
         skuList = skuMatrix.map(sku => ({
@@ -874,12 +877,27 @@ Page({
     });
   },
 
+  // ====== 修复：颜色输入为空时，默认赋值“图片色” ======
   addColor() {
     let val = this.data.colorInput.trim();
-    if (val && !this.data.colors.includes(val)) {
-      this.setData({ colors: [...this.data.colors, val], colorInput: '' }, () => {
+    
+    // 🚀 核心逻辑：如果什么都不填，默认赋予“图片色”
+    if (!val) {
+      val = '图片色';
+    }
+
+    // 防御机制：防止重复添加同一个颜色标签
+    if (!this.data.colors.includes(val)) {
+      this.setData({ 
+        colors: [...this.data.colors, val], 
+        colorInput: '' 
+      }, () => {
+        // 标签加好后，立刻向下触发，渲染出 SKU 列表
         this.generateSkuMatrix();
       });
+    } else {
+      // 如果已经有这个颜色了，默默清空输入框，不弹报错，保持高级体验
+      this.setData({ colorInput: '' });
     }
   },
 
@@ -900,7 +918,7 @@ Page({
       return;
     }
     let sizes = activeSizes.length > 0 ? activeSizes : ['默认尺码'];
-    let colors = activeColors.length > 0 ? activeColors : ['默认颜色'];
+    let colors = activeColors.length > 0 ? activeColors : ['图片色'];
     let newSkuList = [];
     let oldSkuList = this.data.skuList;
 
@@ -1334,5 +1352,55 @@ Page({
     }
     console.log('uploadImageList 完成，返回 URLs:', urls);
     return urls;
-  }
+  },
+  
+  // 选择填充用的统一图片
+  chooseQuickImage: function() {
+    wx.chooseImage({
+      count: 1,
+      success: (res) => {
+        // 建议此处调用你现有的上传接口，获取后端 URL 赋值给 quickImage
+        // 这里简化处理，直接展示本地图
+        this.setData({ quickImage: res.tempFilePaths[0] });
+      }
+    });
+  },
+
+  // 一键填充核心逻辑
+  // ====== 核心重构：一键填充 + 状态自动重置 ======
+  applyQuickFillAll: function() {
+    const { skuList, quickPrice, quickStock, quickImage } = this.data;
+  
+    if (!skuList || skuList.length === 0) {
+      wx.showToast({ title: '请先添加规格', icon: 'none' });
+      return;
+    }
+  
+    // 检查是否有任何输入，避免空填充
+    if (quickPrice === '' && quickStock === '' && quickImage === '') {
+      wx.showToast({ title: '请填写填充内容', icon: 'none' });
+      return;
+    }
+  
+    // 执行填充逻辑
+    const newList = skuList.map(sku => {
+      return {
+        ...sku,
+        price: quickPrice !== '' ? quickPrice : sku.price,
+        // 如果库存为空，则保持原样（或在提交时处理为无限）
+        stock: quickStock !== '' ? quickStock : sku.stock, 
+        image: quickImage !== '' ? quickImage : sku.image
+      };
+    });
+  
+    // 🚀 关键修改：在 setData 中同步清空控制台输入源
+    this.setData({
+      skuList: newList,
+      quickPrice: '',    // 填充后自动清空价格
+      quickStock: '',    // 填充后自动清空库存
+      quickImage: ''     // 填充后自动清空图片
+    }, () => {
+      wx.showToast({ title: '已同步至明细', icon: 'success' });
+    });
+  },
 });

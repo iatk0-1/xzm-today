@@ -580,3 +580,70 @@ page {
   0% { opacity: 0; transform: translateY(4px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+
+/* ================= 高级横向详情模块 (弹性自适应版) ================= */
+.aura-tabs-container {
+  margin: 40px 20px 0px 20px;
+}
+
+/* 🚀 突破点 1：标签容器全宽铺满，取消固定间距 */
+.aura-tabs-header {
+  display: flex;
+  width: 100%;
+  border-bottom: 1px solid #f5f5f5;
+  margin-bottom: 20px;
+}
+
+/* 🚀 突破点 2：弹性等分与绝对居中 */
+.aura-tab {
+  flex: 1; /* 核心算法：1个占100%，2个占50%，3个占33% */
+  text-align: center; /* 确保文字在自己的格子里绝对居中 */
+  padding-bottom: 12px; /* 撑开下划线的空间 */
+  font-size: 13px;
+  color: #999999; 
+  position: relative;
+  transition: all 0.3s ease;
+  letter-spacing: 1px;
+}
+
+.aura-tab.active {
+  color: #111111;
+  font-weight: 500;
+}
+
+/* 🚀 突破点 3：游丝底线的“锚点跟随”居中算法 */
+.aura-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; /* 精准压在灰色的边界线上 */
+  left: 50%; /* 先移到格子的中间 */
+  transform: translateX(-50%); /* 再向左回退自身宽度的一半，实现完美居中 */
+  width: 24px; /* 固定宽度的极简短线，不再根据文字长短变化 */
+  height: 1px;
+  background-color: #111111;
+  border-radius: 1px;
+}
+
+/* 🚀 突破点 4：干掉所有固定高度限制，内容像水一样自适应 */
+.aura-tabs-content {
+  width: 100%;
+  /* 取消了 min-height，现在内容写了几行，它就只占几行的高度 */
+}
+
+/* 内容丝滑浮现 */
+.aura-tab-panel {
+  animation: auraFadeIn 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+.panel-text {
+  font-size: 12px;
+  color: #666666;
+  line-height: 1.8;
+  white-space: pre-wrap; /* 完美保留你在后台敲的回车排版 */
+  display: block;
+}
+
+@keyframes auraFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}

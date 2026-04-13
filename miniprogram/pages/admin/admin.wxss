@@ -68,17 +68,127 @@ page { background-color: #f7f8fa; padding-bottom: 40px; }
 .size-box { padding: 8px 16px; background: #f5f5f5; border-radius: 6px; font-size: 13px; color: #666; transition: all 0.2s; }
 .size-box.active { background: #000; color: #fff; font-weight: bold; }
 
+.quick-fill-bar {
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  background: #f8f8f8;
+  border-radius: 8rpx;
+  margin-top: 15rpx;
+}
+
+.fill-input {
+  flex: 1;
+  height: 60rpx;
+  background: #fff;
+  margin-right: 10rpx;
+  padding: 0 10rpx;
+  font-size: 24rpx;
+  border: 1rpx solid #eee;
+}
+
+.fill-image-upload {
+  width: 60rpx;
+  height: 60rpx;
+  background: #fff;
+  border: 1rpx dashed #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15rpx;
+}
+
+.fill-image-upload image {
+  width: 100%;
+  height: 100%;
+}
+
+.btn-fill-all {
+  background: #000;
+  color: #fff;
+  font-size: 24rpx;
+  padding: 15rpx 25rpx;
+  border-radius: 4rpx;
+}
+
 /* SKU 矩阵 */
-.sku-matrix-section { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ffeded; }
-.batch-row { display: flex; gap: 10px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #eee; align-items: center; }
-.btn-batch { background: #ff4d4f; color: #fff; line-height: 36px; padding: 0 15px; border-radius: 6px; font-size: 13px; font-weight: bold; }
-.sku-header-row { display: flex; align-items: center; gap: 8px; padding: 8px 0 12px 0; margin-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
-.sku-header { font-size: 12px; color: #999; font-weight: 400; }
-.sku-header-img { font-size: 12px; color: #999; font-weight: 400; width: 40px; text-align: center; flex-shrink: 0; }
-.sku-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: nowrap; padding-left: 0; }
-.sku-delete { width: 24px; height: 24px; background: #ff4d4f; color: #fff; border-radius: 50%; text-align: center; line-height: 22px; font-size: 18px; flex-shrink: 0; }
-.sku-name { flex: 1; font-size: 12px; color: #333; font-weight: 500; display: flex; align-items: center; min-width: 100px; white-space: nowrap; }
-.sku-input { width: 60px; height: 36px; background: #f5f5f5; border-radius: 6px; text-align: center; font-size: 13px; flex-shrink: 0; }
+/* ================= 极简高级 SKU 管理舱 ================= */
+.sku-matrix-section { 
+  background: #ffffff; padding: 15px; border-radius: 12px; 
+  margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); 
+}
+
+/* 单行控制台：强制不换行，间距极小化以容纳 5 元素 */
+.sku-console-row { 
+  display: flex; align-items: center; justify-content: space-between; 
+  gap: 5px; margin-bottom: 20px; width: 100%; box-sizing: border-box; 
+}
+
+/* 输入框：采用 flex 弹性分配空间 */
+.console-input { 
+  flex: 1.2; height: 34px; background: #f5f5f5; border-radius: 4px; 
+  padding: 0 4px; font-size: 11px; text-align: center; color: #111;
+  min-width: 0; /* 防止内容撑破盒子 */
+}
+
+/* 📷 图片框：固定 34px 宽度 */
+.console-img-btn { 
+  width: 34px; height: 34px; background: #f5f5f5; border-radius: 4px; 
+  display: flex; justify-content: center; align-items: center; 
+  flex-shrink: 0; overflow: hidden; position: relative;
+}
+.console-img-btn image { width: 100%; height: 100%; }
+.icon-camera { font-size: 14px; opacity: 0.5; }
+
+/* 动作按钮：固定宽度，文字不换行 */
+.btn-quick-fill { 
+  height: 34px; background: #111111; color: #ffffff; 
+  font-size: 11px; font-weight: bold; padding: 0 8px; 
+  border-radius: 4px; line-height: 34px; flex-shrink: 0; white-space: nowrap; 
+}
+
+.btn-advanced-batch { 
+  height: 34px; background: #eeeeee; color: #333333; 
+  font-size: 11px; padding: 0 8px; 
+  border-radius: 4px; line-height: 34px; flex-shrink: 0; white-space: nowrap; 
+}
+
+/* ================= 极简 SKU 列表 ================= */
+.minimal-sku-list { display: flex; flex-direction: column; gap: 8px; }
+.minimal-sku-row { 
+  display: flex; justify-content: space-between; align-items: center; 
+  padding: 8px 0; border-bottom: 1px solid #f9f9f9; 
+}
+.minimal-sku-row:last-child { border-bottom: none; }
+
+.sku-left { display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; }
+.sku-del { 
+  width: 18px; height: 18px; background: #eeeeee; color: #999999; 
+  border-radius: 50%; display: flex; justify-content: center; align-items: center; 
+  font-size: 14px; flex-shrink: 0; 
+}
+.sku-name-text { 
+  font-size: 12px; color: #333333; font-weight: 500; 
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+}
+
+.sku-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.mini-input { 
+  width: 50px; height: 32px; background: #f5f5f5; border-radius: 4px; 
+  text-align: center; font-size: 12px; 
+}
+.mini-img-upload { 
+  width: 32px; height: 32px; background: #f5f5f5; border-radius: 4px; 
+  display: flex; justify-content: center; align-items: center; 
+  position: relative; overflow: hidden; flex-shrink: 0; 
+}
+.mini-img-upload image { width: 100%; height: 100%; }
+.icon-plus { font-size: 14px; color: #999; }
+.mini-img-del { 
+  position: absolute; top: 0; right: 0; width: 12px; height: 12px; 
+  background: rgba(0,0,0,0.6); color: #fff; font-size: 10px; 
+  display: flex; justify-content: center; align-items: center; 
+}
 
 /* 关联商品 */
 .related-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
@@ -178,129 +288,84 @@ page { background-color: #f7f8fa; padding-bottom: 40px; }
   font-weight: 300;
 }
 
-/* 批量设置弹窗样式 */
+/* ================= 高级版：批量设置弹窗 ================= */
 .batch-modal {
-  position: fixed;
-  bottom: -100%;
-  left: 0;
-  width: 100%;
-  height: 75vh;
-  background: #fff;
-  border-radius: 16px 16px 0 0;
-  z-index: 1001;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.3s ease-in-out;
+  position: fixed; bottom: -100%; left: 0; width: 100%; height: 75vh;
+  background: #ffffff; border-radius: 12px 12px 0 0; z-index: 1001;
+  display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
-.batch-modal.show {
-  bottom: 0;
+.batch-modal.show { bottom: 0; }
+
+/* 头部高度压缩 */
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 20px; border-bottom: 1px solid #f5f5f5;
 }
-.batch-scroll {
-  flex: 1;
-  padding: 15px 15px 0 15px;
-  overflow-y: auto;
+.modal-title { font-size: 15px; font-weight: bold; color: #111; }
+.modal-close { font-size: 22px; color: #999; padding: 0 5px; font-weight: 300; }
+
+.batch-scroll { flex: 1; padding: 15px 20px; overflow-y: auto; }
+
+/* 🚀 优化1：大幅度压缩段落之间的留白 */
+.batch-section { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #f9f9f9; }
+
+/* 🚀 优化2：死守同一行，修复全选按钮被挤压换行 */
+.batch-section-header { 
+  display: flex; justify-content: space-between; align-items: center; 
+  margin-bottom: 10px; width: 100%; flex-wrap: nowrap; 
 }
-.batch-section {
-  margin-bottom: 20px;
-  padding: 0 15px 15px 15px;
-  border-bottom: 1px solid #f5f5f5;
-}
-.batch-section-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.batch-section-title {
-  font-size: 14px;
-  font-weight: bold;
-  color: #333;
-  flex-shrink: 0;
-}
+.batch-section-title { font-size: 13px; font-weight: 600; color: #111; flex-shrink: 1; }
+
 .batch-select-all {
-  font-size: 12px;
-  color: #007aff;
-  padding: 2px 8px;
-  background: #f0f0f0;
-  border-radius: 10px;
-  white-space: nowrap;
-  flex-shrink: 0;
-  margin-left: 0;
+  font-size: 11px; color: #666; background: #f5f5f5; 
+  padding: 4px 10px; border-radius: 4px; transition: all 0.2s;
+  white-space: nowrap; /* 核心机制：文字绝不换行 */
+  flex-shrink: 0;      /* 核心机制：盒子绝不被挤压变形 */
 }
-.batch-select-all:active {
-  background: #007aff;
-  color: #fff;
-}
-.batch-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.batch-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+.batch-select-all:active { background: #e0e0e0; color: #111; }
+
+/* 选项 Tag 紧凑化 */
+.batch-options { display: flex; flex-wrap: wrap; gap: 6px; }
 .batch-option {
-  padding: 8px 16px;
-  background: #f5f5f5;
-  border-radius: 20px;
-  font-size: 13px;
-  color: #666;
-  transition: all 0.2s;
+  padding: 5px 12px; background: #f5f5f5; border-radius: 4px;
+  font-size: 11px; color: #666; transition: all 0.2s; border: 1px solid transparent;
 }
-.batch-option.active {
-  background: #000;
-  color: #fff;
-}
-.batch-inputs-row {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
+.batch-option.active { background: #111111; color: #ffffff; font-weight: 500; }
+
+/* 数据输入区高度压缩 */
+.batch-inputs-row { display: flex; gap: 8px; margin-bottom: 12px; }
 .batch-input-wide {
-  flex: 1;
-  height: 44px;
-  background: #f5f5f5;
-  border-radius: 8px;
-  padding: 0 15px;
-  font-size: 14px;
+  flex: 1; height: 32px; background: #f5f5f5; border-radius: 4px;
+  padding: 0 10px; font-size: 12px; color: #111; min-width: 0;
 }
-.batch-image-section {
-  display: flex;
-  align-items: center;
+
+/* 🚀 优化3：图片上传区大幅度缩放 (从 100px 缩减到 60px) */
+.batch-image-upload {
+  width: 60px; height: 60px; background: #f5f5f5; border-radius: 4px;
+  display: flex; justify-content: center; align-items: center; border: 1px dashed #dddddd;
 }
-.batch-image-upload, .batch-image-preview {
-  width: 100px;
-  height: 100px;
-  border-radius: 8px;
-  background: #f5f5f5;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
+.batch-image-upload .icon-camera { font-size: 10px; color: #999; }
+
+.batch-image-preview {
+  width: 60px; height: 60px; border-radius: 4px;
+  position: relative; overflow: visible;
 }
-.batch-image {
-  width: 100%;
-  height: 100%;
+.batch-image { width: 100%; height: 100%; border-radius: 4px; display: block; }
+.batch-image-del {
+  position: absolute; top: -6px; right: -6px; width: 16px; height: 16px;
+  background: #111111; color: #ffffff; border-radius: 50%;
+  display: flex; justify-content: center; align-items: center;
+  font-size: 10px; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
-.batch-image-replace {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 13px;
+
+/* 底部按钮高度微调 */
+.modal-footer {
+  padding: 10px 20px; background: #ffffff;
+  border-top: 1px solid #f5f5f5; padding-bottom: calc(10px + env(safe-area-inset-bottom));
 }
-.batch-image-placeholder {
-  font-size: 14px;
-  color: #999;
+.btn-confirm-modal {
+  background: #111111; color: #ffffff; text-align: center;
+  line-height: 40px; border-radius: 4px; font-size: 13px; font-weight: bold;
 }
 
 /* ================= 尺码配置弹窗样式 ================= */

@@ -21,7 +21,8 @@ Page({
     currentSkuPrice: null,
     currentSkuStock: null,
     currentSkuImage: null,
-    showVideo: false
+    showVideo: false,
+    currentAuraTab: '', // 记录当前选中的横向标签
   },
 
   onLoad: function(options) {
@@ -97,6 +98,14 @@ Page({
       });
 
       this.checkSkuMatch();
+      
+      // 🚀 智能定位第一个有内容的标签
+      let firstTab = '';
+      if (product.description) firstTab = 'desc';
+      else if (product.fabricCare) firstTab = 'fabric';
+      else if (product.sizeChartTip) firstTab = 'size';
+      else if (product.warmTips) firstTab = 'tips';
+      this.setData({ currentAuraTab: firstTab });
 
       // 获取关联商品（使用手动关联的 ID）
       if (product.relatedProductIds && product.relatedProductIds.length > 0) {
@@ -316,6 +325,13 @@ Page({
     const videoContext = wx.createVideoContext('mainFullscreenVideo');
     if (videoContext) videoContext.pause();
   },
+
+// ====== 高级横向标签切换引擎 ======
+switchAuraTab(e) {
+  this.setData({
+    currentAuraTab: e.currentTarget.dataset.tab
+  });
+},
 
   doNothing: function() {
     // 阻止视频点击事件冒泡
