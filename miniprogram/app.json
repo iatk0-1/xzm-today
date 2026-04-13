@@ -13,6 +13,7 @@
     "pages/orderDetail/orderDetail",
     "pages/afterSaleApply/afterSaleApply",
     "pages/adminOrder/adminOrder",
+    "pages/adminOrderDetail/adminOrderDetail",
     "pages/adminProduct/adminProduct",
     "pages/adminWish/adminWish",
     "pages/publishWish/publishWish",

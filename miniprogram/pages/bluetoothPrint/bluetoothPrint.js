@@ -5,6 +5,8 @@ const { printer } = require('../../utils/bluetooth-printer');
 Page({
   data: {
     shipmentId: null,
+    shipmentIds: [],     // 批量打印时的多个发货单 ID
+    currentShipmentIndex: 0,  // 当前打印的发货单索引
     mergeGroupId: null,
     isMerge: false,
     waybillImage: '',
@@ -24,24 +26,37 @@ Page({
 
     // 打印设置
     copyCount: 1,
-    isPrinting: false
+    isPrinting: false,
+    waybillImages: []  // 批量打印时的所有面单
   },
 
   onLoad: async function(options) {
     const shipmentId = options.shipmentId ? parseInt(options.shipmentId) : null;
+    const shipmentIds = options.shipmentIds ? options.shipmentIds.split(',').map(id => parseInt(id)) : [];
     const mergeGroupId = options.mergeGroupId ? parseInt(options.mergeGroupId) : null;
     const isMerge = options.isMerge === 'true';
 
     this.setData({
       shipmentId,
+      shipmentIds,
       mergeGroupId,
       isMerge
     });
 
     // 设置页面标题
-    wx.setNavigationBarTitle({
-      title: isMerge ? '合并打印面单' : '蓝牙打印面单'
-    });
+    if (shipmentIds.length > 0) {
+      wx.setNavigationBarTitle({
+        title: `批量打印 (${shipmentIds.length}个)`
+      });
+    } else if (isMerge) {
+      wx.setNavigationBarTitle({
+        title: '合并打印面单'
+      });
+    } else {
+      wx.setNavigationBarTitle({
+        title: '蓝牙打印面单'
+      });
+    }
 
     // 加载面单图片
     await this.loadWaybillImage();
@@ -60,7 +75,20 @@ Page({
 
     try {
       let res;
-      if (this.data.isMerge && this.data.mergeGroupId) {
+
+      // 批量打印模式：从多个 shipmentIds 中获取面单
+      if (this.data.shipmentIds.length > 0) {
+        const currentShipmentId = this.data.shipmentIds[this.data.currentShipmentIndex];
+        res = await api.get(`/shipments/${currentShipmentId}/waybill-image`);
+        this.setData({
+          waybillImage: res.waybillImage,
+          expressCode: res.expressCode,
+          expressNo: res.expressNo,
+          imageWidth: res.width,
+          imageHeight: res.height,
+          waybillType: res.waybillType || 'custom'
+        });
+      } else if (this.data.isMerge && this.data.mergeGroupId) {
         // 合并发货：获取所有面单
         res = await api.get(`/merge-groups/${this.data.mergeGroupId}/waybill-images`);
         if (res.waybills && res.waybills.length > 0) {
@@ -225,10 +253,45 @@ Page({
       wx.hideLoading();
       wx.showToast({ title: '打印完成', icon: 'success' });
 
-      // 打印完成后返回
-      setTimeout(() => {
-        wx.navigateBack();
-      }, 1500);
+      // 批量打印模式：打印完一个后继续打印下一个
+      if (this.data.shipmentIds.length > 0) {
+        const nextIndex = this.data.currentShipmentIndex + 1;
+        if (nextIndex < this.data.shipmentIds.length) {
+          // 还有下一个，继续打印
+          wx.showModal({
+            title: '继续打印',
+            content: `已打印 ${this.data.currentShipmentIndex + 1}/${this.data.shipmentIds.length}，是否继续打印下一个？`,
+            confirmText: '继续',
+            cancelText: '返回',
+            success: (res) => {
+              if (res.confirm) {
+                this.loadNextShipment(nextIndex);
+              } else {
+                setTimeout(() => {
+                  wx.navigateBack();
+                }, 500);
+              }
+            }
+          });
+        } else {
+          // 全部打印完成
+          wx.showModal({
+            title: '全部完成',
+            content: `已完成 ${this.data.shipmentIds.length} 个面单的打印`,
+            showCancel: false,
+            success: () => {
+              setTimeout(() => {
+                wx.navigateBack();
+              }, 500);
+            }
+          });
+        }
+      } else {
+        // 单打印模式：直接返回
+        setTimeout(() => {
+          wx.navigateBack();
+        }, 1500);
+      }
     } catch (err) {
       wx.hideLoading();
       wx.showModal({
@@ -239,6 +302,12 @@ Page({
     } finally {
       this.setData({ isPrinting: false });
     }
+  },
+
+  // 加载下一个发货单的面单
+  async loadNextShipment(nextIndex) {
+    this.setData({ currentShipmentIndex: nextIndex });
+    await this.loadWaybillImage();
   },
 
   // 打印面单（核心方法）

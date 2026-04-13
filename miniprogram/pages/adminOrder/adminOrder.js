@@ -426,12 +426,23 @@ Page({
     });
   },
 
-  // 进入订单详情页
+  // 进入订单详情页或合并组详情页（管理员专用）
   goToDetail: function(e) {
-    const id = e.currentTarget.dataset.id;
-    wx.navigateTo({
-      url: `/pages/orderDetail/orderDetail?id=${id}`
-    });
+    const mergeGroupId = e.currentTarget.dataset.mergeGroupId;
+    const type = e.currentTarget.dataset.type;
+
+    // 如果是合并发货且有合并组 ID，跳转到合并组详情页
+    if (type === 'merged' && mergeGroupId) {
+      wx.navigateTo({
+        url: `/pages/mergeGroupDetail/mergeGroupDetail?mergeGroupId=${mergeGroupId}`
+      });
+    } else {
+      // 否则跳转到订单详情页
+      const id = e.currentTarget.dataset.id;
+      wx.navigateTo({
+        url: `/pages/adminOrderDetail/adminOrderDetail?id=${id}`
+      });
+    }
   },
 
   // 进入合并组详情页
@@ -460,5 +471,20 @@ Page({
     wx.navigateTo({
       url: `/pages/unbindOrder/unbindOrder?shipmentId=${shipmentId}`
     });
+  },
+
+  // 跳转到蓝牙打印页面
+  bluetoothPrint: function(e) {
+    const shipmentId = e.currentTarget.dataset.shipmentId;
+    if (shipmentId) {
+      wx.navigateTo({
+        url: `/pages/bluetoothPrint/bluetoothPrint?shipmentId=${shipmentId}`
+      });
+    }
+  },
+
+  // 阻止事件冒泡
+  stopPropagation: function() {
+    // 空方法，用于阻止事件冒泡
   }
 });

@@ -8,7 +8,10 @@ Page({
     orders: [],
     shipments: [],
     canComplete: false,
-    isLoading: true
+    isLoading: true,
+    // 批量打印相关
+    selectedShipments: [],
+    selectAll: false
   },
 
   onLoad: function(options) {
@@ -158,6 +161,61 @@ Page({
     // 跳转到发货页面，传递 mergeGroupId
     wx.navigateTo({
       url: `/pages/shipPartial/shipPartial?mergeGroupId=${this.data.mergeGroupId}&orderIds=${this.data.orders.map(o => o.id).join(',')}`
+    });
+  },
+
+  // 跳转到蓝牙打印页面（单个打印）
+  bluetoothPrint: function(e) {
+    const shipmentId = e.currentTarget.dataset.shipmentId;
+    if (shipmentId) {
+      wx.navigateTo({
+        url: `/pages/bluetoothPrint/bluetoothPrint?shipmentId=${shipmentId}`
+      });
+    }
+  },
+
+  // 批量打印
+  batchBluetoothPrint: function() {
+    if (this.data.selectedShipments.length === 0) {
+      wx.showToast({ title: '请选择要打印的运单号', icon: 'none' });
+      return;
+    }
+
+    // 构建参数：传递多个 shipmentId
+    const shipmentIds = this.data.selectedShipments.join(',');
+    wx.navigateTo({
+      url: `/pages/bluetoothPrint/bluetoothPrint?shipmentIds=${shipmentIds}&mergeGroupId=${this.data.mergeGroupId}`
+    });
+  },
+
+  // 全选/取消全选
+  toggleSelectAll: function() {
+    const selectAll = !this.data.selectAll;
+    const selectedShipments = selectAll ? this.data.shipments.map(s => s.id) : [];
+    this.setData({
+      selectAll,
+      selectedShipments
+    });
+  },
+
+  // 切换单个发货单的选择状态
+  toggleShipmentSelection: function(e) {
+    const shipmentId = e.currentTarget.dataset.shipmentId;
+    const index = this.data.selectedShipments.indexOf(shipmentId);
+    let selectedShipments = [...this.data.selectedShipments];
+
+    if (index > -1) {
+      selectedShipments.splice(index, 1); // 取消选中
+    } else {
+      selectedShipments.push(shipmentId); // 选中
+    }
+
+    // 更新全选状态
+    const selectAll = selectedShipments.length === this.data.shipments.length;
+
+    this.setData({
+      selectedShipments,
+      selectAll
     });
   }
 });

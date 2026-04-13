@@ -287,3 +287,120 @@ page {
   font-size: 26rpx;
   border: none;
 }
+
+/* 打印按钮 */
+.shipment-action {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx dashed #e0e0e0;
+}
+
+.btn-print-single {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  height: 60rpx;
+  line-height: 60rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  border: none;
+}
+
+/* 批量打印区域 */
+.batch-print-section {
+  background-color: #ffffff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 140rpx;
+}
+
+.batch-print-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.select-all {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  font-size: 26rpx;
+  color: #333;
+}
+
+.selected-count {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.batch-print-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.batch-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 20rpx;
+  background-color: #f9f9f9;
+  border-radius: 8rpx;
+  border: 2rpx solid transparent;
+}
+
+.batch-item.selected {
+  background-color: #e6f7ff;
+  border-color: #1890ff;
+}
+
+.batch-item-info {
+  flex: 1;
+}
+
+.express-no {
+  font-size: 26rpx;
+  color: #333;
+  font-family: -apple-system, monospace;
+}
+
+.checkbox {
+  width: 36rpx;
+  height: 36rpx;
+  border: 2rpx solid #ddd;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.checkbox.checked {
+  background-color: #1890ff;
+  border-color: #1890ff;
+}
+
+.checkbox.checked::after {
+  content: '✓';
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: bold;
+}
+
+.btn-batch-print {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: none;
+}
+
+.btn-batch-print[disabled] {
+  background-color: #e0e0e0;
+  color: #999;
+}

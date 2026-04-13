@@ -1,0 +1,157 @@
+<!-- miniprogram/pages/adminOrderDetail/adminOrderDetail.wxml -->
+<view class="admin-detail-wrapper" wx:if="{{!isLoading && order}}">
+
+  <!-- 订单状态 -->
+  <view class="status-header">
+    <view class="status-title">{{order.status}}</view>
+    <view class="status-desc" wx:if="{{order.status === 'pending'}}">待支付</view>
+    <view class="status-desc" wx:if="{{order.status === 'paid'}}">待发货</view>
+    <view class="status-desc" wx:if="{{order.status === 'shipped'}}">已发货</view>
+    <view class="status-desc" wx:if="{{order.status === 'completed'}}">交易完成</view>
+  </view>
+
+  <!-- 收件信息 -->
+  <view class="info-card address-card" wx:if="{{order.recipientName}}">
+    <view class="location-icon">📍</view>
+    <view class="address-content">
+      <view class="user-row">
+        <text class="name">{{order.recipientName}}</text>
+        <text class="phone">{{order.recipientPhone}}</text>
+      </view>
+      <view class="detail-row">{{order.recipientAddress}}</view>
+    </view>
+  </view>
+
+  <!-- 商品信息 -->
+  <view class="info-card goods-card">
+    <view class="shop-title">订单商品</view>
+    <view class="goods-item" wx:for="{{order.items}}" wx:key="id">
+      <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
+      <view class="goods-info">
+        <view class="goods-title">{{item.productName}}</view>
+        <view class="goods-sku">{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}</view>
+        <view class="goods-price-row">
+          <text class="price">¥ {{item.salePrice}}</text>
+          <text class="count">x {{item.qty}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="money-breakdown">
+      <view class="money-row">
+        <text class="money-label">商品总价</text>
+        <text class="money-val">¥ {{order.totalPrice}}</text>
+      </view>
+      <view class="money-row">
+        <text class="money-label">运费</text>
+        <text class="money-val">¥ 0.00</text>
+      </view>
+      <view class="money-row total">
+        <text class="money-label">实付款</text>
+        <text class="money-val final">¥ {{order.payAmount}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 订单信息 -->
+  <view class="info-card order-info-card">
+    <view class="info-row">
+      <text class="info-label">订单编号</text>
+      <view class="info-val-box">
+        <text class="info-val">{{order.id}}</text>
+        <view class="btn-copy" bindtap="copyOrderSn">复制</view>
+      </view>
+    </view>
+    <view class="info-row">
+      <text class="info-label">下单时间</text>
+      <text class="info-val">{{order.createdAt}}</text>
+    </view>
+  </view>
+
+  <!-- 物流信息区域（支持分批发货，多个发货单） -->
+  <view class="info-card logistics-card" wx:if="{{shipments && shipments.length > 0}}">
+    <view class="section-title">物流信息</view>
+
+    <!-- 多个发货单列表 -->
+    <view class="shipment-list">
+      <view class="shipment-item" wx:for="{{shipments}}" wx:key="id">
+        <view class="shipment-header">
+          <text class="shipment-index">发货单 {{index + 1}}</text>
+          <text class="shipment-time" wx:if="{{item.shippedAt}}">{{item.shippedAt}}</text>
+        </view>
+
+        <view class="shipment-info">
+          <view class="info-row">
+            <text class="label">快递公司</text>
+            <text class="value">{{item.expressCode === 'ZTO' ? '中通快递' : item.expressCode}}</text>
+          </view>
+          <view class="info-row">
+            <text class="label">快递单号</text>
+            <text class="value">{{item.expressNo}}</text>
+          </view>
+        </view>
+
+        <!-- 发货单商品列表 -->
+        <view class="shipment-items">
+          <view class="shipment-goods" wx:for="{{item.items}}" wx:for-item="goodsItem" wx:key="id">
+            <image class="goods-img" src="{{goodsItem.skuImageUrl || goodsItem.productImage}}" mode="aspectFill"></image>
+            <view class="goods-info">
+              <view class="goods-title">{{goodsItem.productName || '商品'}}</view>
+              <view class="goods-sku">
+                <text wx:if="{{goodsItem.spec}}">{{goodsItem.spec}}</text>
+                <text wx:if="{{goodsItem.size}}"> / {{goodsItem.size}}</text>
+              </view>
+              <view class="goods-qty">× {{goodsItem.shipQty}}</view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 面单 PDF 预览和蓝牙打印 -->
+        <view class="waybill-actions">
+          <button class="btn-preview" bindtap="previewWaybill" data-url="{{item.pdfShowUrl}}" wx:if="{{item.pdfShowUrl}}">预览面单</button>
+          <button class="btn-print" bindtap="bluetoothPrint" data-shipment-id="{{item.id}}">蓝牙打印</button>
+        </view>
+
+        <!-- 物流轨迹 -->
+        <view class="logistics-trace" wx:if="{{logisticsTraceMap[item.id] && logisticsTraceMap[item.id].nodes && logisticsTraceMap[item.id].nodes.length > 0}}">
+          <view class="trace-title">物流轨迹</view>
+          <view class="trace-list">
+            <view class="trace-item" wx:for="{{logisticsTraceMap[item.id].nodes}}" wx:key="time">
+              <view class="trace-time">{{item.time}}</view>
+              <view class="trace-content">{{item.description}}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 售后记录区域 -->
+  <view class="info-card after-sale-card" wx:if="{{afterSaleRecords && afterSaleRecords.length > 0}}">
+    <view class="section-title">售后记录</view>
+    <view class="after-sale-list">
+      <view
+        class="after-sale-item"
+        wx:for="{{afterSaleRecords}}"
+        wx:key="id"
+        bindtap="viewAfterSaleDetail"
+        data-id="{{item.id}}">
+        <view class="after-sale-header">
+          <text class="after-sale-type">{{item.typeDisplay}}</text>
+          <text class="after-sale-status status-{{item.status}}">{{item.statusDisplay}}</text>
+        </view>
+        <view class="after-sale-info">
+          <text class="after-sale-qty">数量：{{item.qty}}</text>
+          <text class="after-sale-amount">退款：¥ {{item.refundAmount}}</text>
+        </view>
+        <view class="after-sale-reason" wx:if="{{item.reason}}">{{item.reason}}</view>
+        <view class="after-sale-time">{{item.createdAt}}</view>
+      </view>
+    </view>
+  </view>
+
+</view>
+
+<view class="loading" wx:if="{{isLoading}}">
+  <text>加载中...</text>
+</view>

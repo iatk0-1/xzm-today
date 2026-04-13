@@ -395,17 +395,13 @@ Page({
 
         shipmentRes = await api.post(apiPath, requestData);
 
+        // 保存 shipmentId 用于打印
+        this.setData({ shipmentId: shipmentRes.id });
+
         wx.hideLoading();
 
-        // 显示面单 PDF 预览
-        if (shipmentRes.pdfShowUrl) {
-          await this.showWaybillPreview(shipmentRes);
-        } else {
-          wx.showToast({
-            title: '发货成功！运单号：' + shipmentRes.expressNo,
-            icon: 'success'
-          });
-        }
+        // 询问用户是否需要立即打印面单
+        await this.showPrintConfirm(shipmentRes);
       } else {
         // 手动填单模式
         // 统一使用 /shipments 接口
@@ -432,22 +428,18 @@ Page({
 
         shipmentRes = await api.post(apiPath, requestData);
 
+        // 保存 shipmentId 用于打印
+        this.setData({ shipmentId: shipmentRes.id });
+
         wx.hideLoading();
-        wx.showToast({ title: '发货成功！', icon: 'success' });
+
+        // 询问用户是否需要立即打印面单
+        await this.showPrintConfirm(shipmentRes);
       }
 
-      // 返回上一页并刷新
-      const pages = getCurrentPages();
-      const prevPage = pages[pages.length - 2];
-      if (prevPage) {
-        // 如果是合并发货，刷新 adminOrder 页面
-        if (this.data.isMerge && prevPage.loadOrders) {
-          prevPage.loadOrders();
-        } else if (prevPage.loadOrders) {
-          prevPage.loadOrders();
-        }
-      }
-      wx.navigateBack();
+      // 注意：返回逻辑已移到 showPrintConfirm 中
+      // 如果用户选择打印，打印完成后会返回
+      // 如果用户选择不打印，直接返回
 
     } catch (err) {
       wx.hideLoading();
@@ -459,6 +451,41 @@ Page({
     } finally {
       this.setData({ isSubmitting: false });
     }
+  },
+
+  // 显示打印确认弹窗
+  showPrintConfirm: function(shipmentRes) {
+    return new Promise((resolve) => {
+      wx.showModal({
+        title: '发货成功',
+        content: '运单号：' + shipmentRes.expressNo + '\n是否要立即打印面单？',
+        confirmText: '立即打印',
+        confirmColor: '#1890ff',
+        cancelText: '暂不打印',
+        success: (res) => {
+          if (res.confirm) {
+            // 跳转到蓝牙打印页面
+            this.goToBluetoothPrint();
+          } else {
+            // 返回上一页并刷新
+            this.navigateBackAndRefresh();
+          }
+          resolve();
+        }
+      });
+    });
+  },
+
+  // 返回上一页并刷新
+  navigateBackAndRefresh: function() {
+    const pages = getCurrentPages();
+    const prevPage = pages[pages.length - 2];
+    if (prevPage) {
+      if (prevPage.loadOrders) {
+        prevPage.loadOrders();
+      }
+    }
+    wx.navigateBack();
   },
 
   // 显示面单预览
