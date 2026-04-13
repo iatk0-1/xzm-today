@@ -1,0 +1,80 @@
+<!-- miniprogram/pages/bluetoothPrint/bluetoothPrint.wxml -->
+<view class="container">
+  <!-- 设备连接状态 -->
+  <view class="status-bar {{connected ? 'connected' : 'disconnected'}}">
+    <text class="status-icon">{{connected ? '✓' : '○'}}</text>
+    <text class="status-text">{{connected ? '已连接：' + deviceName : '未连接打印机'}}</text>
+    <text class="status-action" bindtap="handleConnect" wx:if="{{!connected}}">点击连接</text>
+    <text class="status-action disconnect" bindtap="handleDisconnect" wx:if="{{connected}}">断开</text>
+  </view>
+
+  <!-- 面单预览 -->
+  <view class="preview-section">
+    <view class="section-title">面单预览</view>
+    <view class="preview-wrapper">
+      <image
+        class="waybill-preview"
+        src="{{waybillImage}}"
+        mode="widthFix"
+        show-menu-by-longpress="true"
+      ></image>
+    </view>
+    <view class="waybill-info">
+      <text class="express-code">{{expressCode}} - {{expressNo}}</text>
+    </view>
+  </view>
+
+  <!-- 打印设置 -->
+  <view class="print-settings">
+    <view class="section-title">打印设置</view>
+    <view class="setting-item">
+      <text class="setting-label">打印份数</text>
+      <view class="stepper">
+        <view class="step-btn" bindtap="decreaseCopy">-</view>
+        <text class="step-num">{{copyCount}}</text>
+        <view class="step-btn" bindtap="increaseCopy">+</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 打印按钮 -->
+  <view class="print-actions">
+    <button class="btn-print" bindtap="handlePrint" disabled="{{!connected || isPrinting}}">
+      {{isPrinting ? '打印中...' : '立即打印'}}
+    </button>
+  </view>
+
+  <!-- 设备选择弹窗 -->
+  <view class="device-modal" wx:if="{{showDeviceModal}}">
+    <view class="modal-mask" bindtap="closeDeviceModal"></view>
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">选择打印机</text>
+        <text class="modal-close" bindtap="closeDeviceModal">✕</text>
+      </view>
+      <view class="modal-body">
+        <!-- 已配对设备 -->
+        <view class="paired-device" wx:if="{{pairedDeviceId}}" bindtap="connectPairedDevice">
+          <text class="device-name">已配对设备</text>
+          <text class="device-status">点击重连</text>
+        </view>
+        <!-- 搜索到的设备 -->
+        <view class="device-list">
+          <view class="device-item" wx:for="{{devices}}" wx:key="deviceId" bindtap="selectDevice" data-device="{{item}}">
+            <view class="device-info">
+              <text class="device-name">{{item.name || '未知设备'}}</text>
+              <text class="device-rssi">信号：{{item.RSSI}}dBm</text>
+            </view>
+            <text class="device-connect">连接</text>
+          </view>
+        </view>
+        <view class="empty-tip" wx:if="{{devices.length === 0 && !pairedDeviceId}}">
+          <text>正在搜索附近的打印机...</text>
+        </view>
+      </view>
+      <view class="modal-footer">
+        <button class="btn-scan" bindtap="startDiscovery">刷新设备</button>
+      </view>
+    </view>
+  </view>
+</view>

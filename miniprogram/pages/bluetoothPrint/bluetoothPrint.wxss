@@ -1,0 +1,299 @@
+/* miniprogram/pages/bluetoothPrint/bluetoothPrint.wxss */
+
+.container {
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+}
+
+/* 状态栏 */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 20rpx 30rpx;
+  border-radius: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.status-bar.connected {
+  background-color: #f6ffed;
+  border: 1rpx solid #b7eb8f;
+}
+
+.status-bar.disconnected {
+  background-color: #fff1f0;
+  border: 1rpx solid #ffccc7;
+}
+
+.status-icon {
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+.status-bar.connected .status-icon {
+  color: #52c41a;
+}
+
+.status-bar.disconnected .status-icon {
+  color: #ff4d4f;
+}
+
+.status-text {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.status-action {
+  font-size: 26rpx;
+  color: #1890ff;
+  padding: 8rpx 20rpx;
+  border: 1rpx solid #1890ff;
+  border-radius: 8rpx;
+}
+
+.status-action.disconnect {
+  color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+/* 预览区域 */
+.preview-section {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.preview-wrapper {
+  display: flex;
+  justify-content: center;
+  background-color: #f5f5f5;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.waybill-preview {
+  width: 100%;
+  max-width: 500rpx;
+  height: auto;
+}
+
+.waybill-info {
+  margin-top: 20rpx;
+  text-align: center;
+}
+
+.express-code {
+  font-size: 26rpx;
+  color: #666;
+  font-family: monospace;
+}
+
+/* 打印设置 */
+.print-settings {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 0;
+}
+
+.setting-label {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.step-btn {
+  width: 60rpx;
+  height: 60rpx;
+  background-color: #1890ff;
+  color: #fff;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+.step-btn:active {
+  background-color: #096dd9;
+}
+
+.step-num {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  min-width: 60rpx;
+  text-align: center;
+}
+
+/* 打印按钮 */
+.print-actions {
+  margin-top: 40rpx;
+}
+
+.btn-print {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: bold;
+  padding: 30rpx 0;
+  border-radius: 16rpx;
+  border: none;
+}
+
+.btn-print[disabled] {
+  background: #ccc;
+  color: #999;
+}
+
+/* 设备选择弹窗 */
+.device-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+}
+
+.modal-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 30rpx;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30rpx;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.modal-close {
+  font-size: 40rpx;
+  color: #999;
+  padding: 10rpx;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 20rpx;
+}
+
+.paired-device {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx;
+  background-color: #e6f7ff;
+  border-radius: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.device-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx;
+  border: 1rpx solid #f0f0f0;
+  border-radius: 12rpx;
+}
+
+.device-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.device-name {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.device-rssi {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.device-connect {
+  font-size: 26rpx;
+  color: #1890ff;
+  padding: 8rpx 20rpx;
+  border: 1rpx solid #1890ff;
+  border-radius: 8rpx;
+}
+
+.empty-tip {
+  text-align: center;
+  padding: 60rpx 0;
+  color: #999;
+  font-size: 26rpx;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: center;
+}
+
+.btn-scan {
+  background-color: #f5f5f5;
+  color: #333;
+  font-size: 26rpx;
+  padding: 16rpx 40rpx;
+  border-radius: 12rpx;
+  border: none;
+}

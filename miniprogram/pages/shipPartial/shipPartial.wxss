@@ -299,3 +299,20 @@
 .btn-submit[disabled] {
   background-color: #ccc;
 }
+
+/* 蓝牙打印按钮 */
+.btn-bluetooth-print {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: bold;
+  padding: 24rpx;
+  border-radius: 16rpx;
+  height: auto;
+  line-height: 1.5;
+  position: fixed;
+  bottom: 50rpx;
+  left: 30rpx;
+  right: 30rpx;
+  margin-top: 20rpx;
+}

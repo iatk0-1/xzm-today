@@ -77,4 +77,9 @@
   <button class="btn-submit" bindtap="submitShipment" disabled="{{totalShipQty === 0 || isSubmitting}}">
     {{isSubmitting ? '发货中...' : '确认发货'}}
   </button>
+
+  <!-- 蓝牙打印按钮（已发货后显示） -->
+  <button class="btn-bluetooth-print" bindtap="goToBluetoothPrint" wx:if="{{shipmentId}}">
+    📠 蓝牙打印面单
+  </button>
 </view>

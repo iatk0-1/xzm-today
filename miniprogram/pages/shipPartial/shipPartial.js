@@ -481,5 +481,38 @@ Page({
         }
       });
     });
+  },
+
+  // 跳转到蓝牙打印页面
+  goToBluetoothPrint: function() {
+    const shipmentId = this.data.shipmentId;
+    const mergeGroupId = this.data.mergeGroupId;
+    const isMerge = this.data.isMerge;
+
+    if (!shipmentId && !mergeGroupId) {
+      wx.showToast({ title: '没有可打印的面单', icon: 'none' });
+      return;
+    }
+
+    // 构建参数
+    let params = [];
+    if (shipmentId) {
+      params.push(`shipmentId=${shipmentId}`);
+    }
+    if (mergeGroupId) {
+      params.push(`mergeGroupId=${mergeGroupId}`);
+    }
+    if (isMerge) {
+      params.push(`isMerge=true`);
+    }
+
+    const url = `/pages/bluetoothPrint/bluetoothPrint?${params.join('&')}`;
+    wx.navigateTo({
+      url: url,
+      fail: (err) => {
+        console.error('跳转到蓝牙打印失败:', err);
+        wx.showToast({ title: '跳转失败', icon: 'none' });
+      }
+    });
   }
 });
