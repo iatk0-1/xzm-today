@@ -47,6 +47,10 @@
       <text>联系主理人</text>
       <text class="arrow">></text>
     </button>
+    <view class="menu-item printers-entry" wx:if="{{isAdmin}}" bindtap="goToPrinters">
+      <text>打印员管理</text>
+      <text class="arrow">></text>
+    </view>
   </view>
 
   <view class="bottom-tab-bar">

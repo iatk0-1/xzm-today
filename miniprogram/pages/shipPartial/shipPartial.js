@@ -1,17 +1,6 @@
 // miniprogram/pages/shipPartial/shipPartial.js
 const api = require('../../utils/api');
 
-// 快递公司编码列表
-const EXPRESS_CODES = [
-  { code: 'ZTO', name: '中通快递' },
-  { code: 'YTO', name: '圆通速递' },
-  { code: 'YD', name: '韵达速递' },
-  { code: 'STO', name: '申通快递' },
-  { code: 'SF', name: '顺丰速运' },
-  { code: 'JD', name: '京东物流' },
-  { code: 'EMS', name: 'EMS' }
-];
-
 Page({
   data: {
     orderId: null,
@@ -21,8 +10,9 @@ Page({
     isMerge: false,    // 是否为合并发货模式
     mode: null,        // 'electronic' 或 'manual'，用户选择商品后才设置
     expressNo: '',
-    expressCodes: EXPRESS_CODES.map(e => e.name),
-    expressCode: 'ZTO',
+    expressCodes: [],   // 快递公司名称列表（从后端动态加载）
+    expressCodeList: [], // 快递公司完整数据 [{code, name}]
+    expressCode: '',    // 当前选中的快递公司编码
     expressCodeIndex: 0,
     items: [],           // 可发货的商品列表
     totalShipQty: 0,
@@ -30,7 +20,7 @@ Page({
     hasSelectedShipping: false  // 是否已选择发货方式
   },
 
-  onLoad: function(options) {
+  onLoad: async function(options) {
     // 支持单订单和多订单（合并）两种模式
     const isMerge = options.isMerge === 'true';
     const orderIds = isMerge ? options.orderIds.split(',') : [options.orderId];
@@ -52,8 +42,63 @@ Page({
       wx.setNavigationBarTitle({ title: '分批发货' });
     }
 
+    // 加载快递公司列表
+    await this.loadDeliveryCompanies();
+
     // 加载商品
     this.loadOrderItems();
+  },
+
+  // 加载快递公司列表
+  loadDeliveryCompanies: async function() {
+    try {
+      const res = await api.get('/logistics/delivery-companies');
+      if (res && res.length > 0) {
+        // 后端返回：[{deliveryId, deliveryName}, ...]
+        const expressCodeList = res.map(item => ({
+          code: item.deliveryId,
+          name: item.deliveryName
+        }));
+        this.setData({
+          expressCodeList,
+          expressCodes: expressCodeList.map(e => e.name),
+          expressCode: expressCodeList[0].code // 默认选中第一个
+        });
+      } else {
+        // 如果后端没有数据，使用默认列表
+        const defaultList = [
+          { code: 'ZTO', name: '中通快递' },
+          { code: 'YTO', name: '圆通速递' },
+          { code: 'YD', name: '韵达速递' },
+          { code: 'STO', name: '申通快递' },
+          { code: 'SF', name: '顺丰速运' },
+          { code: 'JD', name: '京东物流' },
+          { code: 'EMS', name: 'EMS' }
+        ];
+        this.setData({
+          expressCodeList: defaultList,
+          expressCodes: defaultList.map(e => e.name),
+          expressCode: defaultList[0].code
+        });
+      }
+    } catch (err) {
+      console.error('加载快递公司列表失败:', err);
+      // 使用默认列表
+      const defaultList = [
+        { code: 'ZTO', name: '中通快递' },
+        { code: 'YTO', name: '圆通速递' },
+        { code: 'YD', name: '韵达速递' },
+        { code: 'STO', name: '申通快递' },
+        { code: 'SF', name: '顺丰速运' },
+        { code: 'JD', name: '京东物流' },
+        { code: 'EMS', name: 'EMS' }
+      ];
+      this.setData({
+        expressCodeList: defaultList,
+        expressCodes: defaultList.map(e => e.name),
+        expressCode: defaultList[0].code
+      });
+    }
   },
 
   // 加载订单商品（支持多订单）
@@ -222,9 +267,10 @@ Page({
   // 切换快递公司
   onExpressCodeChange: function(e) {
     const index = e.detail.value;
+    const selectedCompany = this.data.expressCodeList[index];
     this.setData({
       expressCodeIndex: index,
-      expressCode: EXPRESS_CODES[index].code
+      expressCode: selectedCompany.code
     });
   },
 

@@ -71,5 +71,12 @@ Page({
         }
       }
     });
+  },
+
+  // 跳转到打印员管理页面
+  goToPrinters: function() {
+    wx.navigateTo({
+      url: '/pages/logistics/printers/printers'
+    });
   }
 });

@@ -1,0 +1,78 @@
+<!--miniprogram/pages/logistics/printers/printers.wxml-->
+<view class="container">
+  <view class="header">
+    <view class="title">打印员管理</view>
+    <view class="subtitle">绑定打印员后可使用微信 PC 打单软件</view>
+  </view>
+
+  <!-- 已绑定打印员列表 -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">已绑定打印员</text>
+      <text class="section-count">{{printers.length}} 人</text>
+    </view>
+    <view class="printer-list" wx:if="{{printers.length > 0}}">
+      <view class="printer-item" wx:for="{{printers}}" wx:key="*this">
+        <view class="printer-info">
+          <text class="printer-openid">{{item}}</text>
+          <text class="printer-status">已绑定</text>
+        </view>
+        <view class="btn-unbind" catchtap="unbindPrinter" data-openid="{{item}}">解绑</view>
+      </view>
+    </view>
+    <view class="empty-tip" wx:else>
+      <text>暂无绑定打印员</text>
+    </view>
+  </view>
+
+  <!-- 添加打印员 -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">添加打印员</text>
+    </view>
+    <view class="add-form">
+      <view class="form-item">
+        <input class="input" placeholder="请输入打印员 OpenID" value="{{inputOpenid}}" bindinput="onInput" data-field="inputOpenid" />
+      </view>
+      <view class="btn-add" bindtap="bindPrinter">绑定打印员</view>
+    </view>
+    <view class="tips">
+      <view class="tip-title">如何获取 OpenID？</view>
+      <view class="tip-content">
+        1. 让打印员在小程序中登录<br/>
+        2. 在个人中心或设置页面查看 OpenID<br/>
+        3. 或通过微信 API 获取
+      </view>
+    </view>
+  </view>
+
+  <!-- 绑定物流账号提示 -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">绑定的物流账号</text>
+    </view>
+    <view class="account-list" wx:if="{{accounts.length > 0}}">
+      <view class="account-item" wx:for="{{accounts}}" wx:key="bizId">
+        <view class="account-info">
+          <text class="account-name">{{item.deliveryName}}</text>
+          <text class="account-biz-id">账号：{{item.bizId}}</text>
+        </view>
+        <view class="account-quota" wx:if="{{item.quotaNum !== null}}">
+          <text class="quota-num">{{item.quotaNum}}</text>
+          <text class="quota-unit">张</text>
+        </view>
+      </view>
+    </view>
+    <view class="empty-tip" wx:else>
+      <text>暂无绑定物流账号</text>
+    </view>
+    <view class="tips">
+      <view class="tip-title">如何绑定物流账号？</view>
+      <view class="tip-content">
+        1. 登录微信公众平台<br/>
+        2. 进入物流助手功能模块<br/>
+        3. 在"物流账号管理"中绑定快递月结账号
+      </view>
+    </view>
+  </view>
+</view>
