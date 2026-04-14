@@ -191,7 +191,7 @@ Page({
   // 全选/取消全选
   toggleSelectAll: function() {
     const selectAll = !this.data.selectAll;
-    const selectedShipments = selectAll ? this.data.shipments.map(s => s.id) : [];
+    const selectedShipments = selectAll ? this.data.shipments.map(s => String(s.id)) : [];
     this.setData({
       selectAll,
       selectedShipments
@@ -200,7 +200,7 @@ Page({
 
   // 切换单个发货单的选择状态
   toggleShipmentSelection: function(e) {
-    const shipmentId = e.currentTarget.dataset.shipmentId;
+    const shipmentId = String(e.currentTarget.dataset.shipmentId);
     const index = this.data.selectedShipments.indexOf(shipmentId);
     let selectedShipments = [...this.data.selectedShipments];
 
