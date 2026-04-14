@@ -100,7 +100,7 @@
       <text class="selected-count">已选 {{selectedShipments.length}} 个</text>
     </view>
     <view class="batch-print-list">
-      <view class="batch-item {{selectedShipments.indexOf(item.id) > -1 ? 'selected' : ''}}"
+      <view class="batch-item {{selectedShipments.indexOf(String(item.id)) > -1 ? 'selected' : ''}}"
             wx:for="{{shipments}}"
             wx:key="id"
             bindtap="toggleShipmentSelection"
@@ -108,7 +108,7 @@
         <view class="batch-item-info">
           <text class="express-no">{{item.expressCode}} - {{item.expressNo}}</text>
         </view>
-        <view class="checkbox {{selectedShipments.indexOf(item.id) > -1 ? 'checked' : ''}}"></view>
+        <view class="checkbox {{selectedShipments.indexOf(String(item.id)) > -1 ? 'checked' : ''}}"></view>
       </view>
     </view>
     <button class="btn-batch-print" bindtap="batchBluetoothPrint" disabled="{{selectedShipments.length === 0}}">
