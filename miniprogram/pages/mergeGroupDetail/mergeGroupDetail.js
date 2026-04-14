@@ -33,10 +33,21 @@ Page({
       // 检查是否可以完成
       const canComplete = res.orders.every(order => order.status === 'completed' || order.status === 'shipped');
 
+      // 处理 shipments，添加 _selected 标记
+      const shipments = (res.shipments || []).map(s => ({ ...s, _selected: false }));
+
+      // 调试：打印 shipments 数据结构
+      console.log('shipments:', shipments);
+      if (shipments.length > 0) {
+        console.log('shipment[0].id:', shipments[0].id, 'type:', typeof shipments[0].id);
+      }
+
       this.setData({
         mergeGroup: res,
         orders: res.orders || [],
-        shipments: res.shipments || [],
+        shipments: shipments,
+        selectedShipments: [],  // 初始化选中数组
+        selectAll: false,
         canComplete: canComplete,
         isLoading: false
       });
@@ -191,10 +202,27 @@ Page({
   // 全选/取消全选
   toggleSelectAll: function() {
     const selectAll = !this.data.selectAll;
+
+    // 更新每个 shipment 的 _selected 标记
+    const shipments = this.data.shipments.map(s => ({
+      ...s,
+      _selected: selectAll
+    }));
+
+    // 更新 selectedShipments 数组
     const selectedShipments = selectAll ? this.data.shipments.map(s => String(s.id)) : [];
+
+    // 调试：打印选中状态
+    console.log('toggleSelectAll:', {
+      selectAll,
+      selectedShipments,
+      shipments: shipments.map(s => ({ id: s.id, _selected: s._selected }))
+    });
+
     this.setData({
       selectAll,
-      selectedShipments
+      selectedShipments,
+      shipments
     });
   },
 
@@ -204,18 +232,33 @@ Page({
     const index = this.data.selectedShipments.indexOf(shipmentId);
     let selectedShipments = [...this.data.selectedShipments];
 
+    // 更新 selectedShipments 数组
     if (index > -1) {
       selectedShipments.splice(index, 1); // 取消选中
     } else {
       selectedShipments.push(shipmentId); // 选中
     }
 
+    // 更新每个 shipment 的 _selected 标记
+    const shipments = this.data.shipments.map(s => ({
+      ...s,
+      _selected: selectedShipments.indexOf(String(s.id)) > -1
+    }));
+
     // 更新全选状态
     const selectAll = selectedShipments.length === this.data.shipments.length;
 
+    // 调试：打印选中状态
+    console.log('toggleShipmentSelection:', {
+      shipmentId,
+      selectedShipments,
+      shipments: shipments.map(s => ({ id: s.id, _selected: s._selected }))
+    });
+
     this.setData({
       selectedShipments,
-      selectAll
+      selectAll,
+      shipments
     });
   }
 });
