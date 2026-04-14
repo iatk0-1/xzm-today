@@ -36,17 +36,11 @@ Page({
       // 处理 shipments，添加 _selected 标记
       const shipments = (res.shipments || []).map(s => ({ ...s, _selected: false }));
 
-      // 调试：打印 shipments 数据结构
-      console.log('shipments:', shipments);
-      if (shipments.length > 0) {
-        console.log('shipment[0].id:', shipments[0].id, 'type:', typeof shipments[0].id);
-      }
-
       this.setData({
         mergeGroup: res,
         orders: res.orders || [],
         shipments: shipments,
-        selectedShipments: [],  // 初始化选中数组
+        selectedShipments: [],
         selectAll: false,
         canComplete: canComplete,
         isLoading: false
@@ -212,13 +206,6 @@ Page({
     // 更新 selectedShipments 数组
     const selectedShipments = selectAll ? this.data.shipments.map(s => String(s.id)) : [];
 
-    // 调试：打印选中状态
-    console.log('toggleSelectAll:', {
-      selectAll,
-      selectedShipments,
-      shipments: shipments.map(s => ({ id: s.id, _selected: s._selected }))
-    });
-
     this.setData({
       selectAll,
       selectedShipments,
@@ -247,13 +234,6 @@ Page({
 
     // 更新全选状态
     const selectAll = selectedShipments.length === this.data.shipments.length;
-
-    // 调试：打印选中状态
-    console.log('toggleShipmentSelection:', {
-      shipmentId,
-      selectedShipments,
-      shipments: shipments.map(s => ({ id: s.id, _selected: s._selected }))
-    });
 
     this.setData({
       selectedShipments,
