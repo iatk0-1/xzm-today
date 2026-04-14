@@ -67,15 +67,6 @@
             <text class="money">收款：¥ {{item.totalPrice}}</text>
             <text class="ship-info">已发 {{item.shippedQty}}/{{item.totalQty}} 件</text>
           </view>
-
-          <!-- 快递单号列表和打印按钮（已发货订单显示） -->
-          <view class="shipment-info-section" wx:if="{{item.shipmentId}}" catchtap="stopPropagation">
-            <view class="shipment-row">
-              <text class="shipment-label">快递单号：</text>
-              <text class="shipment-no">{{item.expressNo || '配货中...'}}</text>
-            </view>
-            <button class="btn-print-small" bindtap="bluetoothPrint" data-shipment-id="{{item.shipmentId}}" wx:if="{{item.shipmentId}}">打印</button>
-          </view>
         </view>
 
         <!-- 操作按钮（选择模式下隐藏） -->

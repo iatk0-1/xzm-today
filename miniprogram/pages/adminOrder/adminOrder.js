@@ -471,20 +471,5 @@ Page({
     wx.navigateTo({
       url: `/pages/unbindOrder/unbindOrder?shipmentId=${shipmentId}`
     });
-  },
-
-  // 跳转到蓝牙打印页面
-  bluetoothPrint: function(e) {
-    const shipmentId = e.currentTarget.dataset.shipmentId;
-    if (shipmentId) {
-      wx.navigateTo({
-        url: `/pages/bluetoothPrint/bluetoothPrint?shipmentId=${shipmentId}`
-      });
-    }
-  },
-
-  // 阻止事件冒泡
-  stopPropagation: function() {
-    // 空方法，用于阻止事件冒泡
   }
 });
