@@ -62,26 +62,39 @@
 
   <!-- 发货记录 -->
   <view class="section">
-    <view class="section-title">发货记录（{{shipments.length}}次）</view>
+    <view class="section-header">
+      <view class="section-title">发货记录（{{shipments.length}}次）</view>
+      <view class="select-all-btn" bindtap="toggleSelectAll" wx:if="{{shipments.length > 0}}">
+        <view class="checkbox {{selectAll ? 'checked' : ''}}"></view>
+        <text>全选</text>
+      </view>
+    </view>
     <view class="shipment-list" wx:if="{{shipments.length > 0}}">
-      <view class="shipment-item" wx:for="{{shipments}}" wx:key="id">
-        <view class="shipment-header">
-          <text class="shipment-index">发货单 #{{index + 1}}</text>
-          <text class="shipment-time">{{item.shippedAt}}</text>
+      <view class="shipment-item-with-checkbox" wx:for="{{shipments}}" wx:for-item="item" wx:key="id">
+        <!-- 左侧选择框 -->
+        <view class="shipment-checkbox" bindtap="toggleShipmentSelection" data-shipment-id="{{item.id}}">
+          <view class="checkbox {{item._selected ? 'checked' : ''}}"></view>
         </view>
-        <view class="shipment-info">
-          <view class="info-row">
-            <text class="label">快递公司</text>
-            <text class="value">{{item.expressCode === 'ZTO' ? '中通快递' : item.expressCode}}</text>
+        <!-- 右侧发货单信息 -->
+        <view class="shipment-content">
+          <view class="shipment-header">
+            <text class="shipment-index">发货单 #{{index + 1}}</text>
+            <text class="shipment-time">{{item.shippedAt}}</text>
           </view>
-          <view class="info-row">
-            <text class="label">快递单号</text>
-            <text class="value">{{item.expressNo}}</text>
+          <view class="shipment-info">
+            <view class="info-row">
+              <text class="label">快递公司</text>
+              <text class="value">{{item.expressCode === 'ZTO' ? '中通快递' : item.expressCode}}</text>
+            </view>
+            <view class="info-row">
+              <text class="label">快递单号</text>
+              <text class="value">{{item.expressNo}}</text>
+            </view>
           </view>
-        </view>
-        <!-- 打印按钮 -->
-        <view class="shipment-action">
-          <button class="btn-print-single" bindtap="bluetoothPrint" data-shipment-id="{{item.id}}">蓝牙打印</button>
+          <!-- 打印按钮 -->
+          <view class="shipment-action">
+            <button class="btn-print-single" bindtap="bluetoothPrint" data-shipment-id="{{item.id}}">蓝牙打印</button>
+          </view>
         </view>
       </view>
     </view>
@@ -91,29 +104,10 @@
   </view>
 
   <!-- 批量打印按钮 -->
-  <view class="batch-print-section" wx:if="{{shipments.length > 0}}">
-    <view class="batch-print-header">
-      <view class="select-all">
-        <view class="checkbox {{selectAll ? 'checked' : ''}}" bindtap="toggleSelectAll"></view>
-        <text>全选</text>
-      </view>
-      <text class="selected-count">已选 {{selectedShipments.length}} 个</text>
-    </view>
-    <view class="batch-print-list">
-      <view class="batch-item {{item._selected ? 'selected' : ''}}"
-            wx:for="{{shipments}}"
-            wx:for-item="item"
-            wx:key="id"
-            bindtap="toggleShipmentSelection"
-            data-shipment-id="{{item.id}}">
-        <view class="batch-item-info">
-          <text class="express-no">{{item.expressCode}} - {{item.expressNo}}</text>
-        </view>
-        <view class="checkbox {{item._selected ? 'checked' : ''}}"></view>
-      </view>
-    </view>
+  <view class="batch-print-bar" wx:if="{{shipments.length > 0}}">
+    <text class="selected-count">已选 {{selectedShipments.length}}/{{shipments.length}}</text>
     <button class="btn-batch-print" bindtap="batchBluetoothPrint" disabled="{{selectedShipments.length === 0}}">
-      批量打印（{{selectedShipments.length}}）
+      批量打印
     </button>
   </view>
 
