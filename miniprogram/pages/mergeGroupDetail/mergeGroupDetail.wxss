@@ -381,19 +381,15 @@ page {
   border: none;
 }
 
-/* 批量打印栏 - 底部固定 */
+/* 批量打印栏 - 发货记录底部 */
 .batch-print-bar {
-  position: fixed;
-  bottom: 120rpx;
-  left: 0;
-  right: 0;
-  background-color: #ffffff;
-  border-top: 1rpx solid #eeeeee;
+  margin-top: 20rpx;
+  padding: 20rpx 30rpx;
+  background-color: #f9f9f9;
+  border-radius: 12rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20rpx 30rpx;
-  z-index: 100;
 }
 
 .batch-print-bar .selected-count {
