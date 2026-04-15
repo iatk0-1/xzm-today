@@ -134,6 +134,19 @@ page {
   transition: all 0.2s;
 }
 
+/* 直播入口 */
+.nav-live-entry {
+  font-size: 24rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
+  padding: 12rpx 28rpx;
+  border-radius: 40rpx;
+  font-weight: bold;
+  white-space: nowrap;
+  margin-right: 16rpx;
+  transition: all 0.2s;
+}
+
 /* ==================
    档口下拉面板 (Stall Panel)
 ================== */

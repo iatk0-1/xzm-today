@@ -11,6 +11,6 @@ module.exports = {
   REFRESH_TOKEN_KEY: 'refreshToken',
   USER_INFO_KEY: 'userInfo',
 
-  // 管理员 OpenID（第一个登录的用户会自动成为管理员，因为 user-id=1）
-  ADMIN_OPENID: 'mock_admin_openid_123456'
+  // 管理员 OpenID（需在后端白名单中：application.yml 中的 app.auth.admin.openids）
+  ADMIN_OPENID: 'owehQ3cwUf_RQ0TQ0SPpkBs0-BCU'
 };

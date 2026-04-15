@@ -281,6 +281,7 @@ Page({
   goToUser: function() { wx.reLaunch({ url: '/pages/user/user' }); },
   goToIndex: function() { wx.reLaunch({ url: '/pages/index/index' }); },
   goToMessage: function() { wx.showToast({ title: '功能开发中...', icon: 'none' }); },
+  goToLiveRoom: function() { wx.navigateTo({ url: '/pages/liveRoomList/index' }); },
 
   // 老板专属入口（与 user.js 保持一致）
   goToAdmin: function() {

@@ -89,6 +89,15 @@ Page({
       this.setData({ editId: options.editId });
       this.loadProductForEdit(options.editId);
     }
+
+    // 如果是从直播商品转换而来，加载直播商品详情
+    if (options && options.convertFromLiveProductId) {
+      this.setData({
+        convertFromLiveProductId: options.convertFromLiveProductId,
+        sessionId: options.sessionId
+      });
+      this.loadLiveProductForConvert(options.convertFromLiveProductId);
+    }
   },
 
   // 加载历史档口和标签
@@ -305,6 +314,191 @@ Page({
     }
   },
 
+  // 加载直播商品详情用于转换
+  loadLiveProductForConvert: async function(liveProductId) {
+    wx.showLoading({ title: '加载中...' });
+    try {
+      // 调用直播商品详情接口
+      const res = await api.get(`/live-products/${liveProductId}`);
+      console.log('直播商品详情:', res);
+
+      const product = res.product || res;
+      const skusFromApi = res.skus || [];
+
+      // 从 skus 数组中提取 SKU 数据，注意：不清除 skuId 和 sizeId，因为需要保留规格信息
+      const skuMatrix = skusFromApi.map(sku => ({
+        skuId: null, // 新商品的 SKU ID 需要置空，由后端生成
+        color: sku.spec || '默认',
+        size: sku.size || '均码',
+        price: sku.retailPrice,
+        stock: sku.stockMain,
+        image: sku.imageUrl || '',
+        sizeId: sku.sizeId || null // 保留 sizeId，使用相同的规格
+      }));
+
+      console.log('商品详情:', product);
+      console.log('SKU Matrix:', skuMatrix);
+
+      // 处理尺码类型：优先使用商品的 sizeCategoryId
+      let currentSizeCategoryId = product.sizeCategoryId || null;
+      let currentSizeCategoryName = '';
+
+      // 如果有 sizeCategoryId，查找对应的类型名称
+      if (currentSizeCategoryId && this.data.sizeCategoryList.length > 0) {
+        const category = this.data.sizeCategoryList.find(c => c.id === currentSizeCategoryId);
+        if (category) {
+          currentSizeCategoryName = category.name;
+        } else {
+          currentSizeCategoryId = null;
+        }
+      }
+
+      // 填充基本信息
+      const formData = {
+        title: product.name || '',
+        videoUrl: product.videoUrl || '',
+        shippingInfo: product.shippingInfo || '',
+        description: product.description || '',
+        fabricCare: product.fabricCare || '',
+        sizeChartTip: product.sizeChartTip || '',
+        warmTips: product.warmTips || '',
+        selectedStalls: [],
+        selectedTags: [],
+        lookbookImgs: product.lookbookImages || [],
+        detailImgs: product.detailImages || [],
+        manualRelated: []
+      };
+
+      // 加载档口和标签的完整信息
+      const stallIds = product.stallIds || [];
+      const relateTagIds = product.relateTagIds || [];
+
+      if (stallIds.length > 0) {
+        const stallsRes = await api.get('/stalls');
+        formData.selectedStalls = stallsRes
+          .filter(s => stallIds.includes(s.id))
+          .map(s => ({ id: s.id, name: s.name }));
+      }
+
+      if (relateTagIds.length > 0) {
+        const tagsRes = await api.get('/tags');
+        formData.selectedTags = tagsRes
+          .filter(t => relateTagIds.includes(t.id))
+          .map(t => ({ id: t.id, name: t.name }));
+      }
+
+      // 加载关联商品的完整信息
+      const relatedIds = product.relatedProductIds || [];
+      if (relatedIds.length > 0) {
+        const relatedProducts = await Promise.all(
+          relatedIds.map(id => api.get(`/products/${id}`).catch(err => null))
+        );
+        formData.manualRelated = relatedProducts
+          .filter(r => r !== null && r.product)
+          .map(r => ({
+            id: r.product.id,
+            name: r.product.name,
+            coverUrl: r.product.coverUrl,
+            retailPrice: r.product.retailPrice,
+            displayPrice: r.product.displayPrice
+          }));
+      }
+      console.log('关联商品:', formData.manualRelated);
+
+      // 处理封面图和轮播图
+      let mediaList = [];
+      if (product.coverUrl) {
+        mediaList.push({
+          id: 'cover_' + Date.now(),
+          url: product.coverUrl,
+          x: 0, y: 0
+        });
+      }
+      if (product.bannerImages && product.bannerImages.length > 0) {
+        product.bannerImages.forEach((url, index) => {
+          mediaList.push({
+            id: 'banner_' + index + '_' + Date.now(),
+            url: url,
+            x: 0, y: 0
+          });
+        });
+      }
+
+      // 处理尺码和颜色
+      let sizeOptions = [];
+      let colors = [];
+      let skuList = [];
+
+      if (skuMatrix && skuMatrix.length > 0) {
+        // 从 SKU 矩阵中提取尺码和颜色
+        const sizes = [...new Set(skuMatrix.map(s => s.size))];
+        const colors_set = [...new Set(skuMatrix.map(s => s.color))];
+
+        // 如果有尺码类型，使用该类型下的尺码列表
+        if (currentSizeCategoryId) {
+          const category = this.data.sizeCategoryList.find(c => c.id === currentSizeCategoryId);
+          if (category) {
+            sizeOptions = (category.sizes || []).map(size => ({
+              id: size.id,
+              name: size.name,
+              selected: sizes.includes(size.name)
+            }));
+          }
+        }
+
+        // 如果没有尺码类型或尺码类型下没有匹配的尺码，使用 SKU 中的实际尺码值
+        if (sizeOptions.length === 0) {
+          sizeOptions = sizes.map(sizeName => ({
+            name: sizeName,
+            selected: true
+          }));
+        }
+
+        // 设置颜色（过滤掉"图片色"）
+        colors = colors_set.filter(c => c && c !== '图片色');
+
+        // 填充 SKU 列表（skuId 置空，由后端生成新 ID）
+        skuList = skuMatrix.map(sku => ({
+          skuId: null, // 新商品 SKU ID 置空
+          color: sku.color,
+          size: sku.size,
+          price: String(sku.price),
+          stock: String(sku.stock),
+          image: sku.image || '',
+          sizeId: sku.sizeId // 保留 sizeId
+        }));
+      } else {
+        // 如果没有 SKU 数据，保持默认的尺码选项
+        sizeOptions = this.data.sizeOptions;
+      }
+
+      this.setData({
+        ...formData,
+        mediaList: mediaList,
+        currentSizeCategoryId,
+        currentSizeCategoryName,
+        sizeOptions: sizeOptions,
+        colors: colors,
+        skuList: skuList,
+        colorInput: '',
+        tagInput: ''
+      });
+
+      this.refreshGrid(mediaList);
+      wx.hideLoading();
+
+      // 提示用户
+      wx.showToast({
+        title: '已加载直播商品数据',
+        icon: 'success'
+      });
+    } catch (err) {
+      console.error('加载直播商品失败:', err);
+      wx.hideLoading();
+      wx.showToast({ title: '加载失败', icon: 'none' });
+    }
+  },
+
   onInput(e) {
     const field = e.currentTarget.dataset.field;
     this.setData({ [field]: e.detail.value });
@@ -406,21 +600,8 @@ Page({
       success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
         console.log('视频选择成功，临时路径:', tempFilePath);
-        console.log('视频信息:', JSON.stringify(res.tempFiles[0]));
-        wx.showLoading({ title: '上传视频中...' });
-
-        this.uploadFile(tempFilePath, 'video/mp4')
-          .then(url => {
-            console.log('视频上传成功，URL:', url);
-            wx.hideLoading();
-            wx.showToast({ title: '视频上传成功', icon: 'success' });
-            this.setData({ videoUrl: url });
-          })
-          .catch(err => {
-            console.error('视频上传失败:', err);
-            wx.hideLoading();
-            wx.showModal({ title: '上传失败', content: err.errMsg || JSON.stringify(err), showCancel: false });
-          });
+        // 直接保存临时文件路径，等提交时再统一上传
+        this.setData({ videoUrl: tempFilePath });
       },
       fail: (err) => {
         console.error('选择视频失败:', err);
@@ -1064,20 +1245,9 @@ Page({
       sourceType: ['camera', 'album'],
       success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
-        wx.showLoading({ title: '上传图片中...' });
-
-        this.uploadFile(tempFilePath, 'image/jpeg')
-          .then(url => {
-            wx.hideLoading();
-            const key = `skuList[${index}].image`;
-            this.setData({ [key]: url });
-            wx.showToast({ title: '上传成功', icon: 'success' });
-          })
-          .catch(err => {
-            wx.hideLoading();
-            console.error('图片上传失败:', err);
-            wx.showToast({ title: '上传失败', icon: 'none' });
-          });
+        // 直接保存临时文件路径，等提交时再统一上传
+        const key = `skuList[${index}].image`;
+        this.setData({ [key]: tempFilePath });
       },
       fail: (err) => {
         console.error('选择图片失败:', err);
@@ -1099,19 +1269,8 @@ Page({
       sourceType: ['camera', 'album'],
       success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
-        wx.showLoading({ title: '上传图片中...' });
-
-        this.uploadFile(tempFilePath, 'image/jpeg')
-          .then(url => {
-            wx.hideLoading();
-            this.setData({ batchImage: url });
-            wx.showToast({ title: '上传成功', icon: 'success' });
-          })
-          .catch(err => {
-            wx.hideLoading();
-            console.error('图片上传失败:', err);
-            wx.showToast({ title: '上传失败', icon: 'none' });
-          });
+        // 直接保存临时文件路径，等提交时再统一上传
+        this.setData({ batchImage: tempFilePath });
       },
       fail: (err) => {
         console.error('选择图片失败:', err);
@@ -1220,18 +1379,31 @@ Page({
       const uploadedLookbookUrls = await this.uploadImageList(lookbookImgs);
       const uploadedDetailUrls = await this.uploadImageList(detailImgs);
 
-      // 2. 构造后端要求的 SKU 格式（spec 字段存储颜色，size 字段存储尺码）
+      // 2. 上传所有 SKU 图片
+      wx.showLoading({ title: '上传 SKU 图片...', mask: true });
+      const skuImageMap = await this.uploadSkuImages(skuList);
+
+      // 2.5. 上传视频（如果有）
+      let uploadedVideoUrl = null;
+      if (videoUrl && this.isTemporaryPath(videoUrl)) {
+        wx.showLoading({ title: '上传视频...', mask: true });
+        uploadedVideoUrl = await this.uploadFile(videoUrl, 'video/mp4');
+      } else {
+        uploadedVideoUrl = videoUrl || null;
+      }
+
+      // 3. 构造后端要求的 SKU 格式
       // 过滤掉 _toBeRemoved 标记的 SKU，这些是用户已删除的规格，不应该提交给后端
       console.log('提交前 skuList:', JSON.stringify(skuList));
       console.log('editId:', editId);
-      const skus = skuList.filter(sku => !sku._toBeRemoved).map(sku => {
+      const skus = skuList.filter(sku => !sku._toBeRemoved).map((sku, index) => {
         const skuData = {
           spec: sku.color || '默认',
           size: sku.size || '均码',
           barcode: '',
           retailPrice: Number(sku.price),
           stockMain: Number(sku.stock) || 0,
-          imageUrl: sku.image || null,
+          imageUrl: skuImageMap[index] || null,
           sizeId: sku.sizeId || null
         };
         // 编辑模式下，如果有 skuId，需要传递给后端
@@ -1259,7 +1431,7 @@ Page({
         detailImages: uploadedDetailUrls,
         // relatedProductIds 可能是 ID 列表或对象列表，需要正确处理
         relatedProductIds: manualRelated.map(item => typeof item === 'object' ? item.id : item),
-        videoUrl: videoUrl || null,
+        videoUrl: uploadedVideoUrl,
         shippingInfo: shippingInfo || null,
         description: description || null,
         fabricCare: fabricCare || null,
@@ -1280,9 +1452,30 @@ Page({
       } else {
         // 创建模式：调用创建接口
         wx.showLoading({ title: '创建商品...', mask: true });
-        await api.post('/products', productData);
+        const createRes = await api.post('/products', productData);
         wx.hideLoading();
         wx.showToast({ title: '上架成功!', icon: 'success' });
+
+        // 如果是从直播商品转换而来，调用关联接口
+        if (this.data.convertFromLiveProductId) {
+          wx.showLoading({ title: '关联商品...', mask: true });
+          try {
+            // 后端返回格式：{ product: { id: xxx, ... }, skus: [...] }
+            const newProductId = createRes.product?.id || createRes.id;
+            if (newProductId) {
+              await api.post(`/live-products/${this.data.convertFromLiveProductId}/link-normal?normalProductId=${newProductId}`);
+              wx.hideLoading();
+              console.log('直播商品关联成功，新商品 ID:', newProductId);
+            } else {
+              wx.hideLoading();
+              console.warn('无法获取新商品 ID，跳过关联');
+            }
+          } catch (linkErr) {
+            wx.hideLoading();
+            console.error('关联直播商品失败:', linkErr);
+            // 关联失败不影响主流程，只显示警告
+          }
+        }
       }
 
       setTimeout(() => {
@@ -1324,14 +1517,8 @@ Page({
   isRemoteUrl: function(url) {
     console.log('isRemoteUrl 检查:', url);
     if (!url) return false;
-    // 微信临时文件路径特征
-    if (url.startsWith('http://tmp/') || url.startsWith('http://127.0.0.1:59208/__tmp__/')) {
-      console.log('判断结果：微信临时路径，需要上传');
-      return false;
-    }
-    // 其他 http/https 开头的视为远程 URL
-    console.log('判断结果：远程 URL');
-    return url.startsWith('http://') || url.startsWith('https://');
+    // 使用 isTemporaryPath 判断，如果不是临时路径则视为远程 URL
+    return !this.isTemporaryPath(url);
   },
 
   uploadImageList: async function(list) {
@@ -1353,7 +1540,41 @@ Page({
     console.log('uploadImageList 完成，返回 URLs:', urls);
     return urls;
   },
-  
+
+  // 上传所有 SKU 图片，返回按索引对应的 URL 数组（没有图片的 SKU 对应 null）
+  uploadSkuImages: async function(skuList) {
+    const uploadedUrls = [];
+    for (const sku of skuList) {
+      if (sku.image && this.isTemporaryPath(sku.image)) {
+        // 需要上传的临时图片
+        const url = await this.uploadFile(sku.image, 'image/jpeg');
+        uploadedUrls.push(url);
+      } else {
+        // 已经是正式 URL 或没有图片
+        uploadedUrls.push(sku.image || null);
+      }
+    }
+    return uploadedUrls;
+  },
+
+  // 判断是否是临时文件路径
+  isTemporaryPath: function(path) {
+    if (!path) return false;
+    // 微信临时文件路径特征
+    if (path.startsWith('wx://')) return true;
+    if (path.includes('__tmp__')) return true;
+    if (path.includes('/_tmp/')) return true;
+    // http://tmp/ 格式的临时文件
+    if (path.startsWith('http://tmp/')) return true;
+    if (path.startsWith('https://tmp/')) return true;
+    // 本地文件路径（不以 http 或 https 开头）
+    if (!path.startsWith('http://') && !path.startsWith('https://')) return true;
+    // 检查是否是 127.0.0.1 或 localhost 的临时文件服务
+    if (path.includes('127.0.0.1') && path.includes('__tmp__')) return true;
+    if (path.includes('localhost') && path.includes('__tmp__')) return true;
+    return false;
+  },
+
   // 选择填充用的统一图片
   chooseQuickImage: function() {
     wx.chooseImage({

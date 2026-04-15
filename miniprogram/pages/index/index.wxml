@@ -27,6 +27,9 @@
         </view>
       </view>
 
+      <view class="nav-live-entry" bindtap="goToLiveRoom">
+        <text>直播</text>
+      </view>
       <view class="nav-cart-right" bindtap="goToCart">
         <text>购物车</text>
       </view>

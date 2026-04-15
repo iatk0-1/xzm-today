@@ -86,7 +86,12 @@ Page({
           bannerImgs: banners,
           lookbookImgs: product.lookbookImages || [],
           detailImgs: product.detailImages || [],
-          manualRelatedIds: product.relatedProductIds || []
+          manualRelatedIds: product.relatedProductIds || [],
+          // 直播相关字段
+          productType: product.productType || 'normal',
+          liveSessionId: product.liveSessionId,
+          sessionStatus: product.sessionStatus,
+          convertedToProductId: product.convertedToProductId
         },
         bannerImgs: banners,
         lookbookImgs: product.lookbookImages || [],
@@ -255,6 +260,20 @@ Page({
     // 检查库存
     if (currentSkuStock <= 0) {
       return wx.showToast({ title: '该规格已售罄', icon: 'none' });
+    }
+
+    // 直播商品特殊处理
+    if (product.productType === 'live') {
+      // 如果直播商品已转换为正常商品，跳转到正常商品详情
+      if (product.convertedToProductId) {
+        wx.navigateTo({ url: '/pages/detail/detail?id=' + product.convertedToProductId });
+        return;
+      }
+      // 如果直播已结束，禁止购买
+      if (product.sessionStatus !== 'live') {
+        wx.showToast({ title: '直播已结束，无法购买', icon: 'none' });
+        return;
+      }
     }
 
     const productId = product.id || product._id;

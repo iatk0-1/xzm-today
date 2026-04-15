@@ -1,0 +1,149 @@
+<!--miniprogram/pages/liveRoomDetail/detail.wxml-->
+<view class="container">
+  <!-- 场次信息 -->
+  <view class="session-header">
+    <view class="session-title">{{session.title}}</view>
+    <view class="session-meta">
+      <text wx:if="{{session.startedAt}}">开始：{{session.startedAt}}</text>
+      <text wx:if="{{session.endedAt}}">结束：{{session.endedAt}}</text>
+    </view>
+    <view class="session-status {{session.status}}">
+      {{session.status === 'live' ? '直播中' : (session.status === 'ended' ? '已结束' : '待开始')}}
+    </view>
+  </view>
+
+  <!-- 管理员操作区 -->
+  <view class="admin-actions" wx:if="{{isAdmin && session.status !== 'ended'}}">
+    <view class="action-btn primary" bindtap="showProductPublish">
+      <text class="btn-icon">+</text>
+      <text>上架直播商品</text>
+    </view>
+    <view class="action-btn danger" bindtap="endSession" wx:if="{{session.status === 'live'}}">
+      <text class="btn-icon">⏹</text>
+      <text>结束直播</text>
+    </view>
+  </view>
+
+  <!-- 直播已结束，管理员提示 -->
+  <view class="admin-ended-hint" wx:if="{{isAdmin && session.status === 'ended'}}">
+    <text class="hint-text">直播已结束，可将商品转换为正常商品</text>
+  </view>
+
+  <!-- 商品列表 -->
+  <view class="product-list">
+    <view class="section-title">本场商品 ({{products.length}})</view>
+
+    <view class="product-item" wx:for="{{products}}" wx:key="id" wx:for-item="product">
+      <image src="{{product.coverUrl}}" mode="aspectFill" class="product-image" />
+      <view class="product-info">
+        <view class="product-name">{{product.name}}</view>
+        <view class="product-specs" wx:if="{{product.skuMatrix && product.skuMatrix.length > 0}}">
+          <text>颜色：{{product.skuMatrix[0].color}}</text>
+          <text>尺码：{{product.skuMatrix[0].size}}</text>
+        </view>
+        <view class="product-price-row">
+          <text class="price">¥{{product.price || product.retailPrice}}</text>
+          <text class="stock">库存：{{product.totalStock}}</text>
+        </view>
+        <view class="product-actions" wx:if="{{canBuy}}">
+          <button class="action-btn cart" bindtap="openSkuPanel" data-product="{{product}}" data-action="cart">
+            加入购物车
+          </button>
+          <button class="action-btn buy" bindtap="openSkuPanel" data-product="{{product}}" data-action="buy">
+            立即购买
+          </button>
+        </view>
+        <!-- 直播已结束 -->
+        <view class="product-sold-out" wx:elif="{{session.status === 'ended'}}">
+          <text>本场直播已结束</text>
+          <!-- 已转换的商品，显示跳转链接 -->
+          <view class="product-converted" wx:if="{{product.convertedToProductId}}" bindtap="goToNormalProduct" data-id="{{product.convertedToProductId}}">
+            <text>此商品已转为正常商品，点击查看详情</text>
+          </view>
+          <!-- 未转换的商品，管理员显示转换按钮 -->
+          <view class="convert-btn" wx:elif="{{isAdmin && !product.convertedToProductId}}" bindtap="showConvertModal" data-product="{{product}}">
+            转换为正常商品
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{!products.length}}">
+      <image src="/images/empty.png" mode="aspectFit" class="empty-image" />
+      <view class="empty-text">本场直播暂无商品</view>
+      <view class="empty-hint" wx:if="{{isAdmin}}">管理员可点击上方"上架直播商品"添加</view>
+    </view>
+  </view>
+</view>
+
+<!-- 开启直播弹窗 -->
+<view class="modal-mask" wx:if="{{showStartModal}}" bindtap="hideStartModal">
+  <view class="modal-content" catchtap="true">
+    <view class="modal-title">开启直播</view>
+    <input class="modal-input" placeholder="请输入直播标题" value="{{titleInput}}" bindinput="onTitleInput" />
+    <view class="modal-buttons">
+      <button class="modal-btn cancel" bindtap="hideStartModal">取消</button>
+      <button class="modal-btn confirm" bindtap="confirmStartSession">开始直播</button>
+    </view>
+  </view>
+</view>
+
+<!-- 转换商品提示弹窗 -->
+<view class="modal-mask" wx:if="{{showConvertModal}}" bindtap="hideConvertModal">
+  <view class="modal-content" catchtap="true">
+    <view class="modal-title">转换为正常商品</view>
+    <view class="modal-hint">
+      将把直播商品"{{convertProduct.name}}"的数据带入商品编辑页面，创建新商品后会自动关联。
+    </view>
+    <view class="modal-buttons">
+      <button class="modal-btn cancel" bindtap="hideConvertModal">取消</button>
+      <button class="modal-btn confirm" bindtap="confirmConvert">去创建</button>
+    </view>
+  </view>
+</view>
+
+<!-- SKU 选择面板 -->
+<view class="sku-mask {{showSku ? 'fade-in' : ''}}" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
+
+<view class="sku-panel {{showSku ? 'slide-up' : ''}}">
+  <view class="sku-close" catchtap="closeSkuPanel">×</view>
+
+  <view class="sku-header" wx:if="{{currentProduct}}">
+    <image class="sku-img" src="{{currentSkuImage || currentProduct.coverUrl}}" mode="aspectFill"></image>
+    <view class="sku-main">
+      <view class="sku-price">
+        ¥{{currentSkuPrice || currentProduct.retailPrice || currentProduct.displayPrice || '0.00'}}
+      </view>
+      <view class="sku-stock {{currentSkuStock === 0 ? 'out-of-stock' : ''}}">
+        库存：{{currentSkuStock !== null ? currentSkuStock : '请选择规格'}}
+      </view>
+      <view class="sku-choose-tip">已选：{{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="sku-scroll-area">
+    <view class="sku-section" wx:if="{{uniqueColors.length > 0}}">
+      <view class="sku-title">颜色</view>
+      <view class="sku-options">
+        <view class="sku-tag {{selectedColor === item ? 'active' : ''}}" wx:for="{{uniqueColors}}" wx:key="*this" bindtap="selectColor" data-color="{{item}}">{{item}}</view>
+      </view>
+    </view>
+
+    <view class="sku-section" wx:if="{{uniqueSizes.length > 0}}">
+      <view class="sku-title">尺码</view>
+      <view class="sku-options">
+        <view class="sku-tag {{selectedSize === item ? 'active' : ''}}" wx:for="{{uniqueSizes}}" wx:key="*this" bindtap="selectSize" data-size="{{item}}">{{item}}</view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="sku-actions" wx:if="{{currentSkuStock !== 0 && currentSkuStock !== null}}">
+    <view class="sku-btn-cart" bindtap="confirmAddToCart" data-action="cart">加入购物车</view>
+    <view class="sku-btn-buy" bindtap="confirmAddToCart" data-action="buy">立即购买</view>
+  </view>
+
+  <view class="sku-btn-confirm disabled" wx:else>
+    已售罄
+  </view>
+</view>

@@ -22,7 +22,10 @@
     "pages/unbindOrder/unbindOrder",
     "pages/mergeGroupDetail/mergeGroupDetail",
     "pages/logistics/printers/printers",
-    "pages/bluetoothPrint/bluetoothPrint"
+    "pages/bluetoothPrint/bluetoothPrint",
+    "pages/liveRoomList/index",
+    "pages/liveRoomDetail/detail",
+    "pages/liveRoomPublish/publish"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",
