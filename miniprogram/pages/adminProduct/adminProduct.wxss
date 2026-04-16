@@ -1,6 +1,37 @@
 page { background-color: #f0f0f0; height: 100vh; display: flex; flex-direction: column; }
 .admin-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
+/* 顶部操作栏 */
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx 30rpx;
+  background-color: #fff;
+  margin-bottom: 1rpx;
+}
+
+.page-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #111;
+}
+
+.recycle-bin-btn {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 24rpx;
+  background-color: #f5f5f5;
+  border-radius: 25rpx;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.recycle-bin-btn .icon {
+  font-size: 28rpx;
+}
+
 .product-scroll-area { flex: 1; padding: 20rpx; box-sizing: border-box; }
 .empty-state { padding: 100px 0; text-align: center; color: #999; font-size: 14px; }
 

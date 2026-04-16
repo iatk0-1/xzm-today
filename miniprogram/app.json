@@ -15,6 +15,7 @@
     "pages/adminOrder/adminOrder",
     "pages/adminOrderDetail/adminOrderDetail",
     "pages/adminProduct/adminProduct",
+    "pages/adminProductRecycleBin/adminProductRecycleBin",
     "pages/adminWish/adminWish",
     "pages/publishWish/publishWish",
     "pages/bindPhone/bindPhone",

@@ -1,0 +1,109 @@
+<view class="recycle-bin-wrapper">
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <view class="search-input-wrap">
+      <text class="search-icon">🔍</text>
+      <input
+        class="search-input"
+        placeholder="搜索商品名称"
+        placeholder-class="input-placeholder"
+        value="{{searchKeyword}}"
+        bindinput="onSearchInput"
+        confirm-type="search"
+        bindconfirm="onSearchConfirm"
+      />
+      <text class="clear-icon" wx:if="{{searchKeyword}}" bindtap="clearSearch">✕</text>
+    </view>
+    <view class="search-btn" bindtap="onSearchConfirm">搜索</view>
+  </view>
+
+  <!-- 筛选栏 -->
+  <view class="filter-bar">
+    <view class="filter-item {{selectedStall ? 'active' : ''}}" bindtap="handleFilterTabChange" data-tab="stall">
+      <text>档口</text>
+      <text class="filter-value">{{selectedStallName || '全部'}}</text>
+    </view>
+    <view class="filter-item {{selectedTag ? 'active' : ''}}" bindtap="handleFilterTabChange" data-tab="tag">
+      <text>标签</text>
+      <text class="filter-value">{{selectedTagName || '全部'}}</text>
+    </view>
+    <view class="filter-item {{hasFilter}}" bindtap="resetFilter">
+      <text>重置</text>
+    </view>
+  </view>
+
+  <!-- 档口筛选面板 -->
+  <view class="stall-mask {{showStallPanel ? 'fade-in' : ''}}" wx:if="{{showStallPanel}}" catchtap="closeStallPanel"></view>
+  <view class="stall-panel {{showStallPanel ? 'slide-down' : ''}}" style="top: {{filterBarHeight}}px;">
+    <view class="stall-grid">
+      <view
+        class="stall-tag {{selectedStall === item.id || (selectedStall === '' && item.id === 'all') ? 'active' : ''}}"
+        wx:for="{{stallList}}"
+        wx:key="id"
+        bindtap="selectStall"
+        data-stall="{{item.id}}"
+        data-name="{{item.name}}">
+        {{item.name}}
+      </view>
+    </view>
+  </view>
+
+  <!-- 标签筛选面板 -->
+  <view class="stall-mask {{showTagPanel ? 'fade-in' : ''}}" wx:if="{{showTagPanel}}" catchtap="closeTagPanel"></view>
+  <view class="stall-panel {{showTagPanel ? 'slide-down' : ''}}" style="top: {{filterBarHeight}}px;">
+    <view class="stall-grid">
+      <view
+        class="stall-tag {{selectedTag === item.id || (selectedTag === '' && item.id === 'all') ? 'active' : ''}}"
+        wx:for="{{tagList}}"
+        wx:key="id"
+        bindtap="selectTag"
+        data-tag="{{item.id}}"
+        data-name="{{item.name}}">
+        {{item.name}}
+      </view>
+    </view>
+  </view>
+
+  <!-- 商品列表 -->
+  <scroll-view scroll-y class="product-scroll" bindscrolltolower="loadMore">
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{products.length === 0 && !isLoading}}">
+      <image class="empty-icon" src="/images/empty.png" mode="aspectFit"></image>
+      <view class="empty-text">回收站是空的</view>
+      <view class="empty-subtext">暂无已删除的商品</view>
+    </view>
+
+    <!-- 加载状态 -->
+    <view class="loading-state" wx:if="{{isLoading && products.length === 0}}">
+      <text>加载中...</text>
+    </view>
+
+    <!-- 商品卡片列表 -->
+    <view class="product-card" wx:for="{{products}}" wx:key="id">
+      <!-- 卡片主体 -->
+      <view class="card-main" bindtap="viewProductDetail" data-id="{{item.id}}">
+        <image class="product-img" src="{{item.coverUrl}}" mode="aspectFill"></image>
+        <view class="product-info">
+          <view class="product-title">{{item.name}}</view>
+          <view class="product-meta">
+            <text class="tag" wx:if="{{item.stallIds && item.stallIds.length > 0}}">档口 {{item.stallIds[0]}}</text>
+            <text class="deleted-time">删除时间：{{item.deleteTimeStr || '未知'}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 卡片底部：恢复按钮 -->
+      <view class="card-footer">
+        <view class="sku-count">含 {{item.skuMatrix ? item.skuMatrix.length : 0}} 个 SKU</view>
+        <view class="btn-restore" catchtap="restoreProduct" data-id="{{item.id}}">
+          恢复商品
+        </view>
+      </view>
+    </view>
+
+    <!-- 加载更多 -->
+    <view class="load-more" wx:if="{{products.length > 0 && !isLoading}}">
+      <text>{{hasMore ? '上拉加载更多' : '已经到底了'}}</text>
+    </view>
+  </scroll-view>
+</view>

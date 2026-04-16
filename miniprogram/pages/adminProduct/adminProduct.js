@@ -92,5 +92,12 @@ Page({
     wx.navigateTo({
       url: `/pages/admin/admin?editId=${id}`
     });
+  },
+
+  // 跳转到回收站
+  goToRecycleBin: function() {
+    wx.navigateTo({
+      url: '/pages/adminProductRecycleBin/adminProductRecycleBin'
+    });
   }
 });

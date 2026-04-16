@@ -1,4 +1,13 @@
 <view class="admin-wrapper">
+  <!-- 顶部操作栏 -->
+  <view class="admin-header">
+    <view class="page-title">商品管理台</view>
+    <view class="recycle-bin-btn" bindtap="goToRecycleBin">
+      <text class="icon">🗑️</text>
+      <text>回收站</text>
+    </view>
+  </view>
+
   <scroll-view scroll-y class="product-scroll-area">
 
     <view class="empty-state" wx:if="{{products.length === 0 && !isLoading}}">
