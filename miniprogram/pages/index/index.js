@@ -372,7 +372,7 @@ Page({
   confirmAddToCart(e) {
     const actionType = e.currentTarget.dataset.action;
 
-    const { currentProduct, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuId, uniqueColors, uniqueSizes } = this.data;
+    const { currentProduct, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes } = this.data;
     if (!currentProduct) return;
 
     if (uniqueColors.length > 0 && !selectedColor) {

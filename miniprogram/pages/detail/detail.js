@@ -248,7 +248,7 @@ Page({
   confirmSkuAction(e) {
     // 从点击事件中获取 action 参数，如果没有则使用 data 中的 skuAction
     const action = e.currentTarget.dataset.action || this.data.skuAction;
-    const { product, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuId, uniqueColors, uniqueSizes } = this.data;
+    const { product, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes } = this.data;
 
     // 检查是否选择了颜色和尺码
     if (uniqueColors.length > 0 && !selectedColor) {
