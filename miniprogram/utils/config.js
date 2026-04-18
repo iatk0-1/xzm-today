@@ -1,7 +1,9 @@
 // miniprogram/utils/config.js
 module.exports = {
-  // 后端 API 基础 URL - dev 环境（使用域名模式）
+  // 本地运行
   API_BASE_URL: 'http://localhost:8080/api/v1',
+  // 后端 API 基础 URL - dev 环境（使用域名模式）
+  // API_BASE_URL: 'https://xzm-dev.xianzaimai.com/api/v1',
 
   // 小程序 AppID
   MINIAPP_APPID: 'wx7692230ac8ecdaa8',

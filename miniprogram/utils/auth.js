@@ -27,8 +27,9 @@ function getRefreshToken() {
 /**
  * 小程序登录（支持 mock 模式）
  * @param {string} nickname - 用户昵称（可选）
+ * @param {string} avatarUrl - 用户头像 URL（可选）
  */
-async function login(nickname = '') {
+async function login(nickname = '', avatarUrl = '') {
   try {
     // 先获取微信 code
     const loginRes = await wxLogin();
@@ -37,7 +38,8 @@ async function login(nickname = '') {
     const loginData = {
       code: loginRes.code,
       mockOpenid: config.ADMIN_OPENID, // 使用管理员 OpenID 进行测试
-      nickname: nickname
+      nickname: nickname || undefined,
+      avatarUrl: avatarUrl || undefined
     };
 
     const res = await api.post('/auth/miniapp/login', loginData);
@@ -51,6 +53,7 @@ async function login(nickname = '') {
       phone: res.phone,
       isPhoneBound: res.isPhoneBound,
       nickname: res.nickname,
+      avatarUrl: res.avatarUrl,
       role: res.role
     };
     wx.setStorageSync(config.USER_INFO_KEY, userInfo);

@@ -130,12 +130,13 @@ Page({
       const skusFromApi = res.skus || [];
 
       // 从 skus 数组中提取 SKU 数据，保留 skuId 和 sizeId
+      // 后台管理需要显示总库存，所以 stock = stockMain(可用) + lockedMain(锁定)
       const skuMatrix = skusFromApi.map(sku => ({
         skuId: sku.id,
         color: sku.spec || '默认',
         size: sku.size || '均码',
         price: sku.retailPrice,
-        stock: sku.stockMain,
+        stock: sku.stockMain + sku.lockedMain,  // 总库存 = 可用库存 + 锁定库存
         image: sku.imageUrl || '',
         sizeId: sku.sizeId || null
       }));

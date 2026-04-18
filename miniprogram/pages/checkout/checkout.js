@@ -1,14 +1,20 @@
 // miniprogram/pages/checkout/checkout.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
+const config = require('../../utils/config');
 
 Page({
   data: {
     address: null,
     checkoutItems: [],
-    totalPrice: 0
+    totalPrice: 0,
+    isPhoneBound: false
   },
 
   onLoad: async function() {
+    // 检查手机号绑定状态
+    this.checkPhoneBound();
+    
     // 优先从本地存储获取（立即购买模式），如果没有则从后端获取（购物车结算模式）
     let localItems = wx.getStorageSync('checkoutItems') || [];
 
@@ -18,6 +24,57 @@ Page({
     } else {
       // 购物车结算模式，从后端获取选中商品
       await this.loadCartSelectedItems();
+    }
+  },
+
+  // 检查手机号绑定状态
+  checkPhoneBound: function() {
+    const userInfo = auth.getUserInfo();
+    this.setData({
+      isPhoneBound: userInfo?.isPhoneBound || false
+    });
+  },
+
+  // 获取手机号授权（下单前触发）
+  onGetPhoneNumber: async function(e) {
+    if (e.detail.errMsg !== 'getPhoneNumber:ok') {
+      wx.showToast({ title: '授权取消', icon: 'none' });
+      return;
+    }
+
+    const { code } = e.detail;
+
+    wx.showLoading({ title: '绑定中...' });
+
+    try {
+      const res = await api.post('/users/me/phone/bind', { code: code });
+
+      wx.hideLoading();
+
+      // 更新本地用户信息（保存后端返回的手机号）
+      const userInfo = auth.getUserInfo();
+      if (userInfo) {
+        userInfo.phone = res.phone;
+        userInfo.isPhoneBound = true;
+        wx.setStorageSync(config.USER_INFO_KEY, userInfo);
+      }
+
+      // 更新页面状态
+      this.setData({ 
+        isPhoneBound: true,
+        phone: res.phone
+      });
+
+      wx.showToast({ title: '绑定成功', icon: 'success' });
+
+      // 自动继续提交订单
+      setTimeout(() => {
+        this.submitOrderInternal();
+      }, 500);
+    } catch (err) {
+      wx.hideLoading();
+      console.error('绑定手机号失败:', err);
+      wx.showToast({ title: err?.message || '绑定失败', icon: 'none' });
     }
   },
 
@@ -99,7 +156,13 @@ Page({
   },
 
   // 提交订单 & 拉起微信支付
-  submitOrder: async function() {
+  submitOrder: function() {
+    // 已绑定手机号时才会调用此方法
+    this.submitOrderInternal();
+  },
+
+  // 内部提交订单方法（手机号绑定后调用）
+  submitOrderInternal: async function() {
     const { address, checkoutItems, totalPrice } = this.data;
 
     if (!address) {

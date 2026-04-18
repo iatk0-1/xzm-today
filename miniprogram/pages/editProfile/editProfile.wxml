@@ -1,0 +1,35 @@
+<view class="container">
+  <!-- 头像 -->
+  <view class="avatar-section">
+    <view class="avatar-label">头像</view>
+    <view class="avatar-container">
+      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar"></button>
+      <view class="avatar-mask" bindtap="onChooseAvatar">
+        <image wx:if="{{avatarUrl}}" class="avatar-preview" src="{{avatarUrl}}" mode="aspectFill" />
+        <view wx:else class="avatar-placeholder">
+          <text class="avatar-icon">+</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 昵称 -->
+  <view class="form-section">
+    <view class="form-item">
+      <text class="form-label">昵称</text>
+      <input 
+        class="form-input" 
+        type="nickname"
+        placeholder="请输入昵称（最多 50 个字符）" 
+        value="{{nickname}}"
+        maxlength="50"
+        bindinput="onNicknameInput"
+      />
+    </view>
+  </view>
+
+  <!-- 保存按钮 -->
+  <view class="button-section">
+    <button class="save-btn" bindtap="saveProfile" loading="{{saving}}">保存</button>
+  </view>
+</view>

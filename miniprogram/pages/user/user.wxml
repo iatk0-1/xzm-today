@@ -2,13 +2,20 @@
 
   <view class="header-section" style="padding-top: {{navTop + navHeight + 20}}px;">
     <view class="user-info">
-      <view class="avatar-box">
-        <open-data type="userAvatarUrl" class="avatar-img"></open-data>
+      <view class="avatar-box" bindtap="goToEditProfile">
+        <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
+        <open-data wx:else type="userAvatarUrl" class="avatar-img"></open-data>
       </view>
-      <view class="user-text">
-        <open-data type="userNickName" class="nickname">微信用户</open-data>
-        <view class="user-tag">VIP Member</view>
+      <view class="user-text" bindtap="goToEditProfile">
+        <view class="nickname">{{userInfo.nickname || '微信用户'}}</view>
+        <!-- 已绑定手机号：显示手机号，点击可重新授权 -->
+        <view class="user-tag" wx:if="{{isPhoneBound}}" catchtap="requestPhoneAuth">手机号：{{phone}}</view>
+        <!-- 未绑定手机号：使用官方按钮直接触发授权 -->
+        <button wx:else class="user-tag-btn unbound" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" catchtap="stopPropagation">
+          未绑定手机号，点击去绑定
+        </button>
       </view>
+      <view class="edit-icon" bindtap="goToEditProfile">✏️</view>
     </view>
   </view>
 

@@ -4,7 +4,7 @@ const auth = require('./utils/auth');
 App({
   onLaunch: function () {
     // 云开发已移除，改用后端 API
-    console.log('小程序启动，后端 API: http://localhost:8080/api/v1');
+    console.log('小程序启动，后端 API: https://xzm-dev.xianzaimai.com/api/v1');
 
     // 初始化登录状态
     this.initAuth();
@@ -22,20 +22,19 @@ App({
       // 获取用户信息
       const userInfo = auth.getUserInfo();
       this.globalData.userInfo = userInfo;
+      this.globalData.avatarUrl = userInfo?.avatarUrl; // 保存头像 URL
 
-      // 检查手机号绑定状态
-      if (userInfo && !userInfo.isPhoneBound) {
-        // 未绑定手机号，跳转到绑定页面
-        wx.reLaunch({ url: '/pages/bindPhone/bindPhone' });
-      } else {
-        // 已绑定或新用户，触发认证完成事件
-        if (this.onAuthReady) {
-          this.onAuthReady();
-        }
+      // 不再强制绑定手机号，允许访客模式浏览
+      // 手机号绑定将在下单等需要时触发
+
+      // 触发认证完成事件
+      if (this.onAuthReady) {
+        this.onAuthReady();
       }
     } catch (err) {
       console.error('认证初始化失败:', err);
       this.globalData.isAuthReady = false;
+      this.globalData.avatarUrl = null;
       // 即使认证失败，也允许访客模式浏览
     } finally {
       wx.hideLoading();
@@ -44,6 +43,7 @@ App({
 
   globalData: {
     userInfo: null,
-    isAuthReady: false
+    isAuthReady: false,
+    avatarUrl: null
   }
 });
