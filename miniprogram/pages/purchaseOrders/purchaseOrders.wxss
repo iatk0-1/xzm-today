@@ -114,7 +114,7 @@
 
 .order-item {
   display: flex;
-  padding: 30rpx;s
+  padding: 30rpx;
   border-bottom: 1rpx solid #f0f0f0;
   gap: 20rpx;
   position: relative;
