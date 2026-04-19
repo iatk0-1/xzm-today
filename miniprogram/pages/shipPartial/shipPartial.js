@@ -8,6 +8,9 @@ Page({
     shipmentId: null,  // 发货单 ID（如果是合并发货）
     mergeGroupId: null, // 合并组 ID（新合并组逻辑）
     isMerge: false,    // 是否为合并发货模式
+    fromInventory: false, // 是否从库存发货模式
+    fromSkuId: null,   // 从库存发货时的 SKU ID
+    fromSkuName: '',   // 从库存发货时的 SKU 名称
     mode: null,        // 'electronic' 或 'manual'，用户选择商品后才设置
     expressNo: '',
     expressCodes: [],   // 快递公司名称列表（从后端动态加载）
@@ -21,25 +24,39 @@ Page({
   },
 
   onLoad: async function(options) {
-    // 支持单订单和多订单（合并）两种模式
-    const isMerge = options.isMerge === 'true';
-    const orderIds = isMerge ? options.orderIds.split(',') : [options.orderId];
-    const shipmentId = options.shipmentId ? parseInt(options.shipmentId) : null;
-    const mergeGroupId = options.mergeGroupId ? parseInt(options.mergeGroupId) : null;
+    // 从库存发货模式
+    const fromInventory = options.fromInventory === 'true';
+    const fromSkuId = options.skuId ? parseInt(options.skuId) : null;
+    const fromSkuName = options.skuName ? decodeURIComponent(options.skuName) : '';
 
-    this.setData({
-      orderId: options.orderId,
-      orderIds: orderIds,
-      shipmentId: shipmentId,
-      mergeGroupId: mergeGroupId,
-      isMerge: isMerge
-    });
-
-    // 设置页面标题
-    if (isMerge) {
-      wx.setNavigationBarTitle({ title: `合并发货（${orderIds.length} 个订单）` });
+    if (fromInventory) {
+      this.setData({
+        fromInventory: fromInventory,
+        fromSkuId: fromSkuId,
+        fromSkuName: fromSkuName
+      });
+      wx.setNavigationBarTitle({ title: '从库存发货' });
     } else {
-      wx.setNavigationBarTitle({ title: '分批发货' });
+      // 支持单订单和多订单（合并）两种模式
+      const isMerge = options.isMerge === 'true';
+      const orderIds = isMerge ? options.orderIds.split(',') : [options.orderId];
+      const shipmentId = options.shipmentId ? parseInt(options.shipmentId) : null;
+      const mergeGroupId = options.mergeGroupId ? parseInt(options.mergeGroupId) : null;
+
+      this.setData({
+        orderId: options.orderId,
+        orderIds: orderIds,
+        shipmentId: shipmentId,
+        mergeGroupId: mergeGroupId,
+        isMerge: isMerge
+      });
+
+      // 设置页面标题
+      if (isMerge) {
+        wx.setNavigationBarTitle({ title: `合并发货（${orderIds.length} 个订单）` });
+      } else {
+        wx.setNavigationBarTitle({ title: '分批发货' });
+      }
     }
 
     // 加载快递公司列表
@@ -101,12 +118,18 @@ Page({
     }
   },
 
-  // 加载订单商品（支持多订单）
+  // 加载订单商品（支持多订单、从库存发货）
   loadOrderItems: async function() {
     wx.showLoading({ title: '加载中...' });
 
     try {
       let allItems = [];
+
+      // 从库存发货模式
+      if (this.data.fromInventory) {
+        await this.loadFromInventoryItems();
+        return;
+      }
 
       // 如果有 mergeGroupId，从合并组加载所有订单的商品
       if (this.data.mergeGroupId) {
@@ -193,6 +216,85 @@ Page({
     } finally {
       wx.hideLoading();
     }
+  },
+
+  // 从库存发货模式：加载包含指定 SKU 的未发货订单
+  loadFromInventoryItems: async function() {
+    try {
+      const { fromSkuId } = this.data;
+      
+      // 获取当前 SKU 的库存数量
+      const inventory = await api.get(`/sku-inventory/${fromSkuId}`);
+      const availableQty = inventory.qty || 0;
+      
+      if (availableQty <= 0) {
+        wx.hideLoading();
+        wx.showModal({
+          title: '库存不足',
+          content: `当前 SKU 库存为 ${availableQty}，无法发货`,
+          showCancel: false
+        });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+
+      // 调用后端接口查询包含指定 SKU 的未发货订单
+      const ordersRes = await api.get(`/orders/by-sku?skuId=${fromSkuId}&limit=100`);
+      const orders = ordersRes || [];
+      
+      if (orders.length === 0) {
+        wx.hideLoading();
+        wx.showModal({
+          title: '无待发货订单',
+          content: '当前没有包含该 SKU 的待发货订单',
+          showCancel: false
+        });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+      
+      // 转换为前端格式
+      const allItems = orders.map(item => ({
+        id: item.itemId,
+        orderId: item.orderId,
+        orderNo: item.outTradeNo || item.orderId,
+        skuId: item.skuId,
+        maxShipQty: item.canShipQty,
+        shipQty: 0,  // 默认不勾选，由管理员手动输入
+        shippedQty: item.shippedQty || 0,
+        canShip: true,
+        availableInventory: availableQty,  // 显示总库存
+        createdAt: this.formatTime(item.createdAt)
+      }));
+      
+      this.setData({ 
+        items: allItems,
+        availableInventory: availableQty
+      });
+      
+      wx.hideLoading();
+      wx.showToast({ 
+        title: `库存：${availableQty}，可发${allItems.length}个订单`, 
+        icon: 'none',
+        duration: 2000
+      });
+    } catch (err) {
+      wx.hideLoading();
+      wx.showToast({ title: '加载失败', icon: 'none' });
+      console.error('loadFromInventoryItems error:', err);
+    }
+  },
+
+  // 格式化时间
+  formatTime: function(timeStr) {
+    if (!timeStr) return '';
+    const date = new Date(timeStr);
+    return date.toLocaleString('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   },
 
   // 修改发货数量
@@ -347,6 +449,12 @@ Page({
 
   // 执行提交发货
   doSubmitShipment: async function() {
+    // 从库存发货模式
+    if (this.data.fromInventory) {
+      await this.doSubmitFromInventory();
+      return;
+    }
+
     // 只筛选可以发货且选择了数量的商品
     const shippingItems = this.data.items.filter(item => item.canShip && item.shipQty > 0);
 
@@ -541,5 +649,59 @@ Page({
         wx.showToast({ title: '跳转失败', icon: 'none' });
       }
     });
+  },
+
+  // 从库存发货：提交发货
+  doSubmitFromInventory: async function() {
+    // 筛选可以发货且选择了数量的商品
+    const shippingItems = this.data.items.filter(item => item.canShip && item.shipQty > 0);
+
+    if (shippingItems.length === 0) {
+      wx.showToast({ title: '请选择至少一件商品', icon: 'none' });
+      this.setData({ isSubmitting: false });
+      return;
+    }
+
+    this.setData({ isSubmitting: true });
+    wx.showLoading({ title: '发货中...', mask: true });
+
+    try {
+      // 准备提交的数据
+      const submitItems = shippingItems.map(item => ({
+        orderItemId: item.id,
+        qty: item.shipQty,
+        skuId: this.data.fromSkuId  // 传递 SKU ID 用于扣减库存
+      }));
+
+      // 准备请求数据
+      const requestData = {
+        expressCode: this.data.expressCode,
+        expressNo: this.data.expressNo,
+        items: submitItems,
+        fromInventory: true,  // 标记为从库存发货
+        skuId: this.data.fromSkuId
+      };
+
+      // 收集所有订单 ID
+      const orderIds = [...new Set(shippingItems.map(item => item.orderId))];
+      requestData.orderIds = orderIds;
+
+      // 调用后端发货接口
+      const shipmentRes = await api.post('/shipments', requestData);
+
+      wx.hideLoading();
+      wx.showToast({ title: '发货成功', icon: 'success' });
+
+      // 返回库存管理页面
+      setTimeout(() => {
+        wx.navigateBack({ delta: 1 });
+      }, 1500);
+
+    } catch (err) {
+      wx.hideLoading();
+      console.error('从库存发货失败:', err);
+      wx.showToast({ title: err?.message || '发货失败', icon: 'none' });
+      this.setData({ isSubmitting: false });
+    }
   }
 });

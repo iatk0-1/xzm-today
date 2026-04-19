@@ -4,7 +4,7 @@
   <!-- 顶部订单信息 -->
   <view class="order-info-section" wx:if="{{order}}">
     <view class="order-header">
-      <text class="order-id">订单号：{{order.id}}</text>
+      <text class="order-id">订单号：{{order.outTradeNo}}</text>
       <text class="order-status">{{order.statusDisplay}}</text>
     </view>
   </view>

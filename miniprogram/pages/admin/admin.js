@@ -1592,29 +1592,29 @@ Page({
   // ====== 核心重构：一键填充 + 状态自动重置 ======
   applyQuickFillAll: function() {
     const { skuList, quickPrice, quickStock, quickImage } = this.data;
-  
+
     if (!skuList || skuList.length === 0) {
       wx.showToast({ title: '请先添加规格', icon: 'none' });
       return;
     }
-  
+
     // 检查是否有任何输入，避免空填充
     if (quickPrice === '' && quickStock === '' && quickImage === '') {
       wx.showToast({ title: '请填写填充内容', icon: 'none' });
       return;
     }
-  
+
     // 执行填充逻辑
     const newList = skuList.map(sku => {
       return {
         ...sku,
         price: quickPrice !== '' ? quickPrice : sku.price,
         // 如果库存为空，则保持原样（或在提交时处理为无限）
-        stock: quickStock !== '' ? quickStock : sku.stock, 
+        stock: quickStock !== '' ? quickStock : sku.stock,
         image: quickImage !== '' ? quickImage : sku.image
       };
     });
-  
+
     // 🚀 关键修改：在 setData 中同步清空控制台输入源
     this.setData({
       skuList: newList,
@@ -1624,5 +1624,5 @@ Page({
     }, () => {
       wx.showToast({ title: '已同步至明细', icon: 'success' });
     });
-  },
+  }
 });

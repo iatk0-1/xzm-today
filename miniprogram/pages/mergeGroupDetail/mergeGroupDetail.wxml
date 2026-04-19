@@ -31,7 +31,7 @@
     <view class="order-list">
       <view class="order-item" wx:for="{{orders}}" wx:key="id">
         <view class="order-header">
-          <text class="order-id">订单 #{{item.id}}</text>
+          <text class="order-id">订单 #{{item.outTradeNo}}</text>
           <text class="order-status status-{{item.status}}">{{item.status === 'paid' ? '待发货' : (item.status === 'shipped' ? '已发货' : item.status)}}</text>
         </view>
         <view class="order-amount">

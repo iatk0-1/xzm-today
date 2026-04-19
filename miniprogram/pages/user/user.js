@@ -171,15 +171,21 @@ Page({
   // 老板专属入口
   goToAdmin: function() {
     wx.showActionSheet({
-      itemList: ['发布新商品', '订单发货管理', '商品上下架管理'],
+      itemList: ['发布新商品', '商品上下架管理', '库存管理', '拣货推荐', '订单管理', '订单发货管理'],
       itemColor: '#111111',
       success: (res) => {
         if (res.tapIndex === 0) {
           wx.navigateTo({ url: '/pages/admin/admin' });
         } else if (res.tapIndex === 1) {
-          wx.navigateTo({ url: '/pages/adminOrder/adminOrder' });
-        } else if (res.tapIndex === 2) {
           wx.navigateTo({ url: '/pages/adminProduct/adminProduct' });
+        } else if (res.tapIndex === 2) {
+          wx.navigateTo({ url: '/pages/skuInventory/skuInventory' });
+        } else if (res.tapIndex === 3) {
+          wx.navigateTo({ url: '/pages/pickingList/pickingList' });
+        } else if (res.tapIndex === 4) {
+          wx.navigateTo({ url: '/pages/adminOrderManage/adminOrderManage' });
+        } else if (res.tapIndex === 5) {
+          wx.navigateTo({ url: '/pages/adminOrder/adminOrder' });
         }
       }
     });

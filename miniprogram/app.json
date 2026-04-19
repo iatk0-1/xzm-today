@@ -26,7 +26,11 @@
     "pages/bluetoothPrint/bluetoothPrint",
     "pages/liveRoomList/index",
     "pages/liveRoomDetail/detail",
-    "pages/liveRoomPublish/publish"
+    "pages/liveRoomPublish/publish",
+    "pages/skuInventory/skuInventory",
+    "pages/pickingList/pickingList",
+    "pages/purchaseOrders/purchaseOrders",
+    "pages/adminOrderManage/adminOrderManage"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",

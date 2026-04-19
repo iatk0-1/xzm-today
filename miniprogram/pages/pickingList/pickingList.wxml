@@ -1,0 +1,109 @@
+<!-- miniprogram/pages/pickingList/pickingList.wxml -->
+<view class="container">
+  <!-- 顶部导航栏 -->
+  <view class="header-bar">
+    <view class="header-title">拣货单推荐</view>
+    <button class="btn-history" bindtap="goToOrders">报单记录</button>
+  </view>
+
+  <!-- 顶部筛选栏 -->
+  <view class="filter-bar">
+    <view class="filter-tabs">
+      <view class="tab-item {{filterStatus === 'pending' ? 'active' : ''}}" bindtap="setFilter" data-status="pending">
+        待报
+      </view>
+      <view class="tab-item {{filterStatus === 'ordered' ? 'active' : ''}}" bindtap="setFilter" data-status="ordered">
+        已报
+      </view>
+      <view class="tab-item {{filterStatus === 'all' ? 'active' : ''}}" bindtap="setFilter" data-status="all">
+        全部
+      </view>
+    </view>
+    
+    <!-- SKU 筛选 -->
+    <view class="sku-filter">
+      <input class="sku-input" placeholder="搜索 SKU/商品" value="{{skuKeyword}}" bindinput="onSkuKeywordInput" />
+      <button class="sku-search-btn" bindtap="searchSku">搜索</button>
+    </view>
+  </view>
+
+  <!-- 操作栏 -->
+  <view class="action-bar" wx:if="{{filterStatus === 'pending'}}">
+    <view class="select-all" bindtap="toggleSelectAll">
+      <view class="checkbox {{allSelected ? 'checked' : ''}}">
+        <text wx:if="{{allSelected}}">✓</text>
+      </view>
+      <text>全选</text>
+    </view>
+    <view class="selected-info" wx:if="{{selectedCount > 0}}">
+      <text>已选 {{selectedCount}} 个 SKU</text>
+      <text>共 {{totalQty}} 件</text>
+    </view>
+    <button class="btn-order" bindtap="createPurchaseOrder" disabled="{{selectedCount === 0}}">去报单</button>
+  </view>
+
+  <!-- 推荐列表 -->
+  <view class="recommend-list">
+    <view class="recommend-item" wx:for="{{recommendList}}" wx:key="skuId">
+      <view class="item-checkbox" wx:if="{{filterStatus === 'pending'}}">
+        <view class="checkbox {{item.selected ? 'checked' : ''}}" bindtap="toggleSelect" data-index="{{index}}">
+          <text wx:if="{{item.selected}}">✓</text>
+        </view>
+      </view>
+      <view class="item-content">
+        <image 
+          class="item-image" 
+          src="{{item.imageUrl ? item.imageUrl : (item.defaultImageUrl || '/images/default-goods-image.png')}}" 
+          mode="aspectFill" 
+          lazy-load="true"
+          binderror="onImageError"
+          data-index="{{index}}"
+        />
+        <view class="item-info">
+          <view class="item-name">{{item.productName}}</view>
+          <view class="item-sku">{{item.spec}} {{item.size}}</view>
+          <view class="item-stats">
+            <text class="stat">未发货：{{item.unshippedQty}}</text>
+            <text class="stat">已报单：{{item.orderedQty}}</text>
+            <text class="stat recommend">待报单：{{item.recommendQty}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{recommendList.length === 0 && !loading}}">
+      <text>{{filterStatus === 'pending' ? '暂无待报单商品' : (filterStatus === 'ordered' ? '暂无已报单商品' : '暂无数据')}}</text>
+    </view>
+
+    <!-- 加载状态 -->
+    <view class="loading-state" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+  </view>
+
+  <!-- 报单详情弹窗 -->
+  <view class="modal" wx:if="{{showOrderModal}}">
+    <view class="modal-mask" bindtap="hideOrderModal"></view>
+    <view class="modal-content modal-order">
+      <view class="modal-title">确认报单</view>
+      <scroll-view class="order-list" scroll-y>
+        <view class="order-item" wx:for="{{orderPreviewList}}" wx:key="skuId">
+          <image class="order-item-image" src="{{item.imageUrl ? item.imageUrl : item.defaultImageUrl}}" mode="aspectFill" />
+          <view class="order-item-info">
+            <view class="order-item-name">{{item.productName}}</view>
+            <view class="order-item-sku">{{item.spec}} {{item.size}}</view>
+            <view class="order-item-qty">报单数量：<text class="qty-highlight">{{item.qty}}</text></view>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="order-summary">
+        <text>共 {{selectedCount}} 个 SKU，总计 {{totalQty}} 件</text>
+      </view>
+      <view class="modal-footer">
+        <button class="btn-cancel" bindtap="hideOrderModal">取消</button>
+        <button class="btn-confirm" bindtap="confirmOrder">确认报单</button>
+      </view>
+    </view>
+  </view>
+</view>

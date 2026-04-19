@@ -1,0 +1,75 @@
+<!-- miniprogram/pages/purchaseOrders/purchaseOrders.wxml -->
+<view class="container">
+  <!-- 顶部筛选栏 -->
+  <view class="filter-bar">
+    <view class="filter-tabs">
+      <view class="tab-item {{status === 'ordered' ? 'active' : ''}}" bindtap="setStatus" data-status="ordered">
+        已报
+      </view>
+      <view class="tab-item {{status === 'cancelled' ? 'active' : ''}}" bindtap="setStatus" data-status="cancelled">
+        已撤
+      </view>
+      <view class="tab-item {{status === 'all' ? 'active' : ''}}" bindtap="setStatus" data-status="all">
+        全部
+      </view>
+    </view>
+
+    <!-- 商品筛选 -->
+    <view class="sku-filter">
+      <input class="sku-input" placeholder="搜索商品名称/SKU" value="{{keyword}}" bindinput="onKeywordInput" />
+      <button class="sku-search-btn" bindtap="search">搜索</button>
+    </view>
+  </view>
+
+  <!-- 操作栏 -->
+  <view class="action-bar" wx:if="{{status === 'ordered'}}">
+    <view class="select-all" bindtap="toggleSelectAll">
+      <view class="checkbox {{allSelected ? 'checked' : ''}}">
+        <text wx:if="{{allSelected}}">✓</text>
+      </view>
+      <text>全选</text>
+    </view>
+    <view class="selected-info" wx:if="{{selectedCount > 0}}">
+      <text>已选 {{selectedCount}} 个</text>
+    </view>
+    <button class="btn-batch-cancel" bindtap="batchCancel" disabled="{{selectedCount === 0}}">
+      批量撤销 ({{selectedCount}})
+    </button>
+  </view>
+
+  <!-- 报单列表 -->
+  <view class="order-list">
+    <view class="order-item" wx:for="{{displayList}}" wx:key="id">
+      <view class="item-checkbox" wx:if="{{status === 'ordered'}}">
+        <view class="checkbox {{item.selected ? 'checked' : ''}}" bindtap="toggleSelect" data-index="{{index}}">
+          <text wx:if="{{item.selected}}">✓</text>
+        </view>
+      </view>
+      <image class="order-image" src="{{item.imageUrl ? item.imageUrl : (item.defaultImageUrl || '/images/default-goods-image.png')}}" mode="aspectFill" lazy-load="true" binderror="onImageError" data-index="{{index}}" />
+      <view class="order-info">
+        <view class="order-name">{{item.productName}}</view>
+        <view class="order-sku">{{item.spec}} {{item.size}}</view>
+        <view class="order-detail">
+          <text class="qty">数量：{{item.qty}}</text>
+          <text class="time">{{item.createdAt}}</text>
+        </view>
+        <view class="order-status {{item.status}}">
+          {{item.status === 'ordered' ? '已报单' : '已撤销'}}
+        </view>
+      </view>
+      <view class="order-action" wx:if="{{item.status === 'ordered'}}">
+        <view class="btn-cancel" bindtap="cancelOrder" data-id="{{item.id}}" data-index="{{index}}">撤销</view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{displayList.length === 0 && !loading}}">
+      <text>暂无报单记录</text>
+    </view>
+
+    <!-- 加载状态 -->
+    <view class="loading-state" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+  </view>
+</view>

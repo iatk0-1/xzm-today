@@ -272,7 +272,7 @@
 }
 
 .btn-preview,
-.btn-print {
+.btn-cancel-waybill {
   flex: 1;
   height: 70rpx;
   line-height: 70rpx;
@@ -286,8 +286,8 @@
   color: #666;
 }
 
-.btn-print {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.btn-cancel-waybill {
+  background: linear-gradient(135deg, #f44336 0%, #e91e63 100%);
   color: #fff;
 }
 

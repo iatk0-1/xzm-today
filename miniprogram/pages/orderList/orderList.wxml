@@ -32,7 +32,7 @@
     <view class="order-card" wx:for="{{orders}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
 
       <view class="card-header">
-        <text class="order-sn">订单号：{{item.id}}</text>
+        <text class="order-sn">订单号：{{item.outTradeNo}}</text>
         <view class="status-wrapper">
           <text class="order-status {{item.status === 'paid' ? 'highlight' : ''}}">{{item.statusDisplay}}</text>
           <text class="after-sale-badge" wx:if="{{item.hasAfterSale}}">售后</text>

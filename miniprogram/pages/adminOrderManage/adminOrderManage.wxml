@@ -1,0 +1,147 @@
+<view class="page-wrapper">
+
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <view class="search-input-wrapper">
+      <input class="search-input" placeholder="订单号/收件人/商品名称" value="{{searchKeyword}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearchConfirm" />
+      <button class="search-btn" bindtap="onSearchConfirm">搜索</button>
+    </view>
+    
+    <!-- 时间范围筛选 -->
+    <view class="date-filter">
+      <view class="date-picker" bindtap="showDateRangeSelector">
+        <text wx:if="{{!dateRange.startDate && !dateRange.endDate}}">选择时间范围</text>
+        <text wx:else>{{dateRange.startDate || '开始'}} - {{dateRange.endDate || '结束'}}</text>
+      </view>
+      <view class="clear-date" wx:if="{{dateRange.startDate || dateRange.endDate}}" bindtap="clearDateRange">×</view>
+    </view>
+  </view>
+
+  <view class="tabs-bar-wrapper">
+    <view class="fixed-tab {{currentTab === '全部' ? 'active' : ''}}" bindtap="switchTab" data-tab="全部">
+      全部
+      <view class="active-line" wx:if="{{currentTab === '全部'}}"></view>
+    </view>
+
+    <view class="tab-divider"></view>
+
+    <scroll-view scroll-x class="scroll-tabs" enhanced show-scrollbar="{{false}}">
+      <view
+        class="scroll-tab-item {{currentTab === item ? 'active' : ''}}"
+        wx:for="{{tabs}}"
+        wx:key="*this"
+        wx:if="{{item !== '全部'}}"
+        bindtap="switchTab"
+        data-tab="{{item}}">
+        {{item}}
+        <view class="active-line" wx:if="{{currentTab === item}}"></view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <scroll-view scroll-y class="order-scroll-area" style="height: 100%;">
+
+    <view class="empty-state" wx:if="{{orders.length === 0 && !isLoading}}">
+      <view class="empty-icon">📝</view>
+      <view class="empty-text">暂无相关订单</view>
+    </view>
+
+    <view class="order-card" wx:for="{{orders}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+
+      <view class="card-header">
+        <text class="order-sn">订单号：{{item.outTradeNo}}</text>
+        <view class="status-wrapper">
+          <text class="order-status {{item.status === 'paid' ? 'highlight' : ''}}">{{item.statusDisplay}}</text>
+          <text class="after-sale-badge" wx:if="{{item.hasAfterSale}}">售后</text>
+        </view>
+      </view>
+
+      <view class="goods-list">
+        <view class="goods-item" wx:for="{{item.items}}" wx:for-item="goods" wx:key="id">
+          <image class="goods-img" src="{{goods.skuImageUrl || goods.productImage}}" mode="aspectFill"></image>
+          <view class="goods-info">
+            <view class="goods-title">{{goods.productName}}</view>
+            <view class="goods-sku">
+              {{goods.productSpec || '图片色'}} / {{goods.productSize || '均码'}}
+            </view>
+            <view class="goods-price-row">
+              <text class="price">¥ {{goods.salePrice}}</text>
+              <text class="count">x {{goods.qty}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="card-footer">
+        <!-- 收件人信息 -->
+        <view class="recipient-info" wx:if="{{item.recipientName}}">
+          <text>{{item.recipientName}} {{item.recipientPhone}}</text>
+          <text class="recipient-address">{{item.recipientAddress}}</text>
+        </view>
+        
+        <!-- 物流信息 -->
+        <view class="logistics-info" wx:if="{{item.expressCode && item.expressNo}}">
+          <text class="express-text">{{item.expressCompany}}：{{item.expressNo}}</text>
+        </view>
+        
+        <view class="total-row">
+          <text class="total-label">实付款</text>
+          <text class="total-price">¥ {{item.payAmount}}</text>
+        </view>
+
+        <view class="action-row">
+          <!-- 待付款 -->
+          <view class="btn-ghost" wx:if="{{item.status === 'pending'}}" catchtap="cancelOrder" data-id="{{item.id}}">关闭订单</view>
+          
+          <!-- 待发货 -->
+          <view class="btn-ghost" wx:if="{{item.status === 'paid'}}" catchtap="cancelOrder" data-id="{{item.id}}">关闭订单</view>
+          <view class="btn-solid" wx:if="{{item.status === 'paid'}}" catchtap="goToShip" data-order="{{item}}">去发货</view>
+          
+          <!-- 已发货 -->
+          <view class="btn-ghost" wx:if="{{item.status === 'shipped'}}" catchtap="cancelWaybill" data-shipment-id="{{item.shipmentId}}" data-order-no="{{item.outTradeNo}}">取消运单</view>
+          <view class="btn-ghost" wx:if="{{item.status === 'shipped'}}" catchtap="viewLogistics" data-express-code="{{item.expressCode}}" data-express-no="{{item.expressNo}}">查看物流</view>
+          
+          <!-- 部分发货 -->
+          <view class="btn-ghost" wx:if="{{item.status === 'partial_shipped'}}" catchtap="cancelWaybill" data-shipment-id="{{item.shipmentId}}" data-order-no="{{item.outTradeNo}}">取消运单</view>
+          <view class="btn-solid" wx:if="{{item.status === 'partial_shipped'}}" catchtap="goToShip" data-order="{{item}}">去发货</view>
+          <view class="btn-ghost" wx:if="{{item.status === 'partial_shipped'}}" catchtap="viewLogistics" data-express-code="{{item.expressCode}}" data-express-no="{{item.expressNo}}">查看物流</view>
+          
+          <!-- 已完成 -->
+          <view class="btn-ghost" wx:if="{{item.status === 'completed'}}" catchtap="viewLogistics" data-express-code="{{item.expressCode}}" data-express-no="{{item.expressNo}}">查看物流</view>
+        </view>
+      </view>
+
+    </view>
+  </scroll-view>
+
+  <!-- 时间范围选择器 -->
+  <view class="modal" wx:if="{{showDateModal}}">
+    <view class="modal-mask" bindtap="closeDateModal"></view>
+    <view class="modal-content">
+      <view class="modal-title">选择时间范围</view>
+      
+      <!-- 快捷选项 -->
+      <view class="quick-options">
+        <view class="quick-option {{dateRange.quickSelect === '7days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="7days">最近 7 天</view>
+        <view class="quick-option {{dateRange.quickSelect === '30days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="30days">最近 30 天</view>
+        <view class="quick-option {{dateRange.quickSelect === 'month' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="month">本月</view>
+      </view>
+      
+      <!-- 自定义时间 -->
+      <view class="custom-section">
+        <view class="custom-title">自定义时间</view>
+        <picker mode="date" value="{{dateRange.startDate}}" end="{{dateRange.endDate || today}}" bindchange="onStartDateChange">
+          <view class="date-picker-input">开始日期：{{dateRange.startDate || '选择'}}</view>
+        </picker>
+        <picker mode="date" value="{{dateRange.endDate}}" start="{{dateRange.startDate}}" end="{{today}}" bindchange="onEndDateChange">
+          <view class="date-picker-input">结束日期：{{dateRange.endDate || '选择'}}</view>
+        </picker>
+      </view>
+      
+      <view class="modal-footer">
+        <button class="modal-cancel" bindtap="closeDateModal">取消</button>
+        <button class="modal-confirm" bindtap="confirmDateRange">确定</button>
+      </view>
+    </view>
+  </view>
+</view>

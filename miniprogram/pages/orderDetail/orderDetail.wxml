@@ -55,7 +55,7 @@
     <view class="info-row">
       <text class="info-label">订单编号</text>
       <view class="info-val-box">
-        <text class="info-val">{{order.id}}</text>
+        <text class="info-val">{{order.outTradeNo}}</text>
         <view class="btn-copy" bindtap="copyOrderSn">复制</view>
       </view>
     </view>

@@ -1,109 +1,167 @@
-<view class="admin-wrapper">
+<!-- 备份原文件 -->
+<!-- 原 adminOrder.wxml 已备份为 adminOrder.wxml.bak -->
 
-  <!-- 顶部标签栏 -->
-  <view class="tabs-bar">
-    <view class="tab-item {{currentTab === item ? 'active' : ''}}" wx:for="{{tabs}}" wx:key="*this" bindtap="switchTab" data-tab="{{item}}">
-      {{item}}
-      <view class="active-line" wx:if="{{currentTab === item}}"></view>
-    </view>
-  </view>
-
-  <!-- 选择模式工具栏 -->
-  <view class="select-toolbar" wx:if="{{selectMode}}">
-    <view class="toolbar-left">
-      <text class="selected-count">已选 {{selectedOrders.length}} 个订单</text>
-      <text class="merge-hint" wx:if="{{canMerge}}">✓ 可合并发货</text>
-      <text class="merge-error" wx:if="{{!canMerge && selectedOrders.length > 1}}">{{mergeError}}</text>
-    </view>
-    <view class="toolbar-right">
-      <button class="btn-merge" bindtap="mergeShipOrders" disabled="{{!canMerge}}">合并发货</button>
-      <button class="btn-cancel" bindtap="toggleSelectMode">取消选择</button>
-    </view>
-  </view>
-
-  <!-- 订单列表（普通 view，支持自然滚动） -->
-  <view class="order-scroll-area">
-    <view class="scroll-content">
-      <view class="empty-state" wx:if="{{orders.length === 0 && !isLoading}}">
-        <view class="empty-text">当前分类下没有订单</view>
+<!-- 新的基于产品维度的发货页面 -->
+<view class="container">
+  <!-- 搜索栏 -->
+  <view class="search-section">
+    <view class="search-box">
+      <view class="search-input-wrapper">
+        <input class="search-input" placeholder="搜索商品名称" value="{{searchKeyword}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearchConfirm" focus="{{searchFocus}}" />
+        <button class="search-btn" bindtap="onSearchConfirm">搜索</button>
       </view>
-
-      <!-- 订单卡片（聚合显示） -->
-      <view class="admin-card {{selectMode ? 'select-mode' : ''}}" wx:for="{{orders}}" wx:for-item="item" wx:for-index="idx" wx:key="shipmentId || item.orderIds[0]">
-        <!-- 选择框（选择模式下显示） -->
-        <view class="order-checkbox" wx:if="{{selectMode}}" catchtap="toggleOrderSelection" data-id="{{item.orderIds[0]}}" data-order="{{item}}">
-          <view class="checkbox {{item._selected ? 'checked' : ''}}">
-            <view class="check-icon" wx:if="{{item._selected}}">✓</view>
-          </view>
-        </view>
-
-        <!-- 卡片内容（选择模式下通过 CSS 禁用点击） -->
-        <view class="card-content" catchtap="goToDetail" data-id="{{item.orderIds[0]}}" data-merge-group-id="{{item.mergeGroupId}}" data-type="{{item.type}}">
-          <view class="card-header">
-            <text class="order-id" wx:if="{{item.type === 'single'}}">单号：{{item.orderIds[0]}}</text>
-            <text class="order-id" wx:if="{{item.type === 'merged'}}">合并发货 ({{item.orderIds.length}} 个订单)</text>
-            <text class="order-status {{item.statuses.indexOf('paid') > -1 ? 'urgent' : ''}}">{{item.statuses.join(', ')}}</text>
-          </view>
-
-          <view class="buyer-info" catchtap="copyAddress" data-order="{{item}}">
-            <view class="buyer-name">{{item.recipientName}} <text class="buyer-phone">{{item.recipientPhone}}</text></view>
-            <view class="buyer-addr">{{item.recipientAddress}}</view>
-            <view class="copy-tip">点击复制收件信息</view>
-          </view>
-
-          <view class="goods-preview">
-            <!-- 显示所有商品，已发货的加灰色遮罩 -->
-            <view class="goods-img-wrapper" wx:for="{{item.items}}" wx:for-item="goods" wx:key="orderItemId">
-              <image class="goods-img" src="{{goods.skuImageUrl || goods.productImage}}" mode="aspectFill"></image>
-              <!-- 已发货商品加灰色遮罩 -->
-              <view class="goods-shipped-mask" wx:if="{{!goods.canShip}}">
-                <text class="shipped-text">已发货</text>
-              </view>
-            </view>
-            <view class="goods-count">共 {{item.items.length}} 件商品</view>
-          </view>
-
-          <view class="card-footer">
-            <text class="money">收款：¥ {{item.totalPrice}}</text>
-            <text class="ship-info">已发 {{item.shippedQty}}/{{item.totalQty}} 件</text>
-          </view>
-        </view>
-
-        <!-- 操作按钮（选择模式下隐藏） -->
-        <view class="card-actions" wx:if="{{!selectMode}}">
-          <!-- 还有待发货商品：显示"去发货"或"继续发货" -->
-          <view wx:if="{{item.shippedQty < item.totalQty}}">
-            <view class="action-btn primary" catchtap="shipOrder" data-id="{{item.orderIds[0]}}" data-order="{{item}}">
-              {{item.shippedQty > 0 ? '继续发货' : '去发货'}}
-            </view>
-            <!-- 合并发货的订单，显示"查看合并组"和"解绑订单"入口 -->
-            <view wx:if="{{item.type === 'merged' && item.mergeGroupId}}"
-                  class="action-btn-outline"
-                  bindtap="goToMergeGroupDetail"
-                  data-merge-group-id="{{item.mergeGroupId}}">
-              查看合并组
-            </view>
-            <view wx:if="{{item.mergeGroupId}}"
-                  class="action-btn-unbind"
-                  bindtap="goToUnbindFromMerge"
-                  data-merge-group-id="{{item.mergeGroupId}}">
-              解绑订单
-            </view>
-          </view>
-          <!-- 已全部发完：显示"已发完" -->
-          <view wx:if="{{item.shippedQty >= item.totalQty}}"
-                class="action-btn disabled" style="background-color: #ccc; cursor: not-allowed;">
-            已发完
+      
+      <!-- 搜索下拉列表 -->
+      <view class="search-dropdown" wx:if="{{searchDropdown.length > 0 && searchKeyword}}">
+        <view class="dropdown-item {{product.isSelected ? 'selected' : ''}}" wx:for="{{searchDropdown}}" wx:key="id" wx:for-item="product" bindtap="onDropdownItemClick" data-product="{{product}}">
+          <view class="selected-badge" wx:if="{{product.isSelected}}">已添加</view>
+          <image class="dropdown-image" src="{{product.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
+          <view class="dropdown-info">
+            <text class="dropdown-name">{{product.name}}</text>
+            <text class="dropdown-sku-count">{{product.skuCount}}个 SKU</text>
           </view>
         </view>
       </view>
     </view>
+    
+    <!-- 已选商品 -->
+    <view class="selected-products" wx:if="{{selectedProducts.length > 0}}">
+      <view class="selected-title">已选商品</view>
+      <view class="selected-list">
+        <view class="selected-tag" wx:for="{{selectedProducts}}" wx:key="id" bindtap="openSkuSelector" data-product="{{item}}">
+          {{item.name}}
+          <text class="tag-count" wx:if="{{item.skuCount > 0}}">({{item.skuCount}}个 SKU)</text>
+          <text class="remove-btn" catchtap="removeProduct" data-id="{{item.id}}">×</text>
+        </view>
+      </view>
+      <button class="clear-all" wx:if="{{selectedProducts.length > 0}}" bindtap="clearSelected">清空</button>
+    </view>
   </view>
 
-  <!-- 底部选择模式切换按钮 -->
-  <view class="bottom-toolbar" wx:if="{{currentTab === '待发货'}}">
-    <button class="btn-select-mode" bindtap="toggleSelectMode">
-      {{selectMode ? '完成选择' : '多选合并发货'}}
+  <!-- 物流账号选择 -->
+  <view class="logistics-section">
+    <picker class="logistics-picker" range="{{logisticsAccounts}}" range-key="deliveryName" value="{{logisticsIndex}}" bindchange="onLogisticsChange">
+      <view class="picker-value">
+        {{logisticsAccounts[logisticsIndex] ? logisticsAccounts[logisticsIndex].deliveryName : '选择物流账号'}}
+      </view>
+    </picker>
+    <view class="quota-info" wx:if="{{logisticsAccounts[logisticsIndex]}}">
+      剩余单号：{{logisticsAccounts[logisticsIndex].quotaNum}}
+    </view>
+  </view>
+
+  <!-- 操作栏 -->
+  <view class="action-bar">
+    <view class="checkbox-all {{allSelected ? 'checked' : ''}}" bindtap="toggleSelectAll">
+      <text wx:if="{{allSelected}}">✓</text>
+    </view>
+    <text class="select-all-text" bindtap="toggleSelectAll">全选</text>
+    <button class="batch-ship-btn" bindtap="batchShip" disabled="{{selectedItems.length === 0 || !logisticsAccounts[logisticsIndex]}}">
+      批量发货 ({{selectedItems.length}})
     </button>
+  </view>
+
+  <!-- 订单列表 -->
+  <view class="order-list">
+    <view class="order-group" wx:for="{{orderGroups}}" wx:key="orderId" wx:for-item="group" wx:for-index="index">
+      <view class="order-header">
+        <view class="order-checkbox {{group.selected ? 'checked' : ''}}" bindtap="toggleGroupSelect" data-index="{{index}}">
+          <text wx:if="{{group.selected}}">✓</text>
+        </view>
+        <view class="order-info">
+          <text class="order-no">订单：{{group.orderNo}}</text>
+          <text class="order-date">{{group.createdAt}}</text>
+        </view>
+        <view class="recipient-info">
+          <text>{{group.recipientName}} {{group.recipientPhone}}</text>
+        </view>
+      </view>
+
+      <view class="order-items">
+        <view class="order-item" wx:for="{{group.items}}" wx:key="orderItemId" wx:for-item="item" wx:for-index="itemIndex">
+          <view class="item-checkbox {{item.selected ? 'checked' : ''}}" bindtap="toggleItemSelect" data-group-index="{{index}}" data-item-index="{{itemIndex}}">
+            <text wx:if="{{item.selected}}">✓</text>
+          </view>
+          <image class="item-image" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
+          <view class="item-info">
+            <view class="item-name">{{item.productName}}</view>
+            <view class="item-sku">{{item.skuSpec}} {{item.skuSize}}</view>
+            <view class="item-qty">
+              总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}
+            </view>
+          </view>
+          <view class="item-ship-qty">
+            <view class="stepper">
+              <view class="stepper-btn {{item.shipQty <= 0 ? 'disabled' : ''}}" bindtap="onDecrease" data-group-index="{{index}}" data-item-index="{{itemIndex}}">−</view>
+              <input class="stepper-input" type="number" value="{{item.shipQty}}" bindinput="onShipQtyInput" data-group-index="{{index}}" data-item-index="{{itemIndex}}" />
+              <view class="stepper-btn" bindtap="onIncrease" data-group-index="{{index}}" data-item-index="{{itemIndex}}">+</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{orderGroups.length === 0 && !loading}}">
+      <text wx:if="{{searchKeyword}}">未找到相关商品</text>
+      <text wx:else>暂无未发货订单</text>
+    </view>
+    
+    <!-- 加载状态 -->
+    <view class="loading-state" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+  </view>
+
+  <!-- SKU 选择器弹窗 -->
+  <view class="modal" wx:if="{{showSkuModal}}">
+    <view class="modal-mask" bindtap="closeSkuModal"></view>
+    <view class="modal-content">
+      <view class="modal-title">{{selectedProduct.name}} - 选择 SKU</view>
+      <scroll-view class="sku-list" scroll-y>
+        <view class="sku-item {{item.selected ? 'selected' : ''}}" wx:for="{{selectedProduct.skus}}" wx:key="id" wx:for-item="item" bindtap="toggleSkuSelect" data-sku-id="{{item.id}}">
+          <view class="sku-checkbox {{item.selected ? 'checked' : ''}}">
+            <text wx:if="{{item.selected}}">✓</text>
+          </view>
+          <view class="sku-info">
+            <text class="sku-name">{{item.spec}} {{item.size}}</text>
+            <text class="sku-stock" wx:if="{{item.stock !== undefined}}">库存：{{item.stock}}</text>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="modal-footer">
+        <button class="modal-cancel" bindtap="closeSkuModal">取消</button>
+        <button class="modal-confirm" bindtap="confirmSkuSelection">确定</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 发货预览弹窗 -->
+  <view class="modal" wx:if="{{showPreviewModal}}">
+    <view class="modal-mask" bindtap="closePreviewModal"></view>
+    <view class="modal-content modal-large">
+      <view class="modal-title">发货预览</view>
+      <scroll-view class="preview-list" scroll-y>
+        <view class="preview-group" wx:for="{{previewGroups}}" wx:key="index">
+          <view class="preview-title">包裹 {{index + 1}} ({{group.itemCount}}件商品)</view>
+          <view class="preview-recipient">
+            <text>{{group.recipientName}} {{group.recipientPhone}}</text>
+            <text>{{group.recipientAddress}}</text>
+          </view>
+          <view class="preview-items">
+            <view class="preview-item" wx:for="{{group.items}}" wx:key="orderItemId" wx:for-item="item">
+              <text>{{item.productName}} {{item.skuSpec}} {{item.skuSize}} × {{item.shipQty}}</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="preview-summary">
+        <text>预计生成 {{previewGroups.length}} 个电子面单</text>
+      </view>
+      <view class="modal-footer">
+        <button class="modal-cancel" bindtap="closePreviewModal">取消</button>
+        <button class="modal-confirm" bindtap="confirmBatchShip" disabled="{{!canShip}}">确认发货</button>
+      </view>
+    </view>
   </view>
 </view>

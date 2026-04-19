@@ -1,403 +1,564 @@
-page {
-  background-color: #f0f0f0;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.admin-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  height: 100vh;
-}
-
-/* 顶部 Tab */
-.tabs-bar {
-  display: flex;
-  background-color: #ffffff;
-  padding: 0 10rpx;
-  flex-shrink: 0;
-}
-.tab-item {
-  flex: 1;
-  text-align: center;
-  font-size: 28rpx;
-  color: #888;
-  padding: 30rpx 0;
-  position: relative;
-  transition: color 0.2s ease;
-}
-.tab-item.active {
-  font-weight: bold;
-  color: #000000;
-}
-.active-line {
-  position: absolute;
-  bottom: 10rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40rpx;
-  height: 6rpx;
-  background-color: #ffffff;
-  border-radius: 4rpx;
-}
-
-/* 选择模式工具栏 */
-.select-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #e6f7ff;
-  padding: 20rpx 30rpx;
-  border-bottom: 1px solid #bae7ff;
-  flex-shrink: 0;
-}
-.toolbar-left {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  flex: 1;
-  overflow: hidden;
-}
-.selected-count {
-  font-size: 26rpx;
-  color: #1890ff;
-  font-weight: bold;
-  white-space: nowrap;
-}
-.merge-hint {
-  font-size: 24rpx;
-  color: #52c41a;
-  white-space: nowrap;
-}
-.merge-error {
-  font-size: 24rpx;
-  color: #ff4d4f;
-  white-space: nowrap;
-}
-.toolbar-right {
-  display: flex;
-  gap: 20rpx;
-  flex-shrink: 0;
-}
-.btn-merge {
-  background-color: #1890ff;
-  color: white;
-  font-size: 24rpx;
-  padding: 10rpx 30rpx;
-  border-radius: 20rpx;
-  height: auto;
-  line-height: 1.5;
-}
-.btn-merge[disabled] {
-  background-color: #ccc;
-}
-.btn-cancel {
-  background-color: #fff;
-  color: #666;
-  border: 1px solid #ddd;
-  font-size: 24rpx;
-  padding: 10rpx 30rpx;
-  border-radius: 20rpx;
-  height: auto;
-  line-height: 1.5;
-}
-
-/* 订单滚动区域 */
-.order-scroll-area {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* 滚动区域内容 */
-.scroll-content {
+/* adminOrder.wxss - 简化的样式 */
+.container {
   padding: 20rpx;
+  padding-bottom: 100rpx;
 }
 
-.empty-state {
-  padding: 100px 0;
-  text-align: center;
-  color: #999;
-  font-size: 14px;
+.search-section {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
 }
 
-/* 管理员卡片 */
-.admin-card {
-  background-color: #ffffff;
-  border-radius: 12rpx;
-  padding: 30rpx;
-  margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
-  display: flex;
+.search-box {
   position: relative;
-  transition: all 0.2s ease;
 }
 
-/* 选择模式下的卡片样式 */
-.admin-card.select-mode {
-  background-color: #ffffff;
-}
-.admin-card.select-mode .card-content {
-  opacity: 1;
-  pointer-events: none;
-}
-.admin-card.select-mode.selecting .card-content {
-  opacity: 1;
+.search-input-wrapper {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
 }
 
-/* 选择框样式 */
-.order-checkbox {
-  padding: 30rpx 20rpx;
-  margin-right: 20rpx;
+.search-input {
+  flex: 1;
+  height: 72rpx;
+  background: #f5f5f5;
+  border-radius: 36rpx;
+  padding: 0 30rpx;
+  font-size: 28rpx;
+}
+
+.search-btn {
+  width: 140rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #000;
+  color: #fff;
+  font-size: 28rpx;
+  border-radius: 36rpx;
+  padding: 0;
+}
+
+/* 搜索下拉列表 */
+.search-dropdown {
+  position: absolute;
+  top: 100rpx;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+  max-height: 600rpx;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  gap: 16rpx;
+  position: relative;
+}
+
+.dropdown-item.selected {
+  background: #f9f9f9;
+}
+
+.dropdown-item.selected .dropdown-name {
+  color: #999;
+}
+
+.selected-badge {
+  position: absolute;
+  top: 20rpx;
+  right: 20rpx;
+  background: #1890ff;
+  color: #fff;
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-image {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 12rpx;
+  background: #f5f5f5;
+  flex-shrink: 0;
+}
+
+.dropdown-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.dropdown-name {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.dropdown-sku-count {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.selected-products {
+  margin-top: 20rpx;
+}
+
+.selected-title {
+  font-size: 24rpx;
+  color: #666;
+  margin-bottom: 12rpx;
+}
+
+.selected-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.selected-tag {
+  background: #f5f5f5;
+  padding: 12rpx 24rpx;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.tag-count {
+  color: #999;
+  font-size: 20rpx;
+}
+
+.remove-btn {
+  color: #f44336;
+  font-size: 28rpx;
+  margin-left: 8rpx;
+}
+
+.clear-all {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #666;
+  background: none;
+  border: none;
+  padding: 0;
+  height: auto;
+  line-height: normal;
+}
+
+.logistics-section {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.logistics-picker {
+  height: 72rpx;
+  background: #f5f5f5;
+  border-radius: 36rpx;
+  padding: 0 30rpx;
+  display: flex;
+  align-items: center;
+  font-size: 28rpx;
+}
+
+.quota-info {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.action-bar {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.checkbox-all {
+  width: 36rpx;
+  height: 36rpx;
+  border: 2rpx solid #ddd;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 60rpx;
-  min-height: 80rpx;
-  z-index: 10;
-  position: relative;
+  font-size: 22rpx;
+  color: #fff;
 }
-.order-checkbox:active {
-  background-color: #e6f7ff;
-  border-radius: 8rpx;
+
+.checkbox-all.checked {
+  background: #1890ff;
+  border-color: #1890ff;
 }
-.checkbox {
-  width: 40rpx;
-  height: 40rpx;
+
+.select-all-text {
+  flex: 1;
+  font-size: 28rpx;
+}
+
+.batch-ship-btn {
+  width: 240rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #1890ff;
+  color: #fff;
+  font-size: 28rpx;
+  border-radius: 36rpx;
+  padding: 0;
+}
+
+.batch-ship-btn[disabled] {
+  background: #ccc;
+}
+
+.order-list {
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.order-group {
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.order-header {
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  background: #f9f9f9;
+  gap: 16rpx;
+}
+
+.order-checkbox {
+  width: 36rpx;
+  height: 36rpx;
   border: 2rpx solid #ddd;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.order-checkbox.checked {
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.order-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.order-no {
+  font-size: 26rpx;
+  font-weight: bold;
+}
+
+.order-date {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+.recipient-info {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.order-items {
+  padding: 20rpx;
+}
+
+.order-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+  gap: 16rpx;
+}
+
+.item-checkbox {
+  width: 36rpx;
+  height: 36rpx;
+  border: 2rpx solid #ddd;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.item-checkbox.checked {
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.item-image {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 12rpx;
+  background: #f5f5f5;
+  flex-shrink: 0;
+}
+
+.item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.item-name {
+  font-size: 26rpx;
+  font-weight: bold;
+}
+
+.item-sku {
+  font-size: 22rpx;
+  color: #666;
+}
+
+.item-qty {
+  font-size: 20rpx;
+  color: #999;
+}
+
+.item-ship-qty {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 24rpx;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.stepper-btn {
+  width: 50rpx;
+  height: 50rpx;
+  background: #f5f5f5;
   border-radius: 8rpx;
-  position: relative;
-  pointer-events: none;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 32rpx;
-  color: transparent;
-}
-.checkbox.checked {
-  background-color: #1890ff;
-  border-color: #1890ff;
-}
-.check-icon {
-  color: white;
-  font-weight: bold;
-  font-size: 28rpx;
-  line-height: 1;
-}
-
-.card-content {
-  flex: 1;
-}
-
-.card-actions {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  margin-left: 20rpx;
-  gap: 15rpx;
-  flex-shrink: 0;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px dashed #eee;
-  padding-bottom: 20rpx;
-  margin-bottom: 20rpx;
-}
-.order-id {
-  font-size: 22rpx;
-  color: #999;
-  font-family: "Times New Roman", Times, serif;
-}
-.order-status {
-  font-size: 26rpx;
-  font-weight: bold;
   color: #333;
-}
-.order-status.urgent {
-  color: #d32f2f;
+  user-select: none;
 }
 
-/* 客户信息区（突出显示） */
-.buyer-info {
-  background: #fafafa;
-  padding: 20rpx;
-  border-radius: 8rpx;
-  margin-bottom: 20rpx;
-  position: relative;
+.stepper-btn.disabled {
+  color: #ccc;
+  background: #f0f0f0;
 }
-.buyer-name {
+
+.stepper-input {
+  width: 80rpx;
+  height: 50rpx;
+  background: #fff;
+  border: 1rpx solid #ddd;
+  border-radius: 0;
+  text-align: center;
   font-size: 28rpx;
-  font-weight: bold;
-  color: #111;
-  margin-bottom: 8rpx;
-}
-.buyer-phone {
-  font-size: 26rpx;
-  color: #666;
-  font-weight: normal;
-  margin-left: 10rpx;
-  font-family: -apple-system, sans-serif;
-}
-.buyer-addr {
-  font-size: 24rpx;
-  color: #444;
-  line-height: 1.4;
-}
-.copy-tip {
-  position: absolute;
-  right: 20rpx;
-  top: 20rpx;
-  font-size: 20rpx;
-  color: #1890ff;
-  border: 1px solid #1890ff;
-  padding: 2rpx 10rpx;
-  border-radius: 6rpx;
+  margin: 0;
+  padding: 0;
 }
 
-/* 商品微缩预览 */
-.goods-preview {
-  display: flex;
-  align-items: center;
-  margin-bottom: 24rpx;
-  overflow-x: auto;
-}
-.goods-img {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 8rpx;
-  margin-right: 15rpx;
-  background: #eee;
-  flex-shrink: 0;
-  position: relative;
-}
-.goods-img-wrapper {
-  position: relative;
-  width: 80rpx;
-  height: 80rpx;
-  margin-right: 15rpx;
-  flex-shrink: 0;
-}
-.goods-img-wrapper .goods-img {
-  width: 100%;
-  height: 100%;
-}
-.goods-count {
-  font-size: 24rpx;
+.empty-state, .loading-state {
+  padding: 100rpx 0;
+  text-align: center;
   color: #999;
-  margin-left: auto;
+  font-size: 28rpx;
 }
 
-/* 已发货商品灰色遮罩 */
-.goods-shipped-mask {
+/* 弹窗样式 */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+}
+
+.modal-mask {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(128, 128, 128, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 10;
-  border-radius: 8rpx;
-}
-.shipped-text {
-  color: #fff;
-  font-size: 22rpx;
-  font-weight: bold;
-  background-color: rgba(0, 0, 0, 0.6);
-  padding: 6rpx 12rpx;
-  border-radius: 6rpx;
+  background: rgba(0, 0, 0, 0.5);
 }
 
-/* 底部操作 */
-.card-footer {
+.modal-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600rpx;
+  max-height: 70vh;
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px solid #f5f5f5;
-  padding-top: 24rpx;
+  flex-direction: column;
 }
-.money {
+
+.modal-large {
+  width: 700rpx;
+}
+
+.modal-title {
+  padding: 30rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  text-align: center;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.sku-list, .preview-list {
+  flex: 1;
+  padding: 20rpx;
+  overflow-y: auto;
+}
+
+.sku-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 20rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+  gap: 16rpx;
+  transition: background-color 0.2s;
+}
+
+.sku-item.selected {
+  background: #f0f9ff;
+}
+
+.sku-item.selected .sku-name {
+  color: #1890ff;
+  font-weight: bold;
+}
+
+.sku-checkbox {
+  width: 36rpx;
+  height: 36rpx;
+  border: 2rpx solid #ddd;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.sku-checkbox.checked {
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.sku-info {
+  flex: 1;
+  font-size: 26rpx;
+}
+
+.preview-group {
+  margin-bottom: 30rpx;
+}
+
+.preview-title {
   font-size: 28rpx;
   font-weight: bold;
-  color: #111;
-  font-family: "Times New Roman", Times, serif;
+  margin-bottom: 16rpx;
+  color: #333;
 }
-.ship-info {
+
+.preview-recipient {
   font-size: 24rpx;
   color: #666;
-  font-family: -apple-system, sans-serif;
-}
-.action-btn {
-  background: #111;
-  color: #fff;
-  padding: 0 40rpx;
-  height: 60rpx;
-  line-height: 60rpx;
-  border-radius: 30rpx;
-  font-size: 26rpx;
-  font-weight: bold;
-  white-space: nowrap;
-}
-.action-btn.primary {
-  background: #1890ff;
-}
-.action-btn-unbind {
-  background: #ff4d4f;
-  color: #fff;
-  padding: 0 40rpx;
-  height: 60rpx;
-  line-height: 60rpx;
-  border-radius: 30rpx;
-  font-size: 26rpx;
-  font-weight: bold;
-  white-space: nowrap;
-  margin-top: 15rpx;
-}
-.action-btn-outline {
-  background: transparent;
-  color: #1890ff;
-  border: 1rpx solid #1890ff;
-  padding: 0 40rpx;
-  height: 58rpx;
-  line-height: 58rpx;
-  border-radius: 30rpx;
-  font-size: 26rpx;
-  font-weight: bold;
-  white-space: nowrap;
-  margin-top: 15rpx;
-}
-.shipped-info {
-  font-size: 24rpx;
-  color: #52c41a;
-  font-family: -apple-system, sans-serif;
+  margin-bottom: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
 }
 
-/* 底部选择模式切换按钮 */
-.bottom-toolbar {
-  background-color: #ffffff;
-  padding: 20rpx 30rpx;
-  border-top: 1px solid #eee;
-  flex-shrink: 0;
-  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+.preview-items {
+  background: #f9f9f9;
+  border-radius: 12rpx;
+  padding: 16rpx;
 }
-.btn-select-mode {
-  background-color: #111;
-  color: white;
+
+.preview-item {
+  font-size: 24rpx;
+  color: #333;
+  padding: 8rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.preview-summary {
+  padding: 20rpx;
+  background: #f9f9f9;
+  border-top: 1rpx solid #f0f0f0;
+  font-size: 24rpx;
+  color: #666;
+  text-align: center;
+}
+
+.modal-footer {
+  display: flex;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.modal-cancel, .modal-confirm {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
   font-size: 28rpx;
-  padding: 20rpx 40rpx;
-  border-radius: 30rpx;
-  height: auto;
-  line-height: 1.5;
-  width: 100%;
+  border-radius: 0;
+  padding: 0;
+  border: none;
+}
+
+.modal-cancel {
+  background: #f5f5f5;
+  color: #666;
+  border-right: 1rpx solid #f0f0f0;
+}
+
+.modal-confirm {
+  background: #1890ff;
+  color: #fff;
+}
+
+.modal-confirm[disabled] {
+  background: #ccc;
 }

@@ -128,14 +128,36 @@ Page({
     }
   },
 
-  // 跳转到蓝牙打印页面
-  bluetoothPrint: function(e) {
+  // 取消运单
+  cancelWaybill: function(e) {
     const shipmentId = e.currentTarget.dataset.shipmentId;
-    if (shipmentId) {
-      wx.navigateTo({
-        url: `/pages/bluetoothPrint/bluetoothPrint?shipmentId=${shipmentId}`
-      });
-    }
+    const orderNo = e.currentTarget.dataset.orderNo;
+    
+    wx.showModal({
+      title: '取消运单',
+      content: `确定要取消订单 ${orderNo} 的运单吗？\n\n取消后：\n1. 该运单将失效\n2. 已发货数量将回退\n3. 如果订单没有其他运单，订单状态将回退为"待发货"`,
+      confirmText: '确认取消',
+      confirmColor: '#f44336',
+      success: async (res) => {
+        if (res.confirm) {
+          wx.showLoading({ title: '取消中...' });
+          try {
+            await api.post(`/admin/orders-manage/orders/shipments/${shipmentId}/cancel-waybill`);
+            wx.hideLoading();
+            wx.showToast({ title: '运单已取消', icon: 'success' });
+            // 重新加载订单详情
+            this.loadOrderDetail();
+          } catch (err) {
+            wx.hideLoading();
+            wx.showModal({
+              title: '取消失败',
+              content: err.message || '取消运单失败',
+              showCancel: false
+            });
+          }
+        }
+      }
+    });
   },
 
   // 查看物流轨迹

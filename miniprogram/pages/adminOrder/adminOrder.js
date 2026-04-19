@@ -1,475 +1,654 @@
-// miniprogram/pages/adminOrder/adminOrder.js
+// adminOrder.js - 完整版
 const api = require('../../utils/api');
-
-// 状态映射（前端中文 -> 后端英文）
-const STATUS_MAP = {
-  '待发货': 'paid',
-  '已发货': 'shipped',
-  '全部订单': null
-};
-
-// 快递公司编码列表
-const EXPRESS_CODES = [
-  { code: 'ZTO', name: '中通快递' },
-  { code: 'YTO', name: '圆通速递' },
-  { code: 'YD', name: '韵达速递' },
-  { code: 'STO', name: '申通快递' },
-  { code: 'SF', name: '顺丰速运' },
-  { code: 'JD', name: '京东物流' },
-  { code: 'EMS', name: 'EMS' }
-];
 
 Page({
   data: {
-    tabs: ['待发货', '已发货', '全部订单'],
-    currentTab: '待发货',
-    orders: [],
-    isLoading: true,
-    // 多选合并发货相关
-    selectedOrders: [],
-    selectMode: false,
-    canMerge: false,
-    mergeError: ''
+    searchKeyword: '',
+    searchDropdown: [],  // 搜索下拉列表
+    searchFocus: false,  // 是否聚焦
+    selectedProducts: [],  // 已选商品列表 (SPU 维度)
+    selectedSkuIds: [],    // 已选 SKU ID 列表
+    logisticsAccounts: [],
+    logisticsIndex: 0,
+    orderGroups: [],       // 订单分组列表
+    allSelected: false,
+    selectedItems: [],     // 已选发货项
+    loading: false,
+    showSkuModal: false,
+    showPreviewModal: false,
+    selectedProduct: null,
+    previewGroups: [],
+    canShip: false,
+    page: 0,
+    hasMore: true
   },
 
-  onShow: function() {
-    // 从 shipPartial 页面返回时，清空选择状态
-    if (this.data.selectMode || this.data.selectedOrders.length > 0) {
-      const orders = this.data.orders.map(order => ({
-        ...order,
-        _selected: false
-      }));
-      this.setData({
-        selectMode: false,
-        selectedOrders: [],
-        canMerge: false,
-        orders: orders
-      });
-    }
-    this.loadOrders();
+  onLoad: function() {
+    this.loadLogisticsAccounts();
+    // 空搜索时，自动加载所有未发货商品明细
+    this.loadAllPendingItems();
   },
 
-  switchTab: function(e) {
-    const tab = e.currentTarget.dataset.tab;
-    this.setData({
-      currentTab: tab,
-      selectMode: false,
-      selectedOrders: [],
-      canMerge: false
-    }, () => {
-      this.loadOrders();
-    });
-  },
+  // ==================== 物流账号管理 ====================
 
-  // 切换选择模式
-  toggleSelectMode: function() {
-    const newSelectMode = !this.data.selectMode;
-
-    // 退出选择模式时，清空选中状态并重置订单的 _selected 字段
-    if (newSelectMode === false) {
-      const orders = this.data.orders.map(order => ({
-        ...order,
-        _selected: false
-      }));
-      this.setData({
-        selectMode: false,
-        selectedOrders: [],
-        canMerge: false,
-        orders: orders
-      });
-    } else {
-      // 进入选择模式
-      this.setData({
-        selectMode: true,
-        selectedOrders: [],
-        canMerge: false
-      });
-    }
-  },
-
-  // 检查订单是否被选中
-  isSelected: function(order) {
-    // 聚合订单使用 orderIds[0] 作为标识
-    const orderId = order.orderIds ? order.orderIds[0] : order.id;
-    const orderIdStr = String(orderId);
-    return this.data.selectedOrders.indexOf(orderIdStr) > -1;
-  },
-
-  // 勾选/取消勾选订单
-  toggleOrderSelection: function(e) {
-    const dataset = e.currentTarget.dataset;
-    const order = dataset.order;
-    const orderId = order.orderIds ? order.orderIds[0] : order.id;
-    const orderIdStr = String(orderId);
-
-    let selected = [...this.data.selectedOrders];
-    const index = selected.indexOf(orderIdStr);
-
-    if (index > -1) {
-      selected.splice(index, 1);  // 取消选中
-    } else {
-      selected.push(orderIdStr);  // 选中
-    }
-
-    // 强制更新视图
-    this.setData({
-      selectedOrders: selected
-    }, () => {
-      // 手动触发视图更新
-      const orders = this.data.orders.map(order => ({
-        ...order,
-        _selected: this.isSelected(order)
-      }));
-      this.setData({ orders: orders });
-      this.checkMergeShipAvailable();
-    });
-  },
-
-  // 检查选中的订单是否满足合并条件
-  checkMergeShipAvailable: async function() {
-    if (this.data.selectedOrders.length <= 1) {
-      this.setData({ canMerge: false, mergeError: '' });
-      return;
-    }
-
+  loadLogisticsAccounts: async function() {
     try {
-      // 获取所有选中订单的详情，检查是否同一用户、同一地址
-      const orderDetails = await Promise.all(
-        this.data.selectedOrders.map(id => api.get(`/orders/${id}`))
-      );
-
-      const firstOrder = orderDetails[0];
-      const sameUser = orderDetails.every(order => order.userId === firstOrder.userId);
-      const sameAddress = orderDetails.every(order =>
-        order.recipientName === firstOrder.recipientName &&
-        order.recipientPhone === firstOrder.recipientPhone &&
-        order.recipientAddress === firstOrder.recipientAddress
-      );
-
-      // 检查订单状态
-      const validStatus = orderDetails.every(order =>
-        order.status === 'paid' || order.status === 'shipped'
-      );
-
-      if (!validStatus) {
-        this.setData({
-          canMerge: false,
-          mergeError: '选中的订单状态不支持合并发货（必须为已付款或已发货）'
-        });
-      } else if (!sameUser) {
-        this.setData({
-          canMerge: false,
-          mergeError: '选中的订单必须属于同一用户'
-        });
-      } else if (!sameAddress) {
-        this.setData({
-          canMerge: false,
-          mergeError: '选中的订单必须有相同的收货地址'
-        });
-      } else {
-        this.setData({ canMerge: true, mergeError: '' });
-      }
-    } catch (err) {
-      this.setData({ canMerge: false, mergeError: '检查失败：' + err.message });
-    }
-  },
-
-  // 加载订单列表（后端按发货单聚合返回）
-  loadOrders: async function() {
-    this.setData({ isLoading: true, orders: [] });
-    wx.showLoading({ title: '扫描订单中...' });
-
-    try {
-      const backendStatus = STATUS_MAP[this.data.currentTab];
-      const params = {
-        page: 1,
-        size: 100
-      };
-      if (backendStatus) {
-        params.status = backendStatus;
-      }
-
-      const res = await api.get('/admin/orders', params);
-
-      // 后端已按发货单聚合返回数据
-      // res.items 是 AggregatedOrderResponse 数组
-      const orders = (res.items || []).map(order => ({
-        ...order,
-        _selected: false  // 选中状态标记
-      }));
-
-      this.setData({ orders: orders, isLoading: false }, () => {
-        wx.hideLoading();
+      const accounts = await api.get('/logistics/bound-accounts');
+      this.setData({
+        logisticsAccounts: accounts,
+        logisticsIndex: 0
       });
     } catch (err) {
-      this.setData({ isLoading: false }, () => {
-        wx.hideLoading();
-        wx.showToast({ title: '读取失败', icon: 'none' });
-      });
-      console.error(err);
+      console.error('加载物流账号失败:', err);
+      wx.showToast({ title: '加载物流账号失败', icon: 'none' });
     }
   },
 
-  // 去发货（包括全部发货和分批发货）
-  shipOrder: function(e) {
-    const order = e.currentTarget.dataset.order;
-    const orderId = order.orderIds ? order.orderIds[0] : order.id;
-
-    // 如果是合并发货且有 mergeGroupId，跳转到合并发货页面
-    if (order.type === 'merged' && order.mergeGroupId && order.shippedQty < order.totalQty) {
-      wx.navigateTo({
-        url: `/pages/shipPartial/shipPartial?mergeGroupId=${order.mergeGroupId}&orderIds=${order.orderIds.join(',')}&isMerge=true`
-      });
-    } else {
-      // 单订单发货
-      wx.navigateTo({
-        url: `/pages/shipPartial/shipPartial?orderId=${orderId}`
-      });
-    }
+  onLogisticsChange: function(e) {
+    this.setData({ logisticsIndex: parseInt(e.detail.value) });
   },
 
-  // 合并发货
-  mergeShipOrders: async function() {
-    if (this.data.selectedOrders.length === 0) {
-      wx.showToast({ title: '请选择订单', icon: 'none' });
-      return;
-    }
+  // ==================== 商品搜索 ====================
 
-    // 检查选中的订单是否已有合并组
-    const mergeGroupIds = new Set();
-    const ordersWithMergeGroup = [];  // 已有合并组的订单
-    const ordersWithoutMergeGroup = [];  // 没有合并组的订单
-
-    for (const orderId of this.data.selectedOrders) {
-      const order = this.data.orders.find(o => {
-        const oid = o.orderIds ? o.orderIds[0] : o.id;
-        return String(oid) === String(orderId);
-      });
-      if (order && order.mergeGroupId) {
-        mergeGroupIds.add(order.mergeGroupId);
-        ordersWithMergeGroup.push(orderId);
-      } else {
-        ordersWithoutMergeGroup.push(orderId);
-      }
-    }
-
-    // 如果有多个不同的合并组，不允许合并
-    if (mergeGroupIds.size > 1) {
-      wx.showModal({
-        title: '无法合并',
-        content: '选中的订单已属于不同的合并组，不支持跨合并组操作',
-        showCancel: false
-      });
-      return;
-    }
-
-    // 如果已有合并组，将没有合并组的订单添加到该合并组
-    if (mergeGroupIds.size === 1) {
-      const mergeGroupId = Array.from(mergeGroupIds)[0];
-
-      if (ordersWithoutMergeGroup.length > 0) {
-        // 有订单需要添加到现有合并组
-        wx.showModal({
-          title: '确认合并发货',
-          content: `将把 ${ordersWithoutMergeGroup.length} 个订单添加到合并组 #${mergeGroupId}，是否继续？`,
-          confirmText: '确认添加',
-          success: async (res) => {
-            if (res.confirm) {
-              await this.addOrdersToMergeGroup(mergeGroupId, ordersWithoutMergeGroup);
-            }
-          }
-        });
-      } else {
-        // 所有订单都已属于该合并组，直接跳转发货
-        wx.showModal({
-          title: '确认合并发货',
-          content: `选中的订单已属于合并组 #${mergeGroupId}，是否继续发货？`,
-          confirmText: '去发货',
-          success: (res) => {
-            if (res.confirm) {
-              this.doMergeShip(mergeGroupId);
-            }
-          }
-        });
-      }
-    } else {
-      // 没有合并组，创建新的
-      wx.showModal({
-        title: '确认合并发货',
-        content: `将创建合并组合并 ${this.data.selectedOrders.length} 个订单`,
-        confirmText: '确认创建',
-        success: (res) => {
-          if (res.confirm) {
-            this.createAndMerge();
-          }
-        }
-      });
-    }
-  },
-
-  // 添加订单到现有合并组
-  addOrdersToMergeGroup: async function(mergeGroupId, orderIds) {
-    wx.showLoading({ title: '添加中...' });
+  // 加载所有未发货商品明细（进入页面时调用）
+  loadAllPendingItems: async function() {
+    wx.showLoading({ title: '加载中...' });
 
     try {
-      await api.post(`/merge-groups/${mergeGroupId}/orders`, orderIds.map(id => parseInt(id)));
-      wx.showToast({ title: '添加成功', icon: 'success' });
-
-      // 刷新订单列表
-      this.loadOrders();
-
-      // 跳转到合并组发货页面
-      setTimeout(() => {
-        this.doMergeShip(mergeGroupId);
-      }, 500);
-    } catch (err) {
-      wx.showModal({
-        title: '添加失败',
-        content: err.message || '未知错误',
-        showCancel: false
+      // 调用后端 API，不传参数表示查询所有未发货商品
+      const res = await api.get('/shipments/pending-items');
+      
+      const items = res || [];
+      
+      // 按订单分组
+      const groups = this.groupByOrder(items);
+      
+      this.setData({
+        orderGroups: groups,
+        hasMore: false,
+        page: 1
       });
+    } catch (err) {
+      console.error('加载未发货商品失败:', err);
+      wx.showToast({ title: '加载失败', icon: 'none' });
     } finally {
       wx.hideLoading();
     }
   },
 
-  // 创建合并组并合并
-  createAndMerge: async function() {
-    wx.showLoading({ title: '创建中...' });
-
-    try {
-      // 获取第一个订单的收货信息用于创建合并组
-      const firstOrderId = parseInt(this.data.selectedOrders[0]);
-      const firstOrder = await api.get(`/orders/${firstOrderId}`);
-
-      // 创建合并组
-      const mergeGroup = await api.post('/merge-groups', {
-        userId: firstOrder.userId,
-        recipientName: firstOrder.recipientName,
-        recipientPhone: firstOrder.recipientPhone,
-        recipientAddress: firstOrder.recipientAddress ||
-          (firstOrder.recipientProvince || '') +
-          (firstOrder.recipientCity || '') +
-          (firstOrder.recipientDistrict || '') +
-          (firstOrder.recipientDetail || '')
-      });
-
-      // 将选中的订单添加到合并组
-      await api.post(`/merge-groups/${mergeGroup.id}/orders`, this.data.selectedOrders.map(id => parseInt(id)));
-
-      wx.hideLoading();
-      this.doMergeShip(mergeGroup.id);
-    } catch (err) {
-      wx.hideLoading();
-      wx.showModal({
-        title: '创建失败',
-        content: err.message || '未知错误',
-        showCancel: false
-      });
+  // 输入时搜索（防抖）
+  onSearchInput: function(e) {
+    const keyword = e.detail.value.trim();
+    this.setData({ searchKeyword: keyword });
+    
+    // 清空下拉列表
+    if (!keyword) {
+      this.setData({ searchDropdown: [] });
+      return;
     }
+    
+    // 防抖：500ms 后搜索
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    
+    this.searchTimer = setTimeout(() => {
+      this.searchProducts();
+    }, 500);
   },
 
-  // 执行合并发货（跳转到分批发货页面，让用户选择每次发哪些商品）
-  doMergeShip: function(mergeGroupId) {
-    if (this.data.selectedOrders.length === 0) {
-      wx.showToast({ title: '请选择订单', icon: 'none' });
+  // 搜索商品
+  searchProducts: async function() {
+    const keyword = this.data.searchKeyword.trim();
+    if (!keyword) {
+      this.setData({ searchDropdown: [] });
       return;
     }
 
-    // 跳转到 shipPartial 页面，传递 mergeGroupId
-    const orderIds = this.data.selectedOrders.join(',');
-    const url = `/pages/shipPartial/shipPartial?mergeGroupId=${mergeGroupId}&orderIds=${orderIds}&isMerge=true`;
-    wx.navigateTo({
-      url: url,
-      fail: (err) => {
-        console.error('navigateTo failed:', err);
-        wx.showToast({ title: '跳转失败，请检查是否已在该页面', icon: 'none' });
-      }
-    });
-  },
-
-  // 显示面单预览
-  showWaybillPreview: function(shipmentRes) {
-    return new Promise((resolve) => {
-      wx.showModal({
-        title: '面单已生成',
-        content: '运单号：' + shipmentRes.expressNo + '，请点击确认打开面单打印',
-        confirmText: '打印面单',
-        success: (res) => {
-          if (res.confirm) {
-            wx.previewImage({
-              urls: [shipmentRes.pdfShowUrl],
-              success: () => {
-                wx.showToast({ title: '请尽快打印面单', icon: 'none', duration: 2000 });
-              }
-            });
-          }
-          resolve();
-        }
+    try {
+      const res = await api.get(`/products/search?keyword=${encodeURIComponent(keyword)}&limit=10`);
+      const products = res.records || res || [];
+      
+      // 获取已选商品 ID 列表
+      const selectedIds = this.data.selectedProducts.map(p => p.id);
+      
+      // 标记已选商品
+      const markedProducts = products.map(p => ({
+        ...p,
+        skuCount: p.skus ? p.skus.length : 0,
+        isSelected: selectedIds.includes(p.id)
+      }));
+      
+      // 更新下拉列表
+      this.setData({
+        searchDropdown: markedProducts
       });
-    });
-  },
-
-  // 复制客户地址
-  copyAddress: function(e) {
-    const order = e.currentTarget.dataset.order;
-    const address = order.recipientAddress || order.address || '';
-    const recipient = order.recipientName || order.recipient || '';
-    const phone = order.recipientPhone || order.phone || '';
-
-    const text = `${recipient} ${phone} ${address}`;
-    wx.setClipboardData({
-      data: text,
-      success: () => {
-        wx.showToast({ title: '客户地址已复制', icon: 'success' });
-      }
-    });
-  },
-
-  // 进入订单详情页或合并组详情页（管理员专用）
-  goToDetail: function(e) {
-    const mergeGroupId = e.currentTarget.dataset.mergeGroupId;
-    const type = e.currentTarget.dataset.type;
-
-    // 如果是合并发货且有合并组 ID，跳转到合并组详情页
-    if (type === 'merged' && mergeGroupId) {
-      wx.navigateTo({
-        url: `/pages/mergeGroupDetail/mergeGroupDetail?mergeGroupId=${mergeGroupId}`
-      });
-    } else {
-      // 否则跳转到订单详情页
-      const id = e.currentTarget.dataset.id;
-      wx.navigateTo({
-        url: `/pages/adminOrderDetail/adminOrderDetail?id=${id}`
-      });
+    } catch (err) {
+      console.error('搜索商品失败:', err);
+      this.setData({ searchDropdown: [] });
     }
   },
 
-  // 进入合并组详情页
-  goToMergeGroupDetail: function(e) {
-    console.log('goToMergeGroupDetail called, e=', e);
-    const mergeGroupId = e.currentTarget.dataset.mergeGroupId;
-    console.log('mergeGroupId=', mergeGroupId);
-    wx.navigateTo({
-      url: `/pages/mergeGroupDetail/mergeGroupDetail?mergeGroupId=${mergeGroupId}`
+  // 点击搜索按钮
+  onSearchConfirm: function() {
+    // 隐藏下拉列表
+    this.setData({ searchDropdown: [], searchFocus: false });
+    
+    // 如果没有选择任何商品，查询所有未发货订单
+    if (this.data.selectedProducts.length === 0) {
+      this.loadAllPendingItems();
+      return;
+    }
+    
+    // 检查是否有商品还没有加载 SKU
+    const productsWithoutSkus = this.data.selectedProducts.filter(p => !p.skus || p.skus.length === 0);
+    
+    if (productsWithoutSkus.length > 0) {
+      // 需要加载 SKU 列表
+      this.loadProductsSkus(productsWithoutSkus);
+    } else {
+      // 直接加载订单明细
+      this.loadPendingItems();
+    }
+  },
+
+  // 批量加载商品 SKU
+  loadProductsSkus: function(products) {
+    wx.showLoading({ title: '加载中...' });
+    
+    const promises = products.map(product => {
+      return api.get(`/products/${product.id}`).then(res => {
+        return {
+          productId: product.id,
+          skus: res.skus || res.skuMatrix || []
+        };
+      }).catch(err => {
+        console.error('加载 SKU 失败:', product.id, err);
+        return { productId: product.id, skus: [] };
+      });
+    });
+    
+    Promise.all(promises).then(results => {
+      // 更新已选商品的 SKU 列表
+      const updatedProducts = this.data.selectedProducts.map(product => {
+        const skuResult = results.find(r => r.productId === product.id);
+        if (skuResult) {
+          return { ...product, skus: skuResult.skus };
+        }
+        return product;
+      });
+      
+      this.setData({ selectedProducts: updatedProducts });
+      wx.hideLoading();
+      
+      // 加载订单明细
+      this.loadPendingItems();
     });
   },
 
-  // 进入解绑页面（从合并组解绑）
-  goToUnbindFromMerge: function(e) {
-    console.log('goToUnbindFromMerge called, e=', e);
-    const mergeGroupId = e.currentTarget.dataset.mergeGroupId;
-    console.log('mergeGroupId=', mergeGroupId);
-    wx.navigateTo({
-      url: `/pages/mergeGroupDetail/mergeGroupDetail?mergeGroupId=${mergeGroupId}`
+  // 选择商品（添加到已选列表）
+  onSelectProduct: function(e) {
+    const product = e.currentTarget.dataset.product;
+    
+    // 添加到已选列表
+    const selectedProducts = [...this.data.selectedProducts, {
+      ...product,
+      skuCount: 0,
+      selectedSkus: []
+    }];
+    
+    this.setData({
+      selectedProducts,
+      searchDropdown: [],
+      searchKeyword: ''
     });
   },
 
-  // 进入解绑页面（从发货单解绑）
-  goToUnbind: function(e) {
-    const shipmentId = e.currentTarget.dataset.shipmentId;
-    wx.navigateTo({
-      url: `/pages/unbindOrder/unbindOrder?shipmentId=${shipmentId}`
+  // 点击下拉列表商品
+  onDropdownItemClick: function(e) {
+    const product = e.currentTarget.dataset.product;
+    
+    // 如果已选，打开 SKU 选择器
+    if (product.isSelected) {
+      // 在已选商品列表中找到该商品
+      const index = this.data.selectedProducts.findIndex(p => p.id === product.id);
+      if (index !== -1) {
+        this.openSkuSelector({ currentTarget: { dataset: { product: this.data.selectedProducts[index] } } });
+      }
+      return;
+    }
+    
+    // 未选，添加到已选列表
+    this.onSelectProduct(e);
+  },
+
+  // 移除已选商品
+  removeProduct: function(e) {
+    const id = e.currentTarget.dataset.id;
+    const products = this.data.selectedProducts.filter(p => p.id !== id);
+    this.setData({ selectedProducts: products });
+    
+    // 清除该商品的 SKU 选择
+    const product = this.data.selectedProducts.find(p => p.id === id);
+    if (product && product.skus) {
+      const skuIdsToRemove = product.skus.map(s => s.id);
+      const selectedSkuIds = this.data.selectedSkuIds.filter(id => !skuIdsToRemove.includes(id));
+      this.setData({ selectedSkuIds });
+    }
+  },
+
+  // 清空已选
+  clearSelected: function() {
+    this.setData({ 
+      selectedProducts: [],
+      selectedSkuIds: []
     });
+  },
+
+  // ==================== SKU 选择器 ====================
+
+  openSkuSelector: function(e) {
+    const product = e.currentTarget.dataset.product;
+    
+    // 加载商品的 SKU 列表（如果还没有）
+    if (!product.skus || product.skus.length === 0) {
+      wx.showLoading({ title: '加载中...' });
+      api.get(`/products/${product.id}`).then(res => {
+        wx.hideLoading();
+        const skus = res.skus || res.skuMatrix || [];
+        const updatedProduct = { ...product, skus };
+        this._showSkuModal(updatedProduct);
+      }).catch(() => {
+        wx.hideLoading();
+        wx.showToast({ title: '加载 SKU 失败', icon: 'none' });
+      });
+    } else {
+      this._showSkuModal(product);
+    }
+  },
+
+  // 显示 SKU 选择器
+  _showSkuModal: function(product) {
+    // 标记已选中的 SKU
+    const skus = product.skus.map(sku => ({
+      ...sku,
+      selected: product.selectedSkus && product.selectedSkus.some(s => s.id === sku.id)
+    }));
+
+    this.setData({
+      selectedProduct: { ...product, skus },
+      showSkuModal: true
+    });
+  },
+
+  closeSkuModal: function() {
+    this.setData({ showSkuModal: false });
+  },
+
+  toggleSkuSelect: function(e) {
+    const skuId = e.currentTarget.dataset.skuId;
+    const currentSkus = this.data.selectedProduct.skus || [];
+    
+    const skus = currentSkus.map(sku => {
+      if (sku.id === skuId) {
+        return { ...sku, selected: !sku.selected };
+      }
+      return sku;
+    });
+
+    // 更新 selectedProduct 中的 skus
+    this.setData({
+      'selectedProduct.skus': skus
+    }, () => {
+      // 确保数据已更新
+      console.log('SKU 选中状态已更新:', this.data.selectedProduct.skus.find(s => s.id === skuId));
+    });
+  },
+
+  confirmSkuSelection: function() {
+    const product = this.data.selectedProduct;
+    const selectedSkus = product.skus.filter(s => s.selected);
+    
+    // 更新已选商品列表
+    const selectedProducts = this.data.selectedProducts.map(p => {
+      if (p.id === product.id) {
+        return {
+          ...p,
+          skuCount: selectedSkus.length,
+          selectedSkus: selectedSkus
+        };
+      }
+      return p;
+    });
+
+    this.setData({
+      selectedProducts,
+      showSkuModal: false
+    });
+  },
+
+  // ==================== 加载订单明细 ====================
+
+  // 加载订单明细（根据已选商品和 SKU）
+  loadPendingItems: async function() {
+    if (this.data.selectedProducts.length === 0) {
+      wx.showToast({ title: '请先选择商品', icon: 'none' });
+      return;
+    }
+
+    // 收集已选 SKU ID
+    const selectedSkuIds = this.data.selectedProducts.reduce((acc, product) => {
+      // 如果用户手动选择了 SKU，使用已选 SKU
+      if (product.selectedSkus && product.selectedSkus.length > 0) {
+        return [...acc, ...product.selectedSkus.map(s => s.id)];
+      }
+      // 如果没有选择 SKU，使用该商品的所有 SKU
+      if (product.skus && product.skus.length > 0) {
+        return [...acc, ...product.skus.map(s => s.id)];
+      }
+      // 如果商品没有 SKU，返回空数组（后面会提示）
+      return acc;
+    }, []);
+
+    if (selectedSkuIds.length === 0) {
+      wx.showToast({ title: '请选择商品', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '加载中...' });
+
+    try {
+      // 调用后端 API 获取未发货商品明细
+      const skuIdsParam = selectedSkuIds.join(',');
+      const res = await api.get(`/shipments/pending-items?skuIds=${skuIdsParam}`);
+      
+      const items = res || [];
+      
+      // 按订单分组
+      const groups = this.groupByOrder(items);
+      
+      this.setData({
+        orderGroups: groups,
+        hasMore: false,
+        page: 1
+      });
+    } catch (err) {
+      console.error('加载未发货商品失败:', err);
+      wx.showToast({ title: '加载失败', icon: 'none' });
+    } finally {
+      wx.hideLoading();
+    }
+  },
+
+  // 按订单分组
+  groupByOrder: function(items) {
+    console.log('groupByOrder 接收到的 items:', items);
+    
+    const groupsMap = {};
+
+    items.forEach(item => {
+      console.log('处理 item:', item);
+      
+      const key = item.orderId;
+      if (!groupsMap[key]) {
+        groupsMap[key] = {
+          orderId: item.orderId,
+          orderNo: item.orderNo,
+          createdAt: this.formatDate(item.orderCreatedAt),
+          recipientName: item.recipientName,
+          recipientPhone: item.recipientPhone,
+          recipientAddress: item.recipientAddress,
+          selected: false,
+          items: []
+        };
+      }
+
+      groupsMap[key].items.push({
+        orderItemId: item.orderItemId,
+        productId: item.productId,
+        productName: item.productName,
+        productImage: item.productImage,
+        skuId: item.skuId,
+        skuSpec: item.skuSpec,
+        skuSize: item.skuSize,
+        skuImage: item.skuImage,
+        totalQty: item.totalQty,
+        shippedQty: item.shippedQty,
+        unshippedQty: item.unshippedQty,
+        shipQty: item.unshippedQty,  // 默认发货数量=未发货数量
+        selected: false  // 默认不选中
+      });
+      
+      console.log(`订单 ${key} 的商品数量：`, groupsMap[key].items.length);
+    });
+
+    const result = Object.values(groupsMap);
+    console.log('groupByOrder 返回的结果:', result);
+    return result;
+  },
+
+  // ==================== 选择逻辑 ====================
+
+  toggleSelectAll: function() {
+    const allSelected = !this.data.allSelected;
+    
+    const orderGroups = this.data.orderGroups.map(group => ({
+      ...group,
+      selected: allSelected,
+      items: group.items.map(item => ({ ...item, selected: allSelected }))
+    }));
+
+    this.updateSelectedItems(orderGroups);
+  },
+
+  toggleGroupSelect: function(e) {
+    const index = e.currentTarget.dataset.index;
+    const group = this.data.orderGroups[index];
+    
+    group.selected = !group.selected;
+    group.items = group.items.map(item => ({ ...item, selected: group.selected }));
+    
+    const orderGroups = [...this.data.orderGroups];
+    orderGroups[index] = group;
+    
+    this.updateSelectedItems(orderGroups);
+  },
+
+  toggleItemSelect: function(e) {
+    const groupIndex = e.currentTarget.dataset.groupIndex;
+    const itemIndex = e.currentTarget.dataset.itemIndex;
+    
+    const item = this.data.orderGroups[groupIndex].items[itemIndex];
+    item.selected = !item.selected;
+    
+    // 更新分组选中状态
+    const group = this.data.orderGroups[groupIndex];
+    group.selected = group.items.every(i => i.selected);
+    
+    const orderGroups = [...this.data.orderGroups];
+    orderGroups[groupIndex] = group;
+    
+    this.updateSelectedItems(orderGroups);
+  },
+
+  updateSelectedItems: function(orderGroups) {
+    const selectedItems = [];
+    
+    orderGroups.forEach(group => {
+      group.items.forEach(item => {
+        if (item.selected) {
+          selectedItems.push({
+            ...item,
+            orderId: group.orderId,
+            orderNo: group.orderNo,
+            recipientName: group.recipientName,
+            recipientPhone: group.recipientPhone,
+            recipientAddress: group.recipientAddress
+          });
+        }
+      });
+    });
+
+    // 检查是否全选
+    const allSelected = orderGroups.length > 0 && orderGroups.every(g => g.selected);
+
+    this.setData({
+      orderGroups,
+      selectedItems,
+      allSelected
+    });
+  },
+
+  onShipQtyInput: function(e) {
+    const groupIndex = e.currentTarget.dataset.groupIndex;
+    const itemIndex = e.currentTarget.dataset.itemIndex;
+    const value = parseInt(e.detail.value) || 0;
+
+    const item = this.data.orderGroups[groupIndex].items[itemIndex];
+    
+    // 限制最大值为未发货数量
+    item.shipQty = Math.min(value, item.unshippedQty);
+    
+    const orderGroups = [...this.data.orderGroups];
+    orderGroups[groupIndex].items[itemIndex] = item;
+    
+    this.setData({ orderGroups });
+  },
+
+  // 减少数量
+  onDecrease: function(e) {
+    const groupIndex = e.currentTarget.dataset.groupIndex;
+    const itemIndex = e.currentTarget.dataset.itemIndex;
+    
+    const item = this.data.orderGroups[groupIndex].items[itemIndex];
+    
+    if (item.shipQty > 0) {
+      item.shipQty = Math.max(0, item.shipQty - 1);
+      
+      const orderGroups = [...this.data.orderGroups];
+      orderGroups[groupIndex].items[itemIndex] = item;
+      
+      this.setData({ orderGroups });
+    }
+  },
+
+  // 增加数量
+  onIncrease: function(e) {
+    const groupIndex = e.currentTarget.dataset.groupIndex;
+    const itemIndex = e.currentTarget.dataset.itemIndex;
+    
+    const item = this.data.orderGroups[groupIndex].items[itemIndex];
+    
+    // 限制最大值为未发货数量
+    item.shipQty = Math.min(item.unshippedQty, item.shipQty + 1);
+    
+    const orderGroups = [...this.data.orderGroups];
+    orderGroups[groupIndex].items[itemIndex] = item;
+    
+    this.setData({ orderGroups });
+  },
+
+  // ==================== 批量发货 ====================
+
+  batchShip: function() {
+    if (this.data.selectedItems.length === 0) {
+      wx.showToast({ title: '请选择要发货的商品', icon: 'none' });
+      return;
+    }
+
+    if (!this.data.logisticsAccounts[this.data.logisticsIndex]) {
+      wx.showToast({ title: '请选择物流账号', icon: 'none' });
+      return;
+    }
+
+    // 检查剩余单号
+    const account = this.data.logisticsAccounts[this.data.logisticsIndex];
+    if (account.quotaNum < this.data.selectedItems.length) {
+      wx.showToast({ 
+        title: `剩余单号不足 (${account.quotaNum} < ${this.data.selectedItems.length})`, 
+        icon: 'none' 
+      });
+      return;
+    }
+
+    // 生成发货预览
+    this.generatePreview();
+  },
+
+  generatePreview: function() {
+    // 按收件人信息分组
+    const groupsMap = {};
+    
+    this.data.selectedItems.forEach(item => {
+      const key = `${item.recipientName}|${item.recipientPhone}|${item.recipientAddress}`;
+      
+      if (!groupsMap[key]) {
+        groupsMap[key] = {
+          recipientName: item.recipientName,
+          recipientPhone: item.recipientPhone,
+          recipientAddress: item.recipientAddress,
+          itemCount: 0,
+          items: []
+        };
+      }
+      
+      groupsMap[key].itemCount += item.shipQty;
+      groupsMap[key].items.push(item);
+    });
+
+    const previewGroups = Object.values(groupsMap);
+
+    this.setData({
+      previewGroups,
+      canShip: true,
+      showPreviewModal: true
+    });
+  },
+
+  closePreviewModal: function() {
+    this.setData({ showPreviewModal: false });
+  },
+
+  confirmBatchShip: async function() {
+    wx.showLoading({ title: '发货中...' });
+
+    try {
+      const accountId = this.data.logisticsAccounts[this.data.logisticsIndex].bizId;
+      
+      // 调用批量发货 API
+      await api.post('/shipments/batch-create', {
+        accountId: accountId,
+        items: this.data.selectedItems.map(item => ({
+          orderId: item.orderId,
+          orderItemId: item.orderItemId,
+          skuId: item.skuId,
+          shipQty: item.shipQty
+        }))
+      });
+
+      wx.hideLoading();
+      wx.showToast({ title: '发货成功', icon: 'success' });
+
+      // 清空选择
+      this.setData({
+        selectedItems: [],
+        orderGroups: [],
+        allSelected: false,
+        showPreviewModal: false
+      });
+
+    } catch (err) {
+      wx.hideLoading();
+      console.error('批量发货失败:', err);
+      wx.showToast({ title: err.message || '发货失败', icon: 'none' });
+    }
+  },
+
+  // ==================== 工具函数 ====================
+
+  formatDate: function(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   }
 });

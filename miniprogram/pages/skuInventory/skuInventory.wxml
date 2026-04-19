@@ -1,0 +1,133 @@
+<!-- miniprogram/pages/skuInventory/skuInventory.wxml -->
+<view class="container">
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <input class="search-input" placeholder="搜索商品名称/SKU" value="{{keyword}}" bindinput="onKeywordInput" />
+    <button class="search-btn" bindtap="search">搜索</button>
+  </view>
+
+  <!-- 商品列表 -->
+  <view class="product-list">
+    <view class="product-item" wx:for="{{productList}}" wx:key="id" bindtap="selectProduct" data-item="{{item}}">
+      <image class="product-image" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
+      <view class="product-info">
+        <view class="product-name">{{item.name}}</view>
+        <view class="product-skus" wx:if="{{item.skus && item.skus.length > 0}}">
+          <view class="sku-tag" wx:for="{{item.skus}}" wx:key="id" wx:for-item="sku">
+            {{sku.spec}} {{sku.size}}: 
+            <text class="sku-qty {{(sku.availableQty || 0) <= 0 ? 'out' : ((sku.availableQty || 0) <= 5 ? 'low' : 'normal')}}">
+              {{sku.availableQty || 0}}
+            </text>
+          </view>
+        </view>
+        <view class="product-skus" wx:else>
+          <text class="no-sku">暂无 SKU 信息</text>
+        </view>
+      </view>
+      <view class="product-action" wx:if="{{item.skus && item.skus.length > 0}}">
+        <button class="btn-operate" catchtap="operateSku" data-product="{{item}}" data-sku="{{item.skus[0]}}">管理</button>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{productList.length === 0 && !loading}}">
+      <text>暂无商品</text>
+    </view>
+
+    <!-- 加载状态 -->
+    <view class="loading-state" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+  </view>
+
+  <!-- SKU 操作弹窗 -->
+  <view class="modal" wx:if="{{showSkuModal}}">
+    <view class="modal-mask" bindtap="hideSkuModal"></view>
+    <view class="modal-content">
+      <view class="modal-title">库存管理</view>
+      <view class="modal-body">
+        <!-- SKU 选择器 -->
+        <view class="sku-selector">
+          <text class="selector-label">选择 SKU</text>
+          <view class="sku-options" wx:if="{{selectedProduct.skus && selectedProduct.skus.length > 1}}">
+            <view 
+              class="sku-option {{selectedSku.id === item.id ? 'active' : ''}}" 
+              wx:for="{{selectedProduct.skus}}" 
+              wx:for-item="item"
+              wx:key="id"
+              bindtap="selectSku"
+              data-index="{{index}}">
+              {{item.spec}} {{item.size}}
+              <text class="sku-qty-badge">{{item.availableQty || 0}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="sku-info">
+          <image class="sku-image" src="{{selectedSku.imageUrl || selectedProduct.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
+          <view class="sku-detail">
+            <view class="sku-name">{{selectedProduct.name}}</view>
+            <view class="sku-spec">{{selectedSku.spec}} {{selectedSku.size}}</view>
+            <view class="sku-current-qty">当前库存：<text class="qty-value {{currentQty <= 0 ? 'out' : (currentQty <= 5 ? 'low' : 'normal')}}">{{currentQty}}</text></view>
+          </view>
+        </view>
+
+        <!-- 选项卡 -->
+        <view class="tabs">
+          <view class="tab-item {{activeTab === 'ledger' ? 'active' : ''}}" bindtap="switchTab" data-tab="ledger">录入记录</view>
+          <view class="tab-item {{activeTab === 'operate' ? 'active' : ''}}" bindtap="switchTab" data-tab="operate">操作</view>
+        </view>
+
+        <!-- 录入记录 -->
+        <scroll-view class="ledger-list" scroll-y wx:if="{{activeTab === 'ledger'}}">
+          <view class="ledger-item {{item.isRevoked ? 'revoked' : ''}}" wx:for="{{ledgerList}}" wx:key="id">
+            <view class="ledger-header">
+              <text class="ledger-type {{item.changeQty > 0 ? 'positive' : 'negative'}}">
+                {{item.changeQty > 0 ? '+' : ''}}{{item.changeQty}}
+              </text>
+              <text class="ledger-time">{{item.createdAt}}</text>
+              <text class="ledger-status" wx:if="{{item.isRevoked}}">已撤销</text>
+            </view>
+            <view class="ledger-body">
+              <text class="ledger-reason">{{item.changeTypeText}}</text>
+              <text class="ledger-note" wx:if="{{item.note}}">{{item.note}}</text>
+            </view>
+            <view class="ledger-footer">
+              <text>变动前：{{item.beforeQty}}</text>
+              <text>变动后：{{item.afterQty}}</text>
+            </view>
+            <!-- 只有手动录入和库存调整的记录才能撤销，且未被撤销 -->
+            <button class="btn-revoke" wx:if="{{(item.changeType === 'manual_add' || item.changeType === 'adjustment') && !item.isRevoked}}" catchtap="revokeLedger" data-item="{{item}}">撤销</button>
+          </view>
+        </scroll-view>
+
+        <!-- 操作 -->
+        <view class="operate-form" wx:if="{{activeTab === 'operate'}}">
+          <view class="form-item">
+            <text class="form-label">操作类型</text>
+            <view class="radio-group">
+              <view class="radio-item {{operateType === 'add' ? 'active' : ''}}" bindtap="setOperateType" data-type="add">
+                <text>录入库存</text>
+              </view>
+              <view class="radio-item {{operateType === 'set' ? 'active' : ''}}" bindtap="setOperateType" data-type="set">
+                <text>修改库存</text>
+              </view>
+            </view>
+          </view>
+          <view class="form-item">
+            <text class="form-label">数量</text>
+            <input class="form-input" type="number" value="{{inputQty}}" bindinput="onQtyInput" placeholder="{{operateType === 'add' ? '输入增加的数量' : '输入目标库存数量'}}" />
+          </view>
+          <view class="form-item">
+            <text class="form-label">备注</text>
+            <input class="form-input" value="{{note}}" bindinput="onNoteInput" placeholder="可选" />
+          </view>
+        </view>
+      </view>
+      <view class="modal-footer">
+        <button class="btn-cancel" bindtap="hideSkuModal">取消</button>
+        <button class="btn-confirm" bindtap="confirmOperate" wx:if="{{activeTab === 'operate'}}">确定</button>
+      </view>
+    </view>
+  </view>
+</view>
