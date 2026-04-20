@@ -1,42 +1,45 @@
 <view class="page-wrapper">
 
-  <!-- 搜索栏 -->
-  <view class="search-bar">
-    <view class="search-input-wrapper">
-      <input class="search-input" placeholder="订单号/收件人/商品名称" value="{{searchKeyword}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearchConfirm" />
-      <button class="search-btn" bindtap="onSearchConfirm">搜索</button>
-    </view>
-    
-    <!-- 时间范围筛选 -->
-    <view class="date-filter">
-      <view class="date-picker" bindtap="showDateRangeSelector">
-        <text wx:if="{{!dateRange.startDate && !dateRange.endDate}}">选择时间范围</text>
-        <text wx:else>{{dateRange.startDate || '开始'}} - {{dateRange.endDate || '结束'}}</text>
+  <!-- 固定头部：搜索 + Tab -->
+  <view class="sticky-header">
+    <!-- 搜索栏 -->
+    <view class="search-bar">
+      <view class="search-input-wrapper">
+        <input class="search-input" placeholder="订单号/收件人/商品名称" value="{{searchKeyword}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearchConfirm" />
+        <button class="search-btn" bindtap="onSearchConfirm">搜索</button>
       </view>
-      <view class="clear-date" wx:if="{{dateRange.startDate || dateRange.endDate}}" bindtap="clearDateRange">×</view>
-    </view>
-  </view>
 
-  <view class="tabs-bar-wrapper">
-    <view class="fixed-tab {{currentTab === '全部' ? 'active' : ''}}" bindtap="switchTab" data-tab="全部">
-      全部
-      <view class="active-line" wx:if="{{currentTab === '全部'}}"></view>
-    </view>
-
-    <view class="tab-divider"></view>
-
-    <scroll-view scroll-x class="scroll-tabs" enhanced show-scrollbar="{{false}}">
-      <view
-        class="scroll-tab-item {{currentTab === item ? 'active' : ''}}"
-        wx:for="{{tabs}}"
-        wx:key="*this"
-        wx:if="{{item !== '全部'}}"
-        bindtap="switchTab"
-        data-tab="{{item}}">
-        {{item}}
-        <view class="active-line" wx:if="{{currentTab === item}}"></view>
+      <!-- 时间范围筛选 -->
+      <view class="date-filter">
+        <view class="date-picker" bindtap="showDateRangeSelector">
+          <text wx:if="{{!dateRange.startDate && !dateRange.endDate}}">选择时间范围</text>
+          <text wx:else>{{dateRange.startDate || '开始'}} - {{dateRange.endDate || '结束'}}</text>
+        </view>
+        <view class="clear-date" wx:if="{{dateRange.startDate || dateRange.endDate}}" bindtap="clearDateRange">×</view>
       </view>
-    </scroll-view>
+    </view>
+
+    <view class="tabs-bar-wrapper">
+      <view class="fixed-tab {{currentTab === '全部' ? 'active' : ''}}" bindtap="switchTab" data-tab="全部">
+        全部
+        <view class="active-line" wx:if="{{currentTab === '全部'}}"></view>
+      </view>
+
+      <view class="tab-divider"></view>
+
+      <scroll-view scroll-x class="scroll-tabs" enhanced show-scrollbar="{{false}}">
+        <view
+          class="scroll-tab-item {{currentTab === item ? 'active' : ''}}"
+          wx:for="{{tabs}}"
+          wx:key="*this"
+          wx:if="{{item !== '全部'}}"
+          bindtap="switchTab"
+          data-tab="{{item}}">
+          {{item}}
+          <view class="active-line" wx:if="{{currentTab === item}}"></view>
+        </view>
+      </scroll-view>
+    </view>
   </view>
 
   <scroll-view scroll-y class="order-scroll-area" style="height: 100%;">
@@ -68,6 +71,24 @@
               <text class="price">¥ {{goods.salePrice}}</text>
               <text class="count">x {{goods.qty}}</text>
             </view>
+
+            <!-- 发货数量信息 - 部分发货时显示 -->
+            <view class="shipment-section" wx:if="{{item.status === 'partial_shipped'}}">
+              <view class="shipment-divider"></view>
+
+              <!-- 未发完：显示三个标签 -->
+              <view class="shipment-tags" wx:if="{{(goods.shippedQty || 0) !== goods.qty}}">
+                <text class="shipment-tag tag-total">总量 {{goods.qty}}</text>
+                <text class="shipment-tag tag-shipped">已发 {{goods.shippedQty || 0}}</text>
+                <text class="shipment-tag tag-pending">待发 {{goods.qty - (goods.shippedQty || 0)}}</text>
+              </view>
+
+              <!-- 已发完：仅显示徽章 -->
+              <view class="shipment-tags" wx:else>
+                <text class="shipped-done-badge">已发完</text>
+              </view>
+            </view>
+
           </view>
         </view>
       </view>

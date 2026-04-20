@@ -131,11 +131,7 @@
   margin-top: 10rpx;
 }
 
-.price {
-  font-size: 28rpx;
-  color: #ff4d4f;
-  font-weight: bold;
-}
+.price { font-size: 28rpx; font-weight: bold; font-family: "Times New Roman", Times, serif; }
 
 .count {
   font-size: 24rpx;
@@ -172,7 +168,6 @@
 
 .money-val.final {
   font-size: 32rpx;
-  color: #ff4d4f;
   font-weight: bold;
 }
 

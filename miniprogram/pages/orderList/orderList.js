@@ -6,6 +6,7 @@ const STATUS_MAP = {
   '全部': null,
   '待付款': 'pending',
   '待发货': 'paid',
+  '部分发货': 'partial_shipped',
   '已发货': 'shipped',
   '已完成': 'completed',
   '退款/售后': 'after_sale',
@@ -16,6 +17,7 @@ const STATUS_MAP = {
 const STATUS_DISPLAY_MAP = {
   'pending': '待付款',
   'paid': '待发货',
+  'partial_shipped': '部分发货',
   'shipped': '已发货',
   'completed': '已完成',
   'cancelled': '已关闭'
@@ -23,7 +25,7 @@ const STATUS_DISPLAY_MAP = {
 
 Page({
   data: {
-    tabs: ['全部', '待付款', '待发货', '已发货', '已完成', '退款/售后', '已关闭'],
+    tabs: ['全部', '待付款', '待发货', '部分发货', '已发货', '已完成', '退款/售后', '已关闭'],
     currentTab: '全部',
     orders: [],
     isLoading: true

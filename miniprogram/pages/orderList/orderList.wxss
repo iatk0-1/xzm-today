@@ -106,6 +106,29 @@ page { background-color: #f7f8fa; }
 .price { font-size: 28rpx; font-weight: bold; font-family: "Times New Roman", Times, serif; }
 .count { font-size: 24rpx; color: #999; font-family: "Times New Roman", Times, serif; }
 
+/* 发货数量信息 */
+.goods-shipment-info {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  flex-wrap: wrap;
+}
+.qty-label { color: #999; font-family: "Times New Roman", Times, serif; }
+.qty-pending { color: #ff9800; font-family: "Times New Roman", Times, serif; }
+.qty-shipped { color: #4caf50; font-family: "Times New Roman", Times, serif; }
+.shipped-done-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 20rpx;
+  color: #ffffff;
+  background-color: #4caf50;
+  padding: 2rpx 8rpx;
+  border-radius: 4rpx;
+  gap: 4rpx;
+}
+
 .card-footer { border-top: 1rpx dashed #eee; padding-top: 24rpx; margin-top: 24rpx; }
 .total-row { text-align: right; margin-bottom: 24rpx; }
 .total-label { font-size: 24rpx; color: #666; margin-right: 10rpx; }
@@ -115,3 +138,78 @@ page { background-color: #f7f8fa; }
 .btn-ghost { margin: 0; padding: 0 30rpx; height: 56rpx; line-height: 54rpx; font-size: 24rpx; color: #333; background: transparent; border: 1rpx solid #ddd; border-radius: 28rpx; font-weight: normal; }
 .btn-ghost::after { display: none; }
 .btn-solid { padding: 0 30rpx; height: 56rpx; line-height: 56rpx; font-size: 24rpx; color: #fff; background: #1a1a1a; border-radius: 28rpx; font-weight: bold; }
+
+/* 发货信息区域 */
+.shipment-section {
+  margin-top: 8rpx;
+}
+
+.shipment-divider {
+  width: 100%;
+  height: 1rpx;
+  background-color: #f0f0f0;
+  margin: 12rpx 0 10rpx 0;
+}
+
+.shipment-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.shipment-tag {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  font-size: 20rpx;
+  background-color: #f5f5f5;
+  color: #555;
+  border-radius: 16rpx;
+  line-height: 1.4;
+  font-family: "Times New Roman", Times, serif;
+}
+
+.tag-shipped {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.tag-pending {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+/* 已发完徽章（与售后徽章风格统一） */
+.shipped-done-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 20rpx;
+  color: #ffffff;
+  background-color: #4caf50;
+  padding: 4rpx 12rpx;
+  border-radius: 16rpx;
+  gap: 4rpx;
+  line-height: 1.4;
+}
+
+/* 固定 Tab 栏容器 */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: #ffffff;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.02);
+}
+
+/* 确保 Tab 栏背景纯白 */
+.tabs-bar-wrapper {
+  background-color: #ffffff;
+}
+
+/* ① 让 sticky 容器盖住下方的 scroll-view，不留物理缝隙 */
+.sticky-header {
+  position: sticky;
+  top: -1rpx;           /* 轻微上移，盖住可能的白线 */
+  margin-top: -1rpx;     /* 双重保险 */
+  padding-top: 1rpx;     /* 防止内容被裁切 */
+}
