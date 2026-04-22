@@ -263,8 +263,10 @@ Page({
 
   viewAfterSaleDetail: function(e) {
     const afterSaleId = e.currentTarget.dataset.id;
-    // TODO: 跳转到售后详情页
-    wx.showToast({ title: '售后详情页开发中', icon: 'none' });
+    // 跳转到售后详情页
+    wx.navigateTo({
+      url: `/pages/afterSaleDetail/afterSaleDetail?afterSaleId=${afterSaleId}`
+    });
   },
 
   cancelOrder: async function() {

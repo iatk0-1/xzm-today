@@ -1,0 +1,139 @@
+<!-- miniprogram/pages/adminAfterSaleList/adminAfterSaleList.wxml -->
+<view class="page-wrapper">
+
+  <!-- 顶部 Tab 筛选 -->
+  <view class="tab-bar">
+    <scroll-view scroll-x class="tab-scroll" scroll-into-view="tab-{{currentTab}}">
+      <view
+        class="tab-item {{currentTab === item ? 'active' : ''}}"
+        wx:for="{{tabs}}"
+        wx:key="*this"
+        id="tab-{{item}}"
+        bindtap="switchTab"
+        data-tab="{{item}}">
+        {{item}}
+        <view class="tab-dot" wx:if="{{item === '待审核' && stats.pending > 0}}">{{stats.pending}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 筛选工具栏 -->
+  <view class="filter-bar">
+    <view class="filter-left">
+      <view class="type-filter">
+        <view
+          class="type-item {{!currentType ? 'active' : ''}}"
+          bindtap="switchType"
+          data-type="all">
+          全部
+        </view>
+        <view
+          class="type-item {{currentType === 'refund' ? 'active' : ''}}"
+          bindtap="switchType"
+          data-type="refund">
+          仅退款
+        </view>
+        <view
+          class="type-item {{currentType === 'return_refund' ? 'active' : ''}}"
+          bindtap="switchType"
+          data-type="return_refund">
+          退货退款
+        </view>
+      </view>
+    </view>
+    <view class="filter-right">
+      <view class="search-icon" bindtap="toggleSearch">🔍</view>
+      <view class="refresh-icon" bindtap="refreshList">⟳</view>
+    </view>
+  </view>
+
+  <!-- 搜索框 -->
+  <view class="search-bar" wx:if="{{showSearch}}">
+    <view class="search-input-wrapper">
+      <input
+        class="search-input"
+        placeholder="搜索订单号"
+        value="{{searchKeyword}}"
+        bindinput="onSearchInput"
+        confirm-type="search"
+        bindconfirm="doSearch"/>
+      <view class="search-btn" bindtap="doSearch">搜索</view>
+    </view>
+  </view>
+
+  <!-- 售后列表 -->
+  <view class="after-sale-list">
+    <view
+      class="after-sale-item"
+      wx:for="{{afterSales}}"
+      wx:key="id"
+      bindtap="goToDetail"
+      data-id="{{item.id}}">
+      
+      <!-- 头部信息 -->
+      <view class="item-header">
+        <view class="item-left">
+          <text class="item-id">售后单 #{{item.id}}</text>
+          <text class="item-status {{item.status}}">{{item.statusDisplay}}</text>
+        </view>
+        <text class="item-type {{item.type}}">{{item.typeDisplay}}</text>
+      </view>
+
+      <!-- 订单号 -->
+      <view class="item-order">
+        <text class="order-label">订单号：</text>
+        <text class="order-no" bindtap="copyOrderNo" data-orderno="{{item.outTradeNo}}" catchtap="copyOrderNo">{{item.outTradeNo}}</text>
+        <text class="copy-hint">复制</text>
+      </view>
+
+      <!-- 商品信息 -->
+      <view class="item-products">
+        <block wx:if="{{item.items && item.items.length > 0}}">
+          <view class="product-item" wx:for="{{item.items}}" wx:key="id" wx:for-item="product">
+            <image class="product-img" src="{{product.productImage}}" mode="aspectFill"></image>
+            <view class="product-info">
+              <view class="product-name">{{product.productName}}</view>
+              <view class="product-sku">{{product.skuSpec}} / {{product.skuSize}}</view>
+              <view class="product-detail">
+                <text>×{{product.qty}}</text>
+                <text class="product-type">{{product.afterSaleType === 'refund' ? '仅退款' : '退货退款'}}</text>
+              </view>
+            </view>
+            <view class="product-refund">¥ {{product.refundAmount}}</view>
+          </view>
+        </block>
+        <view class="no-products" wx:else>
+          <text>{{item.itemDisplay}}</text>
+          <text>总退款：¥ {{item.totalRefundAmount}}</text>
+        </view>
+      </view>
+
+      <!-- 底部信息 -->
+      <view class="item-footer">
+        <text class="item-time">{{item.createdAt}}</text>
+        <view class="item-action">
+          <text class="action-btn" wx:if="{{item.status === 'pending'}}">去处理</text>
+          <text class="action-btn view" wx:else>查看详情</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!isLoading && afterSales.length === 0}}">
+    <view class="empty-icon">📋</view>
+    <view class="empty-text">暂无售后记录</view>
+  </view>
+
+  <!-- 加载更多 -->
+  <view class="loading-more" wx:if="{{isLoading && afterSales.length > 0}}">
+    <view class="loading-spinner"></view>
+    <text>加载中...</text>
+  </view>
+
+  <!-- 没有更多 -->
+  <view class="no-more" wx:if="{{!hasMore && afterSales.length > 0}}">
+    <text>— 没有更多了 —</text>
+  </view>
+
+</view>

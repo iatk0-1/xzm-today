@@ -180,6 +180,9 @@ Page({
   // 查看售后详情
   viewAfterSaleDetail: function(e) {
     const afterSaleId = e.currentTarget.dataset.id;
-    wx.showToast({ title: '售后详情页开发中', icon: 'none' });
+    // 跳转到管理员售后处理页
+    wx.navigateTo({
+      url: `/pages/adminAfterSaleDetail/adminAfterSaleDetail?afterSaleId=${afterSaleId}`
+    });
   }
 });

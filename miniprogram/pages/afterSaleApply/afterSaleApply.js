@@ -17,17 +17,17 @@ Page({
   data: {
     orderId: null,
     order: null,
-    orderItems: [],
-    selectedItemId: null,
-    selectedItem: null,
-    afterSaleType: 'refund', // refund | return_refund
-    refundQty: 1,
-    maxRefundAmount: '0.00',
-    refundAmountInput: '',
+    // 拆分后的商品列表（按发货状态拆分）
+    splitItems: [],
+    // 用户选中的商品
+    selectedItems: [],
+    // 总金额
+    totalAmount: '0.00',
     reason: '',
     reasonText: '',
     reasonOptions: REASON_OPTIONS,
     evidenceImages: [],
+    evidenceUrls: '',
     isLoading: true
   },
 
@@ -41,7 +41,7 @@ Page({
     }
   },
 
-  // 加载订单详情获取订单项
+  // 加载订单详情并拆分商品
   loadOrderDetail: async function(orderId) {
     wx.showLoading({ title: '加载中...' });
 
@@ -56,9 +56,66 @@ Page({
       }
 
       // 检查订单状态是否允许售后
-      const allowedStatuses = ['paid', 'shipped', 'completed'];
+      const allowedStatuses = ['paid', 'shipped', 'completed', 'partial_shipped'];
       if (!allowedStatuses.includes(res.status)) {
         wx.showToast({ title: '该订单状态无法申请售后', icon: 'none' });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+
+      // 拆分商品：按发货状态拆分成独立行
+      const splitItems = [];
+
+      res.items.forEach(item => {
+        const shippedQty = item.shippedQty || 0;
+        const totalQty = item.qty;
+        const unshippedQty = totalQty - shippedQty;
+
+        // 已发货部分 → 只能选退货退款
+        if (shippedQty > 0) {
+          splitItems.push({
+            orderItemId: item.id,
+            productId: item.productId,
+            productName: item.productName,
+            productImage: item.productImage || item.skuImageUrl,
+            skuSpec: item.productSpec || '默认颜色',
+            skuSize: item.productSize || '均码',
+            salePrice: item.salePrice,
+            qty: shippedQty,
+            shippedQty: shippedQty,
+            unshippedQty: 0,
+            type: 'return_refund',  // 已发货只能退货退款
+            status: 'shipped',
+            displayStatus: '已发货',
+            maxRefundAmount: parseFloat((item.salePrice * shippedQty).toFixed(2)),
+            selected: false
+          });
+        }
+
+        // 未发货部分 → 只能选仅退款
+        if (unshippedQty > 0) {
+          splitItems.push({
+            orderItemId: item.id,
+            productId: item.productId,
+            productName: item.productName,
+            productImage: item.productImage || item.skuImageUrl,
+            skuSpec: item.productSpec || '默认颜色',
+            skuSize: item.productSize || '均码',
+            salePrice: item.salePrice,
+            qty: unshippedQty,
+            shippedQty: 0,
+            unshippedQty: unshippedQty,
+            type: 'refund',  // 未发货只能仅退款
+            status: 'unshipped',
+            displayStatus: '未发货',
+            maxRefundAmount: parseFloat((item.salePrice * unshippedQty).toFixed(2)),
+            selected: false
+          });
+        }
+      });
+
+      if (splitItems.length === 0) {
+        wx.showToast({ title: '没有可申请售后的商品', icon: 'none' });
         setTimeout(() => wx.navigateBack(), 1500);
         return;
       }
@@ -68,11 +125,7 @@ Page({
           ...res,
           statusDisplay: this.getStatusDisplay(res.status)
         },
-        orderItems: res.items,
-        selectedItemId: res.items[0].id,
-        selectedItem: res.items[0],
-        maxRefundAmount: this.calculateMaxRefund(res.items[0]),
-        refundAmountInput: this.calculateMaxRefund(res.items[0]),
+        splitItems,
         isLoading: false
       });
     } catch (err) {
@@ -84,65 +137,56 @@ Page({
 
   getStatusDisplay: function(status) {
     const map = {
+      'pending': '待付款',
       'paid': '待发货',
+      'partial_shipped': '部分发货',
       'shipped': '已发货',
-      'completed': '已完成'
+      'completed': '已完成',
+      'cancelled': '已关闭'
     };
     return map[status] || status;
   },
 
-  calculateMaxRefund: function(item) {
-    return (item.salePrice * item.qty).toFixed(2);
-  },
+  // 选择/取消选择商品
+  toggleSelectItem: function(e) {
+    const index = e.currentTarget.dataset.index;
+    const splitItems = [...this.data.splitItems];
+    const item = splitItems[index];
 
-  // 选择商品
-  selectItem: function(e) {
-    const item = e.currentTarget.dataset.item;
+    item.selected = !item.selected;
+
+    // 更新选中列表
+    const selectedItems = splitItems.filter(i => i.selected);
+    
+    // 计算总金额
+    const totalAmount = selectedItems.reduce((sum, item) => sum + item.maxRefundAmount, 0).toFixed(2);
+
     this.setData({
-      selectedItemId: item.id,
-      selectedItem: item,
-      refundQty: 1,
-      maxRefundAmount: this.calculateMaxRefund(item),
-      refundAmountInput: this.calculateMaxRefund(item)
+      splitItems,
+      selectedItems,
+      totalAmount
     });
   },
 
-  // 选择售后类型
-  selectType: function(e) {
+  // 全选/取消全选
+  toggleSelectAll: function() {
+    const allSelected = !this.data.selectedItems.length ||
+                        this.data.selectedItems.length === this.data.splitItems.length;
+
+    const splitItems = this.data.splitItems.map(item => ({
+      ...item,
+      selected: !allSelected
+    }));
+
+    const selectedItems = allSelected ? [] : splitItems;
+    
+    // 计算总金额
+    const totalAmount = selectedItems.reduce((sum, item) => sum + item.maxRefundAmount, 0).toFixed(2);
+
     this.setData({
-      afterSaleType: e.currentTarget.dataset.type
-    });
-  },
-
-  // 减少退款数量
-  decreaseQty: function() {
-    if (this.data.refundQty > 1) {
-      const newQty = this.data.refundQty - 1;
-      this.updateRefundAmount(newQty);
-    }
-  },
-
-  // 增加退款数量
-  increaseQty: function() {
-    if (this.data.refundQty < this.data.selectedItem.qty) {
-      const newQty = this.data.refundQty + 1;
-      this.updateRefundAmount(newQty);
-    }
-  },
-
-  updateRefundAmount: function(qty) {
-    const maxAmount = (this.data.selectedItem.salePrice * qty).toFixed(2);
-    this.setData({
-      refundQty: qty,
-      maxRefundAmount: maxAmount,
-      refundAmountInput: maxAmount
-    });
-  },
-
-  // 输入退款金额
-  onRefundAmountInput: function(e) {
-    this.setData({
-      refundAmountInput: e.detail.value
+      splitItems,
+      selectedItems,
+      totalAmount
     });
   },
 
@@ -161,18 +205,36 @@ Page({
   },
 
   // 上传图片
-  uploadImage: function() {
+  uploadImage: async function() {
     const maxCount = 9 - this.data.evidenceImages.length;
     wx.chooseMedia({
       count: maxCount,
       mediaType: ['image'],
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
-      success: (res) => {
-        const newImages = res.tempFiles.map(file => file.tempFilePath);
-        this.setData({
-          evidenceImages: [...this.data.evidenceImages, ...newImages]
-        });
+      success: async (res) => {
+        wx.showLoading({ title: '上传中...' });
+        
+        try {
+          // 上传到服务器
+          const uploadPromises = res.tempFiles.map(file => 
+            api.uploadFile('/files/upload-wish', file.tempFilePath)
+          );
+          
+          const results = await Promise.all(uploadPromises);
+          const urls = results.map(r => r.url);
+          
+          this.setData({
+            evidenceImages: [...this.data.evidenceImages, ...urls],
+            evidenceUrls: [...this.data.evidenceImages, ...urls].join(',')
+          });
+          
+          wx.hideLoading();
+        } catch (err) {
+          wx.hideLoading();
+          wx.showToast({ title: '上传失败', icon: 'none' });
+          console.error('上传图片失败:', err);
+        }
       }
     });
   },
@@ -191,54 +253,42 @@ Page({
     const index = e.currentTarget.dataset.index;
     const newImages = this.data.evidenceImages.filter((_, i) => i !== index);
     this.setData({
-      evidenceImages: newImages
+      evidenceImages: newImages,
+      evidenceUrls: newImages.join(',')
     });
   },
 
   // 提交售后申请
   submitAfterSale: async function() {
-    // 验证必填项
-    if (!this.data.selectedItemId) {
-      wx.showToast({ title: '请选择商品', icon: 'none' });
+    // 验证是否选择了商品
+    if (this.data.selectedItems.length === 0) {
+      wx.showToast({ title: '请选择要申请售后的商品', icon: 'none' });
       return;
     }
 
-    if (!this.data.afterSaleType) {
-      wx.showToast({ title: '请选择售后类型', icon: 'none' });
-      return;
-    }
-
-    const refundAmount = parseFloat(this.data.refundAmountInput);
-    if (isNaN(refundAmount) || refundAmount <= 0) {
-      wx.showToast({ title: '请输入有效的退款金额', icon: 'none' });
-      return;
-    }
-
-    const maxAmount = parseFloat(this.data.maxRefundAmount);
-    if (refundAmount > maxAmount) {
-      wx.showToast({ title: '退款金额超过上限', icon: 'none' });
+    // 验证原因
+    const reason = this.data.reason || this.data.reasonText;
+    if (!reason) {
+      wx.showToast({ title: '请选择或填写售后原因', icon: 'none' });
       return;
     }
 
     wx.showLoading({ title: '提交中...', mask: true });
 
     try {
-      // 上传图片到服务器（如果有）
-      let evidenceUrls = '';
-      if (this.data.evidenceImages.length > 0) {
-        // TODO: 实现图片上传到服务器的逻辑
-        // 这里暂时将本地路径转为逗号分隔的字符串
-        evidenceUrls = this.data.evidenceImages.join(',');
-      }
-
       const requestData = {
         orderId: this.data.orderId,
-        orderItemId: this.data.selectedItemId,
-        type: this.data.afterSaleType,
-        qty: this.data.refundQty,
-        reason: this.data.reason || this.data.reasonText || '无理由售后',
-        evidenceUrls: evidenceUrls,
-        refundAmount: refundAmount
+        reason: reason,
+        evidenceUrls: this.data.evidenceUrls,
+        items: this.data.selectedItems.map(item => ({
+          orderItemId: item.orderItemId,
+          productId: item.productId,
+          qty: item.qty,
+          shippedQty: item.shippedQty,
+          unshippedQty: item.unshippedQty,
+          refundAmount: item.maxRefundAmount,
+          afterSaleType: item.type
+        }))
       };
 
       console.log('提交售后申请:', requestData);

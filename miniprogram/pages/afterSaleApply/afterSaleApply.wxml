@@ -9,79 +9,50 @@
     </view>
   </view>
 
-  <!-- 选择订单项 -->
+  <!-- 选择商品区域 -->
   <view class="section">
-    <view class="section-title">选择商品</view>
-    <view class="goods-list">
+    <view class="section-header">
+      <view class="section-title">选择要申请售后的商品</view>
+      <view class="select-all" bindtap="toggleSelectAll">
+        {{selectedItems.length === splitItems.length && splitItems.length > 0 ? '取消全选' : '全选'}}
+      </view>
+    </view>
+    
+    <view class="split-items-list">
       <view
-        class="goods-item {{selectedItemId === item.id ? 'selected' : ''}}"
-        wx:for="{{orderItems}}"
-        wx:key="id"
-        bindtap="selectItem"
-        data-item="{{item}}">
-        <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
+        class="split-item {{item.selected ? 'selected' : ''}}"
+        wx:for="{{splitItems}}"
+        wx:key="orderItemId"
+        bindtap="toggleSelectItem"
+        data-index="{{index}}">
+        
+        <!-- 商品图片 -->
+        <image class="goods-img" src="{{item.productImage}}" mode="aspectFill"></image>
+        
+        <!-- 商品信息 -->
         <view class="goods-info">
           <view class="goods-title">{{item.productName}}</view>
-          <view class="goods-sku">{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}</view>
+          <view class="goods-sku">{{item.skuSpec}} / {{item.skuSize}}</view>
+          <view class="goods-status">
+            <text class="status-tag {{item.status}}">{{item.displayStatus}}</text>
+            <text class="qty-info">数量：{{item.qty}}件</text>
+          </view>
           <view class="goods-price-row">
             <text class="price">¥ {{item.salePrice}}</text>
-            <text class="stock-qty">购买数量：{{item.qty}}</text>
+            <text class="max-refund">最多可退 ¥ {{item.maxRefundAmount}}</text>
           </view>
         </view>
-        <view class="radio-circle" wx:if="{{selectedItemId !== item.id}}"></view>
-        <view class="radio-circle-checked" wx:if="{{selectedItemId === item.id}}">✓</view>
+        
+        <!-- 售后类型提示 -->
+        <view class="after-sale-type-tag {{item.type}}">
+          {{item.type === 'refund' ? '仅退款' : '退货退款'}}
+        </view>
+        
+        <!-- 选择框 -->
+        <view class="checkbox {{item.selected ? 'checked' : ''}}">
+          <text wx:if="{{item.selected}}">✓</text>
+        </view>
       </view>
-    </view>
-  </view>
-
-  <!-- 选择售后类型 -->
-  <view class="section">
-    <view class="section-title">售后类型</view>
-    <view class="type-selector">
-      <view
-        class="type-item {{afterSaleType === 'refund' ? 'selected' : ''}}"
-        bindtap="selectType"
-        data-type="refund">
-        <view class="type-title">仅退款</view>
-        <view class="type-desc">未收到货或卖家未发货时选择</view>
-        <view class="radio-circle" wx:if="{{afterSaleType !== 'refund'}}"></view>
-        <view class="radio-circle-checked" wx:if="{{afterSaleType === 'refund'}}">✓</view>
-      </view>
-      <view
-        class="type-item {{afterSaleType === 'return_refund' ? 'selected' : ''}}"
-        bindtap="selectType"
-        data-type="return_refund">
-        <view class="type-title">退货退款</view>
-        <view class="type-desc">已收到货需要退货时选择</view>
-        <view class="radio-circle" wx:if="{{afterSaleType !== 'return_refund'}}"></view>
-        <view class="radio-circle-checked" wx:if="{{afterSaleType === 'return_refund'}}">✓</view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 选择退款数量 -->
-  <view class="section" wx:if="{{selectedItem}}">
-    <view class="section-title">退款数量</view>
-    <view class="quantity-selector">
-      <view class="quantity-btn" bindtap="decreaseQty">-</view>
-      <view class="quantity-value">{{refundQty}}</view>
-      <view class="quantity-btn" bindtap="increaseQty">+</view>
-    </view>
-    <view class="quantity-tip">最多可退 {{selectedItem.qty}} 件</view>
-  </view>
-
-  <!-- 退款金额 -->
-  <view class="section">
-    <view class="section-title">退款金额</view>
-    <view class="refund-amount-wrapper">
-      <view class="currency-symbol">¥</view>
-      <input
-        class="refund-amount-input"
-        type="digit"
-        placeholder="请输入退款金额"
-        value="{{refundAmountInput}}"
-        bindinput="onRefundAmountInput"/>
-      <view class="max-refund-tip">最多可退 ¥ {{maxRefundAmount}}</view>
     </view>
   </view>
 
@@ -126,13 +97,13 @@
     </view>
   </view>
 
-  <!-- 提交按钮 -->
+  <!-- 底部提交栏 -->
   <view class="submit-bar">
     <view class="submit-info">
-      <text class="submit-label">合计退款</text>
-      <text class="submit-amount">¥ {{refundAmountInput || '0.00'}}</text>
+      <text class="submit-label">已选 {{selectedItems.length}} 件</text>
+      <text class="submit-amount">¥ {{totalAmount || '0.00'}}</text>
     </view>
-    <view class="submit-btn" bindtap="submitAfterSale">提交申请</view>
+    <view class="submit-btn {{selectedItems.length > 0 ? 'active' : ''}}" bindtap="submitAfterSale">提交申请</view>
   </view>
 
   <!-- 加载中 -->

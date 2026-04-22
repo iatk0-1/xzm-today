@@ -58,6 +58,10 @@
       <text>打印员管理</text>
       <text class="arrow">></text>
     </view>
+    <view class="menu-item admin-after-sale-entry" wx:if="{{isAdmin}}" bindtap="goToAdminAfterSale">
+      <text>售后管理</text>
+      <text class="arrow">></text>
+    </view>
   </view>
 
   <view class="bottom-tab-bar">

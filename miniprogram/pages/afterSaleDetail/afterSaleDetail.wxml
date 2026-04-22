@@ -1,0 +1,113 @@
+<!-- miniprogram/pages/afterSaleDetail/afterSaleDetail.wxml -->
+<view class="page-wrapper" wx:if="{{afterSale}}">
+
+  <!-- 售后状态卡片 -->
+  <view class="status-card">
+    <view class="status-badge {{afterSale.status}}">{{afterSale.statusDisplay}}</view>
+    <view class="refund-amount">¥ {{afterSale.totalRefundAmount}}</view>
+    <view class="status-desc">
+      <text wx:if="{{afterSale.type === 'refund'}}">仅退款</text>
+      <text wx:else>退货退款</text>
+      <text> · 共 {{afterSale.totalQty}} 件商品</text>
+    </view>
+  </view>
+
+  <!-- 商品信息列表 -->
+  <view class="section">
+    <view class="section-title">商品清单</view>
+    <view class="items-list">
+      <view class="item-row" wx:for="{{afterSale.items}}" wx:key="id">
+        <image class="item-img" src="{{item.productImage}}" mode="aspectFill"></image>
+        <view class="item-info">
+          <view class="item-name">{{item.productName}}</view>
+          <view class="item-sku">{{item.skuSpec}} / {{item.skuSize}}</view>
+          <view class="item-detail-row">
+            <text class="item-qty">×{{item.qty}}</text>
+            <text class="item-type">{{item.afterSaleType === 'refund' ? '仅退款' : '退货退款'}}</text>
+          </view>
+        </view>
+        <view class="item-refund">¥ {{item.refundAmount}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 退货物流信息（仅退货退款显示） -->
+  <view class="section" wx:if="{{afterSale.type === 'return_refund'}}">
+    <view class="section-title">退货物流</view>
+    <view class="logistics-info" wx:if="{{afterSale.returnExpressNo}}">
+      <view class="logistics-row">
+        <text class="logistics-label">快递公司</text>
+        <text class="logistics-value">{{afterSale.returnExpressCode}}</text>
+      </view>
+      <view class="logistics-row">
+        <text class="logistics-label">快递单号</text>
+        <text class="logistics-value">{{afterSale.returnExpressNo}}</text>
+        <text class="copy-btn" bindtap="copyExpressNo">复制</text>
+      </view>
+      <view class="logistics-row" wx:if="{{afterSale.returnShippedAt}}">
+        <text class="logistics-label">发货时间</text>
+        <text class="logistics-value">{{afterSale.returnShippedAt}}</text>
+      </view>
+    </view>
+    <view class="no-logistics" wx:if="{{!afterSale.returnExpressNo}}">
+      <text>还未填写退货物流信息</text>
+    </view>
+    <!-- 填写退货物流按钮 -->
+    <view class="action-btn" wx:if="{{afterSale.status === 'approved' && !afterSale.returnExpressNo}}" bindtap="shipReturnGoods">
+      填写退货物流
+    </view>
+  </view>
+
+  <!-- 售后原因 -->
+  <view class="section">
+    <view class="section-title">售后原因</view>
+    <view class="reason-content">{{afterSale.reason || '未填写'}}</view>
+  </view>
+
+  <!-- 凭证图片 -->
+  <view class="section" wx:if="{{afterSale.evidenceUrls && afterSale.evidenceUrls.length > 0}}">
+    <view class="section-title">凭证图片</view>
+    <view class="evidence-images">
+      <image
+        class="evidence-img"
+        wx:for="{{afterSale.evidenceUrls.split(',') }}"
+        wx:key="*this"
+        src="{{item}}"
+        mode="aspectFill"
+        bindtap="previewImage"
+        data-index="{{index}}"></image>
+    </view>
+  </view>
+
+  <!-- 售后进度时间轴 -->
+  <view class="section">
+    <view class="section-title">售后进度</view>
+    <view class="timeline">
+      <view class="timeline-item" wx:for="{{timeline}}" wx:key="index">
+        <view class="timeline-node {{index === timeline.length - 1 ? 'last' : ''}}">
+          <view class="timeline-dot"></view>
+          <view class="timeline-line" wx:if="{{index < timeline.length - 1}}"></view>
+        </view>
+        <view class="timeline-content">
+          <view class="timeline-status">{{item.status}}</view>
+          <view class="timeline-time">{{item.time}}</view>
+          <view class="timeline-desc">{{item.description}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部操作按钮 -->
+  <view class="action-bar">
+    <view class="action-btn-group" wx:if="{{afterSale.status === 'pending'}}">
+      <view class="btn-ghost" bindtap="cancelAfterSale">撤销申请</view>
+    </view>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading-state" wx:if="{{isLoading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+</view>

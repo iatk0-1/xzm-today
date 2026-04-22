@@ -283,11 +283,10 @@ Page({
   goToMessage: function() { wx.showToast({ title: '功能开发中...', icon: 'none' }); },
   goToLiveRoom: function() { wx.navigateTo({ url: '/pages/liveRoomList/index' }); },
 
-  // 老板专属入口（与 user.js 保持一致）
   // 老板专属入口
   goToAdmin: function() {
     wx.showActionSheet({
-      itemList: ['发布新商品', '商品上下架管理', '库存管理', '拣货推荐', '订单管理', '订单发货管理'],
+      itemList: ['发布新商品', '商品上下架管理', '库存管理', '拣货推荐', '订单管理', '售后管理'],
       itemColor: '#111111',
       success: (res) => {
         if (res.tapIndex === 0) {
@@ -301,7 +300,7 @@ Page({
         } else if (res.tapIndex === 4) {
           wx.navigateTo({ url: '/pages/adminOrderManage/adminOrderManage' });
         } else if (res.tapIndex === 5) {
-          wx.navigateTo({ url: '/pages/adminOrder/adminOrder' });
+          wx.navigateTo({ url: '/pages/adminAfterSaleList/adminAfterSaleList' });
         }
       }
     });
