@@ -43,7 +43,10 @@
 
   <!-- 所属档口 -->
   <view class="form-group stall-section" style="position: relative; z-index: 100;">
-    <view class="label">所属档口 (可多选)</view>
+    <view class="label-with-edit">
+      <view class="label">所属档口 (可多选)</view>
+      <view class="edit-btn" bindtap="openStallManageModal">编辑</view>
+    </view>
     <view class="tags-display">
       <block wx:for="{{selectedStalls}}" wx:key="id">
         <view class="tag-capsule active-tag">
@@ -79,7 +82,10 @@
 
   <!-- 标签分类 -->
   <view class="form-group tag-section" style="position: relative; z-index: 99;">
-    <view class="label">标签分类 (可多选)</view>
+    <view class="label-with-edit">
+      <view class="label">标签分类 (可多选)</view>
+      <view class="edit-btn" bindtap="openTagManageModal">编辑</view>
+    </view>
     <view class="tags-display">
       <block wx:for="{{selectedTags}}" wx:key="id">
         <view class="tag-capsule active-tag">
@@ -386,4 +392,72 @@
   <view class="modal-footer">
     <view class="btn-confirm-modal" bindtap="closeSizeModal">完成</view>
   </view>
+</view>
+
+<!-- 档口管理弹窗 -->
+<view class="modal-mask" wx:if="{{showStallManageModal}}" catchtap="closeStallManageModal"></view>
+<view class="manage-modal {{showStallManageModal ? 'show' : ''}}">
+  <view class="modal-header">
+    <view class="modal-title">档口管理</view>
+    <view class="modal-close" catchtap="closeStallManageModal">×</view>
+  </view>
+
+  <!-- 新增档口输入行（移到 scroll-view 外面） -->
+  <view class="manage-add-row-outside">
+    <input class="manage-input" placeholder="输入档口名称搜索或新增..." value="{{manageStallSearchKeyword}}" bindinput="onManageStallSearchInput" />
+    <view class="manage-add-btn" bindtap="createStallFromModal">新增</view>
+  </view>
+
+  <scroll-view scroll-y class="manage-scroll" style="width: 100%;" scroll-top="0" show-scrollbar="{{false}}" bindscrolltoupper="onManageScrollToUpper" bindscrolltolower="onManageScrollToLower">
+    <!-- 搜索提示 -->
+    <view class="manage-search-hint" wx:if="{{manageStallSearchKeyword && filteredStalls.length < allStalls.length}}">
+      找到 {{filteredStalls.length}} 个结果
+    </view>
+    <!-- 档口列表 -->
+    <view class="manage-tag-list">
+      <view class="manage-tag-item {{item.deleted ? 'deleted' : ''}}" wx:for="{{filteredStalls}}" wx:key="id">
+        <text class="manage-tag-name">{{item.name}}</text>
+        <text class="manage-tag-delete" wx:if="{{!item.deleted}}" catchtap="deleteStall" data-id="{{item.id}}">×</text>
+        <text class="manage-tag-restore" wx:else catchtap="restoreStall" data-id="{{item.id}}">恢复</text>
+      </view>
+      <view wx:if="{{filteredStalls.length === 0}}" class="manage-empty">
+        <text wx:if="{{manageStallSearchKeyword}}">未找到匹配的档口</text>
+        <text wx:else>暂无档口</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>
+
+<!-- 标签管理弹窗 -->
+<view class="modal-mask" wx:if="{{showTagManageModal}}" catchtap="closeTagManageModal"></view>
+<view class="manage-modal {{showTagManageModal ? 'show' : ''}}">
+  <view class="modal-header">
+    <view class="modal-title">标签管理</view>
+    <view class="modal-close" catchtap="closeTagManageModal">×</view>
+  </view>
+
+  <!-- 新增标签输入行（移到 scroll-view 外面） -->
+  <view class="manage-add-row-outside">
+    <input class="manage-input" placeholder="输入标签名称搜索或新增..." value="{{manageTagSearchKeyword}}" bindinput="onManageTagSearchInput" />
+    <view class="manage-add-btn" bindtap="createTagFromModal">新增</view>
+  </view>
+
+  <scroll-view scroll-y class="manage-scroll" style="width: 100%;" scroll-top="0" show-scrollbar="{{false}}" bindscrolltoupper="onManageScrollToUpper" bindscrolltolower="onManageScrollToLower">
+    <!-- 搜索提示 -->
+    <view class="manage-search-hint" wx:if="{{manageTagSearchKeyword && filteredTags.length < allTags.length}}">
+      找到 {{filteredTags.length}} 个结果
+    </view>
+    <!-- 标签列表 -->
+    <view class="manage-tag-list">
+      <view class="manage-tag-item {{item.deleted ? 'deleted' : ''}}" wx:for="{{filteredTags}}" wx:key="id">
+        <text class="manage-tag-name">{{item.name}}</text>
+        <text class="manage-tag-delete" wx:if="{{!item.deleted}}" catchtap="deleteTag" data-id="{{item.id}}">×</text>
+        <text class="manage-tag-restore" wx:else catchtap="restoreTag" data-id="{{item.id}}">恢复</text>
+      </view>
+      <view wx:if="{{filteredTags.length === 0}}" class="manage-empty">
+        <text wx:if="{{manageTagSearchKeyword}}">未找到匹配的标签</text>
+        <text wx:else>暂无标签</text>
+      </view>
+    </view>
+  </scroll-view>
 </view>

@@ -72,7 +72,19 @@ Page({
     showRelatedModal: false,
     searchKeyword: '',
     allProducts: [],
-    filteredProducts: []
+    filteredProducts: [],
+
+    // 档口/标签管理弹窗相关
+    showStallManageModal: false,
+    showTagManageModal: false,
+    allStalls: [],  // 所有档口（含已删除）
+    allTags: [],    // 所有标签（含已删除）
+    filteredStalls: [],  // 过滤后的档口列表（用于搜索）
+    filteredTags: [],    // 过滤后的标签列表（用于搜索）
+    manageStallSearchKeyword: '',  // 管理弹窗 - 档口搜索关键词
+    manageTagSearchKeyword: '',    // 管理弹窗 - 标签搜索关键词
+    newStallName: '',
+    newTagName: ''
   },
 
   onLoad(options) {
@@ -1624,5 +1636,286 @@ Page({
     }, () => {
       wx.showToast({ title: '已同步至明细', icon: 'success' });
     });
-  }
+  },
+
+  // ================= 档口/标签管理弹窗 =================
+
+  // 打开档口管理弹窗
+  openStallManageModal: function() {
+    this.setData({ 
+      showStallManageModal: true,
+      manageStallSearchKeyword: '',
+      filteredStalls: this.data.allStalls
+    });
+    this.loadAllStalls();
+  },
+
+  // 关闭档口管理弹窗
+  closeStallManageModal: function() {
+    this.setData({ 
+      showStallManageModal: false,
+      manageStallSearchKeyword: '',
+      newStallName: ''
+    });
+  },
+
+  // 打开标签管理弹窗
+  openTagManageModal: function() {
+    this.setData({ 
+      showTagManageModal: true,
+      manageTagSearchKeyword: '',
+      filteredTags: this.data.allTags
+    });
+    this.loadAllTags();
+  },
+
+  // 关闭标签管理弹窗
+  closeTagManageModal: function() {
+    this.setData({ 
+      showTagManageModal: false,
+      manageTagSearchKeyword: '',
+      newTagName: ''
+    });
+  },
+
+  // 加载所有档口（含已删除）
+  loadAllStalls: async function() {
+    try {
+      const res = await api.get('/stalls/all?includeDeleted=true');
+      const stalls = res || [];
+      this.setData({ 
+        allStalls: stalls,
+        filteredStalls: this.data.manageStallSearchKeyword 
+          ? this.filterStallsByKeyword(stalls, this.data.manageStallSearchKeyword)
+          : stalls
+      });
+    } catch (err) {
+      console.error('加载档口列表失败:', err);
+      wx.showToast({ title: '加载失败', icon: 'none' });
+    }
+  },
+
+  // 加载所有标签（含已删除）
+  loadAllTags: async function() {
+    try {
+      const res = await api.get('/tags/all?includeDeleted=true');
+      const tags = res || [];
+      this.setData({ 
+        allTags: tags,
+        filteredTags: this.data.manageTagSearchKeyword 
+          ? this.filterTagsByKeyword(tags, this.data.manageTagSearchKeyword)
+          : tags
+      });
+    } catch (err) {
+      console.error('加载标签列表失败:', err);
+      wx.showToast({ title: '加载失败', icon: 'none' });
+    }
+  },
+
+  // 按关键词过滤档口
+  filterStallsByKeyword: function(stalls, keyword) {
+    if (!keyword) return stalls;
+    const lowerKeyword = keyword.toLowerCase();
+    return stalls.filter(stall => 
+      stall.name.toLowerCase().includes(lowerKeyword)
+    );
+  },
+
+  // 按关键词过滤标签
+  filterTagsByKeyword: function(tags, keyword) {
+    if (!keyword) return tags;
+    const lowerKeyword = keyword.toLowerCase();
+    return tags.filter(tag => 
+      tag.name.toLowerCase().includes(lowerKeyword)
+    );
+  },
+
+  // 从弹窗新增档口
+  createStallFromModal: async function() {
+    const name = this.data.manageStallSearchKeyword.trim();
+    if (!name) {
+      wx.showToast({ title: '请输入档口名称', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '创建中...' });
+    try {
+      const res = await api.post('/stalls', { name });
+      wx.hideLoading();
+      wx.showToast({ title: '添加成功', icon: 'success' });
+
+      // 刷新列表
+      await this.loadAllStalls();
+      this.setData({ manageStallSearchKeyword: '' });
+
+      // 同时刷新历史档口列表
+      this.loadRecentStallsAndTags();
+    } catch (err) {
+      wx.hideLoading();
+      console.error('创建档口失败:', err);
+      wx.showToast({ title: '创建失败', icon: 'none' });
+    }
+  },
+
+  // 从弹窗新增标签
+  createTagFromModal: async function() {
+    const name = this.data.manageTagSearchKeyword.trim();
+    if (!name) {
+      wx.showToast({ title: '请输入标签名称', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '创建中...' });
+    try {
+      const res = await api.post('/tags', { name });
+      wx.hideLoading();
+      wx.showToast({ title: '添加成功', icon: 'success' });
+
+      // 刷新列表
+      await this.loadAllTags();
+      this.setData({ manageTagSearchKeyword: '' });
+
+      // 同时刷新历史标签列表
+      this.loadRecentStallsAndTags();
+    } catch (err) {
+      wx.hideLoading();
+      console.error('创建标签失败:', err);
+      wx.showToast({ title: '创建失败', icon: 'none' });
+    }
+  },
+
+  // 删除档口
+  deleteStall: function(e) {
+    const id = e.currentTarget.dataset.id;
+    const item = this.data.allStalls.find(s => s.id === id);
+
+    wx.showModal({
+      title: '确认删除',
+      content: `确定要删除档口"${item.name}"吗？删除后可在已删除列表中恢复。`,
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await api.delete(`/stalls/${id}`);
+            wx.showToast({ title: '删除成功', icon: 'success' });
+            this.loadAllStalls();
+            // 同时刷新历史档口列表
+            this.loadRecentStallsAndTags();
+          } catch (err) {
+            console.error('删除档口失败:', err);
+            wx.showToast({ title: '删除失败', icon: 'none' });
+          }
+        }
+      }
+    });
+  },
+
+  // 恢复档口
+  restoreStall: function(e) {
+    const id = e.currentTarget.dataset.id;
+
+    wx.showLoading({ title: '恢复中...' });
+    try {
+      api.post(`/stalls/${id}/restore`).then(() => {
+        wx.hideLoading();
+        wx.showToast({ title: '恢复成功', icon: 'success' });
+        this.loadAllStalls();
+        // 同时刷新历史档口列表
+        this.loadRecentStallsAndTags();
+      });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('恢复档口失败:', err);
+      wx.showToast({ title: '恢复失败', icon: 'none' });
+    }
+  },
+
+  // 删除标签
+  deleteTag: function(e) {
+    const id = e.currentTarget.dataset.id;
+    const item = this.data.allTags.find(t => t.id === id);
+
+    wx.showModal({
+      title: '确认删除',
+      content: `确定要删除标签"${item.name}"吗？删除后可在已删除列表中恢复。`,
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await api.delete(`/tags/${id}`);
+            wx.showToast({ title: '删除成功', icon: 'success' });
+            this.loadAllTags();
+            // 同时刷新历史标签列表
+            this.loadRecentStallsAndTags();
+          } catch (err) {
+            console.error('删除标签失败:', err);
+            wx.showToast({ title: '删除失败', icon: 'none' });
+          }
+        }
+      }
+    });
+  },
+
+  // 恢复标签
+  restoreTag: function(e) {
+    const id = e.currentTarget.dataset.id;
+
+    wx.showLoading({ title: '恢复中...' });
+    try {
+      api.post(`/tags/${id}/restore`).then(() => {
+        wx.hideLoading();
+        wx.showToast({ title: '恢复成功', icon: 'success' });
+        this.loadAllTags();
+        // 同时刷新历史标签列表
+        this.loadRecentStallsAndTags();
+      });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('恢复标签失败:', err);
+      wx.showToast({ title: '恢复失败', icon: 'none' });
+    }
+  },
+
+  // ================= 管理弹窗滚动处理（防止滚动穿透）=================
+  onManageScrollToUpper: function() {
+    // 滚动到顶部，阻止默认行为
+  },
+
+  onManageScrollToLower: function() {
+    // 滚动到底部，阻止默认行为
+  },
+
+  // ================= 管理弹窗 - 档口搜索功能 =================
+  onManageStallSearchInput: function(e) {
+    const keyword = e.detail.value.trim();
+    this.setData({ manageStallSearchKeyword: keyword });
+    this.filterStalls(keyword);
+  },
+
+  filterStalls: function(keyword) {
+    let filtered = this.data.allStalls;
+    if (keyword) {
+      const lowerKeyword = keyword.toLowerCase();
+      filtered = this.data.allStalls.filter(stall => 
+        stall.name.toLowerCase().includes(lowerKeyword)
+      );
+    }
+    this.setData({ filteredStalls: filtered });
+  },
+
+  // ================= 管理弹窗 - 标签搜索功能 =================
+  onManageTagSearchInput: function(e) {
+    const keyword = e.detail.value.trim();
+    this.setData({ manageTagSearchKeyword: keyword });
+    this.filterTags(keyword);
+  },
+
+  filterTags: function(keyword) {
+    let filtered = this.data.allTags;
+    if (keyword) {
+      const lowerKeyword = keyword.toLowerCase();
+      filtered = this.data.allTags.filter(tag => 
+        tag.name.toLowerCase().includes(lowerKeyword)
+      );
+    }
+    this.setData({ filteredTags: filtered });
+  },
 });
