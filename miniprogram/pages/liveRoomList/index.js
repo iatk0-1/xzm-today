@@ -52,8 +52,7 @@ Page({
       // 1. 先获取正在直播的场次（只在首次加载时获取）
       if (reset) {
         const activeSession = await api.get('/live-sessions/active');
-        console.log('activeSession:', activeSession);
-        
+
         const hasActiveSession = activeSession && activeSession.id;
         if (hasActiveSession) {
           this.setData({ activeSession });
@@ -63,7 +62,6 @@ Page({
       // 2. 获取已结束场次列表（分页加载）
       const { page, pageSize } = this.data;
       const endedSessions = await api.get(`/live-sessions?page=${page}&size=${pageSize}`);
-      console.log('endedSessions:', endedSessions);
 
       // 3. 合并数据
       const newSessions = endedSessions || [];
@@ -76,7 +74,6 @@ Page({
       // 5. 判断是否有数据
       const hasActiveSession = this.data.activeSession && this.data.activeSession.id;
       const hasData = hasActiveSession || (grouped && grouped.length > 0);
-      console.log('hasData:', hasData, 'grouped.length:', grouped ? grouped.length : 0);
 
       this.setData({
         groupedSessions: grouped || [],
@@ -97,15 +94,11 @@ Page({
 
   // 按年月分组
   groupByMonth: function(sessions) {
-    console.log('groupByMonth input:', sessions);
-    console.log('isArray:', Array.isArray(sessions));
-    console.log('length:', sessions ? sessions.length : 'null');
     const groups = {};
 
     sessions.forEach(session => {
       const date = new Date(session.createdAt || session.endedAt);
       const monthKey = `${date.getFullYear()}年${date.getMonth() + 1}月`;
-      console.log('Processing session:', session.title, 'monthKey:', monthKey);
 
       if (!groups[monthKey]) {
         groups[monthKey] = [];
@@ -131,7 +124,6 @@ Page({
       sessions: groups[month]
     }));
 
-    console.log('groupByMonth result:', JSON.stringify(result));
     return result;
   },
 

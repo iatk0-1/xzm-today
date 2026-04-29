@@ -60,15 +60,12 @@ Page({
         inventoryMap[inv.skuId] = inv.qty || 0;
       });
 
-      console.log('库存映射:', inventoryMap);
-
       // 合并商品和 SKU 库存信息
       const productList = products.map(product => {
         // skuMatrix 是后端返回的 SKU 列表
         const skuMatrix = product.skuMatrix || [];
         const skusWithQty = skuMatrix.map(sku => {
           const skuId = sku.skuId || sku.id;
-          console.log(`SKU: ${skuId}, color: ${sku.color}, size: ${sku.size}, 库存：${inventoryMap[skuId]}`);
 
           return {
             id: skuId,

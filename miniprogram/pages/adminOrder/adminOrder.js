@@ -299,9 +299,6 @@ Page({
     // 更新 selectedProduct 中的 skus
     this.setData({
       'selectedProduct.skus': skus
-    }, () => {
-      // 确保数据已更新
-      console.log('SKU 选中状态已更新:', this.data.selectedProduct.skus.find(s => s.id === skuId));
     });
   },
 
@@ -382,13 +379,9 @@ Page({
 
   // 按订单分组
   groupByOrder: function(items) {
-    console.log('groupByOrder 接收到的 items:', items);
-    
     const groupsMap = {};
 
     items.forEach(item => {
-      console.log('处理 item:', item);
-      
       const key = item.orderId;
       if (!groupsMap[key]) {
         groupsMap[key] = {
@@ -415,16 +408,12 @@ Page({
         totalQty: item.totalQty,
         shippedQty: item.shippedQty,
         unshippedQty: item.unshippedQty,
-        shipQty: item.unshippedQty,  // 默认发货数量=未发货数量
-        selected: false  // 默认不选中
+        shipQty: item.unshippedQty,
+        selected: false
       });
-      
-      console.log(`订单 ${key} 的商品数量：`, groupsMap[key].items.length);
     });
 
-    const result = Object.values(groupsMap);
-    console.log('groupByOrder 返回的结果:', result);
-    return result;
+    return Object.values(groupsMap);
   },
 
   // ==================== 选择逻辑 ====================

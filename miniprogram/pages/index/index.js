@@ -74,7 +74,6 @@ Page({
   waitForAuthAndLoad: function() {
     // 检查是否已经认证完成
     if (app.globalData.isAuthReady) {
-      console.log('认证已完成，直接加载数据');
       this.checkAdmin();
       this.loadAllData();
       return;
@@ -87,7 +86,6 @@ Page({
     const checkAuth = () => {
       if (app.globalData.isAuthReady) {
         wx.hideLoading();
-        console.log('认证完成，开始加载数据');
         this.checkAdmin();
         this.loadAllData();
       } else {
@@ -102,7 +100,6 @@ Page({
     setTimeout(() => {
       wx.hideLoading();
       if (!app.globalData.isAuthReady) {
-        console.log('认证超时，使用访客模式加载数据');
         this.checkAdmin();
         this.loadAllData();
       }
@@ -118,27 +115,20 @@ Page({
 
   // 从后端 API 获取商品列表（支持分页）
   getProductsList: async function(reset = true) {
-    console.log('[分页] getProductsList called, reset:', reset, 'page:', this.data.page, 'hasMore:', this.data.hasMore, 'loading:', this.data.loading);
-    
     if (reset) {
       this.setData({ page: 0, productList: [], hasMore: true });
     }
 
-    if (!this.data.hasMore || this.data.loading) {
-      console.log('[分页] 跳过加载：hasMore=', this.data.hasMore, 'loading=', this.data.loading);
-      return;
-    }
+    if (!this.data.hasMore || this.data.loading) return;
 
     this.setData({ loading: true });
-    
+
     if (reset) {
       wx.showLoading({ title: '加载中...' });
     }
 
     try {
       const { page, pageSize, selectedStall, selectedTag } = this.data;
-      
-      console.log('[分页] 请求参数：page=', page, 'pageSize=', pageSize, 'offset=', page * pageSize, 'stall=', selectedStall, 'tag=', selectedTag);
 
       // 构建查询参数
       const params = {
@@ -157,12 +147,10 @@ Page({
       }
 
       const res = await api.get('/products/search', params);
-      
+
       // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
       const newProducts = res.content || [];
       const hasMore = res.hasNext !== undefined ? res.hasNext : newProducts.length === pageSize;
-
-      console.log('[分页] 返回数据数量:', newProducts.length, 'hasMore:', hasMore);
 
       if (reset) {
         wx.hideLoading();
@@ -189,13 +177,11 @@ Page({
         hasMore: hasMore,
         loading: false
       });
-      
-      console.log('[分页] 加载完成，当前 page:', this.data.page, 'productList 长度:', this.data.productList.length);
     } catch (err) {
       if (reset) {
         wx.hideLoading();
       }
-      console.error('[分页] 拉取商品失败:', err);
+      console.error('拉取商品失败:', err);
       this.setData({ loading: false });
       // 不弹窗，允许空列表显示
       this.setData({ productList: reset ? [] : this.data.productList });
@@ -204,7 +190,6 @@ Page({
 
   // 触底加载更多
   onReachBottom: function() {
-    console.log('[分页] onReachBottom triggered, hasMore:', this.data.hasMore, 'loading:', this.data.loading);
     if (this.data.hasMore && !this.data.loading) {
       this.getProductsList(false);
     }

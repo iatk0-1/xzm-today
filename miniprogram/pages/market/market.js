@@ -47,7 +47,7 @@ Page({
     try {
       const { page, pageSize } = this.data;
       const res = await api.get(`/wishes?page=${page}&size=${pageSize}`);
-      
+
       // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
       const newWishes = res.content || [];
       const hasMore = res.hasNext !== undefined ? res.hasNext : newWishes.length === pageSize;
@@ -75,7 +75,6 @@ Page({
       wx.hideLoading();
     } catch (err) {
       wx.hideLoading();
-      console.error('获取心愿失败:', err);
       wx.showToast({ title: '加载失败', icon: 'none' });
       this.setData({ loading: false });
     }

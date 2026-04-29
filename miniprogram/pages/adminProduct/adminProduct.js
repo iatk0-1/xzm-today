@@ -21,34 +21,27 @@ Page({
 
   // 滚动到底部加载更多（scroll-view 使用）
   loadMore: function() {
-    console.log('[分页] scrolltolower triggered');
     if (!this.data.hasMore || this.data.isLoading) return;
     this.loadProducts(false);
   },
 
   // 改造：从后端 API 加载商品列表（支持分页）
   loadProducts: async function(reset = true) {
-    console.log('[分页] loadProducts called, reset:', reset, 'page:', this.data.page, 'hasMore:', this.data.hasMore, 'isLoading:', this.data.isLoading);
-    
     if (reset) {
       this.setData({ page: 0, products: [], hasMore: true });
     }
 
-    if (!this.data.hasMore || this.data.isLoading) {
-      console.log('[分页] 跳过加载：hasMore=', this.data.hasMore, 'isLoading=', this.data.isLoading);
-      return;
-    }
+    if (!this.data.hasMore || this.data.isLoading) return;
 
     this.setData({ isLoading: true });
-    
+
     if (reset) {
       wx.showLoading({ title: '拉取商品中...' });
     }
 
     try {
       const { page, pageSize } = this.data;
-      console.log('[分页] 请求参数：page=', page, 'pageSize=', pageSize, 'offset=', page * pageSize);
-      
+
       const res = await api.get('/products', {
         page: page,
         size: pageSize
@@ -61,11 +54,8 @@ Page({
         }
         return item;
       });
-      
-      console.log('[分页] 返回数据数量：', list.length);
 
       const hasMore = res.hasNext !== undefined ? res.hasNext : list.length === pageSize;
-      console.log('[分页] hasMore:', hasMore, 'res.hasNext:', res.hasNext);
 
       this.setData({
         products: reset ? list : [...this.data.products, ...list],
@@ -73,17 +63,14 @@ Page({
         hasMore: hasMore,
         isLoading: false
       });
-      
+
       if (reset) {
         wx.hideLoading();
       }
-      
-      console.log('[分页] 加载完成，当前 page:', this.data.page, 'products 长度:', this.data.products.length);
     } catch (err) {
       if (reset) {
         wx.hideLoading();
       }
-      console.error('[分页] 获取失败:', err);
       wx.showToast({ title: '获取失败', icon: 'none' });
       this.setData({ isLoading: false });
     }
