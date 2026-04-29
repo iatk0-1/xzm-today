@@ -8,14 +8,25 @@ Page({
     hasData: false,
     activeSession: null,
     groupedSessions: [],
+    allSessions: [],  // 存储所有已加载的会话
     isAdmin: false,
     showCreateModal: false,
-    titleInput: ''
+    titleInput: '',
+    // 分页参数
+    page: 0,
+    pageSize: 20,
+    hasMore: true
   },
 
   onLoad: function() {
     this.checkAdmin();
     this.loadLiveSessions();
+  },
+
+  // 触底加载更多
+  onReachBottom: function() {
+    if (!this.data.hasMore || this.data.isLoading) return;
+    this.loadLiveSessions(false);
   },
 
   // 检查管理员权限
@@ -27,34 +38,51 @@ Page({
     }
   },
 
-  // 加载直播场次列表
-  loadLiveSessions: async function() {
+  // 加载直播场次列表（支持分页）
+  loadLiveSessions: async function(reset = true) {
+    if (reset) {
+      this.setData({ page: 0, allSessions: [], hasMore: true });
+    }
+
+    if (!this.data.hasMore || this.data.isLoading) return;
+
     this.setData({ isLoading: true });
 
     try {
-      // 1. 先获取正在直播的场次
-      const activeSession = await api.get('/live-sessions/active');
-      console.log('activeSession:', activeSession);
-
-      // 2. 获取已结束场次列表
-      const endedSessions = await api.get('/live-sessions?page=0&size=100');
-      console.log('endedSessions:', endedSessions);
-
-      // 3. 处理数据 - 只有当 activeSession 有 id 时才认为有数据
-      const hasActiveSession = activeSession && activeSession.id;
-      if (hasActiveSession) {
-        this.setData({ activeSession });
+      // 1. 先获取正在直播的场次（只在首次加载时获取）
+      if (reset) {
+        const activeSession = await api.get('/live-sessions/active');
+        console.log('activeSession:', activeSession);
+        
+        const hasActiveSession = activeSession && activeSession.id;
+        if (hasActiveSession) {
+          this.setData({ activeSession });
+        }
       }
 
+      // 2. 获取已结束场次列表（分页加载）
+      const { page, pageSize } = this.data;
+      const endedSessions = await api.get(`/live-sessions?page=${page}&size=${pageSize}`);
+      console.log('endedSessions:', endedSessions);
+
+      // 3. 合并数据
+      const newSessions = endedSessions || [];
+      const allSessions = reset ? newSessions : [...this.data.allSessions, ...newSessions];
+      const hasMore = newSessions.length === pageSize;
+
       // 4. 按年月分组
-      const grouped = this.groupByMonth(endedSessions || []);
+      const grouped = this.groupByMonth(allSessions);
 
       // 5. 判断是否有数据
+      const hasActiveSession = this.data.activeSession && this.data.activeSession.id;
       const hasData = hasActiveSession || (grouped && grouped.length > 0);
       console.log('hasData:', hasData, 'grouped.length:', grouped ? grouped.length : 0);
 
       this.setData({
         groupedSessions: grouped || [],
+        allSessions: allSessions,
+        page: this.data.page + 1,
+        hasMore: hasMore,
         hasData: hasData,
         isLoading: false
       });

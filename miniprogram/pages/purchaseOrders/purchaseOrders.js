@@ -12,11 +12,21 @@ Page({
     // 全选功能
     allSelected: false,
     selectedCount: 0,
-    selectMode: false
+    selectMode: false,
+    // 分页参数（本地分页）
+    page: 0,
+    pageSize: 20,
+    hasMore: true
   },
 
   onLoad: function() {
     this.loadOrders();
+  },
+
+  // 触底加载更多
+  onReachBottom: function() {
+    if (!this.data.hasMore || this.data.loading) return;
+    this.loadOrders(false);
   },
 
   // 切换状态
@@ -29,24 +39,37 @@ Page({
       selectedCount: 0,
       selectMode: false
     });
-    this.loadOrders();
+    this.loadOrders();  // 重置并重新加载
   },
 
-  // 加载报单记录
-  loadOrders: async function() {
+  // 加载报单记录（分页）
+  loadOrders: async function(reset = true) {
+    if (reset) {
+      this.setData({ page: 0, orderList: [], hasMore: true });
+    }
+
+    if (!this.data.hasMore || this.data.loading) return;
+
     this.setData({ loading: true });
     try {
-      const res = await api.get(`/picking-list/orders?status=${this.data.status}&limit=100`);
-      const orderList = (res || []).map(item => ({
+      const { page, pageSize, status } = this.data;
+      const res = await api.get(`/picking-list/orders?status=${status}&page=${page}&size=${pageSize}`);
+      
+      const orderList = (res.content || []).map(item => ({
         ...item,
         imageUrl: item.imageUrl || '',
         defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
         createdAt: this.formatTime(item.createdAt),
         selected: false
       }));
-      this.setData({ 
-        orderList,
-        displayList: orderList,
+
+      const hasMore = orderList.length === pageSize;
+
+      this.setData({
+        orderList: reset ? orderList : [...this.data.orderList, ...orderList],
+        displayList: reset ? orderList : [...this.data.displayList, ...orderList],
+        page: this.data.page + 1,
+        hasMore: hasMore,
         loading: false
       });
     } catch (err) {

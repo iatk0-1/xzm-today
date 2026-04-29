@@ -1294,7 +1294,7 @@ Page({
   // ================= 关联商品 =================
   openRelatedModal() {
     wx.showLoading({ title: '加载中...' });
-    api.get('/products', { limit: 100, offset: 0 })
+    api.get('/products', { limit: 20, offset: 0 })
       .then(res => {
         wx.hideLoading();
         let selectedIds = this.data.manualRelated.map(item => item.id);

@@ -8,7 +8,7 @@
     </view>
   </view>
 
-  <scroll-view scroll-y class="product-scroll-area">
+  <scroll-view scroll-y class="product-scroll-area" enable-flex enhanced bindscrolltolower="loadMore">
 
     <view class="empty-state" wx:if="{{products.length === 0 && !isLoading}}">
       <view class="empty-text">系统里还没有任何商品</view>

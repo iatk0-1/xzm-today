@@ -15,20 +15,42 @@ Page({
     activeTab: 'operate', // 'ledger' or 'operate'
     operateType: 'add', // 'add' or 'set'
     inputQty: '',
-    note: ''
+    note: '',
+    // 分页参数
+    page: 0,
+    pageSize: 20,
+    hasMore: true
   },
 
   onLoad: function() {
     this.loadProducts();
   },
 
-  // 加载商品列表
-  loadProducts: async function() {
+  // 触底加载更多
+  onReachBottom: function() {
+    if (this.data.hasMore && !this.data.loading) {
+      this.loadProducts(false);
+    }
+  },
+
+  // 加载商品列表（支持分页）
+  loadProducts: async function(reset = true) {
+    if (reset) {
+      this.setData({ page: 0, productList: [], hasMore: true });
+    }
+
+    if (!this.data.hasMore || this.data.loading) return;
+
     this.setData({ loading: true });
     try {
-      // 获取所有商品（分页获取，最多 100 个）
-      const productsRes = await api.get('/products?limit=100');
-      const products = productsRes.records || productsRes || [];
+      const { page, pageSize } = this.data;
+      // 获取所有商品（分页获取）
+      const productsRes = await api.get('/products', {
+        page: page,
+        size: pageSize
+      });
+      const products = productsRes.content || [];
+      const hasMore = productsRes.hasNext !== undefined ? productsRes.hasNext : products.length === pageSize;
 
       // 获取所有 SKU 库存
       const inventoryRes = await api.get('/sku-inventory');
@@ -47,7 +69,7 @@ Page({
         const skusWithQty = skuMatrix.map(sku => {
           const skuId = sku.skuId || sku.id;
           console.log(`SKU: ${skuId}, color: ${sku.color}, size: ${sku.size}, 库存：${inventoryMap[skuId]}`);
-          
+
           return {
             id: skuId,
             spec: sku.color,
@@ -65,7 +87,12 @@ Page({
         };
       });
 
-      this.setData({ productList, loading: false });
+      this.setData({
+        productList: reset ? productList : [...this.data.productList, ...productList],
+        page: this.data.page + 1,
+        hasMore: hasMore,
+        loading: false
+      });
     } catch (err) {
       console.error('加载商品失败:', err);
       wx.showToast({ title: '加载失败', icon: 'none' });

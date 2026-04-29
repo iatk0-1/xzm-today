@@ -207,18 +207,30 @@ page {
 }
 
 /* ==================
-   瀑布流商品卡片
+   瀑布流商品卡片 - 使用 Flexbox 实现正确的分页加载
 ================== */
 .waterfall-container {
-  column-count: 2; /* CSS3 多列布局实现瀑布流 */
-  column-gap: 20rpx;
+  display: flex;
+  flex-wrap: wrap;
   padding: 20rpx 20rpx 0 20rpx;
   box-sizing: border-box;
   width: 100%;
 }
 
+.waterfall-column {
+  display: flex;
+  flex-direction: column;
+  width: calc(50% - 10rpx);  /* 两列，减去间隙 */
+  padding-right: 10rpx;
+  box-sizing: border-box;
+}
+
+.waterfall-column:last-child {
+  padding-right: 0;
+  padding-left: 10rpx;
+}
+
 .product-item {
-  break-inside: avoid; /* 防止卡片被硬生生切成两截 */
   background-color: #ffffff;
   border-radius: 20rpx;
   margin-bottom: 20rpx;

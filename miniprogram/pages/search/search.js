@@ -5,10 +5,18 @@ Page({
   data: {
     keyword: '',
     results: [],
+    leftColumn: [],   // 左列商品
+    rightColumn: [],  // 右列商品
     searched: false,
     recentSearches: [],
     showHistory: false,  // 控制搜索历史下拉框显示/隐藏
-    focus: true  // 搜索框获得焦点
+    focus: true,  // 搜索框获得焦点
+    // 分页参数
+    page: 0,
+    pageSize: 20,
+    hasMore: true,
+    loading: false,
+    searchType: 'all'  // 'all' 或 'keyword'
   },
 
   // 页面刚打开时，自动去拉取所有商品
@@ -27,25 +35,66 @@ Page({
     }
   },
 
-  // 改造：从后端 API 获取全部商品
-  fetchAllProducts: async function() {
+  // 改造：从后端 API 获取全部商品（支持分页）
+  fetchAllProducts: async function(reset = true) {
+    if (reset) {
+      this.setData({ page: 0, results: [], hasMore: true, searchType: 'all' });
+    }
+
+    if (!this.data.hasMore || this.data.loading) return;
+
+    this.setData({ loading: true });
     wx.showLoading({ title: '加载中...' });
 
     try {
+      const { page, pageSize } = this.data;
       const res = await api.get('/products/search', {
-        status: 'on',
-        limit: 100,
-        offset: 0
+        page: page,
+        size: pageSize
       });
 
+      const newResults = res.content || [];
+      const hasMore = res.hasNext !== undefined ? res.hasNext : newResults.length === pageSize;
+
       wx.hideLoading();
+      
+      const allResults = reset ? newResults : [...this.data.results, ...newResults];
+      
+      // 将商品分配到左右两列（奇数位置放左列，偶数位置放右列）
+      const leftColumn = [];
+      const rightColumn = [];
+      allResults.forEach((item, index) => {
+        if (index % 2 === 0) {
+          leftColumn.push(item);
+        } else {
+          rightColumn.push(item);
+        }
+      });
+      
       this.setData({
-        results: res,
-        searched: false
+        results: allResults,
+        leftColumn: leftColumn,
+        rightColumn: rightColumn,
+        page: this.data.page + 1,
+        hasMore: hasMore,
+        searched: false,
+        loading: false
       });
     } catch (err) {
       wx.hideLoading();
       console.error('获取商品失败:', err);
+      this.setData({ loading: false });
+    }
+  },
+
+  // 触底加载更多
+  onReachBottom: function() {
+    if (!this.data.loading && this.data.hasMore) {
+      if (this.data.searchType === 'all') {
+        this.fetchAllProducts(false);
+      } else if (this.data.searchType === 'keyword') {
+        this.doSearch(false);
+      }
     }
   },
 
@@ -73,31 +122,74 @@ Page({
     }, 200);
   },
 
-  // 改造：搜索商品
-  doSearch: async function() {
+  // 改造：搜索商品（支持分页）
+  doSearch: async function(reset = true) {
     const word = this.data.keyword.trim();
-    if (!word) {
+    if (!word && reset) {
       wx.showToast({ title: '请输入关键词', icon: 'none' });
       return;
     }
 
-    wx.showLoading({ title: '全网搜索中...' });
-    this.setData({ searched: true });
+    if (reset) {
+      this.setData({ page: 0, results: [], hasMore: true, searchType: 'keyword', searched: true });
+    }
+
+    if (!this.data.hasMore || this.data.loading) return;
+
+    if (reset) {
+      wx.showLoading({ title: '全网搜索中...' });
+    }
 
     try {
+      const { page, pageSize } = this.data;
       const res = await api.get('/products/search', {
         keyword: word,
-        limit: 100
+        page: page,
+        size: pageSize
       });
 
-      wx.hideLoading();
-      this.setData({ results: res });
-      // 搜索成功后重新加载历史记录
-      this.loadRecentSearches();
+      const newResults = res.content || [];
+      const hasMore = res.hasNext !== undefined ? res.hasNext : newResults.length === pageSize;
+
+      if (reset) {
+        wx.hideLoading();
+      }
+
+      const allResults = reset ? newResults : [...this.data.results, ...newResults];
+      
+      // 将商品分配到左右两列
+      const leftColumn = [];
+      const rightColumn = [];
+      allResults.forEach((item, index) => {
+        if (index % 2 === 0) {
+          leftColumn.push(item);
+        } else {
+          rightColumn.push(item);
+        }
+      });
+
+      this.setData({
+        results: allResults,
+        leftColumn: leftColumn,
+        rightColumn: rightColumn,
+        page: this.data.page + 1,
+        hasMore: hasMore,
+        loading: false
+      });
+
+      // 搜索成功后重新加载历史记录（只在首次搜索时）
+      if (reset) {
+        this.loadRecentSearches();
+      }
     } catch (err) {
-      wx.hideLoading();
+      if (reset) {
+        wx.hideLoading();
+      }
       console.error('搜索失败:', err);
-      wx.showToast({ title: '搜索失败', icon: 'none' });
+      this.setData({ loading: false });
+      if (reset) {
+        wx.showToast({ title: '搜索失败', icon: 'none' });
+      }
     }
   },
 

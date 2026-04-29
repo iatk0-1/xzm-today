@@ -473,12 +473,23 @@ Page({
 
   updateSelectedItems: function(orderGroups) {
     const selectedItems = [];
-    
+
     orderGroups.forEach(group => {
       group.items.forEach(item => {
         if (item.selected) {
           selectedItems.push({
-            ...item,
+            orderItemId: item.orderItemId,
+            productId: item.productId,
+            productName: item.productName,
+            productImage: item.productImage,
+            skuId: item.skuId,
+            skuSpec: item.skuSpec,
+            skuSize: item.skuSize,
+            skuImage: item.skuImage,
+            totalQty: item.totalQty,
+            shippedQty: item.shippedQty,
+            unshippedQty: item.unshippedQty,
+            shipQty: item.shipQty || 0,  // 确保包含最新的发货数量
             orderId: group.orderId,
             orderNo: group.orderNo,
             recipientName: group.recipientName,
@@ -505,30 +516,36 @@ Page({
     const value = parseInt(e.detail.value) || 0;
 
     const item = this.data.orderGroups[groupIndex].items[itemIndex];
-    
+
     // 限制最大值为未发货数量
     item.shipQty = Math.min(value, item.unshippedQty);
-    
+
     const orderGroups = [...this.data.orderGroups];
     orderGroups[groupIndex].items[itemIndex] = item;
-    
+
     this.setData({ orderGroups });
+
+    // 同步更新 selectedItems 中的 shipQty
+    this.syncSelectedItemsShipQty(groupIndex, itemIndex, item.shipQty);
   },
 
   // 减少数量
   onDecrease: function(e) {
     const groupIndex = e.currentTarget.dataset.groupIndex;
     const itemIndex = e.currentTarget.dataset.itemIndex;
-    
+
     const item = this.data.orderGroups[groupIndex].items[itemIndex];
-    
+
     if (item.shipQty > 0) {
       item.shipQty = Math.max(0, item.shipQty - 1);
-      
+
       const orderGroups = [...this.data.orderGroups];
       orderGroups[groupIndex].items[itemIndex] = item;
-      
+
       this.setData({ orderGroups });
+
+      // 同步更新 selectedItems 中的 shipQty
+      this.syncSelectedItemsShipQty(groupIndex, itemIndex, item.shipQty);
     }
   },
 
@@ -536,16 +553,37 @@ Page({
   onIncrease: function(e) {
     const groupIndex = e.currentTarget.dataset.groupIndex;
     const itemIndex = e.currentTarget.dataset.itemIndex;
-    
+
     const item = this.data.orderGroups[groupIndex].items[itemIndex];
-    
+
     // 限制最大值为未发货数量
     item.shipQty = Math.min(item.unshippedQty, item.shipQty + 1);
-    
+
     const orderGroups = [...this.data.orderGroups];
     orderGroups[groupIndex].items[itemIndex] = item;
-    
+
     this.setData({ orderGroups });
+
+    // 同步更新 selectedItems 中的 shipQty
+    this.syncSelectedItemsShipQty(groupIndex, itemIndex, item.shipQty);
+  },
+
+  // 同步更新 selectedItems 中的 shipQty（只更新数量，不改变选中状态）
+  syncSelectedItemsShipQty: function(groupIndex, itemIndex, newShipQty) {
+    const item = this.data.orderGroups[groupIndex].items[itemIndex];
+
+    // 只更新已选中商品的 shipQty
+    if (item.selected) {
+      const selectedItems = [...this.data.selectedItems];
+      const selectedItemIndex = selectedItems.findIndex(si =>
+        si.orderItemId === item.orderItemId && si.skuId === item.skuId
+      );
+
+      if (selectedItemIndex !== -1) {
+        selectedItems[selectedItemIndex].shipQty = newShipQty;
+        this.setData({ selectedItems });
+      }
+    }
   },
 
   // ==================== 批量发货 ====================
@@ -578,21 +616,23 @@ Page({
   generatePreview: function() {
     // 按收件人信息分组
     const groupsMap = {};
-    
+
     this.data.selectedItems.forEach(item => {
       const key = `${item.recipientName}|${item.recipientPhone}|${item.recipientAddress}`;
-      
+
       if (!groupsMap[key]) {
         groupsMap[key] = {
           recipientName: item.recipientName,
           recipientPhone: item.recipientPhone,
           recipientAddress: item.recipientAddress,
-          itemCount: 0,
+          packageCount: 0,  // 包裹数（商品种类数）
+          totalItems: 0,    // 总商品件数
           items: []
         };
       }
-      
-      groupsMap[key].itemCount += item.shipQty;
+
+      groupsMap[key].packageCount += 1;  // 每个 item 是一个商品种类
+      groupsMap[key].totalItems += (item.shipQty || 0);  // 累加发货数量
       groupsMap[key].items.push(item);
     });
 

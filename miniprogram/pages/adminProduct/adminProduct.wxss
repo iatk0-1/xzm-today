@@ -9,6 +9,7 @@ page { background-color: #f0f0f0; height: 100vh; display: flex; flex-direction: 
   padding: 24rpx 30rpx;
   background-color: #fff;
   margin-bottom: 1rpx;
+  flex-shrink: 0;  /* 防止被压缩 */
 }
 
 .page-title {
@@ -32,7 +33,14 @@ page { background-color: #f0f0f0; height: 100vh; display: flex; flex-direction: 
   font-size: 28rpx;
 }
 
-.product-scroll-area { flex: 1; padding: 20rpx; box-sizing: border-box; }
+.product-scroll-area { 
+  flex: 1; 
+  padding: 20rpx; 
+  box-sizing: border-box;
+  height: 100%;  /* 确保占满剩余高度 */
+  overflow-y: auto;  /* 允许垂直滚动 */
+}
+
 .empty-state { padding: 100px 0; text-align: center; color: #999; font-size: 14px; }
 
 /* 商品卡片 */

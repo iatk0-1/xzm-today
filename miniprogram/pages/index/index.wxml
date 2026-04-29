@@ -68,14 +68,33 @@
   </view>
 
   <view class="waterfall-container">
-    <view class="product-item" wx:for="{{productList}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
-      <image class="product-img" src="{{item.coverUrl || item.image}}" mode="widthFix" lazy-load="true"></image>
-      <view class="product-info">
-        <view class="product-title">{{item.name || item.title}}</view>
-        <view class="product-bottom">
-          <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
-          <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
-            <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
+    <!-- 左列 -->
+    <view class="waterfall-column">
+      <view class="product-item" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+        <image class="product-img" src="{{item.coverUrl || item.image}}" mode="widthFix" lazy-load="true"></image>
+        <view class="product-info">
+          <view class="product-title">{{item.name || item.title}}</view>
+          <view class="product-bottom">
+            <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
+            <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
+              <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 右列 -->
+    <view class="waterfall-column">
+      <view class="product-item" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+        <image class="product-img" src="{{item.coverUrl || item.image}}" mode="widthFix" lazy-load="true"></image>
+        <view class="product-info">
+          <view class="product-title">{{item.name || item.title}}</view>
+          <view class="product-bottom">
+            <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
+            <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
+              <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
+            </view>
           </view>
         </view>
       </view>

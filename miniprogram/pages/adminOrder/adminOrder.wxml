@@ -142,8 +142,8 @@
     <view class="modal-content modal-large">
       <view class="modal-title">发货预览</view>
       <scroll-view class="preview-list" scroll-y>
-        <view class="preview-group" wx:for="{{previewGroups}}" wx:key="index">
-          <view class="preview-title">包裹 {{index + 1}} ({{group.itemCount}}件商品)</view>
+        <view class="preview-group" wx:for="{{previewGroups}}" wx:key="index" wx:for-index="index" wx:for-item="group">
+          <view class="preview-title">包裹 {{index + 1}} (共 {{group.totalItems}} 件)</view>
           <view class="preview-recipient">
             <text>{{group.recipientName}} {{group.recipientPhone}}</text>
             <text>{{group.recipientAddress}}</text>

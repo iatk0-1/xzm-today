@@ -22,6 +22,8 @@ Page({
     // 3. 商品与权限参数
     isAdmin: false,
     productList: [],
+    leftColumn: [],  // 左列商品
+    rightColumn: [], // 右列商品
 
     // 4. 底部 SKU (颜色/尺码) 弹窗参数
     showSku: false,
@@ -32,7 +34,13 @@ Page({
     selectedSize: '',
     currentSkuPrice: null,
     currentSkuStock: null,
-    currentSkuImage: null
+    currentSkuImage: null,
+
+    // 5. 分页参数
+    page: 0,
+    pageSize: 20,
+    hasMore: true,
+    loading: false
   },
 
   onLoad: function() {
@@ -108,37 +116,97 @@ Page({
     this.loadTagList();
   },
 
-  // 从后端 API 获取商品列表
-  getProductsList: async function() {
-    wx.showLoading({ title: '加载中...' });
+  // 从后端 API 获取商品列表（支持分页）
+  getProductsList: async function(reset = true) {
+    console.log('[分页] getProductsList called, reset:', reset, 'page:', this.data.page, 'hasMore:', this.data.hasMore, 'loading:', this.data.loading);
+    
+    if (reset) {
+      this.setData({ page: 0, productList: [], hasMore: true });
+    }
+
+    if (!this.data.hasMore || this.data.loading) {
+      console.log('[分页] 跳过加载：hasMore=', this.data.hasMore, 'loading=', this.data.loading);
+      return;
+    }
+
+    this.setData({ loading: true });
+    
+    if (reset) {
+      wx.showLoading({ title: '加载中...' });
+    }
 
     try {
+      const { page, pageSize, selectedStall, selectedTag } = this.data;
+      
+      console.log('[分页] 请求参数：page=', page, 'pageSize=', pageSize, 'offset=', page * pageSize, 'stall=', selectedStall, 'tag=', selectedTag);
+
       // 构建查询参数
       const params = {
-        status: 'on',  // 只获取上架商品
-        limit: 100,
-        offset: 0
+        page: page,
+        size: pageSize
       };
 
       // 如果选择了档口，按档口筛选（使用 stall 参数）
-      if (this.data.selectedStall) {
-        params.stall = this.data.selectedStall;
+      if (selectedStall) {
+        params.stall = selectedStall;
       }
 
       // 如果选择了标签，按标签筛选（使用 tag 参数）
-      if (this.data.selectedTag) {
-        params.tag = this.data.selectedTag;
+      if (selectedTag) {
+        params.tag = selectedTag;
       }
 
       const res = await api.get('/products/search', params);
+      
+      // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
+      const newProducts = res.content || [];
+      const hasMore = res.hasNext !== undefined ? res.hasNext : newProducts.length === pageSize;
 
-      wx.hideLoading();
-      this.setData({ productList: res || [] });
+      console.log('[分页] 返回数据数量:', newProducts.length, 'hasMore:', hasMore);
+
+      if (reset) {
+        wx.hideLoading();
+      }
+
+      const allProducts = reset ? newProducts : [...this.data.productList, ...newProducts];
+      
+      // 将商品分配到左右两列（奇数位置放左列，偶数位置放右列）
+      const leftColumn = [];
+      const rightColumn = [];
+      allProducts.forEach((item, index) => {
+        if (index % 2 === 0) {
+          leftColumn.push(item);
+        } else {
+          rightColumn.push(item);
+        }
+      });
+
+      this.setData({
+        productList: allProducts,
+        leftColumn: leftColumn,
+        rightColumn: rightColumn,
+        page: this.data.page + 1,
+        hasMore: hasMore,
+        loading: false
+      });
+      
+      console.log('[分页] 加载完成，当前 page:', this.data.page, 'productList 长度:', this.data.productList.length);
     } catch (err) {
-      wx.hideLoading();
-      console.error('拉取商品失败:', err);
+      if (reset) {
+        wx.hideLoading();
+      }
+      console.error('[分页] 拉取商品失败:', err);
+      this.setData({ loading: false });
       // 不弹窗，允许空列表显示
-      this.setData({ productList: [] });
+      this.setData({ productList: reset ? [] : this.data.productList });
+    }
+  },
+
+  // 触底加载更多
+  onReachBottom: function() {
+    console.log('[分页] onReachBottom triggered, hasMore:', this.data.hasMore, 'loading:', this.data.loading);
+    if (this.data.hasMore && !this.data.loading) {
+      this.getProductsList(false);
     }
   },
 
@@ -286,7 +354,7 @@ Page({
   // 老板专属入口
   goToAdmin: function() {
     wx.showActionSheet({
-      itemList: ['发布新商品', '商品上下架管理', '库存管理', '拣货推荐', '订单管理', '售后管理'],
+      itemList: ['发布新商品', '商品上下架管理', '库存管理', '拣货推荐', '订单管理', '订单发货管理'],
       itemColor: '#111111',
       success: (res) => {
         if (res.tapIndex === 0) {
@@ -300,7 +368,7 @@ Page({
         } else if (res.tapIndex === 4) {
           wx.navigateTo({ url: '/pages/adminOrderManage/adminOrderManage' });
         } else if (res.tapIndex === 5) {
-          wx.navigateTo({ url: '/pages/adminAfterSaleList/adminAfterSaleList' });
+          wx.navigateTo({ url: '/pages/adminOrder/adminOrder' });
         }
       }
     });

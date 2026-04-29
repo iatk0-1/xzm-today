@@ -4,37 +4,88 @@ const api = require('../../utils/api');
 Page({
   data: {
     products: [],
-    isLoading: true
+    isLoading: false,  // 初始为 false，允许首次加载
+    // 分页参数
+    page: 0,
+    pageSize: 20,
+    hasMore: true
   },
 
-  onShow: function() {
+  onLoad: function() {
     this.loadProducts();
   },
 
-  // 改造：从后端 API 加载商品列表
-  loadProducts: async function() {
+  onShow: function() {
+    // 页面显示时不自动刷新，避免重复加载
+  },
+
+  // 滚动到底部加载更多（scroll-view 使用）
+  loadMore: function() {
+    console.log('[分页] scrolltolower triggered');
+    if (!this.data.hasMore || this.data.isLoading) return;
+    this.loadProducts(false);
+  },
+
+  // 改造：从后端 API 加载商品列表（支持分页）
+  loadProducts: async function(reset = true) {
+    console.log('[分页] loadProducts called, reset:', reset, 'page:', this.data.page, 'hasMore:', this.data.hasMore, 'isLoading:', this.data.isLoading);
+    
+    if (reset) {
+      this.setData({ page: 0, products: [], hasMore: true });
+    }
+
+    if (!this.data.hasMore || this.data.isLoading) {
+      console.log('[分页] 跳过加载：hasMore=', this.data.hasMore, 'isLoading=', this.data.isLoading);
+      return;
+    }
+
     this.setData({ isLoading: true });
-    wx.showLoading({ title: '拉取商品中...' });
+    
+    if (reset) {
+      wx.showLoading({ title: '拉取商品中...' });
+    }
 
     try {
+      const { page, pageSize } = this.data;
+      console.log('[分页] 请求参数：page=', page, 'pageSize=', pageSize, 'offset=', page * pageSize);
+      
       const res = await api.get('/products', {
-        limit: 100,
-        offset: 0
+        page: page,
+        size: pageSize
       });
 
-      let list = res.map(item => {
+      let list = (res.content || []).map(item => {
         if (item.createdAt) {
           const date = new Date(item.createdAt);
           item.createTimeStr = `${date.getMonth()+1}-${date.getDate()} ${date.getHours()}:${date.getMinutes()}`;
         }
         return item;
       });
+      
+      console.log('[分页] 返回数据数量：', list.length);
 
-      this.setData({ products: list, isLoading: false });
-      wx.hideLoading();
+      const hasMore = res.hasNext !== undefined ? res.hasNext : list.length === pageSize;
+      console.log('[分页] hasMore:', hasMore, 'res.hasNext:', res.hasNext);
+
+      this.setData({
+        products: reset ? list : [...this.data.products, ...list],
+        page: this.data.page + 1,
+        hasMore: hasMore,
+        isLoading: false
+      });
+      
+      if (reset) {
+        wx.hideLoading();
+      }
+      
+      console.log('[分页] 加载完成，当前 page:', this.data.page, 'products 长度:', this.data.products.length);
     } catch (err) {
-      wx.hideLoading();
+      if (reset) {
+        wx.hideLoading();
+      }
+      console.error('[分页] 获取失败:', err);
       wx.showToast({ title: '获取失败', icon: 'none' });
+      this.setData({ isLoading: false });
     }
   },
 

@@ -12,16 +12,22 @@ page { background-color: #ffffff; }
   color: #999999; margin-top: 8px; letter-spacing: 3px; text-transform: uppercase; 
 }
 
-/* ================= 🚀 核心：非对称瀑布流 ================= */
+/* ================= 🚀 Flexbox 双列布局（与 index 保持一致） ================= */
 .masonry-grid {
+  display: flex;
+  flex-wrap: wrap;
   padding: 0 15px;
-  column-count: 2;         /* 强制分为两列 */
-  column-gap: 15px;        /* 中间的巨大留白，呼吸感来源 */
+  gap: 15px;
+}
+
+.masonry-column {
+  display: flex;
+  flex-direction: column;
+  width: calc(50% - 7.5px);  /* 两列，减去间隙 */
+  gap: 30px;  /* 上下卡片的巨大留白 */
 }
 
 .wish-card {
-  break-inside: avoid;     /* 绝不让卡片被从中间切断 */
-  margin-bottom: 30px;     /* 上下卡片的巨大留白 */
   background: #ffffff;
 }
 

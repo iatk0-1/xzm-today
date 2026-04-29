@@ -239,7 +239,7 @@ Page({
       }
 
       // 调用后端接口查询包含指定 SKU 的未发货订单
-      const ordersRes = await api.get(`/orders/by-sku?skuId=${fromSkuId}&limit=100`);
+      const ordersRes = await api.get(`/orders/by-sku?skuId=${fromSkuId}&limit=20`);
       const orders = ordersRes || [];
       
       if (orders.length === 0) {

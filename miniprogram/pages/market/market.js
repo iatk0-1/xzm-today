@@ -5,16 +5,24 @@ const auth = require('../../utils/auth');
 Page({
   data: {
     wishes: [],
-    isAdmin: false
+    leftColumn: [],   // 左列心愿
+    rightColumn: [],  // 右列心愿
+    isAdmin: false,
+    // 分页参数
+    page: 0,
+    pageSize: 20,
+    hasMore: true
   },
 
   onLoad: function() {
     this.checkAdmin();
+    this.loadWishes();
   },
 
-  onShow: function() {
-    this.loadWishes();
-    this.checkAdmin();
+  // 触底加载更多
+  onReachBottom: function() {
+    if (!this.data.hasMore || this.data.loading) return;
+    this.loadWishes(false);
   },
 
   checkAdmin: function() {
@@ -25,19 +33,51 @@ Page({
     }
   },
 
-  // 改造：从后端 API 获取心愿列表
-  loadWishes: async function() {
+  // 改造：从后端 API 获取心愿列表（支持分页）
+  loadWishes: async function(reset = true) {
+    if (reset) {
+      this.setData({ page: 0, wishes: [], hasMore: true });
+    }
+
+    if (!this.data.hasMore || this.data.loading) return;
+
+    this.setData({ loading: true });
     wx.showLoading({ title: '探索中...' });
 
     try {
-      const res = await api.get('/wishes');
-      // 后端返回格式：{ wishes: [...] }
-      this.setData({ wishes: res.wishes || res, isLoading: false });
+      const { page, pageSize } = this.data;
+      const res = await api.get(`/wishes?page=${page}&size=${pageSize}`);
+      
+      // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
+      const newWishes = res.content || [];
+      const hasMore = res.hasNext !== undefined ? res.hasNext : newWishes.length === pageSize;
+
+      // 将心愿分配到左右两列（奇数位置放左列，偶数位置放右列）
+      const allWishes = reset ? newWishes : [...this.data.wishes, ...newWishes];
+      const leftColumn = [];
+      const rightColumn = [];
+      allWishes.forEach((item, index) => {
+        if (index % 2 === 0) {
+          leftColumn.push(item);
+        } else {
+          rightColumn.push(item);
+        }
+      });
+
+      this.setData({
+        wishes: allWishes,
+        leftColumn: leftColumn,
+        rightColumn: rightColumn,
+        page: this.data.page + 1,
+        hasMore: hasMore,
+        loading: false
+      });
       wx.hideLoading();
     } catch (err) {
       wx.hideLoading();
       console.error('获取心愿失败:', err);
       wx.showToast({ title: '加载失败', icon: 'none' });
+      this.setData({ loading: false });
     }
   },
 

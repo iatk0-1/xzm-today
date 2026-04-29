@@ -33,11 +33,25 @@
     <view wx:if="{{results.length === 0 && searched}}" class="empty-tip">没有找到相关的衣服哦~</view>
 
     <view class="goods-list" wx:if="{{results.length > 0}}">
-      <view class="goods-item" wx:for="{{results}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
-        <image class="goods-img" src="{{item.coverUrl || item.image}}" mode="widthFix"></image>
-        <view class="goods-info">
-          <view class="goods-title">{{item.name || item.title}}</view>
-          <view class="goods-price">¥ {{item.displayPrice || item.price || '0.00'}}</view>
+      <!-- 左列 -->
+      <view class="goods-column">
+        <view class="goods-item" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+          <image class="goods-img" src="{{item.coverUrl || item.image}}" mode="widthFix"></image>
+          <view class="goods-info">
+            <view class="goods-title">{{item.name || item.title}}</view>
+            <view class="goods-price">¥ {{item.displayPrice || item.price || '0.00'}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 右列 -->
+      <view class="goods-column">
+        <view class="goods-item" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+          <image class="goods-img" src="{{item.coverUrl || item.image}}" mode="widthFix"></image>
+          <view class="goods-info">
+            <view class="goods-title">{{item.name || item.title}}</view>
+            <view class="goods-price">¥ {{item.displayPrice || item.price || '0.00'}}</view>
+          </view>
         </view>
       </view>
     </view>
