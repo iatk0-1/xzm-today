@@ -71,7 +71,7 @@ page {
   display: flex;
   justify-content: space-between; 
   align-items: center;
-  padding: 10rpx 40rpx 20rpx 40rpx;
+  padding: 10rpx 40rpx 10rpx 40rpx;
   width: 100%;
   box-sizing: border-box;
 }
@@ -107,11 +107,11 @@ page {
 
 /* 底部动效小黑条 */
 .nav-tabs-left .tab-item .line {
-  width: 32rpx;
-  height: 6rpx;
+  width: 40rpx;
+  height: 1rpx;
   background-color: #1a1a1a;
   border-radius: 4rpx;
-  margin-top: 6rpx;
+  margin-top: 0rpx;
   transform: scaleX(0); /* 默认缩小消失 */
   opacity: 0;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -148,62 +148,168 @@ page {
 }
 
 /* ==================
-   档口下拉面板 (Stall Panel)
+   左固定右滑动导航栏 & 高级展开面板
 ================== */
-.stall-mask {
+.sub-nav-bar {
+  position: fixed;
+  left: 0;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  z-index: 998; 
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.02);
+  display: flex;
+  align-items: center;
+  height: 88rpx; /* 固定高度，非常关键 */
+}
+
+/* 左侧全部开关 */
+.btn-all-switch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24rpx 0 30rpx;
+  height: 100%;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1a1a1a;
+  flex-shrink: 0;
+}
+
+.icon-menu {
+  font-size: 32rpx;
+  margin-left: 8rpx;
+  font-weight: 300;
+  color: #666;
+}
+
+/* 高级分割线 */
+.sub-nav-divider {
+  width: 2rpx;
+  height: 32rpx;
+  background-color: #eee;
+  flex-shrink: 0;
+}
+
+/* 右侧滑动区 */
+.sub-nav-scroll {
+  flex: 1;
+  white-space: nowrap;
+  height: 100%;
+}
+
+.sub-nav-container {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 20rpx;
+  gap: 16rpx;
+  height: 100%;
+}
+
+.sub-tag {
+  padding: 10rpx 26rpx;
+  background-color: #f5f5f5;
+  color: #666;
+  font-size: 26rpx;
+  border-radius: 12rpx; 
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.sub-tag.active {
+  background-color: #f5f5f5; 
+  color: #1a1a1a;
+  font-weight: 800; 
+}
+
+.sub-tag-placeholder {
+  width: 40rpx;
+  flex-shrink: 0;
+}
+
+/* ================== 下拉展开面板样式 ================== */
+.all-panel-mask {
   position: fixed;
   left: 0;
   width: 100%;
   height: 100vh;
   background: rgba(0, 0, 0, 0.4);
-  z-index: 998; /* 在导航栏下方一层 */
+  z-index: 996;
   opacity: 0;
   pointer-events: none;
 }
 
-.stall-mask.fade-in {
+.all-panel-mask.fade-in {
   opacity: 1;
   pointer-events: auto;
   transition: opacity 0.3s ease;
 }
 
-.stall-panel {
+.all-panel-content {
   position: fixed;
   left: 0;
   width: 100%;
   background: #ffffff;
-  z-index: 999;
-  padding: 30rpx 40rpx 40rpx;
-  border-radius: 0 0 32rpx 32rpx; /* 下部圆角 */
+  z-index: 997;
+  padding: 0 0 40rpx 0;
   box-sizing: border-box;
+  border-radius: 0 0 32rpx 32rpx;
   box-shadow: 0 10rpx 20rpx rgba(0,0,0,0.05);
-  transform: translateY(-100%); /* 默认收起 */
+  transform: translateY(-100%);
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.stall-panel.slide-down {
-  transform: translateY(0); /* 滑下 */
+.all-panel-content.slide-down {
+  transform: translateY(0);
 }
 
-.stall-grid {
+.panel-top-action {
+  padding: 30rpx 40rpx 10rpx;
+}
+
+.panel-scroll-area {
+  max-height: 55vh;
+  padding: 0 40rpx;
+  box-sizing: border-box;
+}
+
+.group-section {
+  margin-bottom: 30rpx;
+}
+
+.group-title {
+  font-size: 24rpx;
+  color: #999;
+  font-weight: bold;
+  margin-bottom: 20rpx;
+  padding-left: 10rpx;
+}
+
+.all-panel-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 20rpx;
 }
 
-.stall-tag {
+.all-panel-tag {
   padding: 16rpx 36rpx;
   background-color: #f5f5f5;
   color: #666;
   font-size: 26rpx;
-  border-radius: 100rpx;
+  border-radius: 12rpx;
   transition: all 0.2s;
 }
 
-.stall-tag.active {
-  background-color: #1a1a1a;
+.all-panel-tag.active {
+  background-color: #747373;
   color: #ffffff;
   font-weight: bold;
+}
+
+/* 当有子导航时，给瀑布流增加顶部间距，避免商品被挡住 */
+.waterfall-container.has-sub-nav {
+  padding-top: 100rpx; 
 }
 
 /* ==================

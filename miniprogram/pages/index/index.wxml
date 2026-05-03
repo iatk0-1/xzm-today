@@ -25,49 +25,83 @@
           <text>分类</text>
           <view class="line"></view>
         </view>
+
+        <view class="tab-item {{currentMainTab === '直播' ? 'active' : ''}}" bindtap="goToLiveRoom" data-tab="直播">
+          <text>直播</text>
+          <view class="line"></view>
+        </view>
       </view>
 
-      <view class="nav-live-entry" bindtap="goToLiveRoom">
-        <text>直播</text>
-      </view>
+    
       <view class="nav-cart-right" bindtap="goToCart">
         <text>购物车</text>
       </view>
     </view>
   </view>
 
-  <view class="stall-mask {{showStall ? 'fade-in' : ''}}" wx:if="{{showStall}}" catchtap="closeStallPanel"></view>
-  <view class="stall-panel {{showStall ? 'slide-down' : ''}}" style="top: {{totalNavHeight}}px;">
-    <view class="stall-grid">
-      <view
-        class="stall-tag {{selectedStall === item.id || (selectedStall === '' && item.id === 'all') ? 'active' : ''}}"
-        wx:for="{{stallList}}"
-        wx:key="id"
-        bindtap="selectStall"
-        data-stall="{{item.id}}"
-        data-name="{{item.name}}">
-        {{item.name}}
-      </view>
+  <!-- ================== 新增：左右分治的高级子导航栏 ================== -->
+  <view class="sub-nav-bar" wx:if="{{currentMainTab === '档口' || currentMainTab === '分类'}}" style="top: {{totalNavHeight}}px;">
+    
+    <!-- 左侧固定：总控开关 (支持双向切换与动态图标) -->
+    <view class="btn-all-switch" bindtap="toggleAllPanel">
+      <text>全部</text>
+      <text class="icon-menu">{{showAllPanel ? '×' : '≡'}}</text>
     </view>
+    
+    <view class="sub-nav-divider"></view> <!-- 微妙的视觉分割线 -->
+
+    <!-- 右侧滑动：纯净列表（不再有重复的全部） -->
+    <scroll-view class="sub-nav-scroll" scroll-x="true">
+      <view class="sub-nav-container">
+        <!-- 档口的标签列表 -->
+        <block wx:if="{{currentMainTab === '档口'}}">
+          <view class="sub-tag {{selectedStall === item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}" data-name="{{item.name}}">{{item.name}}</view>
+        </block>
+        <!-- 分类的标签列表 -->
+        <block wx:if="{{currentMainTab === '分类'}}">
+          <view class="sub-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}" data-name="{{item.name}}">{{item.name}}</view>
+        </block>
+        <view class="sub-tag-placeholder"></view> <!-- 留白占位，更高级 -->
+      </view>
+    </scroll-view>
   </view>
 
-  <!-- 分类标签面板 -->
-  <view class="stall-mask {{showTag ? 'fade-in' : ''}}" wx:if="{{showTag}}" catchtap="closeTagPanel"></view>
-  <view class="stall-panel {{showTag ? 'slide-down' : ''}}" style="top: {{totalNavHeight}}px;">
-    <view class="stall-grid">
-      <view
-        class="stall-tag {{selectedTag === item.id || (selectedTag === '' && item.id === 'all') ? 'active' : ''}}"
-        wx:for="{{tagList}}"
-        wx:key="id"
-        bindtap="selectTag"
-        data-tag="{{item.id}}"
-        data-name="{{item.name}}">
-        {{item.name}}
+  <!-- ================== 新增：展开时的高级大面板 (A-Z版) ================== -->
+  <view class="all-panel-mask {{showAllPanel ? 'fade-in' : ''}}" wx:if="{{showAllPanel}}" catchtap="closeAllPanel" style="top: {{totalNavHeight}}px; margin-top: 88rpx;"></view>
+  
+  <view class="all-panel-content {{showAllPanel ? 'slide-down' : ''}}" wx:if="{{showAllPanel}}" style="top: {{totalNavHeight}}px; margin-top: 88rpx;">
+    
+    <!-- 档口专属：A-Z 分组面板 -->
+    <block wx:if="{{currentMainTab === '档口'}}">
+      <view class="panel-top-action">
+        <!-- 独立放置的全部按钮 -->
+        <view class="all-panel-tag {{selectedStall === '' ? 'active' : ''}}" bindtap="selectStall" data-stall="all" data-name="全部档口">全部档口</view>
       </view>
-    </view>
+      <scroll-view scroll-y class="panel-scroll-area">
+        <view class="group-section" wx:for="{{groupedStalls}}" wx:key="letter">
+          <view class="group-title">{{item.letter}}</view> <!-- A, B, C... 标题 -->
+          <view class="all-panel-grid">
+            <view class="all-panel-tag {{selectedStall === stall.id ? 'active' : ''}}" wx:for="{{item.list}}" wx:for-item="stall" wx:key="id" bindtap="selectStall" data-stall="{{stall.id}}" data-name="{{stall.name}}">{{stall.name}}</view>
+          </view>
+        </view>
+      </scroll-view>
+    </block>
+
+    <!-- 分类专属：极简平铺面板 -->
+    <block wx:if="{{currentMainTab === '分类'}}">
+      <view class="panel-top-action">
+        <view class="all-panel-tag {{selectedTag === '' ? 'active' : ''}}" bindtap="selectTag" data-tag="all" data-name="全部分类">全部分类</view>
+      </view>
+      <scroll-view scroll-y class="panel-scroll-area">
+        <view class="all-panel-grid" style="padding-top: 10rpx;">
+          <view class="all-panel-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}" data-name="{{item.name}}">{{item.name}}</view>
+        </view>
+      </scroll-view>
+    </block>
   </view>
 
-  <view class="waterfall-container">
+  <!-- 动态增加瀑布流的上边距，防止被上面的导航挡住 -->
+  <view class="waterfall-container {{currentMainTab === '档口' || currentMainTab === '分类' ? 'has-sub-nav' : ''}}">
     <!-- 左列 -->
     <view class="waterfall-column">
       <view class="product-item" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">

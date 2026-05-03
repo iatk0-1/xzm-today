@@ -18,6 +18,8 @@ Page({
     selectedTag: '',
     stallList: [], // 从后端加载，初始为空
     tagList: [], // 从后端加载，初始为空
+    groupedStalls: [], // ✨核心：新增A-Z分组后的档口矩阵
+    showAllPanel: false, // 新增：控制展开全部面板的开关
 
     // 3. 商品与权限参数
     isAdmin: false,
@@ -195,21 +197,49 @@ Page({
     }
   },
 
-  // 从后端 API 获取档口列表
+  // 从后端 API 获取档口列表（纯前端 A-Z 拼音分组架构）
   loadStallList: async function() {
     try {
       const stalls = await api.get('/stalls');
-      // 在档口列表前添加"全部分区"选项
-      const stallListWithAll = [{ id: 'all', name: '全部' }, ...stalls];
-      this.setData({ stallList: stallListWithAll });
+
+      // ✨核心魔法：前端极简拼音首字母提取器
+      const getPinYinFirstLetter = (str) => {
+        if (!str || !str.trim()) return '#';
+        let char = str.trim()[0];
+        if (/[A-Za-z]/.test(char)) return char.toUpperCase(); // 英文直接大写
+        if (!/[\u4e00-\u9fa5]/.test(char)) return '#'; // 符号归入#
+        const letters = "ABCDEFGHJKLMNOPQRSTWXYZ".split('');
+        const zh = "阿八嚓哒妸发旮哈讥咔垃痳拿噢妑七呥扨它穵夕丫帀".split('');
+        for (let i = 0; i < zh.length; i++) {
+          if ((!zh[i+1] || zh[i+1].localeCompare(char, 'zh-Hans-CN') > 0) && char.localeCompare(zh[i], 'zh-Hans-CN') >= 0) {
+            return letters[i];
+          }
+        }
+        return '#';
+      };
+
+      // 数据清洗与 A-Z 分装
+      let groupedObj = {};
+      stalls.forEach(stall => {
+        let initial = getPinYinFirstLetter(stall.name);
+        if (!groupedObj[initial]) groupedObj[initial] = [];
+        groupedObj[initial].push(stall);
+      });
+
+      // 整理成按 A-Z 排序的数组，# 放最后
+      let groupedStalls = Object.keys(groupedObj).sort((a, b) => {
+        if (a === '#') return 1;
+        if (b === '#') return -1;
+        return a.localeCompare(b);
+      }).map(key => ({ letter: key, list: groupedObj[key] }));
+
+      this.setData({
+        stallList: stalls, // 纯净的列表供滑动区使用，不加"全部"
+        groupedStalls: groupedStalls
+      });
     } catch (err) {
       console.error('加载档口列表失败:', err);
-      // 失败时显示默认列表
-      this.setData({
-        stallList: [
-          { id: 'all', name: '全部' }
-        ]
-      });
+      this.setData({ stallList: [], groupedStalls: [] });
     }
   },
 
@@ -217,17 +247,10 @@ Page({
   loadTagList: async function() {
     try {
       const tags = await api.get('/tags');
-      // 在标签列表前添加"全部分类"选项
-      const tagListWithAll = [{ id: 'all', name: '全部' }, ...tags];
-      this.setData({ tagList: tagListWithAll });
+      this.setData({ tagList: tags }); // 纯净的列表供滑动区使用，不加"全部"
     } catch (err) {
       console.error('加载标签列表失败:', err);
-      // 失败时显示默认列表
-      this.setData({
-        tagList: [
-          { id: 'all', name: '全部' }
-        ]
-      });
+      this.setData({ tagList: [] });
     }
   },
 
@@ -243,47 +266,33 @@ Page({
     const tabName = e.currentTarget.dataset.tab;
 
     if (tabName === '档口') {
-      // 点击档口时，隐藏分类面板
-      this.setData({
-        currentMainTab: '档口',
-        showStall: true,
-        showTag: false
-      });
+      this.setData({ currentMainTab: '档口', showStall: true, showTag: false, showAllPanel: false });
     } else if (tabName === '分类') {
-      // 点击分类时，隐藏档口面板
-      this.setData({
-        currentMainTab: '分类',
-        showTag: true,
-        showStall: false
-      });
+      this.setData({ currentMainTab: '分类', showTag: true, showStall: false, showAllPanel: false });
     } else if (tabName === '上新') {
       this.setData({
-        currentMainTab: '上新',
-        showStall: false,
-        showTag: false,
-        selectedStall: '',
-        selectedTag: ''
+        currentMainTab: '上新', showStall: false, showTag: false, showAllPanel: false, selectedStall: '', selectedTag: ''
       });
       this.getProductsList();
     }
   },
 
   closeStallPanel() {
-    if (this.data.selectedStall) {
-      this.setData({ currentMainTab: '档口', showStall: false });
-    } else {
-      this.setData({ currentMainTab: '上新', showStall: false });
-    }
+    this.setData({ showStall: false });
   },
 
   closeTagPanel() {
-    if (this.data.selectedTag) {
-      this.setData({ currentMainTab: '分类', showTag: false });
-    } else {
-      this.setData({ currentMainTab: '上新', showTag: false });
-    }
+    this.setData({ showTag: false });
   },
 
+  // === 新增：全部面板的开启与关闭 ===
+  toggleAllPanel() { 
+    this.setData({ showAllPanel: !this.data.showAllPanel }); 
+  },
+  closeAllPanel() { 
+    this.setData({ showAllPanel: false }); 
+  },
+  
   selectStall(e) {
     const stallId = e.currentTarget.dataset.stall;
     const stallName = e.currentTarget.dataset.name;
@@ -292,17 +301,12 @@ Page({
       selectedStall: stallId === 'all' ? '' : stallId,
       selectedStallName: stallId === 'all' ? '' : stallName,
       showStall: false,
+      showAllPanel: false, // 点击后自动收起全屏面板
       currentMainTab: '档口'
     });
 
-    // 切换档口后重新加载商品（后端会自动记录用户使用历史）
     this.getProductsList();
-
-    if (stallId === 'all') {
-      wx.showToast({ title: '已显示全部', icon: 'none' });
-    } else {
-      wx.showToast({ title: '已切换至：' + stallName, icon: 'none' });
-    }
+    wx.showToast({ title: stallId === 'all' ? '已显示全部' : '已切换至：' + stallName, icon: 'none' });
   },
 
   selectTag(e) {
@@ -313,17 +317,12 @@ Page({
       selectedTag: tagId === 'all' ? '' : tagId,
       selectedTagName: tagId === 'all' ? '' : tagName,
       showTag: false,
+      showAllPanel: false, // 点击后自动收起全屏面板
       currentMainTab: '分类'
     });
 
-    // 切换标签后重新加载商品（后端会自动记录用户使用历史）
     this.getProductsList();
-
-    if (tagId === 'all') {
-      wx.showToast({ title: '已显示全部', icon: 'none' });
-    } else {
-      wx.showToast({ title: '已切换至：' + tagName, icon: 'none' });
-    }
+    wx.showToast({ title: tagId === 'all' ? '已显示全部' : '已切换至：' + tagName, icon: 'none' });
   },
 
   // 基础跳转功能
