@@ -83,8 +83,14 @@ Page({
         return { ...product, totalStock };
       });
 
+      const formattedSession = detail ? {
+        ...detail,
+        startedAt: this.formatDateTime(detail.startedAt),
+        endedAt: this.formatDateTime(detail.endedAt)
+      } : {};
+
       this.setData({
-        session: detail || {},
+        session: formattedSession,
         products: products,
         canBuy: detail?.status === 'live'
       });
@@ -104,6 +110,30 @@ Page({
   // 返回
   goBack: function() {
     wx.navigateBack();
+  },
+
+  // 后端可能返回秒级(10位)或毫秒级(13位)时间戳，这里统一转毫秒
+  normalizeTimestamp: function(ts) {
+    if (ts === null || ts === undefined || ts === '') return 0;
+    const raw = Number(ts);
+    if (!Number.isFinite(raw)) return 0;
+    return raw < 1e12 ? raw * 1000 : raw;
+  },
+
+  formatDateTime: function(ts) {
+    if (ts === null || ts === undefined || ts === '') return '';
+    const date = new Date(this.normalizeTimestamp(ts));
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = this.padZero(date.getMonth() + 1);
+    const day = this.padZero(date.getDate());
+    const hour = this.padZero(date.getHours());
+    const minute = this.padZero(date.getMinutes());
+    return `${year}-${month}-${day} ${hour}:${minute}`;
+  },
+
+  padZero: function(num) {
+    return num < 10 ? `0${num}` : `${num}`;
   },
 
   // 输入标题

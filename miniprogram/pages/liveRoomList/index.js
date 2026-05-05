@@ -4,7 +4,7 @@ const auth = require('../../utils/auth');
 
 Page({
   data: {
-    isLoading: true,
+    isLoading: false,
     hasData: false,
     activeSession: null,
     groupedSessions: [],
@@ -55,7 +55,12 @@ Page({
 
         const hasActiveSession = activeSession && activeSession.id;
         if (hasActiveSession) {
-          this.setData({ activeSession });
+          this.setData({
+            activeSession: {
+              ...activeSession,
+              startedAt: this.formatDateTime(activeSession.startedAt)
+            }
+          });
         }
       }
 
@@ -97,7 +102,8 @@ Page({
     const groups = {};
 
     sessions.forEach(session => {
-      const date = new Date(session.createdAt || session.endedAt);
+      const timestamp = session.createdAt || session.endedAt || session.startedAt;
+      const date = new Date(this.normalizeTimestamp(timestamp));
       const monthKey = `${date.getFullYear()}年${date.getMonth() + 1}月`;
 
       if (!groups[monthKey]) {
@@ -128,8 +134,8 @@ Page({
   },
 
   parseMonth: function(monthStr) {
-    // 匹配 "2026 年 4 月" 格式（不带空格）
-    const match = monthStr.match(/(\d+) 年 (\d+) 月/);
+    // 匹配 "2026年4月" 格式
+    const match = monthStr.match(/(\d+)年(\d+)月/);
     if (match) {
       return parseInt(match[1]) * 100 + parseInt(match[2]);
     }
@@ -138,6 +144,20 @@ Page({
 
   padZero: function(num) {
     return num < 10 ? '0' + num : num;
+  },
+
+  // 后端返回的时间戳可能是秒（10位）或毫秒（13位），统一转成毫秒
+  normalizeTimestamp: function(ts) {
+    if (ts === null || ts === undefined || ts === '') return 0;
+    const raw = Number(ts);
+    if (!Number.isFinite(raw)) return 0;
+    return raw < 1e12 ? raw * 1000 : raw;
+  },
+
+  formatDateTime: function(ts) {
+    const date = new Date(this.normalizeTimestamp(ts));
+    if (Number.isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}-${this.padZero(date.getMonth() + 1)}-${this.padZero(date.getDate())} ${this.padZero(date.getHours())}:${this.padZero(date.getMinutes())}`;
   },
 
   // 跳转详情页
