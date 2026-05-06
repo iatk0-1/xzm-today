@@ -139,7 +139,7 @@
   <view class="bottom-tab-bar">
     <view class="tab-item active" bindtap="goToIndex">首页</view>
     <view class="tab-item" bindtap="goToMarket">市集</view>
-    <view class="tab-item admin-portal" bindtap="goToAdmin">
+    <view class="tab-item admin-portal" wx:if="{{isAdmin}}" bindtap="goToAdmin">
       <view class="red-plus-btn">+</view>
     </view>
     <view class="tab-item" bindtap="goToMessage">信息</view>

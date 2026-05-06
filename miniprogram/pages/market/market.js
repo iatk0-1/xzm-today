@@ -19,6 +19,10 @@ Page({
     this.loadWishes();
   },
 
+  onShow: function() {
+    this.checkAdmin();
+  },
+
   // 触底加载更多
   onReachBottom: function() {
     if (!this.data.hasMore || this.data.loading) return;
@@ -149,6 +153,10 @@ Page({
     wx.showToast({ title: '功能开发中...', icon: 'none' });
   },
   goToAdmin: function() {
+    if (!this.data.isAdmin) {
+      wx.showToast({ title: '无权限', icon: 'none' });
+      return;
+    }
     wx.showActionSheet({
       itemList: ['发布新商品', '商品上下架管理', '库存管理', '拣货推荐', '订单管理', '售后管理'],
       itemColor: '#111111',

@@ -170,6 +170,10 @@ Page({
 
   // 老板专属入口
   goToAdmin: function() {
+    if (!this.data.isAdmin) {
+      wx.showToast({ title: '无权限', icon: 'none' });
+      return;
+    }
     wx.showActionSheet({
       itemList: ['发布新商品', '商品上下架管理', '库存管理', '拣货推荐', '订单管理', '订单发货管理'],
       itemColor: '#111111',

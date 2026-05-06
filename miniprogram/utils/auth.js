@@ -37,7 +37,6 @@ async function login(nickname = '', avatarUrl = '') {
     // 调用后端登录接口（使用 mockOpenid 模式，方便本地测试）
     const loginData = {
       code: loginRes.code,
-      mockOpenid: config.ADMIN_OPENID, // 使用管理员 OpenID 进行测试
       nickname: nickname || undefined,
       avatarUrl: avatarUrl || undefined
     };
@@ -49,7 +48,7 @@ async function login(nickname = '', avatarUrl = '') {
 
     const userInfo = {
       userId: res.userId,
-      openid: config.ADMIN_OPENID,
+      openid: res.openid || '',
       phone: res.phone,
       isPhoneBound: res.isPhoneBound,
       nickname: res.nickname,
