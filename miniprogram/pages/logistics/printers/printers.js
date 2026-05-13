@@ -7,13 +7,76 @@ Page({
     printers: [],        // 已绑定的打印员 OpenID 列表
     accounts: [],        // 已绑定的物流账号列表
     currentOpenid: '',   // 当前用户 OpenID
-    isPrinter: false     // 当前用户是否已是打印员
+    isPrinter: false,    // 当前用户是否已是打印员
+    hasPrinterAccount: false,  // 是否有打单软件账号
+    printerAccount: null       // 打单软件账号信息 { username, password }
   },
 
   onLoad: function() {
     this.loadPrinters();
     this.loadBoundAccounts();
     this.loadCurrentPrinterInfo();
+    this.loadPrinterAccount();
+  },
+
+  // 加载打单软件账号
+  loadPrinterAccount: async function() {
+    try {
+      const res = await api.get('/printer-accounts/me');
+      this.setData({
+        hasPrinterAccount: true,
+        printerAccount: {
+          username: res.username,
+          password: res.password
+        }
+      });
+    } catch (err) {
+      this.setData({
+        hasPrinterAccount: false,
+        printerAccount: null
+      });
+    }
+  },
+
+  // 创建打单软件账号
+  createPrinterAccount: async function() {
+    wx.showModal({
+      title: '创建打单账号',
+      content: '将为您创建一个专用打单软件账号，用于登录桌面打单软件。每个用户只能创建一个。',
+      confirmText: '确认创建',
+      confirmColor: '#1890ff',
+      success: async (res) => {
+        if (!res.confirm) return;
+
+        wx.showLoading({ title: '创建中...', mask: true });
+        try {
+          const result = await api.post('/printer-accounts', {});
+          wx.hideLoading();
+
+          this.setData({
+            hasPrinterAccount: true,
+            printerAccount: {
+              username: result.username,
+              password: result.password
+            }
+          });
+
+          wx.showModal({
+            title: '创建成功',
+            content: '请妥善保管账号密码！\n\n用户名：' + result.username + '\n密码：' + result.password,
+            showCancel: false,
+            confirmText: '我知道了',
+            confirmColor: '#1890ff'
+          });
+        } catch (err) {
+          wx.hideLoading();
+          wx.showToast({
+            title: err.message || '创建失败',
+            icon: 'none'
+          });
+        }
+      }
+    });
   },
 
   // 加载打印员列表
@@ -159,6 +222,17 @@ Page({
             wx.showToast({ title: err.message || '解绑失败', icon: 'none' });
           }
         }
+      }
+    });
+  },
+
+  // 复制文本到剪贴板
+  copyText: function(e) {
+    const text = e.currentTarget.dataset.text;
+    wx.setClipboardData({
+      data: text,
+      success: () => {
+        wx.showToast({ title: '已复制', icon: 'success' });
       }
     });
   }

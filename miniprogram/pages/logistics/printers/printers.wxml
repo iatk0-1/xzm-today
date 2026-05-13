@@ -46,6 +46,42 @@
     </view>
   </view>
 
+  <!-- 专用打单软件账号 -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">打单软件账号</text>
+      <text class="section-count" wx:if="{{hasPrinterAccount}}">已创建</text>
+    </view>
+    <view class="printer-account-info" wx:if="{{hasPrinterAccount}}">
+      <view class="account-field">
+        <text class="field-label">用户名</text>
+        <view class="field-value-box">
+          <text class="field-value">{{printerAccount.username}}</text>
+          <text class="btn-copy" bindtap="copyText" data-text="{{printerAccount.username}}">复制</text>
+        </view>
+      </view>
+      <view class="account-field">
+        <text class="field-label">密码</text>
+        <view class="field-value-box">
+          <text class="field-value">{{printerAccount.password}}</text>
+          <text class="btn-copy" bindtap="copyText" data-text="{{printerAccount.password}}">复制</text>
+        </view>
+      </view>
+      <view class="account-tip">
+        <text>提示：该账号用于登录桌面打单软件，请妥善保管账号密码。</text>
+      </view>
+    </view>
+    <view class="create-account-area" wx:else>
+      <view class="empty-tip">
+        <text>尚未创建打单软件账号</text>
+        <text class="empty-desc">创建后将获得专属用户名和密码，用于登录桌面打单软件</text>
+      </view>
+      <button class="btn-create-account" bindtap="createPrinterAccount">
+        创建打单账号
+      </button>
+    </view>
+  </view>
+
   <!-- 绑定物流账号提示 -->
   <view class="section">
     <view class="section-header">
