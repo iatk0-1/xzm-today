@@ -162,7 +162,6 @@ Page({
 
       const res = await api.get('/admin/orders-manage/orders', params);
 
-      // 后端返回格式：[{ id, status, statusDisplay, items: [...], ... }, ...]
       const orders = (res || []).map(order => ({
         ...order,
         items: (order.items || []).map(item => ({

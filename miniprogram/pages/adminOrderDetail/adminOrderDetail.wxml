@@ -3,9 +3,10 @@
 
   <!-- 订单状态 -->
   <view class="status-header">
-    <view class="status-title">{{order.status}}</view>
+    <view class="status-title">{{order.statusDisplay}}</view>
     <view class="status-desc" wx:if="{{order.status === 'pending'}}">待支付</view>
     <view class="status-desc" wx:if="{{order.status === 'paid'}}">待发货</view>
+    <view class="status-desc" wx:if="{{order.status === 'partial_shipped'}}">部分已发货</view>
     <view class="status-desc" wx:if="{{order.status === 'shipped'}}">已发货</view>
     <view class="status-desc" wx:if="{{order.status === 'completed'}}">交易完成</view>
   </view>
@@ -58,13 +59,13 @@
     <view class="info-row">
       <text class="info-label">订单编号</text>
       <view class="info-val-box">
-        <text class="info-val">{{order.outTradeNo}}</text>
+        <text class="info-val">{{order.outTradeNo || order.id}}</text>
         <view class="btn-copy" bindtap="copyOrderSn">复制</view>
       </view>
     </view>
     <view class="info-row">
       <text class="info-label">下单时间</text>
-      <text class="info-val">{{order.createdAt}}</text>
+      <text class="info-val">{{order.createdAtDisplay}}</text>
     </view>
   </view>
 
@@ -72,12 +73,11 @@
   <view class="info-card logistics-card" wx:if="{{shipments && shipments.length > 0}}">
     <view class="section-title">物流信息</view>
 
-    <!-- 多个发货单列表 -->
     <view class="shipment-list">
       <view class="shipment-item" wx:for="{{shipments}}" wx:key="id">
         <view class="shipment-header">
           <text class="shipment-index">发货单 {{index + 1}}</text>
-          <text class="shipment-time" wx:if="{{item.shippedAt}}">{{item.shippedAt}}</text>
+          <text class="shipment-time" wx:if="{{item.shippedAtDisplay}}">{{item.shippedAtDisplay}}</text>
         </view>
 
         <view class="shipment-info">
@@ -117,8 +117,8 @@
           <view class="trace-title">物流轨迹</view>
           <view class="trace-list">
             <view class="trace-item" wx:for="{{logisticsTraceMap[item.id].nodes}}" wx:key="time">
-              <view class="trace-time">{{item.time}}</view>
-              <view class="trace-content">{{item.description}}</view>
+              <text class="trace-time">{{item.timeDisplay}}</text>
+              <text class="trace-content">{{item.description}}</text>
             </view>
           </view>
         </view>

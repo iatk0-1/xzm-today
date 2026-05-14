@@ -38,26 +38,19 @@
     </view>
   </view>
 
-  <!-- 物流账号选择 -->
-  <view class="logistics-section">
+  <!-- 工具栏：物流 + 全选 + 批量发货 -->
+  <view class="toolbar">
     <picker class="logistics-picker" range="{{logisticsAccounts}}" range-key="deliveryName" value="{{logisticsIndex}}" bindchange="onLogisticsChange">
-      <view class="picker-value">
-        {{logisticsAccounts[logisticsIndex] ? logisticsAccounts[logisticsIndex].deliveryName : '选择物流账号'}}
-      </view>
+      <view class="picker-value">{{logisticsAccounts[logisticsIndex] ? logisticsAccounts[logisticsIndex].deliveryName : '选择物流'}} ▾</view>
     </picker>
-    <view class="quota-info" wx:if="{{logisticsAccounts[logisticsIndex]}}">
-      剩余单号：{{logisticsAccounts[logisticsIndex].quotaNum}}
-    </view>
-  </view>
-
-  <!-- 操作栏 -->
-  <view class="action-bar">
+    <text class="quota-info" wx:if="{{logisticsAccounts[logisticsIndex]}}">余 {{logisticsAccounts[logisticsIndex].quotaNum}}</text>
+    <view class="toolbar-spacer"></view>
     <view class="checkbox-all {{allSelected ? 'checked' : ''}}" bindtap="toggleSelectAll">
       <text wx:if="{{allSelected}}">✓</text>
     </view>
     <text class="select-all-text" bindtap="toggleSelectAll">全选</text>
     <button class="batch-ship-btn" bindtap="batchShip" disabled="{{selectedItems.length === 0 || !logisticsAccounts[logisticsIndex]}}">
-      批量发货 ({{selectedItems.length}})
+      批量发货({{selectedItems.length}})
     </button>
   </view>
 

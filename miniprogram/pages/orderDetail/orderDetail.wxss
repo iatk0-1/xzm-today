@@ -233,6 +233,6 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
 /* 物流轨迹 */
 .trace-title { font-size: 26rpx; font-weight: 600; color: #111; margin: 20rpx 0 16rpx; }
 .trace-list { display: flex; flex-direction: column; gap: 20rpx; }
-.trace-item { display: flex; gap: 16rpx; }
-.trace-time { width: 100rpx; flex-shrink: 0; font-size: 22rpx; color: #999; }
-.trace-content { flex: 1; font-size: 24rpx; color: #333; line-height: 1.5; }
+.trace-item { display: flex; gap: 16rpx; align-items: flex-start; }
+.trace-time { min-width: 280rpx; flex-shrink: 0; font-size: 22rpx; color: #999; white-space: nowrap; line-height: 1.6; }
+.trace-content { flex: 1; font-size: 24rpx; color: #333; line-height: 1.6; word-break: break-all; }

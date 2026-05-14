@@ -1,65 +1,38 @@
-page { background-color: #f0f0f0; height: 100vh; display: flex; flex-direction: column; }
+page { background-color: #f2f2f2; height: 100vh; display: flex; flex-direction: column; }
 .admin-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
-/* 顶部操作栏 */
 .admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24rpx 30rpx;
-  background-color: #fff;
-  margin-bottom: 1rpx;
-  flex-shrink: 0;  /* 防止被压缩 */
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 24rpx; background: #fff; flex-shrink: 0;
 }
-
-.page-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #111;
-}
-
+.page-title { font-size: 32rpx; font-weight: 600; color: #1a1a1a; }
 .recycle-bin-btn {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 12rpx 24rpx;
-  background-color: #f5f5f5;
-  border-radius: 25rpx;
-  font-size: 26rpx;
-  color: #666;
+  display: flex; align-items: center; gap: 8rpx; padding: 10rpx 20rpx;
+  background: #f5f5f5; border-radius: 8rpx; font-size: 24rpx; color: #666;
 }
 
-.recycle-bin-btn .icon {
-  font-size: 28rpx;
+.product-scroll-area {
+  flex: 1; padding: 16rpx; box-sizing: border-box; overflow-y: auto;
+}
+.empty-state { padding: 180rpx 0; text-align: center; color: #999; font-size: 26rpx; }
+
+.product-card {
+  background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx;
 }
 
-.product-scroll-area { 
-  flex: 1; 
-  padding: 20rpx; 
-  box-sizing: border-box;
-  height: 100%;  /* 确保占满剩余高度 */
-  overflow-y: auto;  /* 允许垂直滚动 */
-}
+.card-main { display: flex; margin-bottom: 20rpx; }
+.product-img { width: 140rpx; height: 140rpx; border-radius: 8rpx; background: #f5f5f5; margin-right: 20rpx; flex-shrink: 0; }
+.product-info { flex: 1; display: flex; flex-direction: column; }
+.product-title { font-size: 28rpx; font-weight: 600; color: #1a1a1a; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.product-price { font-size: 28rpx; font-weight: 600; color: #1a1a1a; font-family: inherit; margin-top: 8rpx; }
 
-.empty-state { padding: 100px 0; text-align: center; color: #999; font-size: 14px; }
+.product-tags { display: flex; gap: 8rpx; margin-top: 8rpx; }
+.tag { font-size: 20rpx; padding: 4rpx 10rpx; border-radius: 4rpx; background: #f5f5f5; color: #666; }
+.status-tag.online { background: #e3f2fd; color: #1976d2; }
+.status-tag.offline { background: #fbe9e7; color: #d84315; }
 
-/* 商品卡片 */
-.product-card { background-color: #ffffff; border-radius: 12rpx; padding: 30rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05); }
-
-.card-main { display: flex; margin-bottom: 24rpx; }
-.product-img { width: 140rpx; height: 140rpx; border-radius: 8rpx; background-color: #f5f5f5; margin-right: 20rpx; flex-shrink: 0; }
-.product-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-.product-title { font-size: 28rpx; font-weight: bold; color: #111; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.product-price { font-size: 28rpx; font-weight: bold; color: #111; font-family: "Times New Roman", Times, serif; }
-
-.product-tags { display: flex; gap: 10rpx; margin-top: 10rpx; }
-.tag { font-size: 20rpx; padding: 4rpx 12rpx; border-radius: 6rpx; background: #f5f5f5; color: #666; }
-.status-tag.online { background: #e6f7ff; color: #1890ff; }
-.status-tag.offline { background: #fff1f0; color: #f5222d; }
-
-/* 底部操作 */
-.card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1rpx dashed #eee; padding-top: 24rpx; }
+.card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1rpx solid #f0f0f0; padding-top: 20rpx; }
 .time { font-size: 22rpx; color: #999; }
-.action-group { display: flex; gap: 20rpx; }
-.btn-ghost { padding: 0 24rpx; height: 50rpx; line-height: 48rpx; font-size: 24rpx; color: #333; border: 1rpx solid #ccc; border-radius: 25rpx; }
-.btn-danger { padding: 0 24rpx; height: 50rpx; line-height: 50rpx; font-size: 24rpx; color: #fff; background: #f5222d; border-radius: 25rpx; }
+.action-group { display: flex; gap: 16rpx; }
+.btn-ghost { padding: 0 20rpx; height: 48rpx; line-height: 46rpx; font-size: 24rpx; color: #333; background: #fff; border: 1rpx solid #ddd; border-radius: 8rpx; }
+.btn-danger { padding: 0 20rpx; height: 48rpx; line-height: 48rpx; font-size: 24rpx; color: #fff; background: #d32f2f; border-radius: 8rpx; }

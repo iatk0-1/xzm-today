@@ -1,13 +1,15 @@
 <view class="detail-wrapper" wx:if="{{!isLoading && order}}">
 
   <view class="status-header">
-    <view class="status-title">{{order.status}}</view>
+    <view class="status-title">{{order.statusDisplay}}</view>
     <view class="status-desc" wx:if="{{order.status === 'pending'}}">
       <text>请尽快完成支付，超时将自动取消</text>
       <text wx:if="{{countdownText}}" class="countdown-timer">{{countdownText}}</text>
     </view>
     <view class="status-desc" wx:if="{{order.status === 'paid'}}">主理人正在为您精心打包中...</view>
+    <view class="status-desc" wx:if="{{order.status === 'partial_shipped'}}">部分商品已发货，其余正在准备中</view>
     <view class="status-desc" wx:if="{{order.status === 'shipped'}}">包裹正飞奔向您，请耐心等待</view>
+    <view class="status-desc" wx:if="{{order.status === 'completed'}}">订单已完成，感谢您的惠顾</view>
   </view>
 
   <view class="info-card address-card" wx:if="{{order.recipientName}}">
@@ -55,13 +57,13 @@
     <view class="info-row">
       <text class="info-label">订单编号</text>
       <view class="info-val-box">
-        <text class="info-val">{{order.outTradeNo}}</text>
+        <text class="info-val">{{order.outTradeNo || order.id}}</text>
         <view class="btn-copy" bindtap="copyOrderSn">复制</view>
       </view>
     </view>
     <view class="info-row">
       <text class="info-label">下单时间</text>
-      <text class="info-val">{{order.createdAt}}</text>
+      <text class="info-val">{{order.createdAtDisplay}}</text>
     </view>
   </view>
 
@@ -74,7 +76,7 @@
       <view class="shipment-item" wx:for="{{shipments}}" wx:key="id">
         <view class="shipment-header">
           <text class="shipment-index">发货单 {{index + 1}}</text>
-          <text class="shipment-time" wx:if="{{item.shippedAt}}">{{item.shippedAt}}</text>
+          <text class="shipment-time" wx:if="{{item.shippedAt}}">{{item.shippedAtDisplay}}</text>
         </view>
 
         <view class="shipment-info">
@@ -113,8 +115,8 @@
           <view class="trace-title">物流轨迹</view>
           <view class="trace-list">
             <view class="trace-item" wx:for="{{logisticsTraceMap[item.id].nodes}}" wx:key="time">
-              <view class="trace-time">{{item.time}}</view>
-              <view class="trace-content">{{item.description}}</view>
+              <text class="trace-time">{{item.timeDisplay}}</text>
+              <text class="trace-content">{{item.description}}</text>
             </view>
           </view>
         </view>

@@ -107,7 +107,7 @@ Page({
 
     try {
       const res = await api.get(`/products/search?keyword=${encodeURIComponent(keyword)}&limit=10`);
-      const products = res.records || res || [];
+      const products = (res && res.content) || (Array.isArray(res) ? res : []);
       
       // 获取已选商品 ID 列表
       const selectedIds = this.data.selectedProducts.map(p => p.id);
@@ -131,23 +131,17 @@ Page({
 
   // 点击搜索按钮
   onSearchConfirm: function() {
-    // 隐藏下拉列表
     this.setData({ searchDropdown: [], searchFocus: false });
-    
-    // 如果没有选择任何商品，查询所有未发货订单
+
     if (this.data.selectedProducts.length === 0) {
       this.loadAllPendingItems();
       return;
     }
-    
-    // 检查是否有商品还没有加载 SKU
+
     const productsWithoutSkus = this.data.selectedProducts.filter(p => !p.skus || p.skus.length === 0);
-    
     if (productsWithoutSkus.length > 0) {
-      // 需要加载 SKU 列表
       this.loadProductsSkus(productsWithoutSkus);
     } else {
-      // 直接加载订单明细
       this.loadPendingItems();
     }
   },

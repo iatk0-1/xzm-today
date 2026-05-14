@@ -1,14 +1,14 @@
-page { background-color: #f7f8fa; padding-bottom: 40px; }
-.admin-container { padding: 20px; }
+page { background-color: #f2f2f2; padding-bottom: 60rpx; }
+.admin-container { padding: 24rpx; }
 
-.header-title { font-size: 24px; font-weight: bold; margin-bottom: 8px; color: #333; }
-.header-hint { font-size: 12px; color: #667eea; margin-bottom: 20px; }
-.form-group { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
-.label { font-size: 14px; font-weight: bold; margin-bottom: 12px; color: #333; }
-.sub-label { font-size: 12px; color: #666; margin-top: 15px; margin-bottom: 8px; }
-.required { color: red; margin-right: 4px; }
-.input-box { background: #f5f5f5; height: 44px; padding: 0 15px; border-radius: 8px; font-size: 14px; }
-.divider { text-align: center; font-size: 12px; color: #aaa; margin: 30px 0 15px; }
+.header-title { font-size: 34rpx; font-weight: 600; margin-bottom: 8rpx; color: #1a1a1a; }
+.header-hint { font-size: 24rpx; color: #999; margin-bottom: 24rpx; }
+.form-group { background: #fff; padding: 28rpx 24rpx; border-radius: 16rpx; margin-bottom: 16rpx; }
+.label { font-size: 28rpx; font-weight: 600; margin-bottom: 16rpx; color: #1a1a1a; }
+.sub-label { font-size: 24rpx; color: #999; margin-top: 24rpx; margin-bottom: 12rpx; }
+.required { color: #d32f2f; margin-right: 6rpx; }
+.input-box { background: #f5f5f5; height: 80rpx; padding: 0 24rpx; border-radius: 8rpx; font-size: 28rpx; }
+.divider { text-align: center; font-size: 24rpx; color: #bbb; margin: 40rpx 0 24rpx; }
 
 /* ================= 拖拽媒体池黑科技样式 ================= */
 .drag-area { width: 100%; position: relative; }
@@ -29,14 +29,13 @@ page { background-color: #f7f8fa; padding-bottom: 40px; }
 /* 档口分类和标签分类样式 */
 .tags-display { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .tag-capsule { padding: 6px 14px; border-radius: 15px; font-size: 12px; display: flex; align-items: center; }
-.active-tag { background: #000; color: #fff; }
-.history-tag { background: #f0f0f0; color: #555; border: 1px solid #ddd; }
-.color-tag { background: #e0e0e0; color: #333; }
-.remove-icon { margin-left: 6px; font-size: 14px; font-weight: bold; padding: 0 5px; }
-.tag-input-row { display: flex; gap: 10px; }
-.search-input-row { margin-bottom: 10px; }
+.active-tag { background: #1a1a1a; color: #fff; }
+.color-tag { background: #e8e8e8; color: #333; }
+.remove-icon { margin-left: 4px; font-size: 26rpx; font-weight: normal; padding: 0 4px; }
+.tag-input-row { display: flex; gap: 12rpx; }
+.search-input-row { margin-bottom: 12rpx; }
 .tag-input { flex: 1; }
-.btn-add-tag { background: #333; color: #fff; line-height: 44px; padding: 0 20px; border-radius: 8px; font-size: 14px; }
+.btn-add-tag { background: #1a1a1a; color: #fff; line-height: 80rpx; padding: 0 28rpx; border-radius: 8rpx; font-size: 26rpx; }
 
 /* 历史记录区域样式 */
 .history-section { margin-bottom: 12px; }
@@ -106,18 +105,12 @@ page { background-color: #f7f8fa; padding-bottom: 40px; }
 }
 
 .btn-fill-all {
-  background: #000;
-  color: #fff;
-  font-size: 24rpx;
-  padding: 15rpx 25rpx;
-  border-radius: 4rpx;
+  background: #1a1a1a; color: #fff; font-size: 24rpx;
+  padding: 14rpx 24rpx; border-radius: 8rpx;
 }
 
-/* SKU 矩阵 */
-/* ================= 极简高级 SKU 管理舱 ================= */
-.sku-matrix-section { 
-  background: #ffffff; padding: 15px; border-radius: 12px; 
-  margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); 
+.sku-matrix-section {
+  background: #fff; padding: 24rpx; border-radius: 16rpx; margin-bottom: 16rpx;
 }
 
 /* 单行控制台：强制不换行，间距极小化以容纳 5 元素 */
@@ -203,7 +196,7 @@ page { background-color: #f7f8fa; padding-bottom: 40px; }
 .btn-remove-related { font-size: 12px; color: #ff4d4f; padding: 5px 10px; }
 
 /* 提交按钮 */
-.btn-submit { background: #000; color: #fff; text-align: center; line-height: 50px; border-radius: 25px; font-size: 16px; font-weight: bold; margin-top: 20px; }
+.btn-submit { background: #1a1a1a; color: #fff; text-align: center; line-height: 88rpx; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; margin-top: 32rpx; }
 
 /* ================= 搜索弹窗样式 ================= */
 .modal-mask { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
@@ -224,8 +217,8 @@ page { background-color: #f7f8fa; padding-bottom: 40px; }
 .row-title { font-size: 14px; color: #333; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-bottom: 5px;}
 .row-price { font-size: 13px; font-weight: bold; }
 .empty-tip { text-align: center; color: #999; font-size: 13px; margin-top: 30px; }
-.modal-footer { padding: 15px 20px; background: #fff; border-top: 1px solid #eee; padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
-.btn-confirm-modal { background: #000; color: #fff; text-align: center; line-height: 44px; border-radius: 22px; font-size: 15px; font-weight: bold; }
+.modal-footer { padding: 16rpx 24rpx; background: #fff; border-top: 1rpx solid #f0f0f0; padding-bottom: calc(16rpx + env(safe-area-inset-bottom)); }
+.btn-confirm-modal { background: #1a1a1a; color: #fff; text-align: center; line-height: 80rpx; border-radius: 8rpx; font-size: 28rpx; font-weight: 600; }
 
 /* ====== 新增视频上传区样式 ====== */
 .video-upload-box {
