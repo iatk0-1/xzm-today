@@ -145,7 +145,7 @@ Page({
             ...item,
             id: item.id,  // 订单项 ID
             orderId: orderId,
-            maxShipQty: item.qty,  // 可发货数量
+            maxShipQty: item.qty - (item.shippedQty || 0),  // 可发货数量 = 总数量 - 已发数量
             shipQty: 0,  // 本次发货数量，默认 0
             shippedQty: item.shippedQty || 0,  // 已发货数量
             canShip: (item.shippedQty || 0) < item.qty  // 已发货的商品不可再发
@@ -155,24 +155,21 @@ Page({
 
         this.setData({ items: allItems, orderIds: orderIds });
       } else if (this.data.shipmentId) {
-        // 合并发货且有发货单 ID，从发货单加载
-        const shipment = await api.get(`/shipments/${this.data.shipmentId}`);
-        const orderIds = this.data.orderIds || [this.data.orderId];
+        // 合并发货且有发货单 ID
+        const orderIds = this.data.orderIds.map(id => parseInt(id));
 
-        // 获取所有订单的商品
+        // 获取所有订单的商品（从订单详情读取，以保证 shippedQty 正确）
         for (const orderId of orderIds) {
           const detail = await api.get(`/orders/${orderId}`);
 
-          // 筛选出该订单已关联到发货单的商品
-          const shipmentItems = shipment.items.filter(item => item.orderId === orderId);
-          const orderItems = shipmentItems.map(item => ({
+          const orderItems = detail.items.map(item => ({
             ...item,
-            id: item.orderItemId,
+            id: item.id,
             orderId: orderId,
-            maxShipQty: item.canShipQty,
+            maxShipQty: item.qty - (item.shippedQty || 0),
             shipQty: 0,
-            shippedQty: item.shipQty,
-            canShip: item.canShip
+            shippedQty: item.shippedQty || 0,
+            canShip: (item.shippedQty || 0) < item.qty
           }));
           allItems.push(...orderItems);
         }
@@ -196,14 +193,15 @@ Page({
           }));
           allItems = orderItems;
         } else {
-          // 没有发货单，所有商品都可发货
+          // 没有发货单，所有商品都可发货（但需要读取后端的 shippedQty）
           const orderItems = detail.items.map(item => ({
             ...item,
+            id: item.id,
             orderId: this.data.orderId,
-            maxShipQty: item.qty,
+            maxShipQty: item.qty - (item.shippedQty || 0),
             shipQty: 0,
-            shippedQty: 0,
-            canShip: true
+            shippedQty: item.shippedQty || 0,
+            canShip: (item.shippedQty || 0) < item.qty
           }));
           allItems = orderItems;
         }
@@ -589,8 +587,13 @@ Page({
     const pages = getCurrentPages();
     const prevPage = pages[pages.length - 2];
     if (prevPage) {
+      // 刷新订单列表页
       if (prevPage.loadOrders) {
         prevPage.loadOrders();
+      }
+      // 刷新订单详情页（通过onShow生命周期自动触发）
+      if (prevPage.loadOrderDetail && prevPage.orderId) {
+        prevPage.loadOrderDetail(prevPage.orderId);
       }
     }
     wx.navigateBack();

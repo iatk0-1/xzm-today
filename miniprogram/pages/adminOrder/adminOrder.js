@@ -658,13 +658,19 @@ Page({
       wx.hideLoading();
       wx.showToast({ title: '发货成功', icon: 'success' });
 
-      // 清空选择
+      // 清除选中状态并重新加载
       this.setData({
         selectedItems: [],
-        orderGroups: [],
         allSelected: false,
         showPreviewModal: false
       });
+
+      // 自动重新加载未发货数据
+      if (this.data.selectedProducts.length > 0) {
+        this.loadPendingItems();
+      } else {
+        this.loadAllPendingItems();
+      }
 
     } catch (err) {
       wx.hideLoading();

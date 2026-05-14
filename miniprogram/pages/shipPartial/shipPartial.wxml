@@ -41,7 +41,10 @@
           <view class="item-title">{{item.productName}}</view>
           <view class="item-sku">{{item.productSpec}} / {{item.productSize}}</view>
           <view class="item-order-id" wx:if="{{isMerge}}">订单号：{{item.orderId}}</view>
-          <view class="item-max-qty" wx:if="{{item.canShip}}">最多可发：{{item.maxShipQty}} 件</view>
+          <view class="item-max-qty" wx:if="{{item.canShip}}">
+            <text>最多可发：{{item.maxShipQty}} 件</text>
+            <text wx:if="{{item.shippedQty > 0}}" class="item-partial-shipped">（已发 {{item.shippedQty}} 件）</text>
+          </view>
           <view class="item-shipped-info" wx:if="{{!item.canShip}}">
             <text>已发货 {{item.shippedQty}}/{{item.qty}} 件</text>
           </view>

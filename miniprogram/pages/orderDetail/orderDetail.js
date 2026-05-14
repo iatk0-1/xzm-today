@@ -16,9 +16,17 @@ Page({
 
   onLoad: function(options) {
     if (options.id) {
+      this.orderId = options.id;
       this.loadOrderDetail(options.id);
     } else {
       wx.showToast({ title: '订单参数丢失', icon: 'none' });
+    }
+  },
+
+  onShow: function() {
+    // 页面显示时重新加载订单详情（从发货页面返回时会触发）
+    if (this.orderId) {
+      this.loadOrderDetail(this.orderId);
     }
   },
 
