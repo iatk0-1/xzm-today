@@ -1,0 +1,41 @@
+<view class="messages-page" style="padding-top: {{statusBarHeight}}px;">
+  <view class="nav-bar">
+    <view class="nav-title">消息</view>
+  </view>
+
+  <scroll-view class="conv-list" scroll-y refresher-enabled bindrefresherrefresh="onRefresh" refresher-triggered="{{refreshing}}">
+    <view class="conv-swipe-wrapper" wx:for="{{conversations}}" wx:key="conversationId">
+      <view class="conv-delete-btn" bindtap="deleteConversation" data-id="{{item.conversationId}}">删除</view>
+      <view class="conv-item {{item._swiped ? 'swiped' : ''}}"
+          bindtouchstart="onTouchStart" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd"
+          bindtap="goToChat" data-id="{{item.conversationId}}" data-perspective="{{item.perspective}}" data-index="{{index}}">
+        <view class="conv-avatar-wrap">
+          <image class="conv-avatar" src="{{item.otherUserAvatar || '/images/avatar.png'}}" mode="aspectFill"/>
+          <view class="badge" wx:if="{{item.unreadCount > 0}}">{{item.unreadCount > 99 ? '99+' : item.unreadCount}}</view>
+        </view>
+        <view class="conv-body">
+          <view class="conv-top">
+            <text class="conv-name">{{item.otherUserName || '用户'}}</text>
+            <view class="role-tag {{item.otherUserRole}}">{{item.otherUserRole === 'buyer' ? '买家' : '卖家'}}</view>
+            <text class="conv-time">{{item.latestMessageTime}}</text>
+          </view>
+          <view class="conv-preview">{{item.latestMessage || '暂无消息'}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="conv-empty" wx:if="{{conversations.length === 0 && !loading}}">
+      <text>暂无消息</text>
+    </view>
+  </scroll-view>
+
+  <view class="bottom-tab-bar">
+    <view class="tab-item" bindtap="goToIndex">首页</view>
+    <view class="tab-item" bindtap="goToMarket">市集</view>
+    <view class="tab-item admin-portal" wx:if="{{isAdmin}}" bindtap="goToAdmin">
+      <view class="red-plus-btn">+</view>
+    </view>
+    <view class="tab-item active">信息</view>
+    <view class="tab-item" bindtap="goToUser">我</view>
+  </view>
+</view>

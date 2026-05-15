@@ -150,7 +150,7 @@ Page({
     wx.reLaunch({ url: '/pages/user/user' });
   },
   goToMessage: function() {
-    wx.showToast({ title: '功能开发中...', icon: 'none' });
+    wx.navigateTo({ url: '/pages/messages/messages' });
   },
   goToAdmin: function() {
     if (!this.data.isAdmin) {

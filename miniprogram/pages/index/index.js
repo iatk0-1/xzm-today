@@ -330,7 +330,7 @@ Page({
   goToMarket: function() { wx.reLaunch({ url: '/pages/market/market' }); },
   goToUser: function() { wx.reLaunch({ url: '/pages/user/user' }); },
   goToIndex: function() { wx.reLaunch({ url: '/pages/index/index' }); },
-  goToMessage: function() { wx.showToast({ title: '功能开发中...', icon: 'none' }); },
+  goToMessage: function() { wx.navigateTo({ url: '/pages/messages/messages' }); },
   goToLiveRoom: function() { wx.navigateTo({ url: '/pages/liveRoomList/index' }); },
 
   // 老板专属入口

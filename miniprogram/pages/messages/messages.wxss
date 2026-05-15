@@ -1,0 +1,81 @@
+.messages-page {
+  display: flex; flex-direction: column;
+  height: 100vh; width: 100vw; overflow: hidden;
+  background: #fff;
+}
+.nav-bar {
+  display: flex; align-items: center; height: 44px;
+  padding: 0 16px; background: #fff; border-bottom: 1rpx solid #e5e5e5;
+  flex-shrink: 0;
+}
+.nav-back { padding-right: 12px; }
+.back-icon { font-size: 20px; color: #333; }
+.nav-title { font-size: 16px; font-weight: bold; }
+
+.conv-list {
+  flex: 1; overflow-y: auto;
+  padding-bottom: 100rpx; /* 给底部导航栏留空间 */
+}
+.conv-list::-webkit-scrollbar { width: 0; }
+
+.conv-swipe-wrapper {
+  position: relative; overflow: hidden;
+}
+.conv-delete-btn {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 80px;
+  background: #e53935; color: #fff; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.conv-item {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; padding: 14px 16px;
+  border-bottom: 1rpx solid #f0f0f0;
+  background: #fff; transition: transform 0.2s ease;
+}
+.conv-item.swiped { transform: translateX(-80px); }
+.conv-item:active { background: #f5f5f5; }
+
+.conv-avatar-wrap { position: relative; margin-right: 12px; }
+.conv-avatar { width: 48px; height: 48px; border-radius: 24px; background: #eee; }
+.badge {
+  position: absolute; top: -4px; right: -4px;
+  min-width: 18px; height: 18px; line-height: 18px; text-align: center;
+  background: #e53935; color: #fff; font-size: 10px; border-radius: 9px;
+  padding: 0 4px;
+}
+
+.conv-body { flex: 1; overflow: hidden; }
+.conv-top { display: flex; align-items: center; margin-bottom: 4px; }
+.conv-name { font-size: 15px; color: #333; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.role-tag {
+  font-size: 10px; padding: 1px 6px; border-radius: 3px; margin-left: 6px;
+  border: 1rpx solid;
+}
+.role-tag.buyer { color: #4a6cf7; border-color: #4a6cf7; }
+.role-tag.seller { color: #e53935; border-color: #e53935; }
+.conv-time { font-size: 11px; color: #bbb; margin-left: auto; }
+
+.conv-preview { font-size: 13px; color: #999; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv-empty { text-align: center; color: #bbb; font-size: 14px; padding: 60px 0; }
+
+/* 底部导航栏 —— 与首页一致 */
+.bottom-tab-bar {
+  position: fixed; bottom: 0; left: 0; width: 100%; height: 100rpx;
+  background-color: #fff; display: flex; z-index: 100;
+  border-top: 1rpx solid rgba(0,0,0,0.04);
+  padding-bottom: env(safe-area-inset-bottom);
+  flex-shrink: 0;
+}
+.tab-item {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 24rpx; color: #999;
+}
+.bottom-tab-bar .active { color: #1a1a1a; font-weight: 800; }
+.admin-portal { flex: 1; }
+.red-plus-btn {
+  width: 80rpx; height: 80rpx; background-color: #1a1a1a; color: #fff;
+  border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 44rpx; font-weight: 300;
+  transform: translateY(-16rpx);
+  box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.2);
+}

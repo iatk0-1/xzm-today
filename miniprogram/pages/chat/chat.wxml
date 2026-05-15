@@ -1,0 +1,50 @@
+<view class="chat-page" style="padding-top: {{statusBarHeight}}px;">
+  <!-- 导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-back" bindtap="goBack">
+      <text class="back-icon">←</text>
+    </view>
+    <view class="nav-title">{{otherUserName}}</view>
+  </view>
+
+  <!-- 消息列表 -->
+  <scroll-view class="msg-list" scroll-y scroll-into-view="{{scrollToId}}" scroll-with-animation>
+    <view class="msg-loading" wx:if="{{loading}}">加载中...</view>
+    <view class="msg-item {{item._isMine ? 'msg-right' : 'msg-left'}}" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
+      <!-- 文字消息 -->
+      <view class="msg-bubble {{item._isMine ? 'bubble-right' : 'bubble-left'}}" wx:if="{{item.type === 'text'}}">
+        <text>{{item.content}}</text>
+      </view>
+      <!-- 图片消息 -->
+      <image class="msg-image" src="{{item.imageUrl}}" mode="aspectFill" wx:if="{{item.type === 'image'}}" bindtap="previewImage" data-url="{{item.imageUrl}}"/>
+      <!-- 商品卡片消息 -->
+      <view class="msg-product-card" wx:if="{{item.type === 'product_card'}}" bindtap="goToProduct" data-product="{{item.productCard}}">
+        <image class="mpc-thumb" src="{{item.productCard.coverUrl}}" mode="aspectFill"/>
+        <view class="mpc-info">
+          <view class="mpc-title">{{item.productCard.name}}</view>
+          <view class="mpc-price">¥{{item.productCard.price}}</view>
+        </view>
+      </view>
+      <view class="msg-time">{{item.createdAt}}</view>
+    </view>
+    <view class="msg-empty" wx:if="{{messages.length === 0 && !loading}}">暂无消息，发送第一条消息吧</view>
+  </scroll-view>
+
+  <!-- 悬浮商品卡片（在输入栏上方） -->
+  <view class="product-float-card" wx:if="{{showProductCard && productCard}}">
+    <view class="card-close" bindtap="closeProductCard">×</view>
+    <image class="card-thumb" src="{{productCard.coverUrl || productCard.image}}" mode="aspectFill"/>
+    <view class="card-info">
+      <view class="card-title">{{productCard.name || productCard.title}}</view>
+      <view class="card-price">¥{{productCard.displayPrice || productCard.price}}</view>
+    </view>
+    <view class="card-send-btn" bindtap="sendProductCard">发送</view>
+  </view>
+
+  <!-- 底部输入栏 -->
+  <view class="input-bar">
+    <view class="btn-image" bindtap="chooseImage">＋</view>
+    <input class="msg-input" value="{{inputText}}" placeholder="输入消息..." bindinput="onInput" confirm-type="send" bindconfirm="sendText"/>
+    <view class="btn-send" bindtap="sendText">发送</view>
+  </view>
+</view>

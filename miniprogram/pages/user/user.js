@@ -167,6 +167,9 @@ Page({
   goToMarket: function() {
     wx.reLaunch({ url: '/pages/market/market' });
   },
+  goToMessage: function() {
+    wx.navigateTo({ url: '/pages/messages/messages' });
+  },
 
   // 老板专属入口
   goToAdmin: function() {

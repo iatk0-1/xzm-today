@@ -23,6 +23,15 @@
         <text class="select-icon">↕</text>
       </view>
     </view>
+
+    <view class="consult-section" bindtap="consultService">
+      <view class="consult-left">
+        <image class="consult-icon" src="/images/icons/customer-service.svg" mode="aspectFit"></image>
+        <text class="consult-label">咨询客服</text>
+      </view>
+      <text class="consult-arrow">›</text>
+    </view>
+
 <!-- 四段提示信息-->
 <view class="aura-tabs-container" wx:if="{{product.description || product.fabricCare || product.sizeChartTip || product.warmTips}}">
       
@@ -86,7 +95,6 @@
   <view class="btn-add-half" bindtap="openSkuPanel" data-action="cart">加入购物车</view>
   <view class="btn-buy-half" bindtap="openSkuPanel" data-action="buy">立即购买</view>
 </view>
-
 <view class="sku-mask" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
 
 <view class="sku-panel {{showSku ? 'show' : ''}}">

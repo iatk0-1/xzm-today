@@ -33,7 +33,9 @@
     "pages/skuInventory/skuInventory",
     "pages/pickingList/pickingList",
     "pages/purchaseOrders/purchaseOrders",
-    "pages/adminOrderManage/adminOrderManage"
+    "pages/adminOrderManage/adminOrderManage",
+    "pages/messages/messages",
+    "pages/chat/chat"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",

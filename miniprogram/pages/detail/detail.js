@@ -354,5 +354,14 @@ switchAuraTab(e) {
 
   doNothing: function() {
     // 阻止视频点击事件冒泡
+  },
+
+  consultService: function() {
+    const product = this.data.product;
+    if (!product || !product.id) return;
+    const sellerId = product.sellerId || require('../../utils/config').SELLER_USER_ID;
+    wx.navigateTo({
+      url: '/pages/chat/chat?sellerId=' + sellerId + '&productId=' + product.id
+    });
   }
 });
