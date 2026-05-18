@@ -252,6 +252,24 @@ page {
   color: rgba(255, 255, 255, 0.8);
 }
 
+/* 快递批量管理入口 */
+.menu-item.express-batch-entry {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: #fff;
+  border-radius: 12rpx;
+  padding: 20rpx 30rpx;
+  margin: 20rpx 0;
+}
+
+.menu-item.express-batch-entry text {
+  color: #fff;
+  font-weight: 500;
+}
+
+.menu-item.express-batch-entry .arrow {
+  color: rgba(255, 255, 255, 0.8);
+}
+
 /* ==================
    底部 TabBar
 ================== */

@@ -26,6 +26,7 @@
     "pages/unbindOrder/unbindOrder",
     "pages/mergeGroupDetail/mergeGroupDetail",
     "pages/logistics/printers/printers",
+    "pages/logistics/expressBatchManage/expressBatchManage",
     "pages/bluetoothPrint/bluetoothPrint",
     "pages/liveRoomList/index",
     "pages/liveRoomDetail/detail",

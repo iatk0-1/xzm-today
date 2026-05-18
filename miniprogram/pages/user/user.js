@@ -205,6 +205,13 @@ Page({
     });
   },
 
+  // 跳转到快递批量管理页面
+  goToExpressBatch: function() {
+    wx.navigateTo({
+      url: '/pages/logistics/expressBatchManage/expressBatchManage'
+    });
+  },
+
   // 跳转到售后管理页面（管理员专属）
   goToAdminAfterSale: function() {
     wx.navigateTo({

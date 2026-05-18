@@ -1,0 +1,118 @@
+<!--miniprogram/pages/logistics/expressBatchManage/expressBatchManage.wxml-->
+<view class="container">
+  <view class="header-section">
+    <view class="header-title">快递批量管理</view>
+    <view class="header-desc">从数据库加载运单，可按快递公司筛选，勾选后批量取消</view>
+  </view>
+
+  <!-- 快递公司筛选 -->
+  <view class="section">
+    <view class="section-title">快递公司筛选</view>
+    <picker mode="selector" range="{{deliveryNames}}" value="{{deliveryIndex}}" bindchange="onDeliveryChange">
+      <view class="picker-box">
+        <text class="picker-text">{{deliveryNames[deliveryIndex]}}</text>
+        <text class="picker-arrow">▼</text>
+      </view>
+    </picker>
+    <view class="filter-hint" wx:if="{{deliveryIndex === 0}}">
+      显示全部运单，选择快递公司后仅显示该公司运单
+    </view>
+  </view>
+
+  <!-- 运单列表 -->
+  <view class="section" wx:if="{{displayItems.length > 0}}">
+    <view class="section-header">
+      <text class="section-title">运单列表</text>
+      <text class="section-count">共 {{displayItems.length}} 条</text>
+    </view>
+
+    <view class="table-header">
+      <view class="col-check">
+        <checkbox checked="{{allChecked}}" bindtap="toggleAll" />
+      </view>
+      <view class="col-order">订单号</view>
+      <view class="col-waybill">运单号</view>
+      <view class="col-company">快递公司</view>
+      <view class="col-action">操作</view>
+    </view>
+
+    <scroll-view scroll-y class="table-body">
+      <view class="table-row {{item.checked ? 'row-checked' : ''}}" wx:for="{{displayItems}}" wx:key="waybillId">
+        <view class="col-check">
+          <checkbox checked="{{item.checked}}" bindtap="toggleItem" data-index="{{index}}" />
+        </view>
+        <view class="col-order">
+          <text class="order-text">{{item.orderId || '-'}}</text>
+        </view>
+        <view class="col-waybill">
+          <text class="waybill-text">{{item.waybillId}}</text>
+        </view>
+        <view class="col-company">
+          <text class="company-text">{{item.deliveryName}}</text>
+          <text class="waybill-tag" wx:if="{{item.source === 'import'}}">导入</text>
+          <text class="waybill-tag" wx:elif="{{item.source === 'manual'}}">手动</text>
+        </view>
+        <view class="col-action">
+          <text class="btn-delete-row" bindtap="deleteItem" data-index="{{index}}">删除</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="section empty-section" wx:if="{{displayItems.length === 0}}">
+    <view class="empty-icon">📋</view>
+    <view class="empty-text">
+      {{allItems.length === 0 ? '暂无运单数据' : '当前筛选条件下无运单'}}
+    </view>
+    <view class="empty-desc" wx:if="{{allItems.length === 0}}">
+      数据库中没有已发货的运单记录
+    </view>
+    <view class="empty-sub-desc">
+      可通过下方按钮导入Excel或手动添加补充运单
+    </view>
+  </view>
+
+  <!-- 导入/添加按钮 -->
+  <view class="section action-buttons">
+    <view class="action-hint">补充数据源：</view>
+    <view class="action-row">
+      <button class="btn btn-import" bindtap="importExcel">导入Excel</button>
+      <button class="btn btn-add" bindtap="showAddModal">手动添加</button>
+    </view>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar" wx:if="{{displayItems.length > 0}}">
+    <view class="bottom-left">
+      <checkbox checked="{{allChecked}}" bindtap="toggleAll" />
+      <text class="select-count">已选 {{checkedCount}} / {{displayItems.length}} 条</text>
+    </view>
+    <button class="btn-cancel" bindtap="batchCancel" disabled="{{checkedCount === 0}}">
+      批量取消 ({{checkedCount}})
+    </button>
+  </view>
+</view>
+
+<!-- 手动添加弹窗 -->
+<view class="modal-mask" wx:if="{{showModal}}" catchtap="closeModal"></view>
+<view class="modal-box {{showModal ? 'show' : ''}}">
+  <view class="modal-header">
+    <text class="modal-title">手动添加运单</text>
+    <text class="modal-close" catchtap="closeModal">×</text>
+  </view>
+  <view class="modal-body">
+    <view class="form-item">
+      <view class="form-label">订单号</view>
+      <input class="form-input" placeholder="输入订单号（选填）" value="{{formOrderId}}" bindinput="onFormInput" data-field="formOrderId" />
+    </view>
+    <view class="form-item">
+      <view class="form-label">运单号 <text class="required">*</text></view>
+      <input class="form-input" placeholder="输入快递单号" value="{{formWaybillId}}" bindinput="onFormInput" data-field="formWaybillId" />
+    </view>
+  </view>
+  <view class="modal-footer">
+    <button class="btn-modal-cancel" bindtap="closeModal">取消</button>
+    <button class="btn-modal-confirm" bindtap="confirmAdd">确认添加</button>
+  </view>
+</view>
