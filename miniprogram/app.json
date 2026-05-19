@@ -1,7 +1,6 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/example/index",
     "pages/detail/detail",
     "pages/admin/admin",
     "pages/market/market",
