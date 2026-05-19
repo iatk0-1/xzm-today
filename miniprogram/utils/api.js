@@ -1,5 +1,6 @@
 // miniprogram/utils/api.js
 const config = require('./config');
+const { compressImage } = require('./media');
 
 /**
  * 获取存储的 Token
@@ -136,7 +137,8 @@ module.exports = {
   /**
    * 上传文件
    */
-  uploadFile: (url, filePath, formData = {}) => {
+  uploadFile: async (url, filePath, formData = {}) => {
+    try { filePath = await compressImage(filePath); } catch (e) {}
     return new Promise((resolve, reject) => {
       const token = getToken();
       const idempotencyKey = 'upload_' + Date.now();

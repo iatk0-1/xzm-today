@@ -1,6 +1,7 @@
 // miniprogram/pages/liveRoomPublish/publish.js
 const api = require('../../utils/api');
 const config = require('../../utils/config');
+const { compressImage, compressVideo } = require('../../utils/media');
 
 // 拖拽网格配置
 const ITEM_SIZE = 105;
@@ -148,6 +149,7 @@ Page({
       count: 9 - this.data.mediaList.length,
       mediaType: ['image'],
       sourceType: ['camera', 'album'],
+      sizeType: ['compressed'],
       success: (res) => {
         console.log('图片选择成功:', res.tempFiles);
         let newItems = res.tempFiles.map((file, i) => ({
@@ -208,11 +210,25 @@ Page({
   },
 
   // ================= 通用文件上传 =================
-  uploadFile: function(filePath, contentType) {
+  uploadFile: async function(filePath, contentType) {
     console.log('开始上传文件:', filePath, '类型:', contentType);
     const token = wx.getStorageSync('accessToken') || '';
+
+    // 上传前压缩
+    const isVideo = filePath.toLowerCase().endsWith('.mp4');
+    const isImage = contentType && contentType.startsWith('image/');
+    try {
+      if (isVideo) {
+        filePath = await compressVideo(filePath);
+      } else if (isImage || !isVideo) {
+        filePath = await compressImage(filePath);
+      }
+    } catch (e) {
+      console.warn('压缩异常，使用原文件:', e);
+    }
+
     return new Promise((resolve, reject) => {
-      const fileType = filePath.toLowerCase().endsWith('.mp4') ? 'video' : 'image';
+      const fileType = isVideo ? 'video' : 'image';
 
       wx.uploadFile({
         url: config.API_BASE_URL + '/admin/files/upload',
@@ -725,6 +741,7 @@ Page({
       count: 1,
       mediaType: ['image'],
       sourceType: ['camera', 'album'],
+      sizeType: ['compressed'],
       success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
         // 直接保存临时文件路径，等提交时再统一上传
@@ -748,6 +765,7 @@ Page({
       count: 1,
       mediaType: ['image'],
       sourceType: ['camera', 'album'],
+      sizeType: ['compressed'],
       success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
         // 直接保存临时文件路径，等提交时再统一上传
@@ -764,6 +782,7 @@ Page({
       count: 1,
       mediaType: ['image'],
       sourceType: ['camera', 'album'],
+      sizeType: ['compressed'],
       success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
         // 直接保存临时文件路径，等提交时再统一上传

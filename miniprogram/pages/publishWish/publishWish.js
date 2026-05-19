@@ -1,6 +1,7 @@
 // miniprogram/pages/publishWish/publishWish.js
 const api = require('../../utils/api');
 const config = require('../../utils/config');
+const { compressImage } = require('../../utils/media');
 
 Page({
   data: {
@@ -15,6 +16,7 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
+      sizeType: ['compressed'],
       success: (res) => {
         this.setData({
           tempImagePath: res.tempFiles[0].tempFilePath
@@ -67,8 +69,9 @@ Page({
   },
 
   // 上传图片到后端
-  uploadImage: function(filePath) {
+  uploadImage: async function(filePath) {
     const token = wx.getStorageSync('accessToken') || '';
+    try { filePath = await compressImage(filePath); } catch (e) {}
     return new Promise((resolve, reject) => {
       wx.uploadFile({
         url: config.API_BASE_URL + '/files/upload-wish',
