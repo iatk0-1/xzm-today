@@ -20,5 +20,5 @@ module.exports = {
   SELLER_USER_ID: 1,
 
   // 腾讯云 COS / CDN 配置
-  CDN_BASE_URL: 'https://upload-dev.xianzaimai.com'
+  CDN_BASE_URL: 'https://upload.xianzaimai.com'
 };
