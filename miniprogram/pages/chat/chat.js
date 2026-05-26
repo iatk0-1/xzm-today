@@ -214,7 +214,18 @@ Page({
   async uploadAndSendImage(filePath) {
     wx.showLoading({ title: '发送中...' });
     try {
-      const res = await api.uploadFile('/conversations/' + this.data.conversationId + '/messages/image', filePath, { perspective: this.data.myPerspective });
+      // 1. 压缩后直传 COS
+      const { compressImage } = require('../../utils/media');
+      try { filePath = await compressImage(filePath); } catch (e) {}
+      const cosUpload = require('../../utils/cos-upload');
+      const imageUrl = await cosUpload.uploadFile(filePath, 'chats');
+
+      // 2. 发送 JSON 消息（带 imageUrl）
+      const res = await api.post('/conversations/' + this.data.conversationId + '/messages', {
+        type: 'image',
+        imageUrl: imageUrl,
+        perspective: this.data.myPerspective
+      });
       wx.hideLoading();
       this.appendMessage(this.formatMessage(res));
     } catch (err) {

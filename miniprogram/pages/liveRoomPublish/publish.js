@@ -209,12 +209,10 @@ Page({
     });
   },
 
-  // ================= 通用文件上传 =================
+  // ================= 通用文件上传（COS 直传） =================
   uploadFile: async function(filePath, contentType) {
     console.log('开始上传文件:', filePath, '类型:', contentType);
-    const token = wx.getStorageSync('accessToken') || '';
 
-    // 上传前压缩
     const isVideo = filePath.toLowerCase().endsWith('.mp4');
     const isImage = contentType && contentType.startsWith('image/');
     try {
@@ -227,51 +225,8 @@ Page({
       console.warn('压缩异常，使用原文件:', e);
     }
 
-    return new Promise((resolve, reject) => {
-      const fileType = isVideo ? 'video' : 'image';
-
-      wx.uploadFile({
-        url: config.API_BASE_URL + '/admin/files/upload',
-        filePath: filePath,
-        name: 'file',
-        fileType: fileType,
-        formData: {
-          dir: 'products'
-        },
-        header: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Idempotency-Key': 'upload_' + Date.now()
-        },
-        success: (res) => {
-          console.log('上传成功响应:', res);
-          console.log('statusCode:', res.statusCode);
-          try {
-            const data = JSON.parse(res.data);
-            console.log('解析后的响应:', data);
-            console.log('返回的 url:', data.url);
-            console.log('返回的 fileUrl:', data.fileUrl);
-            console.log('返回的 filePath:', data.filePath);
-
-            // 优先使用正式 URL 字段，临时路径说明后端未正确处理
-            const finalUrl = data.fileUrl || data.filePath || data.url;
-
-            // 如果返回的是 __tmp__ 临时路径，说明是开发工具环境，正式环境会返回正式 URL
-            if (finalUrl && finalUrl.includes('__tmp__')) {
-              console.warn('警告：返回的是临时文件路径，这仅在开发工具中出现');
-            }
-
-            resolve(finalUrl);
-          } catch (e) {
-            console.error('解析响应失败:', e, '原始数据:', res.data);
-            reject(e);
-          }
-        },
-        fail: (err) => {
-          console.error('上传失败:', err);
-          reject(err);
-        }
-      });
-    });
+    const cosUpload = require('../../utils/cos-upload');
+    return cosUpload.uploadFile(filePath, 'products');
   },
 
   // ================= 档口搜索与选择 =================

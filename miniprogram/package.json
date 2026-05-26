@@ -1,0 +1,9 @@
+{
+  "name": "xzm-miniprogram",
+  "version": "1.0.0",
+  "description": "XianzaiMai WeChat Mini-Program",
+  "main": "app.js",
+  "dependencies": {
+    "cos-wx-sdk-v5": "^1.7.0"
+  }
+}

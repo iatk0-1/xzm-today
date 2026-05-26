@@ -630,12 +630,10 @@ Page({
     this.setData({ videoUrl: '' });
   },
 
-  // ================= 通用文件上传 =================
+  // ================= 通用文件上传（COS 直传） =================
   uploadFile: async function(filePath, contentType) {
     console.log('开始上传文件:', filePath, '类型:', contentType);
-    const token = wx.getStorageSync('accessToken') || '';
 
-    // 上传前压缩
     const isVideo = filePath.toLowerCase().endsWith('.mp4');
     const isImage = contentType && contentType.startsWith('image/');
     try {
@@ -648,38 +646,8 @@ Page({
       console.warn('压缩异常，使用原文件:', e);
     }
 
-    return new Promise((resolve, reject) => {
-      const fileType = isVideo ? 'video' : 'image';
-
-      wx.uploadFile({
-        url: config.API_BASE_URL + '/admin/files/upload',
-        filePath: filePath,
-        name: 'file',
-        fileType: fileType,
-        formData: {
-          dir: 'products'
-        },
-        header: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Idempotency-Key': 'upload_' + Date.now()
-        },
-        success: (res) => {
-          console.log('上传成功响应:', res);
-          try {
-            const data = JSON.parse(res.data);
-            console.log('解析后的响应:', data);
-            resolve(data.url);
-          } catch (e) {
-            console.error('解析响应失败:', e, '原始数据:', res.data);
-            reject(e);
-          }
-        },
-        fail: (err) => {
-          console.error('上传失败:', err);
-          reject(err);
-        }
-      });
-    });
+    const cosUpload = require('../../utils/cos-upload');
+    return cosUpload.uploadFile(filePath, 'products');
   },
 
   // ================= 选填图上传 =================

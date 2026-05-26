@@ -68,31 +68,9 @@ Page({
     }
   },
 
-  // 上传图片到后端
+  // 上传图片到 COS
   uploadImage: async function(filePath) {
-    const token = wx.getStorageSync('accessToken') || '';
     try { filePath = await compressImage(filePath); } catch (e) {}
-    return new Promise((resolve, reject) => {
-      wx.uploadFile({
-        url: config.API_BASE_URL + '/files/upload-wish',
-        filePath: filePath,
-        name: 'file',
-        header: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Idempotency-Key': 'upload_' + Date.now()
-        },
-        success: (res) => {
-          try {
-            const data = JSON.parse(res.data);
-            resolve(data);
-          } catch (e) {
-            reject(e);
-          }
-        },
-        fail: (err) => {
-          reject(err);
-        }
-      });
-    });
+    return api.uploadFile('/files/upload-wish', filePath);
   }
 });

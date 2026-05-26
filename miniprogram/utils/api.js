@@ -108,6 +108,16 @@ function generateIdempotencyKey(url, data) {
   return 'ik_' + Math.abs(hash) + '_' + timestamp;
 }
 
+/**
+ * 将旧的上传 URL 映射到 COS 目录
+ * 返回 null 表示不适用 COS 直传
+ */
+function mapUrlToCosDir(url) {
+  if (url === '/files/upload-wish') return 'wishes';
+  if (url === '/files/upload-avatar') return 'avatars';
+  return null;
+}
+
 module.exports = {
   /**
    * GET 请求
@@ -135,9 +145,21 @@ module.exports = {
   delete: (url, data) => request({ url, method: 'DELETE', data }),
 
   /**
-   * 上传文件
+   * 上传文件（已知路径走 COS 直传，其余保留原有行为）
    */
   uploadFile: async (url, filePath, formData = {}) => {
+    var cosDir = mapUrlToCosDir(url);
+    if (cosDir !== null) {
+      try {
+        try { filePath = await compressImage(filePath); } catch (e) {}
+        var cosUpload = require('./cos-upload');
+        var cosUrl = await cosUpload.uploadFile(filePath, cosDir);
+        return { url: cosUrl, key: '', originalFilename: '', contentType: '', size: 0 };
+      } catch (err) {
+        console.error('COS 上传失败，回退到服务端上传:', err);
+      }
+    }
+
     try { filePath = await compressImage(filePath); } catch (e) {}
     return new Promise((resolve, reject) => {
       const token = getToken();
@@ -174,5 +196,15 @@ module.exports = {
   /**
    * 清除 Token（供 auth 模块使用）
    */
-  clearToken: clearToken
+  clearToken: clearToken,
+
+  /**
+   * 获取 COS 临时上传凭证
+   * @param {string} dir 上传目录
+   * @returns {Promise<object>}
+   */
+  getCosCredentials: async function(dir) {
+    var query = dir ? '?dir=' + encodeURIComponent(dir) : '';
+    return this.get('/files/cos-credentials' + query);
+  }
 };
