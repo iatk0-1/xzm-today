@@ -15,6 +15,15 @@ Page({
   },
 
   onLoad: function(options) {
+    if (options.outTradeNo) {
+      // 微信通知跳转：outTradeNo 即订单 ID
+      var orderId = parseInt(options.outTradeNo, 10);
+      if (orderId > 0) {
+        this.orderId = orderId;
+        this.loadOrderDetail(orderId);
+        return;
+      }
+    }
     if (options.id) {
       this.orderId = options.id;
       this.loadOrderDetail(options.id);
@@ -289,23 +298,63 @@ Page({
   },
 
   confirmReceipt: async function() {
+    var order = this.data.order;
+    var self = this;
+
+    // 保存当前订单 ID，供 App.onShow 回调使用
+    var app = getApp();
+    app.pendingConfirmOrderId = order.id;
+
+    console.log('[确认收货] 订单信息: merchantId=' + order.merchantId
+      + ', outTradeNo=' + order.outTradeNo
+      + ', payTxnId=' + order.payTxnId);
+
+    // 检查 wx.openBusinessView 是否可用（基础库 >= 2.6.0）
+    if (typeof wx.openBusinessView !== 'function') {
+      console.log('[确认收货] wx.openBusinessView 不可用，降级弹框');
+      this.fallbackConfirmReceipt();
+      return;
+    }
+
+    wx.openBusinessView({
+      businessType: 'weappOrderConfirm',
+      extraData: {
+        merchant_id: order.merchantId || '',
+        merchant_trade_no: order.outTradeNo || '',
+        transaction_id: order.payTxnId || ''
+      },
+      success: function(res) {
+        console.log('[确认收货] 组件已打开', JSON.stringify(res));
+      },
+      fail: function(err) {
+        console.error('[确认收货] 组件打开失败:', JSON.stringify(err));
+        app.pendingConfirmOrderId = null;
+        self.fallbackConfirmReceipt();
+      }
+    });
+  },
+
+  // 降级方案：弹框确认收货
+  fallbackConfirmReceipt: function() {
+    var order = this.data.order;
+    var self = this;
     wx.showModal({
       title: '确认收货',
       content: '确认已收到商品？',
       confirmColor: '#111111',
-      success: async (res) => {
-        if (res.confirm) {
-          wx.showLoading({ title: '处理中...' });
-          try {
-            await api.post(`/orders/${this.data.order.id}/receive`);
+      success: function(modalRes) {
+        if (!modalRes.confirm) return;
+        wx.showLoading({ title: '处理中...' });
+        api.post('/orders/' + order.id + '/receive')
+          .then(function() {
             wx.hideLoading();
             wx.showToast({ title: '交易完成', icon: 'success' });
-            this.loadOrderDetail(this.data.order.id);
-          } catch (err) {
+            self.loadOrderDetail(order.id);
+          })
+          .catch(function() {
             wx.hideLoading();
             wx.showToast({ title: '操作失败', icon: 'none' });
-          }
-        }
+          });
       }
     });
   },

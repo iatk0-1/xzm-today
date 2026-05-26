@@ -15,7 +15,7 @@ module.exports = {
   USER_INFO_KEY: 'userInfo',
 
   // 管理员 OpenID（需在后端白名单中：application.yml 中的 app.auth.admin.openids）
-  ADMIN_OPENID: 'owehQ3cwUf_RQ0TQ0SPpkBs0-BCU',
+  ADMIN_OPENID: 'owehQ3T4rBMR1ont7FHuuj2POXQY',
 
   // 默认卖家用户ID（用于客服咨询）
   SELLER_USER_ID: 1,

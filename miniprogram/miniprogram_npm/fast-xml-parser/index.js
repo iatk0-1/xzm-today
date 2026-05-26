@@ -4,7 +4,7 @@ var __DEFINE__ = function(modId, func, req) { var m = { exports: {}, _tempexport
 var __REQUIRE__ = function(modId, source) { if(!__MODS__[modId]) return require(source); if(!__MODS__[modId].status) { var m = __MODS__[modId].m; m._exports = m._tempexports; var desp = Object.getOwnPropertyDescriptor(m, "exports"); if (desp && desp.configurable) Object.defineProperty(m, "exports", { set: function (val) { if(typeof val === "object" && val !== m._exports) { m._exports.__proto__ = val.__proto__; Object.keys(val).forEach(function (k) { m._exports[k] = val[k]; }); } m._tempexports = val }, get: function () { return m._tempexports; } }); __MODS__[modId].status = 1; __MODS__[modId].func(__MODS__[modId].req, m, m.exports); } return __MODS__[modId].m.exports; };
 var __REQUIRE_WILDCARD__ = function(obj) { if(obj && obj.__esModule) { return obj; } else { var newObj = {}; if(obj != null) { for(var k in obj) { if (Object.prototype.hasOwnProperty.call(obj, k)) newObj[k] = obj[k]; } } newObj.default = obj; return newObj; } };
 var __REQUIRE_DEFAULT__ = function(obj) { return obj && obj.__esModule ? obj.default : obj; };
-__DEFINE__(1779725585396, function(require, module, exports) {
+__DEFINE__(1779758113698, function(require, module, exports) {
 
 
 const validator = require('./validator');
@@ -16,8 +16,8 @@ module.exports = {
   XMLValidator: validator,
   XMLBuilder: XMLBuilder
 }
-}, function(modId) {var map = {"./validator":1779725585397,"./xmlparser/XMLParser":1779725585399,"./xmlbuilder/json2xml":1779725585406}; return __REQUIRE__(map[modId], modId); })
-__DEFINE__(1779725585397, function(require, module, exports) {
+}, function(modId) {var map = {"./validator":1779758113699,"./xmlparser/XMLParser":1779758113701,"./xmlbuilder/json2xml":1779758113708}; return __REQUIRE__(map[modId], modId); })
+__DEFINE__(1779758113699, function(require, module, exports) {
 
 
 const util = require('./util');
@@ -444,8 +444,8 @@ function getPositionFromMatch(match) {
   return match.startIndex + match[1].length;
 }
 
-}, function(modId) { var map = {"./util":1779725585398}; return __REQUIRE__(map[modId], modId); })
-__DEFINE__(1779725585398, function(require, module, exports) {
+}, function(modId) { var map = {"./util":1779758113700}; return __REQUIRE__(map[modId], modId); })
+__DEFINE__(1779758113700, function(require, module, exports) {
 
 
 const nameStartChar = ':A-Za-z_\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD';
@@ -520,7 +520,7 @@ exports.getAllMatches = getAllMatches;
 exports.nameRegexp = nameRegexp;
 
 }, function(modId) { var map = {}; return __REQUIRE__(map[modId], modId); })
-__DEFINE__(1779725585399, function(require, module, exports) {
+__DEFINE__(1779758113701, function(require, module, exports) {
 const { buildOptions} = require("./OptionsBuilder");
 const OrderedObjParser = require("./OrderedObjParser");
 const { prettify} = require("./node2json");
@@ -579,8 +579,8 @@ class XMLParser{
 }
 
 module.exports = XMLParser;
-}, function(modId) { var map = {"./OptionsBuilder":1779725585400,"./OrderedObjParser":1779725585401,"./node2json":1779725585405,"../validator":1779725585397}; return __REQUIRE__(map[modId], modId); })
-__DEFINE__(1779725585400, function(require, module, exports) {
+}, function(modId) { var map = {"./OptionsBuilder":1779758113702,"./OrderedObjParser":1779758113703,"./node2json":1779758113707,"../validator":1779758113699}; return __REQUIRE__(map[modId], modId); })
+__DEFINE__(1779758113702, function(require, module, exports) {
 
 const defaultOptions = {
     preserveOrder: false,
@@ -630,7 +630,7 @@ const buildOptions = function(options) {
 exports.buildOptions = buildOptions;
 exports.defaultOptions = defaultOptions;
 }, function(modId) { var map = {}; return __REQUIRE__(map[modId], modId); })
-__DEFINE__(1779725585401, function(require, module, exports) {
+__DEFINE__(1779758113703, function(require, module, exports) {
 
 ///@ts-check
 
@@ -1238,8 +1238,8 @@ function parseValue(val, shouldParse, options) {
 
 module.exports = OrderedObjParser;
 
-}, function(modId) { var map = {"../util":1779725585398,"./xmlNode":1779725585402,"./DocTypeReader":1779725585403,"../ignoreAttributes":1779725585404}; return __REQUIRE__(map[modId], modId); })
-__DEFINE__(1779725585402, function(require, module, exports) {
+}, function(modId) { var map = {"../util":1779758113700,"./xmlNode":1779758113704,"./DocTypeReader":1779758113705,"../ignoreAttributes":1779758113706}; return __REQUIRE__(map[modId], modId); })
+__DEFINE__(1779758113704, function(require, module, exports) {
 
 
 class XmlNode{
@@ -1266,7 +1266,7 @@ class XmlNode{
 
 module.exports = XmlNode;
 }, function(modId) { var map = {}; return __REQUIRE__(map[modId], modId); })
-__DEFINE__(1779725585403, function(require, module, exports) {
+__DEFINE__(1779758113705, function(require, module, exports) {
 const util = require('../util');
 
 //TODO: handle comments
@@ -1420,8 +1420,8 @@ function validateEntityName(name){
 
 module.exports = readDocType;
 
-}, function(modId) { var map = {"../util":1779725585398}; return __REQUIRE__(map[modId], modId); })
-__DEFINE__(1779725585404, function(require, module, exports) {
+}, function(modId) { var map = {"../util":1779758113700}; return __REQUIRE__(map[modId], modId); })
+__DEFINE__(1779758113706, function(require, module, exports) {
 function getIgnoreAttributesFn(ignoreAttributes) {
     if (typeof ignoreAttributes === 'function') {
         return ignoreAttributes
@@ -1443,7 +1443,7 @@ function getIgnoreAttributesFn(ignoreAttributes) {
 
 module.exports = getIgnoreAttributesFn
 }, function(modId) { var map = {}; return __REQUIRE__(map[modId], modId); })
-__DEFINE__(1779725585405, function(require, module, exports) {
+__DEFINE__(1779758113707, function(require, module, exports) {
 
 
 /**
@@ -1559,7 +1559,7 @@ function isLeafTag(obj, options){
 exports.prettify = prettify;
 
 }, function(modId) { var map = {}; return __REQUIRE__(map[modId], modId); })
-__DEFINE__(1779725585406, function(require, module, exports) {
+__DEFINE__(1779758113708, function(require, module, exports) {
 
 //parse Empty Node as self closing node
 const buildFromOrderedJs = require('./orderedJs2Xml');
@@ -1845,8 +1845,8 @@ function isAttribute(name /*, options*/) {
 
 module.exports = Builder;
 
-}, function(modId) { var map = {"./orderedJs2Xml":1779725585407,"../ignoreAttributes":1779725585404}; return __REQUIRE__(map[modId], modId); })
-__DEFINE__(1779725585407, function(require, module, exports) {
+}, function(modId) { var map = {"./orderedJs2Xml":1779758113709,"../ignoreAttributes":1779758113706}; return __REQUIRE__(map[modId], modId); })
+__DEFINE__(1779758113709, function(require, module, exports) {
 const EOL = "\n";
 
 /**
@@ -1984,7 +1984,7 @@ function replaceEntitiesValue(textValue, options) {
 module.exports = toXml;
 
 }, function(modId) { var map = {}; return __REQUIRE__(map[modId], modId); })
-return __REQUIRE__(1779725585396);
+return __REQUIRE__(1779758113698);
 })()
 //miniprogram-npm-outsideDeps=["strnum"]
 //# sourceMappingURL=index.js.map
