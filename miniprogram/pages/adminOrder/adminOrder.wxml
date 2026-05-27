@@ -72,24 +72,37 @@
 
       <view class="order-items">
         <view class="order-item" wx:for="{{group.items}}" wx:key="orderItemId" wx:for-item="item" wx:for-index="itemIndex">
-          <view class="item-checkbox {{item.selected ? 'checked' : ''}}" bindtap="toggleItemSelect" data-group-index="{{index}}" data-item-index="{{itemIndex}}">
-            <text wx:if="{{item.selected}}">✓</text>
-          </view>
-          <image class="item-image" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
-          <view class="item-info">
-            <view class="item-name">{{item.productName}}</view>
-            <view class="item-sku">{{item.skuSpec}} {{item.skuSize}}</view>
-            <view class="item-qty">
-              总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}
+          <!-- 已退款商品：不可选、灰色 -->
+          <block wx:if="{{item.afterSaleStatus}}">
+            <view class="item-checkbox disabled"></view>
+            <image class="item-image refunded" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
+            <view class="item-info">
+              <view class="item-name">{{item.productName}}</view>
+              <view class="item-sku">{{item.skuSpec}} {{item.skuSize}} <text class="refund-tag">已退款</text></view>
+              <view class="item-qty">已通过售后退款，无需发货</view>
             </view>
-          </view>
-          <view class="item-ship-qty">
-            <view class="stepper">
-              <view class="stepper-btn {{item.shipQty <= 0 ? 'disabled' : ''}}" bindtap="onDecrease" data-group-index="{{index}}" data-item-index="{{itemIndex}}">−</view>
-              <input class="stepper-input" type="number" value="{{item.shipQty}}" bindinput="onShipQtyInput" data-group-index="{{index}}" data-item-index="{{itemIndex}}" />
-              <view class="stepper-btn" bindtap="onIncrease" data-group-index="{{index}}" data-item-index="{{itemIndex}}">+</view>
+          </block>
+          <!-- 正常商品：可选、可编辑数量 -->
+          <block wx:else>
+            <view class="item-checkbox {{item.selected ? 'checked' : ''}}" bindtap="toggleItemSelect" data-group-index="{{index}}" data-item-index="{{itemIndex}}">
+              <text wx:if="{{item.selected}}">✓</text>
             </view>
-          </view>
+            <image class="item-image" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
+            <view class="item-info">
+              <view class="item-name">{{item.productName}}</view>
+              <view class="item-sku">{{item.skuSpec}} {{item.skuSize}}</view>
+              <view class="item-qty">
+                总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}
+              </view>
+            </view>
+            <view class="item-ship-qty">
+              <view class="stepper">
+                <view class="stepper-btn {{item.shipQty <= 0 ? 'disabled' : ''}}" bindtap="onDecrease" data-group-index="{{index}}" data-item-index="{{itemIndex}}">−</view>
+                <input class="stepper-input" type="number" value="{{item.shipQty}}" bindinput="onShipQtyInput" data-group-index="{{index}}" data-item-index="{{itemIndex}}" />
+                <view class="stepper-btn" bindtap="onIncrease" data-group-index="{{index}}" data-item-index="{{itemIndex}}">+</view>
+              </view>
+            </view>
+          </block>
         </view>
       </view>
     </view>

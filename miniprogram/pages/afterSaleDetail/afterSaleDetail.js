@@ -12,7 +12,7 @@ Page({
 
   onLoad: function(options) {
     if (options.afterSaleId) {
-      this.setData({ afterSaleId: parseInt(options.afterSaleId) });
+      this.setData({ afterSaleId: options.afterSaleId });
       this.loadAfterSaleDetail();
     } else {
       wx.showToast({ title: '售后单号参数丢失', icon: 'none' });
@@ -126,7 +126,8 @@ Page({
       'approved': '已同意',
       'rejected': '已拒绝',
       'received': '已收货',
-      'refunded': '已退款'
+      'refunded': '已退款',
+      'cancelled': '已取消'
     };
     return map[status] || status;
   },
@@ -196,10 +197,18 @@ Page({
     wx.showModal({
       title: '撤销申请',
       content: '确定要撤销该售后申请吗？',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          // TODO: 调用撤销 API
-          wx.showToast({ title: '撤销功能开发中', icon: 'none' });
+          wx.showLoading({ title: '处理中...' });
+          try {
+            await api.post(`/after-sales/${this.data.afterSaleId}/cancel`);
+            wx.hideLoading();
+            wx.showToast({ title: '已撤销', icon: 'success' });
+            this.loadAfterSaleDetail();
+          } catch (err) {
+            wx.hideLoading();
+            wx.showToast({ title: err.message || '撤销失败', icon: 'none' });
+          }
         }
       }
     });

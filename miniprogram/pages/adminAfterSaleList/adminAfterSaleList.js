@@ -8,7 +8,8 @@ const STATUS_MAP = {
   'approved': 'approved',
   'rejected': 'rejected',
   'received': 'received',
-  'refunded': 'refunded'
+  'refunded': 'refunded',
+  'cancelled': 'cancelled'
 };
 
 // 类型映射
@@ -24,7 +25,8 @@ const STATUS_DISPLAY = {
   'approved': '已同意',
   'rejected': '已拒绝',
   'received': '已收货',
-  'refunded': '已退款'
+  'refunded': '已退款',
+  'cancelled': '已取消'
 };
 
 // 类型中文显示
@@ -35,7 +37,7 @@ const TYPE_DISPLAY = {
 
 Page({
   data: {
-    tabs: ['全部', '待审核', '已同意', '已拒绝', '已收货', '已退款'],
+    tabs: ['全部', '待审核', '已同意', '已拒绝', '已收货', '已退款', '已取消'],
     currentTab: '全部',
     currentStatus: null,
     currentType: null,
@@ -51,7 +53,8 @@ Page({
       approved: 0,
       rejected: 0,
       received: 0,
-      refunded: 0
+      refunded: 0,
+      cancelled: 0
     },
     // 搜索
     searchKeyword: '',
@@ -66,7 +69,8 @@ Page({
         'approved': '已同意',
         'rejected': '已拒绝',
         'received': '已收货',
-        'refunded': '已退款'
+        'refunded': '已退款',
+        'cancelled': '已取消'
       };
       if (tabMap[options.status]) {
         this.setData({ currentTab: tabMap[options.status], currentStatus: STATUS_MAP[options.status] });

@@ -17,8 +17,8 @@ Page({
   onLoad: function(options) {
     if (options.outTradeNo) {
       // 微信通知跳转：outTradeNo 即订单 ID
-      var orderId = parseInt(options.outTradeNo, 10);
-      if (orderId > 0) {
+      var orderId = options.outTradeNo;
+      if (orderId) {
         this.orderId = orderId;
         this.loadOrderDetail(orderId);
         return;

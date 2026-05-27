@@ -38,7 +38,7 @@
           <view class="item-detail-row">
             <text class="item-qty">×{{item.qty}}</text>
             <text class="item-type {{item.afterSaleType}}">{{item.afterSaleType === 'refund' ? '仅退款' : '退货退款'}}</text>
-            <text class="item-status {{item.status}}" wx:if="{{item.status}}">{{item.status}}</text>
+            <text class="item-status {{item.status}}" wx:if="{{item.status}}">{{item.statusDisplay}}</text>
           </view>
         </view>
         <view class="item-refund">¥ {{item.refundAmount}}</view>
@@ -123,8 +123,8 @@
       <view class="btn-primary" bindtap="submitRefund">确认退款</view>
     </view>
 
-    <!-- 已拒绝/已退款 -->
-    <view class="action-bar-hint" wx:if="{{afterSale.status === 'rejected' || afterSale.status === 'refunded'}}">
+    <!-- 已拒绝/已退款/已取消 -->
+    <view class="action-bar-hint" wx:if="{{afterSale.status === 'rejected' || afterSale.status === 'refunded' || afterSale.status === 'cancelled'}}">
       <text>处理完成</text>
     </view>
   </view>

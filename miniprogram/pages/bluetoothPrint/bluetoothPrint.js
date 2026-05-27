@@ -31,9 +31,9 @@ Page({
   },
 
   onLoad: async function(options) {
-    const shipmentId = options.shipmentId ? parseInt(options.shipmentId) : null;
-    const shipmentIds = options.shipmentIds ? options.shipmentIds.split(',').map(id => parseInt(id)) : [];
-    const mergeGroupId = options.mergeGroupId ? parseInt(options.mergeGroupId) : null;
+    const shipmentId = options.shipmentId || null;
+    const shipmentIds = options.shipmentIds ? options.shipmentIds.split(',') : [];
+    const mergeGroupId = options.mergeGroupId || null;
     const isMerge = options.isMerge === 'true';
 
     this.setData({

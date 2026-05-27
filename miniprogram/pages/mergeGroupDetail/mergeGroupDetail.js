@@ -15,7 +15,7 @@ Page({
   },
 
   onLoad: function(options) {
-    const mergeGroupId = options.mergeGroupId ? parseInt(options.mergeGroupId) : null;
+    const mergeGroupId = options.mergeGroupId || null;
     this.setData({ mergeGroupId }, () => {
       this.loadMergeGroupDetail();
     });

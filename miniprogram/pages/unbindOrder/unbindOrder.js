@@ -11,7 +11,7 @@ Page({
   },
 
   onLoad: function(options) {
-    const shipmentId = options.shipmentId ? parseInt(options.shipmentId) : null;
+    const shipmentId = options.shipmentId || null;
     this.setData({ shipmentId }, () => {
       this.loadShipmentOrders();
     });

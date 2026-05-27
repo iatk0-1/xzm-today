@@ -26,7 +26,7 @@ Page({
   onLoad: async function(options) {
     // 从库存发货模式
     const fromInventory = options.fromInventory === 'true';
-    const fromSkuId = options.skuId ? parseInt(options.skuId) : null;
+    const fromSkuId = options.skuId || null;
     const fromSkuName = options.skuName ? decodeURIComponent(options.skuName) : '';
 
     if (fromInventory) {
@@ -40,8 +40,8 @@ Page({
       // 支持单订单和多订单（合并）两种模式
       const isMerge = options.isMerge === 'true';
       const orderIds = isMerge ? options.orderIds.split(',') : [options.orderId];
-      const shipmentId = options.shipmentId ? parseInt(options.shipmentId) : null;
-      const mergeGroupId = options.mergeGroupId ? parseInt(options.mergeGroupId) : null;
+      const shipmentId = options.shipmentId || null;
+      const mergeGroupId = options.mergeGroupId || null;
 
       this.setData({
         orderId: options.orderId,

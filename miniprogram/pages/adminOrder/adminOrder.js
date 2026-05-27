@@ -402,12 +402,16 @@ Page({
         totalQty: item.totalQty,
         shippedQty: item.shippedQty,
         unshippedQty: item.unshippedQty,
+        afterSaleStatus: item.afterSaleStatus,
         shipQty: item.unshippedQty,
         selected: false
       });
     });
 
-    return Object.values(groupsMap);
+    // 过滤：去掉所有商品都已售后的订单
+    return Object.values(groupsMap).filter(group =>
+      group.items.some(item => !item.afterSaleStatus)
+    );
   },
 
   // ==================== 选择逻辑 ====================

@@ -19,7 +19,7 @@ Page({
 
   onLoad: function(options) {
     if (options.afterSaleId) {
-      this.setData({ afterSaleId: parseInt(options.afterSaleId) });
+      this.setData({ afterSaleId: options.afterSaleId });
       this.loadAfterSaleDetail();
     } else {
       wx.showToast({ title: '售后单号参数丢失', icon: 'none' });
@@ -35,9 +35,16 @@ Page({
       const res = await api.get(`/after-sales/${this.data.afterSaleId}`);
       wx.hideLoading();
 
+      // 为每个明细项添加中文状态显示
+      const items = (res.items || []).map(item => ({
+        ...item,
+        statusDisplay: this.getStatusDisplay(item.status)
+      }));
+
       this.setData({
         afterSale: {
           ...res,
+          items,
           statusDisplay: this.getStatusDisplay(res.status),
           typeDisplay: res.type === 'refund' ? '仅退款' : '退货退款'
         },
@@ -75,7 +82,8 @@ Page({
       'approved': '已同意',
       'rejected': '已拒绝',
       'received': '已收货',
-      'refunded': '已退款'
+      'refunded': '已退款',
+      'cancelled': '已取消'
     };
     return map[status] || status;
   },

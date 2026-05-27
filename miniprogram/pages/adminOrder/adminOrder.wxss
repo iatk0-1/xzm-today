@@ -1,4 +1,7 @@
 page { background-color: #f2f2f2; }
+.item-image.refunded { opacity: 0.4; }
+.refund-tag { color: #e74c3c; font-size: 22rpx; margin-left: 8rpx; }
+.item-checkbox.disabled { background: #ddd; }
 .container { padding: 16rpx; padding-bottom: 120rpx; }
 
 .search-section { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
