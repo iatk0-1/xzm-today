@@ -48,10 +48,10 @@ function readFile(filePath) {
   });
 }
 
-function uploadFile(filePath, dir, onProgress) {
+function uploadFile(filePath, dir, onProgress, format) {
   return new Promise(async function (resolve, reject) {
     try {
-      var ext = extractExtension(filePath);
+      var ext = format || extractExtension(filePath);
       if (!ext) ext = 'jpg';
 
       // 1. 获取 STS 临时凭证

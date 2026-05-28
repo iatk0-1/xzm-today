@@ -66,6 +66,24 @@ function compressVideo(filePath, quality = 'medium') {
 }
 
 /**
+ * 确保临时文件路径包含 .webp 后缀（用于 COS 上传时提取正确的扩展名）
+ */
+function ensureWebpExt(filePath) {
+  if (/\.webp$/i.test(filePath)) return filePath;
+  var base = filePath.replace(/\.[^.]+$/, '');
+  if (base === filePath) base = filePath;
+  var newPath = base + '.webp';
+  try {
+    var fs = wx.getFileSystemManager();
+    fs.renameSync(filePath, newPath);
+    return newPath;
+  } catch (e) {
+    console.warn('[ensureWebpExt] 重命名失败，使用原路径:', e);
+    return filePath;
+  }
+}
+
+/**
  * 将图片转换为 WebP 格式，失败时降级返回原图
  * @param {string} filePath 图片临时路径
  * @param {number} quality 质量 0-1，默认 0.8
@@ -94,8 +112,9 @@ function toWebp(filePath, quality = 0.8) {
               fileType: 'webp',
               quality: quality,
               success: (res) => {
-                console.log('[toWebp] 成功:', filePath, '→', res.tempFilePath);
-                resolve({ path: res.tempFilePath, ok: true });
+                var webpPath = ensureWebpExt(res.tempFilePath);
+                console.log('[toWebp] 成功:', filePath, '→', webpPath);
+                resolve({ path: webpPath, ok: true });
               },
               fail: (err) => {
                 console.warn('[toWebp] canvasToTempFilePath 失败:', err.errMsg || JSON.stringify(err));

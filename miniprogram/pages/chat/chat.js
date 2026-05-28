@@ -238,10 +238,11 @@ Page({
 
       const webpResult = await toWebp(filePath);
       filePath = webpResult.path;
-      console.log('[上传] WebP转换 ' + (webpResult.ok ? '成功' : '未生效 — ' + (webpResult.reason || '未知原因')));
+      const webpOk = webpResult.ok;
+      console.log('[上传] WebP转换 ' + (webpOk ? '成功' : '未生效 — ' + (webpResult.reason || '未知原因')));
 
       const cosUpload = require('../../utils/cos-upload');
-      const imageUrl = await cosUpload.uploadFile(filePath, 'chats');
+      const imageUrl = await cosUpload.uploadFile(filePath, 'chats', null, webpOk ? 'webp' : null);
 
       const res = await api.post('/conversations/' + this.data.conversationId + '/messages', {
         type: 'image',
