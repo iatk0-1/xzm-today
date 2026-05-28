@@ -67,6 +67,9 @@ Page({
               startedAt: this.formatDateTime(activeSession.startedAt)
             }
           });
+        } else {
+          // 没有正在直播的场次时清空
+          this.setData({ activeSession: null });
         }
       }
 
