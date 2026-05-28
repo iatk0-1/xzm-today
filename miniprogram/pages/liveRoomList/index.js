@@ -154,15 +154,25 @@ Page({
 
   // 后端返回的时间戳可能是秒（10位）或毫秒（13位），统一转成毫秒
   normalizeTimestamp: function(ts) {
-    if (ts === null || ts === undefined || ts === '') return 0;
+    if (ts === null || ts === undefined || ts === '') {
+      console.warn('[normalizeTimestamp] 空值, 返回0');
+      return 0;
+    }
     // 处理 ISO 日期字符串 (如 "2026-05-28T15:30:00+08:00")
     if (typeof ts === 'string' && ts.includes('T')) {
       const d = new Date(ts);
-      return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+      const ms = d.getTime();
+      console.log('[normalizeTimestamp] ISO字符串:', ts, '→', ms, '→', new Date(ms));
+      return Number.isNaN(ms) ? 0 : ms;
     }
     const raw = Number(ts);
-    if (!Number.isFinite(raw)) return 0;
-    return raw < 1e12 ? raw * 1000 : raw;
+    if (!Number.isFinite(raw)) {
+      console.warn('[normalizeTimestamp] 无法解析:', ts, '类型:', typeof ts);
+      return 0;
+    }
+    const result = raw < 1e12 ? raw * 1000 : raw;
+    console.log('[normalizeTimestamp] 数字:', ts, '→', result, '→', new Date(result));
+    return result;
   },
 
   formatDateTime: function(ts) {
