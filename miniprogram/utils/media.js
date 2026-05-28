@@ -85,6 +85,7 @@ function ensureWebpExt(filePath) {
 
 /**
  * 将图片转换为 WebP 格式，失败时降级返回原图
+ * 超宽/超高图会自动等比缩放，避免 Canvas 内存溢出
  * @param {string} filePath 图片临时路径
  * @param {number} quality 质量 0-1，默认 0.8
  * @returns {Promise<{path: string, ok: boolean, reason?: string}>}
@@ -93,20 +94,33 @@ function toWebp(filePath, quality = 0.8) {
   if (isRemoteUrl(filePath)) {
     return Promise.resolve({ path: filePath, ok: false, reason: '远程图片无需转换' });
   }
+
+  const MAX_DIMENSION = 2048;
+
   return new Promise((resolve) => {
     wx.getImageInfo({
       src: filePath,
       success: (imgInfo) => {
         try {
+          var drawWidth = imgInfo.width;
+          var drawHeight = imgInfo.height;
+
+          if (drawWidth > MAX_DIMENSION || drawHeight > MAX_DIMENSION) {
+            var scale = MAX_DIMENSION / Math.max(drawWidth, drawHeight);
+            drawWidth = Math.round(drawWidth * scale);
+            drawHeight = Math.round(drawHeight * scale);
+            console.log('[toWebp] 缩放: ' + imgInfo.width + 'x' + imgInfo.height + ' → ' + drawWidth + 'x' + drawHeight);
+          }
+
           const canvas = wx.createOffscreenCanvas({
             type: '2d',
-            width: imgInfo.width,
-            height: imgInfo.height
+            width: drawWidth,
+            height: drawHeight
           });
           const ctx = canvas.getContext('2d');
           const img = canvas.createImage();
           img.onload = () => {
-            ctx.drawImage(img, 0, 0, imgInfo.width, imgInfo.height);
+            ctx.drawImage(img, 0, 0, drawWidth, drawHeight);
             wx.canvasToTempFilePath({
               canvas: canvas,
               fileType: 'webp',
