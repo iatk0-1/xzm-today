@@ -16,11 +16,11 @@ Page({
 
   onLoad: function() {
     this.checkAdmin();
-    this.loadWishes();
   },
 
   onShow: function() {
     this.checkAdmin();
+    this.loadWishes();
   },
 
   // 触底加载更多

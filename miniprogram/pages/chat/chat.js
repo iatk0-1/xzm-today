@@ -98,7 +98,7 @@ Page({
   async startConversation(sellerId, productId) {
     wx.showLoading({ title: '连接中...' });
     try {
-      const res = await api.post('/conversations/start', { sellerId: Number(sellerId), productId: Number(productId) });
+      const res = await api.post('/conversations/start', { sellerId: sellerId, productId: productId });
       wx.hideLoading();
       this.setData({
         conversationId: res.conversationId,
