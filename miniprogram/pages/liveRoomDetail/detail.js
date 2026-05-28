@@ -132,14 +132,20 @@ Page({
   // 后端可能返回秒级(10位)或毫秒级(13位)时间戳，这里统一转毫秒
   normalizeTimestamp: function(ts) {
     if (ts === null || ts === undefined || ts === '') return 0;
-    // 处理 ISO 日期字符串 (如 "2026-05-28T15:30:00+08:00")
-    if (typeof ts === 'string' && ts.includes('T')) {
-      const d = new Date(ts);
-      return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+
+    // 字符串：用 Date.parse 处理（支持 ISO、空格分隔等格式）
+    if (typeof ts === 'string') {
+      const parsed = Date.parse(ts);
+      if (!Number.isNaN(parsed)) return parsed;
     }
+
+    // 数字：epoch 秒（< 1e12）或毫秒（>= 1e12）
     const raw = Number(ts);
-    if (!Number.isFinite(raw)) return 0;
-    return raw < 1e12 ? raw * 1000 : raw;
+    if (Number.isFinite(raw) && raw > 0) {
+      return raw < 1e12 ? raw * 1000 : raw;
+    }
+
+    return 0;
   },
 
   formatDateTime: function(ts) {

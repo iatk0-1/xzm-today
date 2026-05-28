@@ -152,27 +152,23 @@ Page({
     return num < 10 ? '0' + num : num;
   },
 
-  // 后端返回的时间戳可能是秒（10位）或毫秒（13位），统一转成毫秒
+  // 后端返回的时间戳统一转成毫秒（兼容数字时间戳和日期字符串）
   normalizeTimestamp: function(ts) {
-    if (ts === null || ts === undefined || ts === '') {
-      console.warn('[normalizeTimestamp] 空值, 返回0');
-      return 0;
+    if (ts === null || ts === undefined || ts === '') return 0;
+
+    // 字符串：用 Date.parse 处理（支持 ISO、空格分隔等格式）
+    if (typeof ts === 'string') {
+      const parsed = Date.parse(ts);
+      if (!Number.isNaN(parsed)) return parsed;
     }
-    // 处理 ISO 日期字符串 (如 "2026-05-28T15:30:00+08:00")
-    if (typeof ts === 'string' && ts.includes('T')) {
-      const d = new Date(ts);
-      const ms = d.getTime();
-      console.log('[normalizeTimestamp] ISO字符串:', ts, '→', ms, '→', new Date(ms));
-      return Number.isNaN(ms) ? 0 : ms;
-    }
+
+    // 数字：epoch 秒（< 1e12）或毫秒（>= 1e12）
     const raw = Number(ts);
-    if (!Number.isFinite(raw)) {
-      console.warn('[normalizeTimestamp] 无法解析:', ts, '类型:', typeof ts);
-      return 0;
+    if (Number.isFinite(raw) && raw > 0) {
+      return raw < 1e12 ? raw * 1000 : raw;
     }
-    const result = raw < 1e12 ? raw * 1000 : raw;
-    console.log('[normalizeTimestamp] 数字:', ts, '→', result, '→', new Date(result));
-    return result;
+
+    return 0;
   },
 
   formatDateTime: function(ts) {
