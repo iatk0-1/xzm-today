@@ -2,24 +2,23 @@
  * 压缩图片，失败时降级返回原图路径
  * @param {string} filePath 图片临时路径
  * @param {number} quality 压缩质量 0-100，默认 80
- * @returns {Promise<string>} 压缩后的图片临时路径
+ * @returns {Promise<{path: string, ok: boolean, reason?: string}>}
  */
 function compressImage(filePath, quality = 80) {
-  // 网络图片不需要压缩
   if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-    return Promise.resolve(filePath);
+    return Promise.resolve({ path: filePath, ok: false, reason: '网络图片无需压缩' });
   }
   return new Promise((resolve) => {
     wx.compressImage({
       src: filePath,
       quality: quality,
       success: (res) => {
-        console.log('图片压缩成功:', filePath, '→', res.tempFilePath);
-        resolve(res.tempFilePath);
+        console.log('[compressImage] 成功:', filePath, '→', res.tempFilePath);
+        resolve({ path: res.tempFilePath, ok: true });
       },
       fail: (err) => {
-        console.warn('图片压缩失败，使用原图:', err);
-        resolve(filePath); // 降级：部分旧版本不支持 compressImage
+        console.warn('[compressImage] 失败:', err.errMsg || JSON.stringify(err));
+        resolve({ path: filePath, ok: false, reason: err.errMsg || 'compressImage 失败' });
       }
     });
   });
@@ -29,23 +28,23 @@ function compressImage(filePath, quality = 80) {
  * 压缩视频，失败时降级返回原视频路径
  * @param {string} filePath 视频临时路径
  * @param {'low'|'medium'|'high'} quality 压缩质量，默认 medium
- * @returns {Promise<string>} 压缩后的视频临时路径
+ * @returns {Promise<{path: string, ok: boolean, reason?: string}>}
  */
 function compressVideo(filePath, quality = 'medium') {
   if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-    return Promise.resolve(filePath);
+    return Promise.resolve({ path: filePath, ok: false, reason: '网络视频无需压缩' });
   }
   return new Promise((resolve) => {
     wx.compressVideo({
       src: filePath,
       quality: quality,
       success: (res) => {
-        console.log('视频压缩成功:', filePath, '→', res.tempFilePath);
-        resolve(res.tempFilePath);
+        console.log('[compressVideo] 成功:', filePath, '→', res.tempFilePath);
+        resolve({ path: res.tempFilePath, ok: true });
       },
       fail: (err) => {
-        console.warn('视频压缩失败，使用原视频:', err);
-        resolve(filePath); // 降级
+        console.warn('[compressVideo] 失败:', err.errMsg || JSON.stringify(err));
+        resolve({ path: filePath, ok: false, reason: err.errMsg || 'compressVideo 失败' });
       }
     });
   });
@@ -53,14 +52,13 @@ function compressVideo(filePath, quality = 'medium') {
 
 /**
  * 将图片转换为 WebP 格式，失败时降级返回原图
- * 使用离屏 Canvas 绘制后导出为 webp
  * @param {string} filePath 图片临时路径
  * @param {number} quality 质量 0-1，默认 0.8
- * @returns {Promise<string>} WebP 图片临时路径
+ * @returns {Promise<{path: string, ok: boolean, reason?: string}>}
  */
 function toWebp(filePath, quality = 0.8) {
   if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-    return Promise.resolve(filePath);
+    return Promise.resolve({ path: filePath, ok: false, reason: '网络图片无需转换' });
   }
   return new Promise((resolve) => {
     wx.getImageInfo({
@@ -81,28 +79,28 @@ function toWebp(filePath, quality = 0.8) {
               fileType: 'webp',
               quality: quality,
               success: (res) => {
-                console.log('WebP 转换成功:', filePath, '→', res.tempFilePath);
-                resolve(res.tempFilePath);
+                console.log('[toWebp] 成功:', filePath, '→', res.tempFilePath);
+                resolve({ path: res.tempFilePath, ok: true });
               },
               fail: (err) => {
-                console.warn('WebP 转换失败，使用原图:', err);
-                resolve(filePath);
+                console.warn('[toWebp] canvasToTempFilePath 失败:', err.errMsg || JSON.stringify(err));
+                resolve({ path: filePath, ok: false, reason: 'canvasToTempFilePath: ' + (err.errMsg || 'unknown') });
               }
             });
           };
           img.onerror = (err) => {
-            console.warn('WebP: 图片加载失败，使用原图:', err);
-            resolve(filePath);
+            console.warn('[toWebp] 图片加载失败:', err);
+            resolve({ path: filePath, ok: false, reason: '离屏canvas图片加载失败' });
           };
           img.src = filePath;
         } catch (err) {
-          console.warn('WebP: 离屏 Canvas 不可用，使用原图:', err);
-          resolve(filePath);
+          console.warn('[toWebp] 离屏Canvas不可用:', err);
+          resolve({ path: filePath, ok: false, reason: '离屏Canvas不可用: ' + (err.message || err) });
         }
       },
       fail: (err) => {
-        console.warn('WebP: 获取图片信息失败，使用原图:', err);
-        resolve(filePath);
+        console.warn('[toWebp] getImageInfo 失败:', err.errMsg || JSON.stringify(err));
+        resolve({ path: filePath, ok: false, reason: 'getImageInfo: ' + (err.errMsg || 'unknown') });
       }
     });
   });

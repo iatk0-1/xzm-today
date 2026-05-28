@@ -232,13 +232,13 @@ Page({
     try {
       const { compressImage, toWebp } = require('../../utils/media');
 
-      const beforeCompress = filePath;
-      try { filePath = await compressImage(filePath); } catch (e) {}
-      console.log('[上传] 图片压缩' + (filePath !== beforeCompress ? '成功' : '未生效，回退原图'));
+      const compressResult = await compressImage(filePath);
+      filePath = compressResult.path;
+      console.log('[上传] 图片压缩 ' + (compressResult.ok ? '成功' : '未生效 — ' + (compressResult.reason || '未知原因')));
 
-      const beforeWebp = filePath;
-      try { filePath = await toWebp(filePath); } catch (e) {}
-      console.log('[上传] WebP转换' + (filePath !== beforeWebp ? '成功' : '未生效，回退原图'));
+      const webpResult = await toWebp(filePath);
+      filePath = webpResult.path;
+      console.log('[上传] WebP转换 ' + (webpResult.ok ? '成功' : '未生效 — ' + (webpResult.reason || '未知原因')));
 
       const cosUpload = require('../../utils/cos-upload');
       const imageUrl = await cosUpload.uploadFile(filePath, 'chats');
@@ -260,10 +260,11 @@ Page({
     wx.showLoading({ title: '上传视频中...' });
     try {
       const { compressVideo } = require('../../utils/media');
-      const beforeCompress = filePath;
       const originalSize = (fileSize / (1024 * 1024)).toFixed(1);
-      try { filePath = await compressVideo(filePath); } catch (e) {}
-      console.log('[上传] 视频压缩' + (filePath !== beforeCompress ? '成功' : '未生效，回退原视频') + ' (原' + originalSize + 'MB)');
+
+      const compressResult = await compressVideo(filePath);
+      filePath = compressResult.path;
+      console.log('[上传] 视频压缩 ' + (compressResult.ok ? '成功' : '未生效 — ' + (compressResult.reason || '未知原因')) + ' (原' + originalSize + 'MB)');
 
       const cosUpload = require('../../utils/cos-upload');
       const videoUrl = await cosUpload.uploadFile(filePath, 'chats');
