@@ -215,9 +215,10 @@ Page({
   async uploadAndSendImage(filePath) {
     wx.showLoading({ title: '发送中...' });
     try {
-      // 1. 压缩后直传 COS
-      const { compressImage } = require('../../utils/media');
+      // 1. 压缩 → WebP 转换 → 直传 COS
+      const { compressImage, toWebp } = require('../../utils/media');
       try { filePath = await compressImage(filePath); } catch (e) {}
+      try { filePath = await toWebp(filePath); } catch (e) {}
       const cosUpload = require('../../utils/cos-upload');
       const imageUrl = await cosUpload.uploadFile(filePath, 'chats');
 
