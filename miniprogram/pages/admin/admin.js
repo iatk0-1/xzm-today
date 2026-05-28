@@ -1284,15 +1284,23 @@ Page({
     api.get('/products', { limit: 20, offset: 0 })
       .then(res => {
         wx.hideLoading();
-        let selectedIds = this.data.manualRelated.map(item => item.id);
+        const selectedIds = this.data.manualRelated.map(item =>
+          typeof item === 'object' ? item.id : item
+        );
         // 排除当前正在编辑的商品本身
-        const editId = this.data.editId ? Number(this.data.editId) : null;
+        const editId = this.data.editId ? String(this.data.editId) : null;
 
-        let validProducts = res.filter(p => p.name && p.coverUrl && (!editId || p.id !== editId));
+        const productList = Array.isArray(res)
+          ? res
+          : (res && Array.isArray(res.content) ? res.content : []);
+
+        let validProducts = productList.filter(p =>
+          p && p.name && p.coverUrl && (!editId || String(p.id) !== editId)
+        );
 
         let products = validProducts.map(p => ({
           ...p,
-          selected: selectedIds.includes(p.id)
+          selected: selectedIds.includes(p.id) || selectedIds.includes(String(p.id))
         }));
         this.setData({
           allProducts: products,
