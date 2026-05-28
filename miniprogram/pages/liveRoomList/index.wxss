@@ -1,146 +1,104 @@
 /* miniprogram/pages/liveRoomList/index.wxss */
 .container {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: #f7f7f7;
   padding-bottom: 20rpx;
 }
 
-/* 内容容器 */
 .content-container {
-  padding: 20rpx;
-}
-
-/* 直播中区域 */
-.live-section {
-  padding: 20rpx;
+  padding: 20rpx 30rpx;
 }
 
 .section-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #666;
-  margin-bottom: 16rpx;
-}
-
-.live-card {
-  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
-  border-radius: 16rpx;
-  padding: 24rpx;
-  color: #fff;
-  box-shadow: 0 4rpx 16rpx rgba(255, 107, 107, 0.3);
-}
-
-.live-badge {
-  display: inline-block;
-  background-color: rgba(255, 255, 255, 0.3);
-  padding: 4rpx 16rpx;
-  border-radius: 20rpx;
-  font-size: 24rpx;
-  margin-bottom: 12rpx;
-}
-
-.live-info {
-  margin-bottom: 20rpx;
-}
-
-.live-title {
   font-size: 32rpx;
   font-weight: 600;
-  margin-bottom: 8rpx;
-}
-
-.live-time {
-  font-size: 24rpx;
-  opacity: 0.9;
-}
-
-.live-products-preview {
+  color: #333;
+  margin: 30rpx 0 20rpx 0;
   display: flex;
-  gap: 12rpx;
-  overflow-x: auto;
-}
-
-.live-products-preview .product-thumb {
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 8rpx;
-  flex-shrink: 0;
-}
-
-/* 历史场次 */
-.history-section {
-  padding: 20rpx;
-}
-
-.month-group {
-  margin-bottom: 32rpx;
+  align-items: center;
 }
 
 .month-header {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: #999;
-  margin-bottom: 16rpx;
+  margin: 40rpx 0 20rpx 0;
 }
 
-.session-card {
-  background-color: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  margin-bottom: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+/* 统一极简干净的卡片风格 */
+.clean-card {
+  background-color: #ffffff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
 }
 
-.session-info {
+.clean-card:active {
+  transform: scale(0.98);
+}
+
+.card-header {
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 16rpx;
+  align-items: flex-start;
 }
 
-.session-date {
-  font-size: 28rpx;
+.card-title-area {
+  flex: 1;
+  padding-right: 20rpx;
+}
+
+.clean-date {
+  font-size: 34rpx;
   font-weight: 600;
   color: #333;
-  margin-bottom: 8rpx;
+  margin-bottom: 12rpx;
 }
 
-.session-title {
+.clean-title {
   font-size: 28rpx;
   color: #666;
   margin-bottom: 8rpx;
 }
 
-.session-meta {
+.clean-time, .clean-meta {
   font-size: 24rpx;
   color: #999;
 }
 
-.session-status {
-  display: inline-block;
-  padding: 4rpx 16rpx;
-  border-radius: 20rpx;
-  font-size: 24rpx;
-  background-color: #f0f0f0;
-  color: #999;
-}
-
-.session-status.live {
-  background-color: #ff6b6b;
-  color: #fff;
-}
-
-.session-products {
-  display: flex;
-  gap: 12rpx;
-  margin-top: 16rpx;
-  overflow-x: auto;
-}
-
-.session-products .product-thumb {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 8rpx;
+/* 图1风格的线框按钮设计 */
+.action-btn {
+  font-size: 26rpx;
+  color: #ff6b81;
+  border: 2rpx solid #ff6b81;
+  border-radius: 40rpx;
+  padding: 8rpx 32rpx;
   flex-shrink: 0;
+}
+
+/* 直播中状态填充实色 */
+.action-btn.active {
+  background-color: #ff6b81;
+  color: #ffffff;
+}
+
+/* 商品缩略图 - 强制设置为 3:4 的干净比例 */
+.clean-products {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+  overflow-x: auto;
+  padding-bottom: 8rpx;
+}
+
+.clean-products .product-thumb {
+  width: 120rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+  background-color: #f0f0f0;
+  object-fit: cover;
 }
 
 /* 空状态 */
@@ -160,37 +118,37 @@
 
 .create-btn {
   padding: 20rpx 60rpx;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #333;
   color: #fff;
   border-radius: 50rpx;
   font-size: 28rpx;
 }
 
-/* 管理员悬浮按钮 */
+/* 管理员悬浮按钮 - 极简黑 */
 .admin-fab {
   position: fixed;
   right: 40rpx;
   bottom: 120rpx;
   width: 100rpx;
   height: 100rpx;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #333;
   color: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 60rpx;
-  box-shadow: 0 4rpx 20rpx rgba(102, 126, 234, 0.4);
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.2);
 }
 
-/* 弹窗 */
+/* 弹窗 - 保持极简风格 */
 .modal-mask {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -199,38 +157,41 @@
 
 .modal-content {
   background-color: #fff;
-  border-radius: 16rpx;
-  padding: 32rpx;
+  border-radius: 24rpx;
+  padding: 40rpx;
   width: 600rpx;
+  box-sizing: border-box;
 }
 
 .modal-title {
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: 600;
   color: #333;
   text-align: center;
-  margin-bottom: 32rpx;
+  margin-bottom: 40rpx;
 }
 
 .modal-input {
-  border: 2rpx solid #e0e0e0;
-  border-radius: 8rpx;
-  padding: 20rpx;
+  border: 2rpx solid #eee;
+  background-color: #fafafa;
+  border-radius: 12rpx;
+  padding: 24rpx;
   font-size: 28rpx;
-  margin-bottom: 32rpx;
+  margin-bottom: 40rpx;
 }
 
 .modal-buttons {
   display: flex;
-  gap: 20rpx;
+  gap: 24rpx;
 }
 
 .modal-btn {
   flex: 1;
-  padding: 20rpx;
-  border-radius: 8rpx;
-  font-size: 28rpx;
+  padding: 24rpx;
+  border-radius: 12rpx;
+  font-size: 30rpx;
   text-align: center;
+  font-weight: 500;
 }
 
 .modal-btn.cancel {
@@ -239,17 +200,16 @@
 }
 
 .modal-btn.confirm {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #333;
   color: #fff;
 }
 
-/* 加载状态 */
 .loading-state {
   padding: 40rpx 0;
   text-align: center;
 }
 
 .loading-text {
-  font-size: 28rpx;
+  font-size: 24rpx;
   color: #999;
 }

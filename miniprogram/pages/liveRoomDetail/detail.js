@@ -11,6 +11,8 @@ Page({
     isAdmin: false,
     showStartModal: false,
     titleInput: '',
+    filteredProducts: [], // 新增：用于展示搜索过滤后的商品列表
+    searchKeyword: '',    // 新增：搜索关键词
 
     // SKU 选择面板相关
     showSku: false,
@@ -83,15 +85,30 @@ Page({
         return { ...product, totalStock };
       });
 
+      // 动态计算已直播的时长
+      let durationStr = '';
+      if (detail && detail.startedAt) {
+        const startTs = this.normalizeTimestamp(detail.startedAt);
+        const endTs = detail.status === 'live' ? Date.now() : this.normalizeTimestamp(detail.endedAt);
+        if (startTs > 0 && endTs >= startTs) {
+          const diffTotalMins = Math.floor((endTs - startTs) / 60000);
+          const hours = Math.floor(diffTotalMins / 60);
+          const mins = diffTotalMins % 60;
+          durationStr = hours > 0 ? `${hours}小时${mins}分钟` : `${mins}分钟`;
+        }
+      }
+
       const formattedSession = detail ? {
         ...detail,
         startedAt: this.formatDateTime(detail.startedAt),
-        endedAt: this.formatDateTime(detail.endedAt)
+        endedAt: this.formatDateTime(detail.endedAt),
+        durationStr: durationStr
       } : {};
 
       this.setData({
         session: formattedSession,
         products: products,
+        filteredProducts: products, // 初始化时，展示列表就是全部商品
         canBuy: detail?.status === 'live'
       });
 
@@ -370,6 +387,26 @@ Page({
     });
   },
 
+  // 点击商品卡片事件（管理员编辑修改，普通用户只能看）
+  onProductClick: function(e) {
+    const product = e.currentTarget.dataset.product;
+    if (this.data.isAdmin) {
+      // 如果是管理员点击进去，直接跳转去修改/发布商品的页面
+      wx.navigateTo({
+        url: `/pages/liveRoomPublish/publish?sessionId=${this.data.sessionId}&productId=${product.id}`
+      });
+    } else {
+      // 如果是普通用户点击进去，没有修改权限，只能看常规商品详情
+      if (product.convertedToProductId) {
+        wx.navigateTo({
+          url: `/pages/detail/detail?id=${product.convertedToProductId}`
+        });
+      } else {
+        wx.showToast({ title: '当前为直播商品，请直接在右下角下单', icon: 'none' });
+      }
+    }
+  },
+
   // ================= 转换商品相关 =================
   // 显示转换弹窗
   showConvertModal: function(e) {
@@ -403,5 +440,35 @@ Page({
     wx.navigateTo({
       url: `/pages/admin/admin?convertFromLiveProductId=${convertProduct.id}&sessionId=${sessionId}`
     });
-  }
+  },
+  // ================= 搜索功能相关 =================
+  // 监听搜索输入（纯前端秒搜）
+  onSearchInput: function(e) {
+    const keyword = e.detail.value.trim().toLowerCase();
+    const { products } = this.data;
+
+    // 如果没有输入，展示全部
+    if (!keyword) {
+      this.setData({
+        searchKeyword: e.detail.value,
+        filteredProducts: products
+      });
+      return;
+    }
+
+    // 模糊匹配商品名称
+    const filtered = products.filter(p => p.name.toLowerCase().includes(keyword));
+    this.setData({
+      searchKeyword: e.detail.value,
+      filteredProducts: filtered
+    });
+  },
+
+  // 清空搜索框
+  clearSearch: function() {
+    this.setData({
+      searchKeyword: '',
+      filteredProducts: this.data.products
+    });
+  },
 });

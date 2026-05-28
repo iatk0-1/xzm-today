@@ -1,72 +1,66 @@
-<!-- miniprogram/pages/liveRoomList/index.wxml -->
 <view class="container">
-  <!-- 内容区域 -->
   <view class="content-container">
 
-  <!-- 直播中场次（置顶） -->
-  <view class="live-section" wx:if="{{activeSession && activeSession.id}}">
-    <view class="section-title">直播中</view>
-    <view class="live-card" bindtap="goToDetail" data-id="{{activeSession.id}}">
-      <view class="live-badge">直播中</view>
-      <view class="live-info">
-        <view class="live-title">{{activeSession.title}}</view>
-        <view class="live-time">开始时间：{{activeSession.startedAt}}</view>
-      </view>
-      <view class="live-products-preview">
-        <image wx:for="{{activeSession.products}}" wx:key="id" wx:for-item="product"
-               src="{{product.coverUrl}}" mode="aspectFill" class="product-thumb" />
-      </view>
-    </view>
-  </view>
-
-  <!-- 历史场次列表 -->
-  <view class="history-section" wx:if="{{groupedSessions && groupedSessions.length > 0}}">
-    <view class="section-title">直播回顾</view>
-
-    <!-- 按年月分组 -->
-    <view class="month-group" wx:for="{{groupedSessions}}" wx:key="month" wx:for-item="group">
-      <view class="month-header">{{group.month}} (共{{group.count}}场)</view>
-
-      <view class="session-card" wx:for="{{group.sessions}}" wx:key="id" wx:for-item="session"
-            bindtap="goToDetail" data-id="{{session.id}}">
-        <view class="session-info">
-          <view class="session-date">{{session.date}}</view>
-          <view class="session-title">{{session.title}}</view>
-          <view class="session-meta">
-            <text>{{session.viewCount}}</text>
+    <view class="live-section" wx:if="{{activeSession && activeSession.id}}">
+      <view class="section-title">直播中</view>
+      <view class="clean-card" bindtap="goToDetail" data-id="{{activeSession.id}}">
+        <view class="card-header">
+          <view class="card-title-area">
+            <view class="clean-title">{{activeSession.title}}</view>
+            <view class="clean-time">开始时间：{{activeSession.startedAt}}</view>
           </view>
+          <view class="action-btn active">进入直播</view>
         </view>
-        <view class="session-status {{session.status}}">
-          {{session.status === 'ended' ? '已结束' : '直播中'}}
-        </view>
-        <!-- 商品预览图片 -->
-        <view class="session-products" wx:if="{{session.products}}">
-          <image wx:for="{{session.products}}" wx:key="id" wx:for-item="product"
+        <view class="clean-products" wx:if="{{activeSession.products && activeSession.products.length > 0}}">
+          <image wx:for="{{activeSession.products}}" wx:key="id" wx:for-item="product"
                  src="{{product.coverUrl}}" mode="aspectFill" class="product-thumb" />
         </view>
       </view>
     </view>
-  </view>
 
-  <!-- 空状态 -->
-  <view class="empty-state" wx:if="{{!hasData && !isLoading}}">
-    <view class="empty-text">暂无直播场次</view>
-    <view class="create-btn" wx:if="{{isAdmin}}" bindtap="createLiveSession">创建直播</view>
-  </view>
+    <view class="history-section" wx:if="{{groupedSessions && groupedSessions.length > 0}}">
+      <view class="section-title">直播回顾</view>
 
-  <!-- 管理员操作按钮 -->
-  <view class="admin-fab" wx:if="{{isAdmin}}" bindtap="createLiveSession">
-    <text>+</text>
-  </view>
+      <view class="month-group" wx:for="{{groupedSessions}}" wx:key="month" wx:for-item="group">
+        <view class="month-header">{{group.month}} (共{{group.count}}场)</view>
 
-  <!-- 加载状态 -->
-  <view class="loading-state" wx:if="{{isLoading}}">
-    <view class="loading-text">加载中...</view>
-  </view>
+        <view class="clean-card" wx:for="{{group.sessions}}" wx:key="id" wx:for-item="session"
+              bindtap="goToDetail" data-id="{{session.id}}">
+          <view class="card-header">
+            <view class="card-title-area">
+              <view class="clean-date">{{session.date}}</view>
+              <view class="clean-title">{{session.title}}</view>
+              <view class="clean-meta" wx:if="{{session.viewCount}}">{{session.viewCount}}人看过</view>
+            </view>
+            <view class="action-btn {{session.status === 'ended' ? '' : 'active'}}">
+              {{session.status === 'ended' ? '看回放' : '直播中'}}
+            </view>
+          </view>
+
+          <view class="clean-products" wx:if="{{session.products && session.products.length > 0}}">
+            <image wx:for="{{session.products}}" wx:key="id" wx:for-item="product"
+                   src="{{product.coverUrl}}" mode="aspectFill" class="product-thumb" />
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="empty-state" wx:if="{{!hasData && !isLoading}}">
+      <view class="empty-text">暂无直播场次</view>
+      <view class="create-btn" wx:if="{{isAdmin}}" bindtap="createLiveSession">创建直播</view>
+    </view>
+
+    <view class="admin-fab" wx:if="{{isAdmin}}" bindtap="createLiveSession">
+      <text>+</text>
+    </view>
+
+    <view class="loading-state" wx:if="{{isLoading}}">
+      <view class="loading-text">加载中...</view>
+    </view>
+
   </view>
 </view>
 
-<!-- 创建直播弹窗 -->
 <view class="modal-mask" wx:if="{{showCreateModal}}" bindtap="hideCreateModal">
   <view class="modal-content" catchtap="true">
     <view class="modal-title">创建直播</view>
