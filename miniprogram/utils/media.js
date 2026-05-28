@@ -1,12 +1,27 @@
 /**
+ * 判断是否为远程网络 URL（非本地临时文件）
+ */
+function isRemoteUrl(path) {
+  if (path.startsWith('https://')) return true;
+  if (path.startsWith('http://')) {
+    // 开发者工具中本地临时文件路径以 http://tmp/ 开头，不是远程 URL
+    if (path.startsWith('http://tmp/') || path.startsWith('http://localhost') || path.startsWith('http://127.0.0.1')) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+/**
  * 压缩图片，失败时降级返回原图路径
  * @param {string} filePath 图片临时路径
  * @param {number} quality 压缩质量 0-100，默认 80
  * @returns {Promise<{path: string, ok: boolean, reason?: string}>}
  */
 function compressImage(filePath, quality = 80) {
-  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-    return Promise.resolve({ path: filePath, ok: false, reason: '网络图片无需压缩' });
+  if (isRemoteUrl(filePath)) {
+    return Promise.resolve({ path: filePath, ok: false, reason: '远程图片无需压缩' });
   }
   return new Promise((resolve) => {
     wx.compressImage({
@@ -31,8 +46,8 @@ function compressImage(filePath, quality = 80) {
  * @returns {Promise<{path: string, ok: boolean, reason?: string}>}
  */
 function compressVideo(filePath, quality = 'medium') {
-  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-    return Promise.resolve({ path: filePath, ok: false, reason: '网络视频无需压缩' });
+  if (isRemoteUrl(filePath)) {
+    return Promise.resolve({ path: filePath, ok: false, reason: '远程视频无需压缩' });
   }
   return new Promise((resolve) => {
     wx.compressVideo({
@@ -57,8 +72,8 @@ function compressVideo(filePath, quality = 'medium') {
  * @returns {Promise<{path: string, ok: boolean, reason?: string}>}
  */
 function toWebp(filePath, quality = 0.8) {
-  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-    return Promise.resolve({ path: filePath, ok: false, reason: '网络图片无需转换' });
+  if (isRemoteUrl(filePath)) {
+    return Promise.resolve({ path: filePath, ok: false, reason: '远程图片无需转换' });
   }
   return new Promise((resolve) => {
     wx.getImageInfo({
