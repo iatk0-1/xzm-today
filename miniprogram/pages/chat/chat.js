@@ -212,17 +212,37 @@ Page({
     wx.chooseImage({ count: 1, sizeType: ['compressed'], success: (res) => this.uploadAndSendImage(res.tempFilePaths[0]) });
   },
 
+  chooseVideo() {
+    wx.chooseVideo({
+      sourceType: ['album', 'camera'],
+      maxDuration: 60,
+      camera: 'back',
+      success: (res) => {
+        if (res.size > 100 * 1024 * 1024) {
+          wx.showToast({ title: '视频不能超过100MB', icon: 'none' });
+          return;
+        }
+        this.uploadAndSendVideo(res.tempFilePath, res.size);
+      }
+    });
+  },
+
   async uploadAndSendImage(filePath) {
     wx.showLoading({ title: '发送中...' });
     try {
-      // 1. 压缩 → WebP 转换 → 直传 COS
       const { compressImage, toWebp } = require('../../utils/media');
+
+      const beforeCompress = filePath;
       try { filePath = await compressImage(filePath); } catch (e) {}
+      console.log('[上传] 图片压缩' + (filePath !== beforeCompress ? '成功' : '未生效，回退原图'));
+
+      const beforeWebp = filePath;
       try { filePath = await toWebp(filePath); } catch (e) {}
+      console.log('[上传] WebP转换' + (filePath !== beforeWebp ? '成功' : '未生效，回退原图'));
+
       const cosUpload = require('../../utils/cos-upload');
       const imageUrl = await cosUpload.uploadFile(filePath, 'chats');
 
-      // 2. 发送 JSON 消息（带 imageUrl）
       const res = await api.post('/conversations/' + this.data.conversationId + '/messages', {
         type: 'image',
         imageUrl: imageUrl,
@@ -233,6 +253,31 @@ Page({
     } catch (err) {
       wx.hideLoading();
       wx.showToast({ title: '图片发送失败', icon: 'none' });
+    }
+  },
+
+  async uploadAndSendVideo(filePath, fileSize) {
+    wx.showLoading({ title: '上传视频中...' });
+    try {
+      const { compressVideo } = require('../../utils/media');
+      const beforeCompress = filePath;
+      const originalSize = (fileSize / (1024 * 1024)).toFixed(1);
+      try { filePath = await compressVideo(filePath); } catch (e) {}
+      console.log('[上传] 视频压缩' + (filePath !== beforeCompress ? '成功' : '未生效，回退原视频') + ' (原' + originalSize + 'MB)');
+
+      const cosUpload = require('../../utils/cos-upload');
+      const videoUrl = await cosUpload.uploadFile(filePath, 'chats');
+
+      const res = await api.post('/conversations/' + this.data.conversationId + '/messages', {
+        type: 'video',
+        imageUrl: videoUrl,
+        perspective: this.data.myPerspective
+      });
+      wx.hideLoading();
+      this.appendMessage(this.formatMessage(res));
+    } catch (err) {
+      wx.hideLoading();
+      wx.showToast({ title: '视频发送失败', icon: 'none' });
     }
   },
 

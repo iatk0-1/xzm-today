@@ -40,6 +40,10 @@
 }
 .msg-right .msg-image { margin-right: 0; }
 
+.msg-video {
+  width: 240px; height: 180px; border-radius: 6px;
+}
+
 .msg-product-card {
   display: flex; align-items: center; background: #fff;
   border-radius: 8px; padding: 8px; max-width: 260px;

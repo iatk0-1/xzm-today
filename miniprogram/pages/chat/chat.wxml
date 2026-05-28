@@ -17,6 +17,8 @@
       </view>
       <!-- 图片消息 -->
       <image class="msg-image" src="{{item.imageUrl}}" mode="aspectFill" wx:if="{{item.type === 'image'}}" bindtap="previewImage" data-url="{{item.imageUrl}}"/>
+      <!-- 视频消息 -->
+      <video class="msg-video" src="{{item.imageUrl}}" wx:if="{{item.type === 'video'}}" controls show-center-play-btn object-fit="contain"/>
       <!-- 商品卡片消息 -->
       <view class="msg-product-card" wx:if="{{item.type === 'product_card'}}" bindtap="goToProduct" data-product="{{item.productCard}}">
         <image class="mpc-thumb" src="{{item.productCard.coverUrl}}" mode="aspectFill"/>
@@ -43,6 +45,7 @@
 
   <!-- 底部输入栏 -->
   <view class="input-bar">
+    <view class="btn-image" bindtap="chooseVideo">◉</view>
     <view class="btn-image" bindtap="chooseImage">＋</view>
     <input class="msg-input" value="{{inputText}}" placeholder="输入消息..." bindinput="onInput" confirm-type="send" bindconfirm="sendText"/>
     <view class="btn-send" bindtap="sendText">发送</view>
