@@ -67,7 +67,8 @@ Page({
     const token = auth.getAccessToken();
     if (!token) return;
 
-    const wsUrl = config.API_BASE_URL.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws/chat?token=' + token;
+    const wsBase = config.API_BASE_URL.replace('/api/v1', '').replace('http://', 'ws://').replace('https://', 'wss://');
+    const wsUrl = wsBase + '/ws/chat?token=' + token;
     const socket = wx.connectSocket({ url: wsUrl });
 
     socket.onOpen(() => { console.log('WS opened'); });
