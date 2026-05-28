@@ -1,6 +1,6 @@
 <view class="checkout-wrapper">
   
-  <view class="page-title">Checkout</view>
+  <view class="page-title">订单结算</view>
 
   <view class="address-section" bindtap="chooseAddress">
     <view class="empty-address" wx:if="{{!address}}">
@@ -19,7 +19,7 @@
   </view>
 
   <view class="order-items-section">
-    <view class="section-label">Order Items</view>
+    <view class="section-label">商品清单</view>
     
     <view class="item-card" wx:for="{{checkoutItems}}" wx:key="id">
       <image class="item-img" src="{{item.coverUrl || item.image}}" mode="aspectFill"></image>
@@ -27,9 +27,9 @@
         <view class="item-title">{{item.name || item.title}}</view>
         
         <view class="item-sku">
-          {{item.selectedColor ? 'Color: ' + item.selectedColor : ''}} 
+          {{item.selectedColor ? '颜色：' + item.selectedColor : ''}} 
           {{item.selectedColor && item.selectedSize ? ' / ' : ''}} 
-          {{item.selectedSize ? 'Size: ' + item.selectedSize : ''}}
+          {{item.selectedSize ? '尺码：' + item.selectedSize : ''}}
           {{!item.selectedColor && !item.selectedSize ? '默认规格' : ''}}
         </view>
         
@@ -43,30 +43,30 @@
 
   <view class="summary-section">
     <view class="summary-row">
-      <text class="sum-label">Subtotal</text>
+      <text class="sum-label">商品小计</text>
       <text class="sum-value">¥ {{totalPrice}}</text>
     </view>
     <view class="summary-row">
-      <text class="sum-label">Shipping</text>
+      <text class="sum-label">运费</text>
       <text class="sum-value">¥ 0.00</text>
     </view>
     <view class="summary-row total-row">
-      <text class="sum-label">Total</text>
+      <text class="sum-label">合计</text>
       <text class="sum-value total-val">¥ {{totalPrice}}</text>
     </view>
   </view>
 
   <view class="bottom-pay-bar">
     <view class="pay-total">
-      <text class="pay-label">Total</text>
+      <text class="pay-label">合计</text>
       <text class="pay-price">¥ {{totalPrice}}</text>
     </view>
     <!-- 未绑定手机号时显示授权按钮（覆盖在 PAY NOW 上方） -->
     <button wx:if="{{!isPhoneBound}}" class="btn-pay btn-auth" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">
       授权手机号支付
     </button>
-    <!-- 已绑定手机号时显示普通 PAY NOW 按钮 -->
-    <view wx:else class="btn-pay" bindtap="submitOrder">PAY NOW</view>
+    <!-- 已绑定手机号时显示普通支付按钮 -->
+    <view wx:else class="btn-pay" bindtap="submitOrder">立即支付</view>
   </view>
 
 </view>
