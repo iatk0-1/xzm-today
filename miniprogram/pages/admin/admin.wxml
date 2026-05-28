@@ -194,22 +194,22 @@
 
   <view class="form-group">
     <view class="label">商品详情 (Description)</view>
-    <textarea class="textarea-box" placeholder="输入商品详细介绍、设计亮点、版型等..." value="{{description}}" bindinput="onInput" data-field="description" maxlength="-1"></textarea>
+    <textarea id="desc-input" class="textarea-box" placeholder="输入商品详细介绍、设计亮点、版型等..." value="{{description}}" bindinput="onInput" data-field="description" maxlength="-1" adjust-position="{{true}}" adjust-keyboard-to="cursor" cursor-spacing="140"></textarea>
   </view>
 
   <view class="form-group">
     <view class="label">材质保养 (Fabric & Care)</view>
-    <textarea class="textarea-box" placeholder="例如：100% 纯棉。建议手洗，不可漂白，阴凉处悬挂晾干..." value="{{fabricCare}}" bindinput="onInput" data-field="fabricCare" maxlength="-1"></textarea>
+    <textarea id="fabric-input" class="textarea-box" placeholder="例如：100% 纯棉。建议手洗，不可漂白，阴凉处悬挂晾干..." value="{{fabricCare}}" bindinput="onInput" data-field="fabricCare" maxlength="-1" adjust-position="{{true}}" adjust-keyboard-to="cursor" cursor-spacing="140"></textarea>
   </view>
 
   <view class="form-group">
     <view class="label">尺码指南 (Size Chart)</view>
-    <textarea class="textarea-box" placeholder="例如：S 码 裙长 80 腰围 64 (支持回车换行排版)..." value="{{sizeChartTip}}" bindinput="onInput" data-field="sizeChartTip" maxlength="-1"></textarea>
+    <textarea id="sizechart-input" class="textarea-box" placeholder="例如：S 码 裙长 80 腰围 64 (支持回车换行排版)..." value="{{sizeChartTip}}" bindinput="onInput" data-field="sizeChartTip" maxlength="-1" adjust-position="{{true}}" adjust-keyboard-to="cursor" cursor-spacing="140"></textarea>
   </view>
 
   <view class="form-group">
     <view class="label">温馨提示 (Tip / Q&A)</view>
-    <textarea class="textarea-box" placeholder="例如：深色衣物首次洗涤可能轻微浮色，属正常现象..." value="{{warmTips}}" bindinput="onInput" data-field="warmTips" maxlength="-1"></textarea>
+    <textarea id="warmtips-input" class="textarea-box" placeholder="例如：深色衣物首次洗涤可能轻微浮色，属正常现象..." value="{{warmTips}}" bindinput="onInput" data-field="warmTips" maxlength="-1" adjust-position="{{true}}" adjust-keyboard-to="cursor" cursor-spacing="140"></textarea>
   </view>
   <view class="form-group">
     <view class="label">商品动态展示视频 (选填，单视频)</view>
