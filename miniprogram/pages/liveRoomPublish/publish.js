@@ -10,6 +10,8 @@ const COLUMNS = 3;
 Page({
   data: {
     sessionId: null,
+    productId: null,   // 编辑模式：已有商品 ID
+    editMode: false,   // 是否为编辑模式
     videoUrl: '',
     mediaList: [],
     dragIndex: -1,
@@ -64,8 +66,101 @@ Page({
       setTimeout(() => wx.navigateBack(), 1500);
     }
 
+    if (options.productId) {
+      this.setData({ productId: options.productId, editMode: true });
+      this.loadProductForEdit(options.productId);
+    }
+
     this.loadRecentStallsAndTags();
     this.loadSizeCategories();
+  },
+
+  // 加载已有商品数据用于编辑
+  loadProductForEdit: async function(productId) {
+    wx.showLoading({ title: '加载商品...' });
+    try {
+      const res = await api.get(`/live-products/${productId}`);
+      const product = res.product || res;
+      const skus = res.skus || [];
+
+      // 解析颜色
+      const colors = [...new Set(skus.map(s => s.spec || s.color || '').filter(Boolean))];
+      const finalColors = colors.length > 0 ? colors : ['图片色'];
+
+      // 如果尺码分类还没加载，等待一下再获取
+      const skuSizeNames = [...new Set(skus.map(s => s.size || '').filter(Boolean))];
+      const sizeOptions = (this.data.sizeOptions || []).map(opt => ({
+        ...opt,
+        selected: skuSizeNames.includes(opt.name)
+      }));
+
+      // 切换尺码分类
+      if (product.sizeCategoryId && this.data.sizeCategoryList.length > 0) {
+        const category = this.data.sizeCategoryList.find(c => c.id === product.sizeCategoryId);
+        if (category) {
+          const catSizes = (category.sizes || []).map(s => ({
+            id: s.id, name: s.name,
+            selected: skuSizeNames.includes(s.name)
+          }));
+          this.setData({
+            currentSizeCategoryId: product.sizeCategoryId,
+            currentSizeCategoryName: category.name,
+            sizeOptions: catSizes
+          });
+        }
+      }
+
+      // 构建 SKU 列表
+      const skuList = skus.map(sku => ({
+        skuId: sku.id || null,
+        sizeId: sku.sizeId || null,
+        color: sku.spec || sku.color || '图片色',
+        size: sku.size || '均码',
+        price: String(sku.retailPrice || ''),
+        stock: String(sku.stockMain || ''),
+        image: sku.imageUrl || ''
+      }));
+
+      // 构建媒体列表（封面 + banner 图片）
+      const mediaList = [];
+      if (product.coverUrl) {
+        mediaList.push({ id: 'cover_' + Date.now(), url: product.coverUrl, x: 0, y: 0 });
+      }
+      (product.bannerImages || []).forEach((url, i) => {
+        mediaList.push({ id: 'banner_' + Date.now() + i, url: url, x: 0, y: 0 });
+      });
+
+      // 加载档口和标签信息
+      const stallIds = product.stallIds || [];
+      const tagIds = product.relateTagIds || [];
+      let selectedStalls = product.stalls || [];
+      let selectedTags = product.tags || [];
+
+      // 如果后端没返回详情，从 ID 推测（用最近使用的记录做默认）
+      if (selectedStalls.length === 0 && stallIds.length > 0) {
+        selectedStalls = stallIds.map(id => this.data.recentStalls.find(s => s.id === id)).filter(Boolean);
+      }
+      if (selectedTags.length === 0 && tagIds.length > 0) {
+        selectedTags = tagIds.map(id => this.data.recentTags.find(t => t.id === id)).filter(Boolean);
+      }
+
+      this.setData({
+        title: product.name || '',
+        mediaList: mediaList,
+        colors: finalColors,
+        colorInput: '',
+        skuList: skuList,
+        selectedStalls: selectedStalls,
+        selectedTags: selectedTags,
+      });
+
+      this.refreshGrid(mediaList);
+      wx.hideLoading();
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载商品失败:', err);
+      wx.showToast({ title: '加载失败', icon: 'none' });
+    }
   },
 
   // 加载历史档口和标签
@@ -826,11 +921,21 @@ Page({
 
       console.log('提交商品数据:', JSON.stringify(productData));
 
-      wx.showLoading({ title: '创建商品...', mask: true });
-      // 调用直播商品上架接口
-      await api.post('/live-products?sessionId=' + sessionId, productData);
-      wx.hideLoading();
-      wx.showToast({ title: '上架成功!', icon: 'success' });
+      const { editMode, productId } = this.data;
+
+      if (editMode && productId) {
+        // 编辑模式：更新已有商品
+        wx.showLoading({ title: '更新商品...', mask: true });
+        await api.put('/live-products/' + productId, productData);
+        wx.hideLoading();
+        wx.showToast({ title: '更新成功!', icon: 'success' });
+      } else {
+        // 创建模式：新增直播商品
+        wx.showLoading({ title: '创建商品...', mask: true });
+        await api.post('/live-products?sessionId=' + sessionId, productData);
+        wx.hideLoading();
+        wx.showToast({ title: '上架成功!', icon: 'success' });
+      }
 
       setTimeout(() => {
         wx.navigateBack();

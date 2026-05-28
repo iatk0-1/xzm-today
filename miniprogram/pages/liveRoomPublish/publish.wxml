@@ -1,6 +1,6 @@
 <!-- miniprogram/pages/liveRoomPublish/publish.wxml -->
 <view class="admin-container">
-  <view class="header-title">上架直播商品</view>
+  <view class="header-title">{{editMode ? '编辑直播商品' : '上架直播商品'}}</view>
 
   <!-- 商品图片 -->
   <view class="form-group">
@@ -184,7 +184,7 @@
   </view>
 
   <view class="submit-area" wx:if="{{skuList.length > 0}}">
-    <button class="submit-btn-large" bindtap="submitProduct">提交上架</button>
+    <button class="submit-btn-large" bindtap="submitProduct">{{editMode ? '保存修改' : '提交上架'}}</button>
   </view>
 </view>
 

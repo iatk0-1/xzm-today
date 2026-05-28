@@ -38,8 +38,14 @@
     </view>
   </view>
 
-  <view class="admin-ended-hint" wx:if="{{isAdmin && session.status === 'ended'}}">
-    <text class="hint-text">直播已结束，点击下方商品转为常规商品</text>
+  <view class="ended-notice-card" wx:if="{{isAdmin && session.status === 'ended'}}">
+    <view class="notice-icon-wrap">
+      <text class="notice-icon">✓</text>
+    </view>
+    <view class="notice-body">
+      <view class="notice-title">直播已结束</view>
+      <view class="notice-desc">点击下方商品卡片上的 <text class="notice-highlight">转常规</text> 按钮，将其转为常规商品继续售卖</view>
+    </view>
   </view>
 
   <view class="product-list-section">
@@ -67,7 +73,15 @@
       <view class="card-right-info-box">
         <view class="info-top-row">
           <view class="info-product-name">{{product.name}}</view>
-          <view class="info-drag-icon" wx:if="{{isAdmin}}">
+          <view class="info-admin-icons" wx:if="{{isAdmin && canBuy}}">
+            <view class="admin-icon-btn edit-btn" catchtap="editProduct" data-product="{{product}}">
+              <text>✎</text>
+            </view>
+            <view class="admin-icon-btn delete-btn" catchtap="deleteProduct" data-product="{{product}}">
+              <text>✕</text>
+            </view>
+          </view>
+          <view class="info-drag-icon" wx:elif="{{isAdmin}}">
             <text class="dots-grid">⋮⋮</text>
           </view>
         </view>

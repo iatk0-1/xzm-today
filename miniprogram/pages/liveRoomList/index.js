@@ -23,6 +23,12 @@ Page({
     this.loadLiveSessions();
   },
 
+  onShow: function() {
+    // 每次从其他页面返回时刷新列表（如从直播详情页结束直播后返回）
+    this.checkAdmin();
+    this.loadLiveSessions();
+  },
+
   // 触底加载更多
   onReachBottom: function() {
     if (!this.data.hasMore || this.data.isLoading) return;
@@ -149,6 +155,11 @@ Page({
   // 后端返回的时间戳可能是秒（10位）或毫秒（13位），统一转成毫秒
   normalizeTimestamp: function(ts) {
     if (ts === null || ts === undefined || ts === '') return 0;
+    // 处理 ISO 日期字符串 (如 "2026-05-28T15:30:00+08:00")
+    if (typeof ts === 'string' && ts.includes('T')) {
+      const d = new Date(ts);
+      return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+    }
     const raw = Number(ts);
     if (!Number.isFinite(raw)) return 0;
     return raw < 1e12 ? raw * 1000 : raw;

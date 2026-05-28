@@ -132,6 +132,11 @@ Page({
   // 后端可能返回秒级(10位)或毫秒级(13位)时间戳，这里统一转毫秒
   normalizeTimestamp: function(ts) {
     if (ts === null || ts === undefined || ts === '') return 0;
+    // 处理 ISO 日期字符串 (如 "2026-05-28T15:30:00+08:00")
+    if (typeof ts === 'string' && ts.includes('T')) {
+      const d = new Date(ts);
+      return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+    }
     const raw = Number(ts);
     if (!Number.isFinite(raw)) return 0;
     return raw < 1e12 ? raw * 1000 : raw;
@@ -384,6 +389,39 @@ Page({
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
       url: `/pages/detail/detail?id=${id}`
+    });
+  },
+
+  // 编辑商品
+  editProduct: function(e) {
+    const product = e.currentTarget.dataset.product;
+    wx.navigateTo({
+      url: `/pages/liveRoomPublish/publish?sessionId=${this.data.sessionId}&productId=${product.id}`
+    });
+  },
+
+  // 删除商品
+  deleteProduct: function(e) {
+    const product = e.currentTarget.dataset.product;
+    wx.showModal({
+      title: '删除商品',
+      content: `确定要从本场直播中删除"${product.name}"吗？此操作不可撤销。`,
+      confirmColor: '#e04040',
+      success: async (res) => {
+        if (res.confirm) {
+          wx.showLoading({ title: '删除中...' });
+          try {
+            await api.delete(`/live-products/${product.id}`);
+            wx.hideLoading();
+            wx.showToast({ title: '已删除', icon: 'success' });
+            this.loadSessionDetail(this.data.sessionId);
+          } catch (err) {
+            wx.hideLoading();
+            console.error('删除商品失败:', err);
+            wx.showToast({ title: '删除失败', icon: 'none' });
+          }
+        }
+      }
     });
   },
 
