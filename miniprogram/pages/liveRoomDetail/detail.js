@@ -36,6 +36,8 @@ Page({
     if (options.id) {
       this.setData({ sessionId: options.id });
       this.loadSessionDetail(options.id);
+      // 每次进入详情页，观看人数 +1（静默调用，不阻塞页面）
+      api.post(`/live-sessions/${options.id}/view`).catch(() => {});
     } else {
       wx.showToast({ title: '参数错误', icon: 'none' });
       setTimeout(() => wx.navigateBack(), 1500);

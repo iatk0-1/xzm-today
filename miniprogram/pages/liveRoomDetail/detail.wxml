@@ -13,18 +13,18 @@
       </view>
 
       <view class="banner-main-title">{{session.status === 'live' ? '正在直播' : '直播回顾'}}</view>
-      <view class="banner-duration-text">
+      <view class="banner-duration-text" wx:if="{{isAdmin}}">
         <block wx:if="{{session.status === 'live'}}">已直播 {{session.durationStr || '0分钟'}}</block>
         <block wx:else>直播总长 {{session.durationStr || '0分钟'}}</block>
       </view>
 
-      <view class="viewer-row">
+      <view class="viewer-row" wx:if="{{isAdmin}}">
         <view class="avatar-group">
           <view class="fake-avatar z3">👩🏻</view>
           <view class="fake-avatar z2">🧑🏼</view>
           <view class="fake-avatar z1">👧🏻</view>
         </view>
-        <text class="viewer-count-text">{{session.viewCount || 0}} 人正在观看 ></text>
+        <text class="viewer-count-text">{{session.viewCount || 0}} 人观看过 ></text>
       </view>
 
       <view class="banner-admin-actions" wx:if="{{isAdmin && session.status !== 'ended'}}">
