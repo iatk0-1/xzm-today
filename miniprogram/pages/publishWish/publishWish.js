@@ -70,7 +70,12 @@ Page({
 
   // 上传图片到 COS
   uploadImage: async function(filePath) {
-    try { filePath = await compressImage(filePath); } catch (e) {}
+    try {
+      const compressResult = await compressImage(filePath);
+      filePath = compressResult.path;  // 提取压缩后的路径
+    } catch (e) {
+      console.warn('[uploadImage] 压缩失败，使用原图:', e);
+    }
     return api.uploadFile('/files/upload-wish', filePath);
   }
 });

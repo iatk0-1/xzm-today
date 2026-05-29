@@ -640,11 +640,14 @@ Page({
     wx.showLoading({ title: '发货中...' });
 
     try {
-      const accountId = this.data.logisticsAccounts[this.data.logisticsIndex].bizId;
-      
+      const selectedAccount = this.data.logisticsAccounts[this.data.logisticsIndex];
+      const accountId = selectedAccount.bizId;
+      const expressCode = selectedAccount.deliveryId;  // 获取快递公司编码
+
       // 调用批量发货 API
       await api.post('/shipments/batch-create', {
         accountId: accountId,
+        expressCode: expressCode,  // 传递快递公司编码
         items: this.data.selectedItems.map(item => ({
           orderId: item.orderId,
           orderItemId: item.orderItemId,

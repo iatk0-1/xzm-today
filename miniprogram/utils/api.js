@@ -151,7 +151,12 @@ module.exports = {
     var cosDir = mapUrlToCosDir(url);
     if (cosDir !== null) {
       try {
-        try { filePath = await compressImage(filePath); } catch (e) {}
+        try {
+          const compressResult = await compressImage(filePath);
+          filePath = compressResult.path;
+        } catch (e) {
+          console.warn('压缩失败，使用原图:', e);
+        }
         var cosUpload = require('./cos-upload');
         var cosUrl = await cosUpload.uploadFile(filePath, cosDir);
         return { url: cosUrl, key: '', originalFilename: '', contentType: '', size: 0 };
@@ -160,7 +165,12 @@ module.exports = {
       }
     }
 
-    try { filePath = await compressImage(filePath); } catch (e) {}
+    try {
+      const compressResult = await compressImage(filePath);
+      filePath = compressResult.path;
+    } catch (e) {
+      console.warn('压缩失败，使用原图:', e);
+    }
     return new Promise((resolve, reject) => {
       const token = getToken();
       const idempotencyKey = 'upload_' + Date.now();

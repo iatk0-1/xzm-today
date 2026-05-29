@@ -638,9 +638,11 @@ Page({
     const isImage = contentType && contentType.startsWith('image/');
     try {
       if (isVideo) {
-        filePath = await compressVideo(filePath);
+        const compressResult = await compressVideo(filePath);
+        filePath = compressResult.path;
       } else if (isImage || !isVideo) {
-        filePath = await compressImage(filePath);
+        const compressResult = await compressImage(filePath);
+        filePath = compressResult.path;
       }
     } catch (e) {
       console.warn('压缩异常，使用原文件:', e);

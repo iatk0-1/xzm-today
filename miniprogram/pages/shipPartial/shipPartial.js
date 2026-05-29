@@ -15,7 +15,7 @@ Page({
     expressNo: '',
     expressCodes: [],   // 快递公司名称列表（从后端动态加载）
     expressCodeList: [], // 快递公司完整数据 [{code, name}]
-    expressCode: '',    // 当前选中的快递公司编码
+    expressCode: 'ZTO',    // 当前选中的快递公司编码，默认中通
     expressCodeIndex: 0,
     items: [],           // 可发货的商品列表
     totalShipQty: 0,
