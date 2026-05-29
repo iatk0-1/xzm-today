@@ -1,0 +1,40 @@
+<!--pages/printer-login/authorize.wxml-->
+<view class="container">
+  <view class="content">
+    <!-- 图标 -->
+    <view class="icon-box">
+      <text class="icon">🖨️</text>
+    </view>
+
+    <!-- 标题 -->
+    <view class="title">打单软件登录授权</view>
+
+    <!-- 提示信息 -->
+    <view class="tips" wx:if="{{!authorized}}">
+      <text class="tips-text">确认授权后，打单软件将自动登录</text>
+    </view>
+
+    <!-- 成功提示 -->
+    <view class="success-box" wx:if="{{authorized}}">
+      <text class="success-icon">✓</text>
+      <text class="success-text">授权成功</text>
+    </view>
+
+    <!-- 按钮 -->
+    <view class="button-group" wx:if="{{!authorized}}">
+      <button
+        class="btn btn-primary"
+        bindtap="handleAuthorize"
+        loading="{{loading}}"
+        disabled="{{loading}}">
+        确认授权
+      </button>
+      <button
+        class="btn btn-cancel"
+        bindtap="handleCancel"
+        disabled="{{loading}}">
+        取消
+      </button>
+    </view>
+  </view>
+</view>

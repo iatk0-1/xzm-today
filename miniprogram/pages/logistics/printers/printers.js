@@ -235,5 +235,54 @@ Page({
         wx.showToast({ title: '已复制', icon: 'success' });
       }
     });
+  },
+
+  // 扫码登录打单软件
+  scanQRCodeLogin: function() {
+    wx.scanCode({
+      onlyFromCamera: true,
+      scanType: ['qrCode'],
+      success: (res) => {
+        console.log('扫码结果:', res.result);
+
+        // 解析二维码内容，提取 ticket
+        // 格式：pages/printer-login/authorize?ticket=xxx
+        const ticket = this.extractTicket(res.result);
+
+        if (!ticket) {
+          wx.showToast({
+            title: '二维码格式错误',
+            icon: 'none'
+          });
+          return;
+        }
+
+        // 跳转到授权页面
+        wx.navigateTo({
+          url: `/pages/printer-login/authorize?ticket=${ticket}`
+        });
+      },
+      fail: (err) => {
+        console.error('扫码失败:', err);
+        if (err.errMsg.indexOf('cancel') === -1) {
+          wx.showToast({
+            title: '扫码失败',
+            icon: 'none'
+          });
+        }
+      }
+    });
+  },
+
+  // 从二维码内容中提取 ticket
+  extractTicket: function(content) {
+    try {
+      // 格式：pages/printer-login/authorize?ticket=xxx
+      const match = content.match(/ticket=([^&]+)/);
+      return match ? match[1] : null;
+    } catch (err) {
+      console.error('解析 ticket 失败:', err);
+      return null;
+    }
   }
 });

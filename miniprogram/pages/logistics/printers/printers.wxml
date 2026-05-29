@@ -67,8 +67,14 @@
           <text class="btn-copy" bindtap="copyText" data-text="{{printerAccount.password}}">复制</text>
         </view>
       </view>
+      <view class="account-actions">
+        <button class="btn-qrcode-login" bindtap="scanQRCodeLogin">
+          <text class="icon">📱</text>
+          <text>扫码登录打单软件</text>
+        </button>
+      </view>
       <view class="account-tip">
-        <text>提示：该账号用于登录桌面打单软件，请妥善保管账号密码。</text>
+        <text>提示：可使用账号密码登录，或扫描打单软件二维码快速登录。</text>
       </view>
     </view>
     <view class="create-account-area" wx:else>

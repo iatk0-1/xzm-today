@@ -1,0 +1,112 @@
+/* pages/printer-login/authorize.wxss */
+.container {
+  min-height: 100vh;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+}
+
+.content {
+  width: 100%;
+  max-width: 600rpx;
+  padding: 80rpx 40rpx;
+}
+
+.icon-box {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 40rpx;
+}
+
+.icon {
+  font-size: 120rpx;
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333333;
+  text-align: center;
+  margin-bottom: 20rpx;
+}
+
+.tips {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 80rpx;
+}
+
+.tips-text {
+  font-size: 28rpx;
+  color: #666666;
+  line-height: 44rpx;
+  text-align: center;
+}
+
+.success-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60rpx 0;
+}
+
+.success-icon {
+  width: 120rpx;
+  height: 120rpx;
+  line-height: 120rpx;
+  text-align: center;
+  font-size: 80rpx;
+  color: #52c41a;
+  background: #f6ffed;
+  border-radius: 50%;
+  margin-bottom: 30rpx;
+}
+
+.success-text {
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #333333;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 8rpx;
+  font-size: 30rpx;
+  font-weight: 400;
+}
+
+.btn-primary {
+  background: #1890ff;
+  color: #ffffff;
+  border: none;
+}
+
+.btn-primary[disabled] {
+  background: #d9d9d9;
+  color: #ffffff;
+}
+
+.btn-cancel {
+  background: #ffffff;
+  color: #333333;
+  border: 1rpx solid #d9d9d9;
+}
+
+.btn-cancel[disabled] {
+  opacity: 0.6;
+}
+
+.btn::after {
+  border: none;
+}
