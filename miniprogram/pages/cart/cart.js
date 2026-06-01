@@ -36,6 +36,14 @@ Page({
         const isRemoved = item.validityStatus === 'removed';  // SKU 已被移除
         const isDisabled = isOutOfStock || isInvalid || isProductOff || isRemoved;
 
+        // 套装子项展示文本
+        var bundleSubText = '';
+        if (item.bundleConfig && item.bundleConfig.length > 0) {
+          bundleSubText = item.bundleConfig.map(function(b) {
+            return b.bundleGroupName + ': ' + (b.color || '默认') + ' / ' + (b.size || '均码') + ' ¥' + b.price;
+          }).join('\n');
+        }
+
         return {
           id: item.id,
           productId: item.productId,
@@ -53,7 +61,9 @@ Page({
           stockStatus: item.stockStatus,
           validityStatus: item.validityStatus,
           stockMain: item.stockMain,
-          productStatus: item.productStatus
+          productStatus: item.productStatus,
+          bundleConfig: item.bundleConfig || null,
+          bundleSubText: bundleSubText
         };
       });
 

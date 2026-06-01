@@ -114,7 +114,8 @@ Page({
         price: Number(item.price),
         finalPrice: Number(item.price),
         count: item.count,
-        selected: item.selected
+        selected: item.selected,
+        bundleConfig: item.bundleConfig || null
       }));
 
       let total = 0;
@@ -180,7 +181,7 @@ Page({
     try {
       // 构造后端要求的订单格式（包含 SKU 快照数据）
       const orderItems = checkoutItems.map(item => {
-        return {
+        var orderItem = {
           skuId: item.skuId || 0,
           qty: item.count,
           salePrice: Number(item.finalPrice || item.price),
@@ -191,6 +192,11 @@ Page({
           productName: item.name,
           productImage: item.image || item.coverUrl
         };
+        // 套装商品：传递 bundleConfig
+        if (item.bundleConfig && item.bundleConfig.length > 0) {
+          orderItem.bundleConfig = item.bundleConfig;
+        }
+        return orderItem;
       });
 
       // 构造收货地址
