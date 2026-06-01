@@ -1145,44 +1145,48 @@ Page({
       sizeOptions: data.sizeOptions,
       colors: data.colors,
       skuList: data.skuList.map(function(sku) {
-        return {
-          skuId: sku.skuId,
-          sizeId: sku.sizeId,
-          color: sku.color,
-          size: sku.size,
-          price: sku.price,
-          stock: sku.stock,
-          image: sku.image || '',
-          _toBeRemoved: sku._toBeRemoved
-        };
+        return { skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size, price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved };
       }),
-      displayPrice: data.displayPrice
+      displayPrice: data.displayPrice,
+      isBundleMode: data.isBundleMode,
+      activeGroupIndex: data.activeGroupIndex,
+      bundleGroups: data.bundleGroups.map(function(bg) {
+        return {
+          name: bg.name, colors: bg.colors, sizeOptions: bg.sizeOptions,
+          skuList: (bg.skuList || []).map(function(sku) {
+            return { skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size, price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved };
+          })
+        };
+      })
     };
   },
 
   saveDraft() {
     var key = this.getDraftKey();
-    // 先清理旧持久文件，再复制新文件
     cleanupDraftFiles(key);
     var draftData = this.collectDraftData();
-    // 持久化媒体文件到本地
-    var persisted = persistMediaFiles(key, {
+    var mediaLists = {
       mediaList: draftData.mediaList,
       skuImages: draftData.skuList.map(function(s) { return s.image; })
-    });
+    };
+    if (draftData.isBundleMode && draftData.bundleGroups) {
+      for (var gi = 0; gi < draftData.bundleGroups.length; gi++) {
+        mediaLists['bg_sku_' + gi] = (draftData.bundleGroups[gi].skuList || []).map(function(s) { return s.image; });
+      }
+    }
+    var persisted = persistMediaFiles(key, mediaLists);
     draftData.mediaList = persisted.mediaList;
     var skuImages = persisted.skuImages || [];
-    draftData.skuList = draftData.skuList.map(function(sku, i) {
-      sku.image = skuImages[i] || '';
-      return sku;
-    });
-
-    var ok = saveDraft(key, draftData);
-    if (ok) {
-      wx.showToast({ title: '草稿已保存', icon: 'success' });
-    } else {
-      wx.showToast({ title: '保存失败', icon: 'none' });
+    draftData.skuList = draftData.skuList.map(function(sku, i) { sku.image = skuImages[i] || ''; return sku; });
+    if (draftData.isBundleMode && draftData.bundleGroups) {
+      for (var gi2 = 0; gi2 < draftData.bundleGroups.length; gi2++) {
+        var bgImgs = persisted['bg_sku_' + gi2] || [];
+        draftData.bundleGroups[gi2].skuList = draftData.bundleGroups[gi2].skuList.map(function(sku, i) { sku.image = bgImgs[i] || ''; return sku; });
+      }
     }
+    var ok = saveDraft(key, draftData);
+    if (ok) { wx.showToast({ title: '草稿已保存', icon: 'success' }); }
+    else { wx.showToast({ title: '保存失败', icon: 'none' }); }
   },
 
   clearDraft() {
@@ -1218,11 +1222,16 @@ Page({
 
   restoreDraft(draft) {
     var data = this.data;
-    // 验证持久文件有效性
-    var validated = validatePersistedUrls({
+    var mediaLists = {
       mediaList: draft.mediaList || [],
       skuImages: (draft.skuList || []).map(function(s) { return s.image || ''; })
-    });
+    };
+    if (draft.isBundleMode && draft.bundleGroups) {
+      for (var gi = 0; gi < draft.bundleGroups.length; gi++) {
+        mediaLists['bg_sku_' + gi] = (draft.bundleGroups[gi].skuList || []).map(function(s) { return s.image || ''; });
+      }
+    }
+    var validated = validatePersistedUrls(mediaLists);
     var skuImages = validated.skuImages || [];
 
     var restored = {
@@ -1234,12 +1243,22 @@ Page({
       currentSizeCategoryName: draft.currentSizeCategoryName || data.currentSizeCategoryName,
       sizeOptions: draft.sizeOptions || data.sizeOptions,
       colors: draft.colors || [],
-      skuList: (draft.skuList || []).map(function(sku, i) {
-        sku.image = skuImages[i] || '';
-        return sku;
-      }),
-      displayPrice: draft.displayPrice || ''
+      skuList: (draft.skuList || []).map(function(sku, i) { sku.image = skuImages[i] || ''; return sku; }),
+      displayPrice: draft.displayPrice || '',
+      isBundleMode: draft.isBundleMode || false,
+      activeGroupIndex: draft.activeGroupIndex != null ? draft.activeGroupIndex : -1
     };
+    if (draft.isBundleMode && draft.bundleGroups) {
+      restored.bundleGroups = draft.bundleGroups.map(function(bg, gi) {
+        var bgImgs = validated['bg_sku_' + gi] || [];
+        return { name: bg.name, colors: bg.colors || [], sizeOptions: bg.sizeOptions || [], skuList: (bg.skuList || []).map(function(sku, i) { sku.image = bgImgs[i] || ''; return sku; }) };
+      });
+      if (restored.activeGroupIndex >= 0 && restored.activeGroupIndex < restored.bundleGroups.length) {
+        var ag = restored.bundleGroups[restored.activeGroupIndex];
+        restored.colors = ag.colors || [];
+        restored.skuList = ag.skuList || [];
+      }
+    }
 
     this.setData(restored);
     this.refreshGrid(restored.mediaList);
@@ -1258,7 +1277,8 @@ Page({
       (d.skuList && d.skuList.length > 0) ||
       (d.selectedStalls && d.selectedStalls.length > 0) ||
       (d.selectedTags && d.selectedTags.length > 0) ||
-      (d.colors && d.colors.length > 0));
+      (d.colors && d.colors.length > 0) ||
+      (d.isBundleMode && d.bundleGroups && d.bundleGroups.length > 0));
   },
 
   enableExitConfirm() {
