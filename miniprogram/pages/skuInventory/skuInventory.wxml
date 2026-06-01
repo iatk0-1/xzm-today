@@ -14,8 +14,9 @@
         <view class="product-name">{{item.name}}</view>
         <view class="product-skus" wx:if="{{item.skus && item.skus.length > 0}}">
           <view class="sku-tag" wx:for="{{item.skus}}" wx:key="id" wx:for-item="sku">
-            {{sku.spec}} {{sku.size}}: 
-            <text class="sku-qty {{(sku.availableQty || 0) <= 0 ? 'out' : ((sku.availableQty || 0) <= 5 ? 'low' : 'normal')}}">
+            {{sku.spec}} {{sku.size}}:
+            <text wx:if="{{sku.unlimitedStock}}" class="sku-qty normal">无限</text>
+            <text wx:else class="sku-qty {{(sku.availableQty || 0) <= 0 ? 'out' : ((sku.availableQty || 0) <= 5 ? 'low' : 'normal')}}">
               {{sku.availableQty || 0}}
             </text>
           </view>
@@ -25,7 +26,8 @@
         </view>
       </view>
       <view class="product-action" wx:if="{{item.skus && item.skus.length > 0}}">
-        <button class="btn-operate" catchtap="operateSku" data-product="{{item}}" data-sku="{{item.skus[0]}}">管理</button>
+        <button class="btn-operate" wx:if="{{!item.skus[0].unlimitedStock}}" catchtap="operateSku" data-product="{{item}}" data-sku="{{item.skus[0]}}">管理</button>
+        <text wx:else class="unlimited-tip">无限库存</text>
       </view>
     </view>
 

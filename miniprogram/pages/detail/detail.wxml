@@ -103,7 +103,7 @@
     <image class="sku-img" src="{{currentSkuImage || product.image}}" mode="aspectFill"></image>
     <view class="sku-main">
       <view class="sku-price" style="color: #d32f2f;">¥ {{currentSkuPrice || product.displayPrice || product.price}}</view>
-      <view class="sku-stock" style="color: {{currentSkuStock === 0 ? 'red' : '#999'}};">库存: {{currentSkuStock !== null ? currentSkuStock : '请选择规格'}}</view>
+      <view class="sku-stock" style="color: {{currentSkuStock === 0 && !currentSkuUnlimited ? 'red' : '#999'}};">库存: {{currentSkuStockText || '请选择规格'}}</view>
       <view class="sku-choose-tip">已选: {{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
     </view>
   </view>
@@ -125,12 +125,12 @@
   </scroll-view>
 
   <!-- 已售罄 -->
-  <view class="sku-btn-confirm disabled" wx:if="{{currentSkuStock === 0}}">
+  <view class="sku-btn-confirm disabled" wx:if="{{currentSkuStock === 0 && !currentSkuUnlimited}}">
     已售罄
   </view>
 
   <!-- 有库存或尚未选择规格：显示操作按钮 -->
-  <view class="sku-btn-confirm" wx:if="{{currentSkuStock > 0 || currentSkuStock === null}}" bindtap="confirmSkuAction" data-action="{{skuAction}}">
+  <view class="sku-btn-confirm" wx:if="{{currentSkuStock > 0 || currentSkuUnlimited || currentSkuStock === null}}" bindtap="confirmSkuAction" data-action="{{skuAction}}">
     {{skuAction === 'buy' ? '下一步：立即购买' : '确定加入购物车'}}
   </view>
 </view>

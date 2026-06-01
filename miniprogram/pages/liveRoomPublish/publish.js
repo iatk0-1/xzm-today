@@ -2,6 +2,8 @@
 const api = require('../../utils/api');
 const config = require('../../utils/config');
 const { compressImage, compressVideo } = require('../../utils/media');
+const { saveDraft, loadDraft, removeDraft, hasDraft, persistMediaFiles, cleanupDraftFiles, validatePersistedUrls } = require('../../utils/draft');
+
 
 // 拖拽网格配置
 const ITEM_SIZE = 105;
@@ -69,10 +71,19 @@ Page({
     if (options.productId) {
       this.setData({ productId: options.productId, editMode: true });
       this.loadProductForEdit(options.productId);
+    } else {
+      // 创建模式：检测是否有未完成的草稿
+      this.checkDraft();
     }
 
     this.loadRecentStallsAndTags();
     this.loadSizeCategories();
+  },
+
+  onUnload() {
+    if (this.hasFormContent()) {
+      this.saveDraft();
+    }
   },
 
   // 加载已有商品数据用于编辑
@@ -117,7 +128,7 @@ Page({
         color: sku.spec || sku.color || '图片色',
         size: sku.size || '均码',
         price: String(sku.retailPrice || ''),
-        stock: String(sku.stockMain || ''),
+        stock: sku.unlimitedStock ? '' : String(sku.stockMain || ''),
         image: sku.imageUrl || ''
       }));
 
@@ -156,6 +167,7 @@ Page({
 
       this.refreshGrid(mediaList);
       wx.hideLoading();
+      this.checkDraft();
     } catch (err) {
       wx.hideLoading();
       console.error('加载商品失败:', err);
@@ -214,6 +226,7 @@ Page({
   onInput(e) {
     const field = e.currentTarget.dataset.field;
     this.setData({ [field]: e.detail.value });
+    this.enableExitConfirm();
   },
 
   // ================= 拖拽媒体池 =================
@@ -787,6 +800,9 @@ Page({
     this.setData({ [key]: e.detail.value });
   },
 
+
+
+
   uploadSkuImage(e) {
     const index = e.currentTarget.dataset.index;
     wx.chooseMedia({
@@ -856,7 +872,7 @@ Page({
     const newList = skuList.map(item => ({
       ...item,
       price: quickPrice || item.price,
-      stock: quickStock || item.stock,
+      stock: quickStock !== '' ? quickStock : item.stock,
       image: quickImage || item.image
     }));
 
@@ -898,15 +914,25 @@ Page({
       const skuImageMap = await this.uploadSkuImages(skuList);
 
       // 3. 构建 SKU 数据（使用已上传的 URL）
-      const skus = skuList.map((sku, index) => ({
-        spec: sku.color || '默认',
-        size: sku.size || '均码',
-        barcode: '',
-        retailPrice: Number(sku.price),
-        stockMain: Number(sku.stock) || 0,
-        imageUrl: skuImageMap[index] || null,
-        sizeId: sku.sizeId || null
-      }));
+      const skus = skuList.map((sku, index) => {
+        const stockStr = sku.stock ? String(sku.stock).trim() : '';
+        const isUnlimited = stockStr === '';
+        const stockNum = isUnlimited ? 0 : (Number(stockStr) || 0);
+        if (!isUnlimited && stockNum > 999999999) {
+          wx.showToast({ title: '库存不能超过999999999', icon: 'none' });
+          throw new Error('库存超出范围');
+        }
+        return {
+          spec: sku.color || '默认',
+          size: sku.size || '均码',
+          barcode: '',
+          retailPrice: Number(sku.price),
+          stockMain: stockNum,
+          isUnlimitedStock: isUnlimited,
+          imageUrl: skuImageMap[index] || null,
+          sizeId: sku.sizeId || null
+        };
+      });
 
       const productData = {
         name: title,
@@ -938,6 +964,10 @@ Page({
         wx.hideLoading();
         wx.showToast({ title: '上架成功!', icon: 'success' });
       }
+
+      // 成功后清除草稿并关闭退出确认
+      this.clearDraft();
+      wx.disableAlertBeforeUnload();
 
       setTimeout(() => {
         wx.navigateBack();
@@ -1015,5 +1045,149 @@ Page({
 
   goBack: function() {
     wx.navigateBack();
-  }
+  },
+
+  // ================= 草稿功能 =================
+
+  getDraftKey() {
+    var data = this.data;
+    if (data.editMode && data.productId) return 'publish_edit_' + data.productId;
+    return 'publish_create_' + (data.sessionId || '0');
+  },
+
+  collectDraftData() {
+    var data = this.data;
+    return {
+      title: data.title,
+      mediaList: data.mediaList,
+      selectedStalls: data.selectedStalls,
+      selectedTags: data.selectedTags,
+      currentSizeCategoryId: data.currentSizeCategoryId,
+      currentSizeCategoryName: data.currentSizeCategoryName,
+      sizeOptions: data.sizeOptions,
+      colors: data.colors,
+      skuList: data.skuList.map(function(sku) {
+        return {
+          skuId: sku.skuId,
+          sizeId: sku.sizeId,
+          color: sku.color,
+          size: sku.size,
+          price: sku.price,
+          stock: sku.stock,
+          image: sku.image || '',
+          _toBeRemoved: sku._toBeRemoved
+        };
+      }),
+      displayPrice: data.displayPrice
+    };
+  },
+
+  saveDraft() {
+    var key = this.getDraftKey();
+    // 先清理旧持久文件，再复制新文件
+    cleanupDraftFiles(key);
+    var draftData = this.collectDraftData();
+    // 持久化媒体文件到本地
+    var persisted = persistMediaFiles(key, {
+      mediaList: draftData.mediaList,
+      skuImages: draftData.skuList.map(function(s) { return s.image; })
+    });
+    draftData.mediaList = persisted.mediaList;
+    var skuImages = persisted.skuImages || [];
+    draftData.skuList = draftData.skuList.map(function(sku, i) {
+      sku.image = skuImages[i] || '';
+      return sku;
+    });
+
+    var ok = saveDraft(key, draftData);
+    if (ok) {
+      wx.showToast({ title: '草稿已保存', icon: 'success' });
+    } else {
+      wx.showToast({ title: '保存失败', icon: 'none' });
+    }
+  },
+
+  clearDraft() {
+    var key = this.getDraftKey();
+    removeDraft(key);
+    cleanupDraftFiles(key);
+  },
+
+  checkDraft() {
+    var self = this;
+    var key = this.getDraftKey();
+    if (!hasDraft(key)) return;
+
+    var draft = loadDraft(key);
+    var savedAt = draft._savedAt ? new Date(draft._savedAt).toLocaleString() : '未知时间';
+
+    wx.showModal({
+      title: '发现草稿',
+      content: '上次编辑时间：' + savedAt + '\n\n是否恢复草稿内容？',
+      confirmText: '恢复',
+      cancelText: '忽略',
+      success: function(res) {
+        if (res.confirm) {
+          self.restoreDraft(draft);
+        } else {
+          removeDraft(key);
+          cleanupDraftFiles(key);
+        }
+        self.enableExitConfirm();
+      }
+    });
+  },
+
+  restoreDraft(draft) {
+    var data = this.data;
+    // 验证持久文件有效性
+    var validated = validatePersistedUrls({
+      mediaList: draft.mediaList || [],
+      skuImages: (draft.skuList || []).map(function(s) { return s.image || ''; })
+    });
+    var skuImages = validated.skuImages || [];
+
+    var restored = {
+      title: draft.title || '',
+      mediaList: validated.mediaList,
+      selectedStalls: draft.selectedStalls || [],
+      selectedTags: draft.selectedTags || [],
+      currentSizeCategoryId: draft.currentSizeCategoryId || data.currentSizeCategoryId,
+      currentSizeCategoryName: draft.currentSizeCategoryName || data.currentSizeCategoryName,
+      sizeOptions: draft.sizeOptions || data.sizeOptions,
+      colors: draft.colors || [],
+      skuList: (draft.skuList || []).map(function(sku, i) {
+        sku.image = skuImages[i] || '';
+        return sku;
+      }),
+      displayPrice: draft.displayPrice || ''
+    };
+
+    this.setData(restored);
+    this.refreshGrid(restored.mediaList);
+
+    var hasImages = restored.mediaList.some(function(m) { return m.url; });
+    if (!hasImages) {
+      wx.showToast({ title: '草稿已恢复，请重新选择图片', icon: 'none', duration: 2000 });
+    } else {
+      wx.showToast({ title: '草稿已恢复', icon: 'success', duration: 1500 });
+    }
+  },
+
+  hasFormContent() {
+    var d = this.data;
+    return !!(d.title || (d.mediaList && d.mediaList.length > 0) ||
+      (d.skuList && d.skuList.length > 0) ||
+      (d.selectedStalls && d.selectedStalls.length > 0) ||
+      (d.selectedTags && d.selectedTags.length > 0) ||
+      (d.colors && d.colors.length > 0));
+  },
+
+  enableExitConfirm() {
+    if (this._alertEnabled) return;
+    this._alertEnabled = true;
+    wx.enableAlertBeforeUnload({
+      message: '表单内容未保存，确定离开吗？'
+    });
+  },
 });

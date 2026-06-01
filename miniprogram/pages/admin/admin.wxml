@@ -174,8 +174,8 @@
 
         <view class="sku-right">
           <input class="mini-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onSkuInput" data-index="{{index}}" data-field="price" />
-          <input class="mini-input" type="number" placeholder="无限" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" />
-          
+          <input class="mini-input" type="number" placeholder="无限" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" maxlength="9" />
+
           <view class="mini-img-upload" bindtap="uploadSkuImage" data-index="{{index}}">
             <image wx:if="{{item.image}}" src="{{item.image}}" mode="aspectFill"></image>
             <text class="icon-plus" wx:else>+</text>
@@ -254,7 +254,10 @@
     <view style="font-size: 11px; color: #999; margin-top: 8px;">未添加将根据分类标签自动智能匹配</view>
   </view>
 
-  <view class="btn-submit" bindtap="submitProduct">确认上架</view>
+  <view class="submit-area">
+    <view class="btn-draft" bindtap="saveDraft">保存草稿</view>
+    <view class="btn-submit" bindtap="submitProduct">确认上架</view>
+  </view>
 </view>
 
 <view class="modal-mask" wx:if="{{showRelatedModal}}" catchtap="closeRelatedModal"></view>

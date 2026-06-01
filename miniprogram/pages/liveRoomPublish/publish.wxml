@@ -171,7 +171,7 @@
 
         <view class="sku-right">
           <input class="mini-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onSkuInput" data-index="{{index}}" data-field="price" />
-          <input class="mini-input" type="number" placeholder="无限" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" />
+          <input class="mini-input" type="number" placeholder="无限" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" maxlength="9" />
 
           <view class="mini-img-upload" bindtap="uploadSkuImage" data-index="{{index}}">
             <image wx:if="{{item.image}}" src="{{item.image}}" mode="aspectFill"></image>
@@ -184,6 +184,7 @@
   </view>
 
   <view class="submit-area" wx:if="{{skuList.length > 0}}">
+    <view class="btn-draft" bindtap="saveDraft">保存草稿</view>
     <button class="submit-btn-large" bindtap="submitProduct">{{editMode ? '保存修改' : '提交上架'}}</button>
   </view>
 </view>

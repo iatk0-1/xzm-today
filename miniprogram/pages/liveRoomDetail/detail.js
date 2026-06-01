@@ -1,6 +1,7 @@
 // miniprogram/pages/liveRoomDetail/detail.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const { formatStock, hasStock } = require('../../utils/stock');
 
 Page({
   data: {
@@ -81,8 +82,18 @@ Page({
       // 为每个商品计算总库存
       const products = (detail?.products || []).map(product => {
         let totalStock = 0;
+        let hasUnlimited = false;
         if (product.skuMatrix && product.skuMatrix.length > 0) {
-          totalStock = product.skuMatrix.reduce((sum, sku) => sum + (sku.stock || 0), 0);
+          for (const sku of product.skuMatrix) {
+            if (sku.unlimitedStock) {
+              hasUnlimited = true;
+              break;
+            }
+            totalStock += (sku.stock || 0);
+          }
+        }
+        if (hasUnlimited) {
+          totalStock = 1000000000;
         }
         return { ...product, totalStock };
       });
@@ -298,6 +309,8 @@ Page({
         this.setData({
           currentSkuPrice: match.retailPrice || match.price,
           currentSkuStock: match.stockMain || match.stock,
+          currentSkuUnlimited: match.unlimitedStock || false,
+          currentSkuStockText: formatStock(match.stockMain || match.stock, match.unlimitedStock),
           currentSkuId: match.skuId,
           currentSkuImage: match.imageUrl || currentProduct.coverUrl
         });
@@ -306,6 +319,8 @@ Page({
         this.setData({
           currentSkuPrice: null,
           currentSkuStock: 0,
+          currentSkuUnlimited: false,
+          currentSkuStockText: '0',
           currentSkuId: null,
           currentSkuImage: currentProduct.coverUrl
         });

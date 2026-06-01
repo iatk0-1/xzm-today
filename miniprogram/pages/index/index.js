@@ -1,6 +1,7 @@
 // miniprogram/pages/index/index.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const { formatStock, hasStock } = require('../../utils/stock');
 const app = getApp();
 
 Page({
@@ -414,6 +415,8 @@ Page({
         this.setData({
           currentSkuPrice: match.price,
           currentSkuStock: match.stock,
+          currentSkuUnlimited: match.unlimitedStock || false,
+          currentSkuStockText: formatStock(match.stock, match.unlimitedStock),
           currentSkuId: match.skuId,
           currentSkuImage: match.imageUrl || (currentProduct.coverUrl || currentProduct.image)
         });
@@ -422,6 +425,8 @@ Page({
         this.setData({
           currentSkuPrice: null,
           currentSkuStock: 0,
+          currentSkuUnlimited: false,
+          currentSkuStockText: '0',
           currentSkuId: null,
           currentSkuImage: currentProduct.coverUrl || currentProduct.image
         });
@@ -432,7 +437,7 @@ Page({
   confirmAddToCart(e) {
     const actionType = e.currentTarget.dataset.action;
 
-    const { currentProduct, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes } = this.data;
+    const { currentProduct, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuUnlimited, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes } = this.data;
     if (!currentProduct) return;
 
     if (uniqueColors.length > 0 && !selectedColor) {
@@ -441,7 +446,7 @@ Page({
     if (uniqueSizes.length > 0 && !selectedSize) {
       return wx.showToast({ title: '请选择尺码', icon: 'none' });
     }
-    if (currentSkuStock <= 0) {
+    if (!hasStock(currentSkuStock, currentSkuUnlimited)) {
       return wx.showToast({ title: '该规格已售罄', icon: 'none' });
     }
 

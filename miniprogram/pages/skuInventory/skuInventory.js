@@ -1,5 +1,6 @@
 // miniprogram/pages/skuInventory/skuInventory.js
 const api = require('../../utils/api');
+const { formatStock } = require('../../utils/stock');
 
 Page({
   data: {
@@ -66,6 +67,7 @@ Page({
         const skuMatrix = product.skuMatrix || [];
         const skusWithQty = skuMatrix.map(sku => {
           const skuId = sku.skuId || sku.id;
+          const unlimited = sku.unlimitedStock || false;
 
           return {
             id: skuId,
@@ -74,7 +76,8 @@ Page({
             price: sku.price,
             stock: sku.stock,
             imageUrl: sku.imageUrl,
-            availableQty: inventoryMap[skuId] !== undefined ? inventoryMap[skuId] : 0
+            availableQty: unlimited ? '无限' : (inventoryMap[skuId] !== undefined ? inventoryMap[skuId] : 0),
+            unlimitedStock: unlimited
           };
         });
 

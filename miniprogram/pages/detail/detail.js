@@ -1,5 +1,6 @@
 // miniprogram/pages/detail/detail.js
 const api = require('../../utils/api');
+const { formatStock, hasStock } = require('../../utils/stock');
 
 Page({
   data: {
@@ -230,6 +231,8 @@ Page({
         this.setData({
           currentSkuPrice: match.price,
           currentSkuStock: match.stock,
+          currentSkuUnlimited: match.unlimitedStock || false,
+          currentSkuStockText: formatStock(match.stock, match.unlimitedStock),
           currentSkuId: match.skuId,
           currentSkuImage: match.imageUrl || product.coverUrl
         });
@@ -238,6 +241,8 @@ Page({
         this.setData({
           currentSkuPrice: product.retailPrice || product.displayPrice,
           currentSkuStock: 0,
+          currentSkuUnlimited: false,
+          currentSkuStockText: '0',
           currentSkuId: null,
           currentSkuImage: product.coverUrl
         });
@@ -248,7 +253,7 @@ Page({
   confirmSkuAction(e) {
     // 从点击事件中获取 action 参数，如果没有则使用 data 中的 skuAction
     const action = e.currentTarget.dataset.action || this.data.skuAction;
-    const { product, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes } = this.data;
+    const { product, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuUnlimited, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes } = this.data;
 
     // 检查是否选择了颜色和尺码
     if (uniqueColors.length > 0 && !selectedColor) {
@@ -258,7 +263,7 @@ Page({
       return wx.showToast({ title: '请选择尺码', icon: 'none' });
     }
     // 检查库存
-    if (currentSkuStock <= 0) {
+    if (!hasStock(currentSkuStock, currentSkuUnlimited)) {
       return wx.showToast({ title: '该规格已售罄', icon: 'none' });
     }
 

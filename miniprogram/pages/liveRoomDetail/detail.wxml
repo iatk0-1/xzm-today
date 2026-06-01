@@ -141,7 +141,7 @@
     <image class="sku-img" src="{{currentSkuImage || currentProduct.coverUrl}}" mode="aspectFill"></image>
     <view class="sku-main">
       <view class="sku-price">¥{{currentSkuPrice || currentProduct.retailPrice || currentProduct.displayPrice || '0.00'}}</view>
-      <view class="sku-stock {{currentSkuStock === 0 ? 'out-of-stock' : ''}}">库存：{{currentSkuStock !== null ? currentSkuStock : '请选择规格'}}</view>
+      <view class="sku-stock {{currentSkuStock === 0 && !currentSkuUnlimited ? 'out-of-stock' : ''}}">库存：{{currentSkuStockText || '请选择规格'}}</view>
       <view class="sku-choose-tip">已选：{{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
     </view>
   </view>
@@ -159,7 +159,7 @@
       </view>
     </view>
   </scroll-view>
-  <view class="sku-actions" wx:if="{{currentSkuStock !== 0 && currentSkuStock !== null}}">
+  <view class="sku-actions" wx:if="{{(currentSkuStock !== 0 || currentSkuUnlimited) && currentSkuStock !== null}}">
     <view class="sku-btn-cart" bindtap="confirmAddToCart" data-action="cart">加入购物车</view>
     <view class="sku-btn-buy" bindtap="confirmAddToCart" data-action="buy">立即购买</view>
   </view>
