@@ -113,6 +113,34 @@
     </view>
   </view>
 
+  <!-- 套装模式开关 -->
+  <view class="form-group">
+    <view class="bundle-mode-row">
+      <text class="bundle-mode-label">套装商品</text>
+      <switch checked="{{isBundleMode}}" bindchange="toggleBundleMode" color="#07c160" />
+    </view>
+  </view>
+
+  <block wx:if="{{isBundleMode}}">
+    <view class="bundle-groups-section">
+      <view class="label">套装子项</view>
+      <scroll-view class="bundle-group-tabs" scroll-x>
+        <view class="bundle-group-tab {{activeGroupIndex === index ? 'active' : ''}}" wx:for="{{bundleGroups}}" wx:key="index" bindtap="selectBundleGroup" data-index="{{index}}">
+          <text>{{item.name || ('子项' + (index + 1))}}</text>
+          <text class="bundle-group-del" catchtap="removeBundleGroup" data-index="{{index}}">×</text>
+        </view>
+        <view class="bundle-group-tab add-tab" bindtap="addBundleGroup"><text>+ 添加</text></view>
+      </scroll-view>
+      <view class="bundle-group-name-row" wx:if="{{activeGroupIndex >= 0}}">
+        <text class="bundle-group-name-label">子项名称：</text>
+        <input class="bundle-group-name-input" placeholder="如：上衣" value="{{bundleGroups[activeGroupIndex].name}}" bindinput="onBundleGroupNameInput" />
+      </view>
+    </view>
+    <view class="bundle-group-banner" wx:if="{{activeGroupIndex >= 0}}">
+      <text>正在编辑：{{bundleGroups[activeGroupIndex].name || ('子项' + (activeGroupIndex + 1))}}</text>
+    </view>
+  </block>
+
   <!-- 尺码配置 -->
   <view class="form-group">
     <view class="label"><text class="required">*</text>可选尺码 (点击多选)</view>

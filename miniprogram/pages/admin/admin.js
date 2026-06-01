@@ -68,6 +68,11 @@ Page({
     batchSelectedColors: [],
     batchSelectedSizes: [],
 
+    // 套装模式
+    isBundleMode: false,
+    bundleGroups: [],           // [{name, colors, sizeOptions, skuList}]
+    activeGroupIndex: -1,       // 当前编辑的子项索引，-1表示非套装或未选中
+
     lookbookImgs: [],
     detailImgs: [],
 
@@ -333,6 +338,34 @@ Page({
         colorInput: '',
         tagInput: ''
       });
+
+      // 套装商品：恢复 bundleGroups
+      if (res.bundleGroups && res.bundleGroups.length > 0) {
+        var bgs = res.bundleGroups.map(function(bg) {
+          return {
+            name: bg.name,
+            colors: [...new Set((bg.skus || []).map(function(s) { return s.spec; }))],
+            sizeOptions: sizeOptions.slice(),
+            skuList: (bg.skus || []).map(function(sku) {
+              return {
+                skuId: sku.id,
+                sizeId: sku.sizeId,
+                color: sku.spec || '默认',
+                size: sku.size || '均码',
+                price: String(sku.retailPrice || ''),
+                stock: sku.unlimitedStock ? '' : String(sku.stockMain || ''),
+                image: sku.imageUrl || ''
+              };
+            })
+          };
+        });
+        this.setData({
+          isBundleMode: true,
+          bundleGroups: bgs,
+          activeGroupIndex: 0
+        });
+        this.loadGroupState(0);
+      }
 
       this.refreshGrid(mediaList);
       wx.hideLoading();
@@ -1159,6 +1192,7 @@ Page({
     });
 
     this.setData({ skuList: newSkuList });
+    this._afterBundleSkuChange();
   },
 
   applyBatch() {
@@ -1386,7 +1420,11 @@ Page({
     const { mediaList, title, selectedStalls, selectedTags, skuList, lookbookImgs, detailImgs, manualRelated,
             videoUrl, shippingInfo, description, fabricCare, sizeChartTip, warmTips, editId } = this.data;
 
-    if (mediaList.length === 0 || !title || skuList.length === 0) {
+    var isBundle = this.data.isBundleMode && this.data.bundleGroups.length > 0;
+    var hasSkus = isBundle
+      ? this.data.bundleGroups.some(function(g) { return g.skuList && g.skuList.length > 0; })
+      : skuList.length > 0;
+    if (mediaList.length === 0 || !title || !hasSkus) {
       return wx.showToast({ title: '首图/名称/尺码颜色不能为空', icon: 'none' });
     }
 
@@ -1474,8 +1512,31 @@ Page({
         sizeChartTip: sizeChartTip || null,
         warmTips: warmTips || null,
         sizeCategoryId: this.data.currentSizeCategoryId || null,
-        skus: skus
+        skus: skus,
+        bundleGroups: null
       };
+
+      // 套装模式：构建 bundleGroups 数据
+      if (this.data.isBundleMode && this.data.bundleGroups.length > 0) {
+        this.saveActiveGroupState();
+        var bundleGroupsData = this.data.bundleGroups.map(function(bg, gi) {
+          var bgSkus = (bg.skuList || []).filter(function(s) { return !s._toBeRemoved; }).map(function(sku) {
+            var s = String(sku.stock || '').trim();
+            return {
+              spec: sku.color || '默认',
+              size: sku.size || '均码',
+              barcode: '',
+              retailPrice: Number(sku.price) || 0,
+              stockMain: s === '' ? 0 : (Number(s) || 0),
+              isUnlimitedStock: s === '',
+              sizeId: sku.sizeId || null
+            };
+          });
+          return { name: bg.name || ('子项' + (gi + 1)), sortOrder: gi, skus: bgSkus };
+        });
+        productData.bundleGroups = bundleGroupsData;
+        productData.skus = [];  // 套装模式下顶层 skus 为空
+      }
 
       console.log('提交商品数据:', JSON.stringify(productData));
 
@@ -1944,6 +2005,98 @@ Page({
       );
     }
     this.setData({ filteredTags: filtered });
+  },
+
+  // ================= 套装子项管理 =================
+
+  toggleBundleMode() {
+    var isBundle = !this.data.isBundleMode;
+    if (isBundle) {
+      // 切换到套装模式：保存当前状态为空组，创建第一个子项
+      this.setData({
+        isBundleMode: true,
+        bundleGroups: [],
+        activeGroupIndex: 0
+      });
+      this.addBundleGroup();
+    } else {
+      // 切回普通模式：保存当前组状态，恢复
+      if (this.data.activeGroupIndex >= 0) {
+        this.saveActiveGroupState();
+      }
+      this.setData({
+        isBundleMode: false,
+        bundleGroups: [],
+        activeGroupIndex: -1,
+        colors: [], skuList: []
+      });
+    }
+  },
+
+  saveActiveGroupState() {
+    var idx = this.data.activeGroupIndex;
+    if (idx < 0 || idx >= this.data.bundleGroups.length) return;
+    var groups = this.data.bundleGroups;
+    groups[idx] = Object.assign({}, groups[idx], {
+      colors: this.data.colors.slice(),
+      sizeOptions: this.data.sizeOptions.map(function(s) { return { id: s.id, name: s.name, selected: s.selected }; }),
+      skuList: this.data.skuList.slice()
+    });
+    this.setData({ bundleGroups: groups });
+  },
+
+  loadGroupState(idx) {
+    var group = this.data.bundleGroups[idx];
+    if (!group) return;
+    this.setData({
+      activeGroupIndex: idx,
+      colors: group.colors || [],
+      sizeOptions: group.sizeOptions || [],
+      skuList: group.skuList || [],
+      colorInput: ''
+    });
+  },
+
+  selectBundleGroup(e) {
+    this.saveActiveGroupState();
+    this.loadGroupState(e.currentTarget.dataset.index);
+  },
+
+  addBundleGroup() {
+    var groups = this.data.bundleGroups.slice();
+    groups.push({ name: '', colors: [], sizeOptions: [], skuList: [] });
+    var newIdx = groups.length - 1;
+    this.setData({ bundleGroups: groups });
+    this.loadGroupState(newIdx);
+    wx.showToast({ title: '已添加子项 ' + (newIdx + 1), icon: 'none' });
+  },
+
+  removeBundleGroup(e) {
+    var idx = e.currentTarget.dataset.index;
+    var groups = this.data.bundleGroups.slice();
+    groups.splice(idx, 1);
+    var newIdx = groups.length > 0 ? Math.min(idx, groups.length - 1) : -1;
+    this.setData({ bundleGroups: groups, activeGroupIndex: newIdx });
+    if (newIdx >= 0) {
+      this.loadGroupState(newIdx);
+    } else {
+      this.setData({ colors: [], skuList: [], sizeOptions: [] });
+    }
+  },
+
+  onBundleGroupNameInput(e) {
+    var idx = this.data.activeGroupIndex;
+    if (idx < 0) return;
+    var groups = this.data.bundleGroups;
+    groups[idx] = Object.assign({}, groups[idx], { name: e.detail.value });
+    this.setData({ bundleGroups: groups });
+  },
+
+  // Override: in bundle mode, colors/sizes/SKUs belong to active group. After any change, auto-save.
+  _afterBundleSkuChange() {
+    if (this.data.isBundleMode && this.data.activeGroupIndex >= 0) {
+      this.saveActiveGroupState();
+    }
   },
 
   // ================= 草稿功能 =================

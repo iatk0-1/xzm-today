@@ -57,7 +57,12 @@ Page({
 
     showBatchModal: false,
     batchSelectedColors: [],
-    batchSelectedSizes: []
+    batchSelectedSizes: [],
+
+    // 套装模式
+    isBundleMode: false,
+    bundleGroups: [],
+    activeGroupIndex: -1
   },
 
   onLoad(options) {
@@ -711,6 +716,7 @@ Page({
     });
 
     this.setData({ skuList: newSkuList });
+    this._afterBundleSkuChange();
   },
 
   applyBatch() {
@@ -944,8 +950,17 @@ Page({
         retailPrice: minPrice,
         displayPrice: displayPrice,
         sizeCategoryId: currentSizeCategoryId || null,
-        skus: skus
+        skus: skus,
+        bundleGroups: null
       };
+
+      if (this.data.isBundleMode && this.data.bundleGroups.length > 0) {
+        this.saveActiveGroupState();
+        productData.bundleGroups = this.data.bundleGroups.map(function(bg, gi) {
+          return { name: bg.name || ('子项' + (gi + 1)), sortOrder: gi, skus: (bg.skuList || []).filter(function(s) { return !s._toBeRemoved; }).map(function(sku) { var s = String(sku.stock || '').trim(); return { spec: sku.color || '默认', size: sku.size || '均码', barcode: '', retailPrice: Number(sku.price) || 0, stockMain: s === '' ? 0 : (Number(s) || 0), isUnlimitedStock: s === '', sizeId: sku.sizeId || null }; }) };
+        });
+        productData.skus = [];
+      }
 
       console.log('提交商品数据:', JSON.stringify(productData));
 
@@ -1045,6 +1060,69 @@ Page({
 
   goBack: function() {
     wx.navigateBack();
+  },
+
+  // ================= 套装子项管理 =================
+
+  toggleBundleMode() {
+    var isBundle = !this.data.isBundleMode;
+    if (isBundle) {
+      this.setData({ isBundleMode: true, bundleGroups: [], activeGroupIndex: 0 });
+      this.addBundleGroup();
+    } else {
+      if (this.data.activeGroupIndex >= 0) this.saveActiveGroupState();
+      this.setData({ isBundleMode: false, bundleGroups: [], activeGroupIndex: -1, colors: [], skuList: [] });
+    }
+  },
+
+  saveActiveGroupState() {
+    var idx = this.data.activeGroupIndex;
+    if (idx < 0 || idx >= this.data.bundleGroups.length) return;
+    var groups = this.data.bundleGroups;
+    groups[idx] = Object.assign({}, groups[idx], {
+      colors: this.data.colors.slice(),
+      sizeOptions: this.data.sizeOptions.map(function(s) { return { id: s.id, name: s.name, selected: s.selected }; }),
+      skuList: this.data.skuList.slice()
+    });
+    this.setData({ bundleGroups: groups });
+  },
+
+  loadGroupState(idx) {
+    var group = this.data.bundleGroups[idx];
+    if (!group) return;
+    this.setData({ activeGroupIndex: idx, colors: group.colors || [], sizeOptions: group.sizeOptions || [], skuList: group.skuList || [], colorInput: '' });
+  },
+
+  selectBundleGroup(e) { this.saveActiveGroupState(); this.loadGroupState(e.currentTarget.dataset.index); },
+
+  addBundleGroup() {
+    var groups = this.data.bundleGroups.slice();
+    groups.push({ name: '', colors: [], sizeOptions: [], skuList: [] });
+    var newIdx = groups.length - 1;
+    this.setData({ bundleGroups: groups });
+    this.loadGroupState(newIdx);
+    wx.showToast({ title: '已添加子项 ' + (newIdx + 1), icon: 'none' });
+  },
+
+  removeBundleGroup(e) {
+    var idx = e.currentTarget.dataset.index;
+    var groups = this.data.bundleGroups.slice();
+    groups.splice(idx, 1);
+    var newIdx = groups.length > 0 ? Math.min(idx, groups.length - 1) : -1;
+    this.setData({ bundleGroups: groups, activeGroupIndex: newIdx });
+    if (newIdx >= 0) { this.loadGroupState(newIdx); } else { this.setData({ colors: [], skuList: [], sizeOptions: [] }); }
+  },
+
+  onBundleGroupNameInput(e) {
+    var idx = this.data.activeGroupIndex;
+    if (idx < 0) return;
+    var groups = this.data.bundleGroups;
+    groups[idx] = Object.assign({}, groups[idx], { name: e.detail.value });
+    this.setData({ bundleGroups: groups });
+  },
+
+  _afterBundleSkuChange() {
+    if (this.data.isBundleMode && this.data.activeGroupIndex >= 0) this.saveActiveGroupState();
   },
 
   // ================= 草稿功能 =================
