@@ -84,18 +84,18 @@ Page({
           ...product,
           skuMatrix: skuMatrix,
           image: product.coverUrl || product.image,
-          title: product.name, // 后端返回 name，前端使用 title
+          title: product.name,
           displayPrice: product.displayPrice || (product.retailPrice ? String(product.retailPrice) : null),
           price: product.retailPrice ? String(product.retailPrice) : null,
           bannerImgs: banners,
           lookbookImgs: product.lookbookImages || [],
           detailImgs: product.detailImages || [],
           manualRelatedIds: product.relatedProductIds || [],
-          // 直播相关字段
           productType: product.productType || 'normal',
           liveSessionId: product.liveSessionId,
           sessionStatus: product.sessionStatus,
-          convertedToProductId: product.convertedToProductId
+          convertedToProductId: product.convertedToProductId,
+          bundleGroups: res.bundleGroups || null  // 套装子项（ProductDetailResponse顶层字段）
         },
         bannerImgs: banners,
         lookbookImgs: product.lookbookImages || [],
@@ -185,9 +185,25 @@ Page({
     const action = e.currentTarget.dataset.action || 'cart';
     const { product, uniqueColors, uniqueSizes } = this.data;
 
+    // Build bundle groups from API or from skuMatrix
+    var bundleGroups = product.bundleGroups;
+    if (!bundleGroups || bundleGroups.length === 0) {
+      // Reconstruct from skuMatrix (for list pages where ProductSummaryResponse has no bundleGroups field)
+      var matrix = product.skuMatrix || [];
+      if (matrix.length > 0 && matrix[0].bundleGroupName) {
+        var groupMap = {};
+        matrix.forEach(function(s) {
+          var key = s.bundleGroupId || s.bundleGroupName;
+          if (!groupMap[key]) groupMap[key] = { name: s.bundleGroupName, skus: [] };
+          groupMap[key].skus.push({ skuId: s.skuId, color: s.color, size: s.size, price: s.price, stock: s.stock, unlimitedStock: s.unlimitedStock, imageUrl: s.imageUrl });
+        });
+        bundleGroups = Object.values(groupMap);
+      }
+    }
+
     // 套装商品：初始化子项选择
-    if (product.bundleGroups && product.bundleGroups.length > 0) {
-      var selections = product.bundleGroups.map(function(bg) {
+    if (bundleGroups && bundleGroups.length > 0) {
+      var selections = bundleGroups.map(function(bg) {
         var colors = bg.skus ? [...new Set(bg.skus.map(function(s) { return s.color || s.spec; }))] : [];
         var sizes = bg.skus ? [...new Set(bg.skus.map(function(s) { return s.size; }))] : [];
         return {
@@ -202,7 +218,6 @@ Page({
       this.setData({
         showSku: true, skuAction: action, bundleSelections: selections, bundleAllSelected: false
       });
-      // 自动检查已自动选中的子项
       this.checkBundleMatch();
       return;
     }

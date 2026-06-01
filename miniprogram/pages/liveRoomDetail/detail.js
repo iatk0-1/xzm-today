@@ -261,9 +261,20 @@ Page({
     const product = e.currentTarget.dataset.product;
     const action = e.currentTarget.dataset.action;
 
+    // Build bundle groups from API or from skuMatrix
+    var bundleGroups = product.bundleGroups;
+    if (!bundleGroups || bundleGroups.length === 0) {
+      var matrix = product.skuMatrix || [];
+      if (matrix.length > 0 && matrix[0].bundleGroupName) {
+        var gm = {};
+        matrix.forEach(function(s) { var k = s.bundleGroupId || s.bundleGroupName; if (!gm[k]) gm[k] = { name: s.bundleGroupName, skus: [] }; gm[k].skus.push({ skuId: s.skuId, color: s.color, size: s.size, price: s.price, stock: s.stock, unlimitedStock: s.unlimitedStock, imageUrl: s.imageUrl }); });
+        bundleGroups = Object.values(gm);
+      }
+    }
+
     // 套装商品：初始化子项选择
-    if (product.bundleGroups && product.bundleGroups.length > 0) {
-      var selections = product.bundleGroups.map(function(bg) {
+    if (bundleGroups && bundleGroups.length > 0) {
+      var selections = bundleGroups.map(function(bg) {
         var colors = bg.skus ? [...new Set(bg.skus.map(function(s) { return s.color || s.spec; }))] : [];
         var sizes = bg.skus ? [...new Set(bg.skus.map(function(s) { return s.size; }))] : [];
         return {
