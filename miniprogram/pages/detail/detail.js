@@ -204,10 +204,12 @@ Page({
     // 套装商品：初始化子项选择
     if (bundleGroups && bundleGroups.length > 0) {
       var selections = bundleGroups.map(function(bg) {
-        var colors = bg.skus ? [...new Set(bg.skus.map(function(s) { return s.color || s.spec; }))] : [];
-        var sizes = bg.skus ? [...new Set(bg.skus.map(function(s) { return s.size; }))] : [];
+        var skus = bg.skus || [];
+        var colors = [...new Set(skus.map(function(s) { return s.color || s.spec; }))];
+        var sizes = [...new Set(skus.map(function(s) { return s.size; }))];
         return {
           bundleGroupName: bg.name,
+          skus: skus,
           uniqueColors: colors,
           uniqueSizes: sizes,
           selectedColor: colors.length === 1 ? colors[0] : '',
@@ -301,14 +303,13 @@ Page({
   checkBundleMatch() {
     var sel = this.data.bundleSelections;
     if (!sel || sel.length === 0) return;
-    var product = this.data.product;
     var allOk = true;
     var totalPrice = 0;
     for (var i = 0; i < sel.length; i++) {
       var s = sel[i];
       s.selectedSku = null;
-      if (s.selectedColor && s.selectedSize && product.bundleGroups[i]) {
-        var skus = product.bundleGroups[i].skus || [];
+      if (s.selectedColor && s.selectedSize && s.skus && s.skus.length > 0) {
+        var skus = s.skus;
         var match = skus.find(function(sku) { return (sku.color || sku.spec) === s.selectedColor && sku.size === s.selectedSize; });
         if (match) {
           s.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price || match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
