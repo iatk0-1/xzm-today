@@ -498,22 +498,19 @@ Page({
     if (!sel || sel.length === 0) return;
     var allOk = true;
     var totalPrice = 0;
-    for (var i = 0; i < sel.length; i++) {
-      var s = sel[i];
-      s.selectedSku = null;
+    var newSel = sel.map(function(s) {
+      var ns = Object.assign({}, s);
+      ns.selectedSku = null;
       if (s.selectedColor && s.selectedSize && s.skus && s.skus.length > 0) {
         var match = s.skus.find(function(sku) { return (sku.color || sku.spec) === s.selectedColor && sku.size === s.selectedSize; });
         if (match) {
-          s.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price || match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
-          totalPrice += Number(s.selectedSku.price) || 0;
-        } else {
-          allOk = false;
-        }
-      } else {
-        allOk = false;
-      }
-    }
-    this.setData({ bundleSelections: sel, bundleAllSelected: allOk, currentSkuPrice: totalPrice > 0 ? totalPrice : null });
+          ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price || match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
+          totalPrice += Number(ns.selectedSku.price) || 0;
+        } else { allOk = false; }
+      } else { allOk = false; }
+      return ns;
+    });
+    this.setData({ bundleSelections: newSel, bundleAllSelected: allOk, currentSkuPrice: totalPrice > 0 ? totalPrice : null });
   },
 
   // 套装商品加入购物车
