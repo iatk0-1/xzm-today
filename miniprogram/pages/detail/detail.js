@@ -203,24 +203,24 @@ Page({
 
     // 套装商品：初始化子项选择
     if (bundleGroups && bundleGroups.length > 0) {
-      var selections = bundleGroups.map(function(bg) {
+      var rawSel = bundleGroups.map(function(bg) {
         var skus = bg.skus || [];
         var colors = [...new Set(skus.map(function(s) { return s.color || s.spec; }))];
         var sizes = [...new Set(skus.map(function(s) { return s.size; }))];
         return {
-          bundleGroupName: bg.name,
-          skus: skus,
-          uniqueColors: colors,
-          uniqueSizes: sizes,
+          bundleGroupName: bg.name, skus: skus, uniqueColors: colors, uniqueSizes: sizes,
           selectedColor: colors.length === 1 ? colors[0] : '',
           selectedSize: sizes.length === 1 ? sizes[0] : '',
           selectedSku: null
         };
       });
+      var result = this._computeBundleSelections(rawSel, -1, null, null);
       this.setData({
-        showSku: true, skuAction: action, bundleSelections: selections, bundleAllSelected: false
+        showSku: true, skuAction: action,
+        bundleSelections: result.bundleSelections,
+        bundleAllSelected: result.bundleAllSelected,
+        currentSkuPrice: result.currentSkuPrice
       });
-      this.checkBundleMatch();
       return;
     }
 
@@ -287,35 +287,27 @@ Page({
   selectBundleColor(e) {
     var idx = e.currentTarget.dataset.index;
     var color = e.currentTarget.dataset.color;
-    var self = this;
-    var newSel = this.data.bundleSelections.map(function(s, i) {
-      var ns = Object.assign({}, s, i === idx ? { selectedColor: color } : {});
-      return ns;
-    });
-    this.setData({ bundleSelections: newSel }, function() { self.checkBundleMatch(); });
+    var result = this._computeBundleSelections(this.data.bundleSelections, idx, 'selectedColor', color);
+    this.setData(result);
   },
 
   selectBundleSize(e) {
     var idx = e.currentTarget.dataset.index;
     var size = e.currentTarget.dataset.size;
-    var self = this;
-    var newSel = this.data.bundleSelections.map(function(s, i) {
-      var ns = Object.assign({}, s, i === idx ? { selectedSize: size } : {});
-      return ns;
-    });
-    this.setData({ bundleSelections: newSel }, function() { self.checkBundleMatch(); });
+    var result = this._computeBundleSelections(this.data.bundleSelections, idx, 'selectedSize', size);
+    this.setData(result);
   },
 
-  checkBundleMatch() {
-    var sel = this.data.bundleSelections;
-    if (!sel || sel.length === 0) return;
+  // 一次性计算 bundleSelections: 应用变更 + SKU匹配 + allSelected判断
+  _computeBundleSelections: function(sel, changeIdx, changeField, changeValue) {
     var allOk = true;
     var totalPrice = 0;
-    var newSel = sel.map(function(s) {
+    var newSel = sel.map(function(s, i) {
       var ns = Object.assign({}, s);
+      if (i === changeIdx && changeField) ns[changeField] = changeValue;
       ns.selectedSku = null;
-      if (s.selectedColor && s.selectedSize && s.skus && s.skus.length > 0) {
-        var match = s.skus.find(function(sku) { return (sku.color || sku.spec) === s.selectedColor && sku.size === s.selectedSize; });
+      if (ns.selectedColor && ns.selectedSize && ns.skus && ns.skus.length > 0) {
+        var match = ns.skus.find(function(sku) { return (sku.color || sku.spec) === ns.selectedColor && sku.size === ns.selectedSize; });
         if (match) {
           ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price || match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
           totalPrice += Number(ns.selectedSku.price) || 0;
@@ -323,7 +315,7 @@ Page({
       } else { allOk = false; }
       return ns;
     });
-    this.setData({ bundleSelections: newSel, bundleAllSelected: allOk, currentSkuPrice: totalPrice > 0 ? totalPrice : null });
+    return { bundleSelections: newSel, bundleAllSelected: allOk, currentSkuPrice: totalPrice > 0 ? totalPrice : null };
   },
 
   confirmSkuAction(e) {
