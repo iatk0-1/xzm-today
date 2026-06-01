@@ -23,7 +23,10 @@ Page({
     currentSkuStock: null,
     currentSkuImage: null,
     showVideo: false,
-    currentAuraTab: '', // 记录当前选中的横向标签
+    currentAuraTab: '',
+    // 套装子项选择
+    bundleSelections: [],    // [{bundleGroupName, selectedColor, selectedSize, selectedSkuId, selectedPrice, selectedStock, selectedImage}]
+    bundleAllSelected: false,
   },
 
   onLoad: function(options) {
@@ -182,27 +185,40 @@ Page({
     const action = e.currentTarget.dataset.action || 'cart';
     const { product, uniqueColors, uniqueSizes } = this.data;
 
-    // 初始化选中状态（如果只有一个选项则自动选中）
+    // 套装商品：初始化子项选择
+    if (product.bundleGroups && product.bundleGroups.length > 0) {
+      var selections = product.bundleGroups.map(function(bg) {
+        var colors = bg.skus ? [...new Set(bg.skus.map(function(s) { return s.color || s.spec; }))] : [];
+        var sizes = bg.skus ? [...new Set(bg.skus.map(function(s) { return s.size; }))] : [];
+        return {
+          bundleGroupName: bg.name,
+          uniqueColors: colors,
+          uniqueSizes: sizes,
+          selectedColor: colors.length === 1 ? colors[0] : '',
+          selectedSize: sizes.length === 1 ? sizes[0] : '',
+          selectedSku: null
+        };
+      });
+      this.setData({
+        showSku: true, skuAction: action, bundleSelections: selections, bundleAllSelected: false
+      });
+      // 自动检查已自动选中的子项
+      this.checkBundleMatch();
+      return;
+    }
+
+    // 普通商品
     const initialColor = uniqueColors.length === 1 ? uniqueColors[0] : '';
     const initialSize = uniqueSizes.length === 1 ? uniqueSizes[0] : '';
-
     this.setData({
-      showSku: true,
-      skuAction: action,
-      selectedColor: initialColor,
-      selectedSize: initialSize,
+      showSku: true, skuAction: action,
+      selectedColor: initialColor, selectedSize: initialSize,
       currentSkuImage: product.coverUrl
     });
-
-    // 如果已自动选中（单颜色 + 单尺码），检查 SKU 匹配
     if (uniqueColors.length === 1 && uniqueSizes.length === 1) {
       this.checkSkuMatch();
     } else {
-      // 否则重置库存和价格状态
-      this.setData({
-        currentSkuPrice: null,
-        currentSkuStock: null
-      });
+      this.setData({ currentSkuPrice: null, currentSkuStock: null });
     }
   },
 
@@ -250,10 +266,80 @@ Page({
     }
   },
 
+  // 套装子项选择处理
+  selectBundleColor(e) {
+    var idx = e.currentTarget.dataset.index;
+    var color = e.currentTarget.dataset.color;
+    var key = 'bundleSelections[' + idx + '].selectedColor';
+    this.setData({ [key]: color });
+    this.checkBundleMatch();
+  },
+
+  selectBundleSize(e) {
+    var idx = e.currentTarget.dataset.index;
+    var size = e.currentTarget.dataset.size;
+    var key = 'bundleSelections[' + idx + '].selectedSize';
+    this.setData({ [key]: size });
+    this.checkBundleMatch();
+  },
+
+  checkBundleMatch() {
+    var sel = this.data.bundleSelections;
+    if (!sel || sel.length === 0) return;
+    var product = this.data.product;
+    var allOk = true;
+    var totalPrice = 0;
+    for (var i = 0; i < sel.length; i++) {
+      var s = sel[i];
+      s.selectedSku = null;
+      if (s.selectedColor && s.selectedSize && product.bundleGroups[i]) {
+        var skus = product.bundleGroups[i].skus || [];
+        var match = skus.find(function(sku) { return (sku.color || sku.spec) === s.selectedColor && sku.size === s.selectedSize; });
+        if (match) {
+          s.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price || match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
+          totalPrice += Number(s.selectedSku.price) || 0;
+        } else {
+          allOk = false;
+        }
+      } else {
+        allOk = false;
+      }
+    }
+    this.setData({ bundleSelections: sel, bundleAllSelected: allOk, currentSkuPrice: totalPrice > 0 ? totalPrice : null });
+  },
+
   confirmSkuAction(e) {
-    // 从点击事件中获取 action 参数，如果没有则使用 data 中的 skuAction
     const action = e.currentTarget.dataset.action || this.data.skuAction;
-    const { product, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuUnlimited, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes } = this.data;
+    const { product, bundleSelections, bundleAllSelected } = this.data;
+
+    // 套装商品：收集所有子项 SKU 一起提交
+    if (bundleSelections && bundleSelections.length > 0) {
+      if (!bundleAllSelected) return wx.showToast({ title: '请选择所有子项的规格', icon: 'none' });
+      var bundleConfig = bundleSelections.map(function(s) {
+        return { bundleGroupName: s.bundleGroupName, skuId: s.selectedSku.skuId, color: s.selectedSku.color, size: s.selectedSku.size, price: s.selectedSku.price, imageUrl: s.selectedSku.imageUrl || '' };
+      });
+      var totalPrice = 0;
+      bundleConfig.forEach(function(b) { totalPrice += Number(b.price) || 0; });
+
+      this.setData({ showSku: false });
+      if (action === 'buy') {
+        var item = {
+          productId: product.id, skuId: bundleConfig[0].skuId,
+          name: product.name, image: product.coverUrl,
+          selectedColor: bundleConfig[0].color, selectedSize: bundleConfig[0].size,
+          price: totalPrice, finalPrice: totalPrice,
+          count: 1, bundleConfig: bundleConfig
+        };
+        wx.setStorageSync('checkoutItems', [item]);
+        wx.navigateTo({ url: '/pages/checkout/checkout' });
+      } else {
+        this.addToCartWithBundle(bundleConfig, totalPrice);
+      }
+      return;
+    }
+
+    // 普通商品流程
+    const { selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuUnlimited, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes } = this.data;
 
     // 检查是否选择了颜色和尺码
     if (uniqueColors.length > 0 && !selectedColor) {
@@ -333,6 +419,35 @@ Page({
           }
         });
     }
+  },
+
+  // 套装商品加入购物车
+  addToCartWithBundle(bundleConfig, totalPrice) {
+    var self = this;
+    var product = this.data.product;
+    wx.showLoading({ title: '添加中...' });
+    var cartData = {
+      productId: product.id,
+      skuId: bundleConfig[0].skuId,
+      color: bundleConfig[0].color,
+      size: bundleConfig[0].size,
+      count: 1,
+      bundleConfig: bundleConfig
+    };
+    api.post('/cart/items', cartData)
+      .then(function() {
+        wx.hideLoading();
+        wx.showToast({ title: '已加入购物车', icon: 'success' });
+        self.setData({ showSku: false });
+      })
+      .catch(function(err) {
+        wx.hideLoading();
+        if (err.error === 'UNAUTHORIZED') {
+          wx.showToast({ title: '请先登录', icon: 'none' });
+        } else {
+          wx.showToast({ title: '添加失败', icon: 'none' });
+        }
+      });
   },
 
   // 视频悬浮窗控制系统

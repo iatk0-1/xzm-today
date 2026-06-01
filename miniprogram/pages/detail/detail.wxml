@@ -108,7 +108,24 @@
     </view>
   </view>
 
-  <scroll-view scroll-y style="max-height: 50vh;">
+  <!-- 套装商品子项选择 -->
+  <scroll-view scroll-y style="max-height: 50vh;" wx:if="{{bundleSelections.length > 0}}">
+    <view class="sku-section" wx:for="{{bundleSelections}}" wx:key="index" wx:for-item="sel">
+      <view class="sku-title" style="font-weight:bold;color:#333;">{{sel.bundleGroupName}}</view>
+      <view class="sku-options" wx:if="{{sel.uniqueColors.length > 0}}">
+        <view class="sku-tag {{sel.selectedColor === item ? 'active' : ''}}" wx:for="{{sel.uniqueColors}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleColor" data-index="{{index}}" data-color="{{item}}">{{item}}</view>
+      </view>
+      <view class="sku-options" wx:if="{{sel.uniqueSizes.length > 0}}">
+        <view class="sku-tag {{sel.selectedSize === item ? 'active' : ''}}" wx:for="{{sel.uniqueSizes}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleSize" data-index="{{index}}" data-size="{{item}}">{{item}}</view>
+      </view>
+      <view wx:if="{{sel.selectedSku}}" style="font-size:24rpx;color:#999;margin-top:4rpx;">
+        已选: {{sel.selectedColor}} / {{sel.selectedSize}}  库存: {{sel.selectedSku.unlimitedStock ? '无限' : sel.selectedSku.stock}}
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 普通商品颜色/尺码选择 -->
+  <scroll-view scroll-y style="max-height: 50vh;" wx:else>
     <view class="sku-section" wx:if="{{uniqueColors.length > 0}}">
       <view class="sku-title">颜色</view>
       <view class="sku-options">
@@ -124,15 +141,19 @@
     </view>
   </scroll-view>
 
-  <!-- 已售罄 -->
-  <view class="sku-btn-confirm disabled" wx:if="{{currentSkuStock === 0 && !currentSkuUnlimited}}">
-    已售罄
-  </view>
-
-  <!-- 有库存或尚未选择规格：显示操作按钮 -->
-  <view class="sku-btn-confirm" wx:if="{{currentSkuStock > 0 || currentSkuUnlimited || currentSkuStock === null}}" bindtap="confirmSkuAction" data-action="{{skuAction}}">
-    {{skuAction === 'buy' ? '下一步：立即购买' : '确定加入购物车'}}
-  </view>
+  <!-- 按钮区域 -->
+  <block wx:if="{{bundleSelections.length > 0}}">
+    <view class="sku-btn-confirm disabled" wx:if="{{!bundleAllSelected}}">请选择所有子项规格</view>
+    <view class="sku-btn-confirm" wx:else bindtap="confirmSkuAction" data-action="{{skuAction}}">
+      {{skuAction === 'buy' ? '下一步：立即购买' : '确定加入购物车'}}
+    </view>
+  </block>
+  <block wx:else>
+    <view class="sku-btn-confirm disabled" wx:if="{{currentSkuStock === 0 && !currentSkuUnlimited}}">已售罄</view>
+    <view class="sku-btn-confirm" wx:if="{{currentSkuStock > 0 || currentSkuUnlimited || currentSkuStock === null}}" bindtap="confirmSkuAction" data-action="{{skuAction}}">
+      {{skuAction === 'buy' ? '下一步：立即购买' : '确定加入购物车'}}
+    </view>
+  </block>
 </view>
 
 <view class="floating-video-btn" wx:if="{{product.videoUrl}}" bindtap="openVideoOverlay">
