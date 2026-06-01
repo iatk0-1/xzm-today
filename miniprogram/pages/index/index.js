@@ -480,17 +480,21 @@ Page({
   selectBundleColor(e) {
     var idx = e.currentTarget.dataset.index;
     var color = e.currentTarget.dataset.color;
-    var key = 'bundleSelections[' + idx + '].selectedColor';
-    this.setData({ [key]: color });
-    this.checkBundleMatch();
+    var self = this;
+    var newSel = this.data.bundleSelections.map(function(s, i) {
+      return Object.assign({}, s, i === idx ? { selectedColor: color } : {});
+    });
+    this.setData({ bundleSelections: newSel }, function() { self.checkBundleMatch(); });
   },
 
   selectBundleSize(e) {
     var idx = e.currentTarget.dataset.index;
     var size = e.currentTarget.dataset.size;
-    var key = 'bundleSelections[' + idx + '].selectedSize';
-    this.setData({ [key]: size });
-    this.checkBundleMatch();
+    var self = this;
+    var newSel = this.data.bundleSelections.map(function(s, i) {
+      return Object.assign({}, s, i === idx ? { selectedSize: size } : {});
+    });
+    this.setData({ bundleSelections: newSel }, function() { self.checkBundleMatch(); });
   },
 
   checkBundleMatch() {
