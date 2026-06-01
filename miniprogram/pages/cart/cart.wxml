@@ -37,7 +37,16 @@
               <view class="item-info">
                 <view class="item-title">{{item.name || item.title}}</view>
 
-                <view class="item-sku" wx:if="{{item.selectedColor || item.selectedSize}}">
+                <!-- 套装子项列表 -->
+                <view class="item-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
+                  <view class="bundle-sub-row" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
+                    <text class="bundle-sub-name">{{sub.bundleGroupName}}</text>
+                    <text class="bundle-sub-spec">{{sub.color || '默认'}} / {{sub.size || '均码'}}</text>
+                  </view>
+                </view>
+
+                <!-- 普通商品规格 -->
+                <view class="item-sku" wx:elif="{{item.selectedColor || item.selectedSize}}">
                   {{item.selectedColor ? 'Color: ' + item.selectedColor : ''}}
                   {{item.selectedColor && item.selectedSize ? ' / ' : ''}}
                   {{item.selectedSize ? 'Size: ' + item.selectedSize : ''}}

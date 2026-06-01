@@ -110,22 +110,25 @@
 
   <!-- 套装商品子项选择 -->
   <scroll-view scroll-y style="max-height: 50vh;padding:0 16rpx;" wx:if="{{bundleSelections.length > 0}}">
-    <view class="bundle-group-card" wx:for="{{bundleSelections}}" wx:key="index" wx:for-item="sel">
-      <view class="bundle-group-name">{{sel.bundleGroupName}}</view>
+    <view class="bundle-group-card" wx:for="{{bundleSelections}}" wx:key="index" wx:for-item="sel" wx:for-index="bgIdx">
+      <view class="bundle-group-name">
+        <text class="bg-step">{{bgIdx + 1}}</text>
+        <text>{{sel.bundleGroupName}}</text>
+      </view>
       <view class="bundle-group-colors" wx:if="{{sel.uniqueColors.length > 0}}">
         <text class="bundle-group-label">颜色</text>
         <view class="sku-options">
-          <view class="sku-tag {{sel.selectedColor === item ? 'active' : ''}}" wx:for="{{sel.uniqueColors}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleColor" data-index="{{index}}" data-color="{{item}}">{{item}}</view>
+          <view class="sku-tag {{sel.selectedColor === item ? 'active' : ''}}" wx:for="{{sel.uniqueColors}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleColor" data-index="{{bgIdx}}" data-color="{{item}}">{{item}}</view>
         </view>
       </view>
       <view class="bundle-group-sizes" wx:if="{{sel.uniqueSizes.length > 0}}">
         <text class="bundle-group-label">尺码</text>
         <view class="sku-options">
-          <view class="sku-tag {{sel.selectedSize === item ? 'active' : ''}}" wx:for="{{sel.uniqueSizes}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleSize" data-index="{{index}}" data-size="{{item}}">{{item}}</view>
+          <view class="sku-tag {{sel.selectedSize === item ? 'active' : ''}}" wx:for="{{sel.uniqueSizes}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleSize" data-index="{{bgIdx}}" data-size="{{item}}">{{item}}</view>
         </view>
       </view>
       <view wx:if="{{sel.selectedSku}}" class="bundle-group-selected">
-        已选 {{sel.selectedColor}} / {{sel.selectedSize}} · 库存 {{sel.selectedSku.unlimitedStock ? '无限' : sel.selectedSku.stock}}
+        <text class="bg-check">✓</text> {{sel.selectedColor}} / {{sel.selectedSize}} · 库存 {{sel.selectedSku.unlimitedStock ? '无限' : sel.selectedSku.stock}}
       </view>
     </view>
   </scroll-view>

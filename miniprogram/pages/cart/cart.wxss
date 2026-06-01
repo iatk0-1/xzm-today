@@ -14,7 +14,7 @@ page { background-color: #ffffff; }
 /* 购物车商品容器 */
 .cart-item-container {
   width: 100%;
-  height: 166px;
+  min-height: 166px;
   position: relative;
   margin-bottom: 1px;
   overflow: hidden;
@@ -38,7 +38,7 @@ page { background-color: #ffffff; }
 /* 商品内容包装器 - 可滑动 */
 .cart-item-wrapper {
   width: 100%;
-  height: 166px;
+  min-height: 166px;
   background-color: #ffffff;
   position: relative;
   z-index: 2;
@@ -46,7 +46,7 @@ page { background-color: #ffffff; }
   user-select: none;
 }
 .cart-item-wrapper.sliding { transition: none; }
-.cart-item { display: flex; align-items: center; padding: 30px 0; border-bottom: 1px solid #f5f5f5; background-color: #ffffff; width: 100%; height: 100%; box-sizing: border-box; }
+.cart-item { display: flex; align-items: center; padding: 30px 0; border-bottom: 1px solid #f5f5f5; background-color: #ffffff; width: 100%; box-sizing: border-box; }
 
 /* 状态标签 */
 .status-tag { position: absolute; top: 0; left: 40px; background-color: #999999; color: #ffffff; font-size: 10px; padding: 2px 6px; border-radius: 2px; z-index: 1; }
@@ -67,9 +67,29 @@ page { background-color: #ffffff; }
 .item-img { width: 80px; height: 106px; background-color: #f9f9f9; display: block; margin-right: 15px; }
 
 /* 商品信息 */
-.item-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; height: 106px; }
+.item-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-height: 106px; }
 .item-title { font-family: "Times New Roman", Times, serif; font-size: 14px; color: #333333; line-height: 1.4; }
 .item-sku { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #aaaaaa; margin-top: 5px; }
+
+/* 套装子项列表 */
+.item-bundle { margin-top: 6px; }
+.bundle-sub-row {
+  display: flex;
+  align-items: center;
+  padding: 3px 0;
+}
+.bundle-sub-name {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11px;
+  color: #666666;
+  min-width: 48rpx;
+  margin-right: 10rpx;
+}
+.bundle-sub-spec {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11px;
+  color: #aaaaaa;
+}
 
 /* 价格与加减器同行分布 */
 .item-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }

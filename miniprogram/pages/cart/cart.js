@@ -36,12 +36,13 @@ Page({
         const isRemoved = item.validityStatus === 'removed';  // SKU 已被移除
         const isDisabled = isOutOfStock || isInvalid || isProductOff || isRemoved;
 
-        // 套装子项展示文本
-        var bundleSubText = '';
-        if (item.bundleConfig && item.bundleConfig.length > 0) {
-          bundleSubText = item.bundleConfig.map(function(b) {
-            return b.bundleGroupName + ': ' + (b.color || '默认') + ' / ' + (b.size || '均码') + ' ¥' + b.price;
-          }).join('\n');
+        // 套装商品总价 = 各子项价格之和
+        var bundleConfig = item.bundleConfig || null;
+        var itemPrice = Number(item.price);
+        if (bundleConfig && bundleConfig.length > 0) {
+          itemPrice = bundleConfig.reduce(function(sum, b) {
+            return sum + (Number(b.price) || 0);
+          }, 0);
         }
 
         return {
@@ -53,8 +54,8 @@ Page({
           coverUrl: item.skuImageUrl || item.productImage,  // 优先使用 SKU 图片
           selectedColor: item.color || '默认',
           selectedSize: item.size || '均码',
-          price: Number(item.price),
-          finalPrice: Number(item.price),
+          price: itemPrice,
+          finalPrice: itemPrice,
           count: isDisabled ? 0 : item.count,
           selected: isDisabled ? false : item.selected,
           disabled: isDisabled,
@@ -62,8 +63,7 @@ Page({
           validityStatus: item.validityStatus,
           stockMain: item.stockMain,
           productStatus: item.productStatus,
-          bundleConfig: item.bundleConfig || null,
-          bundleSubText: bundleSubText
+          bundleConfig: bundleConfig
         };
       });
 
