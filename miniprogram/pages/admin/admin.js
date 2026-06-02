@@ -2162,7 +2162,6 @@ Page({
       this.saveActiveGroupState();
     }
     var key = this.getDraftKey();
-    cleanupDraftFiles(key);
     var draftData = this.collectDraftData();
 
     // 收集所有需要持久化的媒体路径
@@ -2195,6 +2194,9 @@ Page({
         draftData.bundleGroups[gi2].skuList = draftData.bundleGroups[gi2].skuList.map(function(sku, i) { sku.image = bgImages[i] || ''; return sku; });
       }
     }
+
+    // 新文件已安全持久化后才清理旧文件
+    cleanupDraftFiles(key);
 
     var ok = saveDraft(key, draftData);
     if (ok) { wx.showToast({ title: '草稿已保存', icon: 'success' }); }
