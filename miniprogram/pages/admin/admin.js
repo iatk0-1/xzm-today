@@ -2157,6 +2157,10 @@ Page({
   },
 
   saveDraft() {
+    // 套装模式：先存档当前子项，避免 collectDraftData 读到过时数据
+    if (this.data.isBundleMode && this.data.activeGroupIndex >= 0) {
+      this.saveActiveGroupState();
+    }
     var key = this.getDraftKey();
     cleanupDraftFiles(key);
     var draftData = this.collectDraftData();
