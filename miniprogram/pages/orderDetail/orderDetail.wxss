@@ -27,6 +27,10 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
 .goods-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
 .goods-title { font-size: 26rpx; color: #333; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .goods-sku { font-size: 22rpx; color: #999; margin-top: 10rpx; }
+.goods-bundle { margin-top: 6rpx; }
+.bundle-sub { display: flex; align-items: center; padding: 2rpx 0; }
+.bundle-sub-name { font-size: 22rpx; color: #666; margin-right: 6rpx; }
+.bundle-sub-spec { font-size: 22rpx; color: #999; }
 .goods-price-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: auto; }
 .price { font-size: 28rpx; font-weight: bold; font-family: "Times New Roman", Times, serif; }
 .count { font-size: 24rpx; color: #999; }

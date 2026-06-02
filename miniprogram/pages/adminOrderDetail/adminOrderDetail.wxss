@@ -32,6 +32,10 @@ page { background-color: #f2f2f2; }
 .goods-info { flex: 1; display: flex; flex-direction: column; gap: 6rpx; }
 .goods-title { font-size: 26rpx; color: #1a1a1a; }
 .goods-sku { font-size: 22rpx; color: #999; }
+.goods-bundle { margin-top: 4rpx; }
+.bundle-sub { display: flex; align-items: center; padding: 2rpx 0; }
+.bundle-sub-name { font-size: 22rpx; color: #666; margin-right: 6rpx; }
+.bundle-sub-spec { font-size: 22rpx; color: #999; }
 .goods-price-row { display: flex; justify-content: space-between; align-items: center; margin-top: 6rpx; }
 .price { font-size: 28rpx; font-weight: 600; font-family: inherit; }
 .count { font-size: 24rpx; color: #999; }

@@ -29,7 +29,15 @@
       <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
       <view class="goods-info">
         <view class="goods-title">{{item.productName}}</view>
-        <view class="goods-sku">{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}
+        <!-- 套装子项列表 -->
+        <view class="goods-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
+          <view class="bundle-sub" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
+            <text class="bundle-sub-name">{{sub.bundleGroupName}}:</text>
+            <text class="bundle-sub-spec">{{sub.color}} / {{sub.size}}</text>
+          </view>
+          <text class="after-sale-tag" wx:if="{{item.afterSaleStatus}}" style="margin-top:4rpx;">{{item.afterSaleStatus === 'refunded' ? '已退款' : '售后中'}}</text>
+        </view>
+        <view class="goods-sku" wx:else>{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}
           <text class="after-sale-tag" wx:if="{{item.afterSaleStatus}}"> · {{item.afterSaleStatus === 'refunded' ? '已退款' : '售后中'}}</text>
         </view>
         <view class="goods-price-row">
