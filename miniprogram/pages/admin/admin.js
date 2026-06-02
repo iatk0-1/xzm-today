@@ -2040,7 +2040,9 @@ Page({
     groups[idx] = Object.assign({}, groups[idx], {
       colors: this.data.colors.slice(),
       sizeOptions: this.data.sizeOptions.map(function(s) { return { id: s.id, name: s.name, selected: s.selected }; }),
-      skuList: this.data.skuList.slice()
+      skuList: this.data.skuList.slice(),
+      sizeCategoryId: this.data.currentSizeCategoryId,
+      sizeCategoryName: this.data.currentSizeCategoryName
     });
     this.setData({ bundleGroups: groups });
   },
@@ -2050,6 +2052,8 @@ Page({
     if (!group) return;
     this.setData({
       activeGroupIndex: idx,
+      currentSizeCategoryId: group.sizeCategoryId || null,
+      currentSizeCategoryName: group.sizeCategoryName || '',
       colors: group.colors || [],
       sizeOptions: group.sizeOptions || [],
       skuList: group.skuList || [],
@@ -2142,6 +2146,8 @@ Page({
           name: bg.name,
           colors: bg.colors,
           sizeOptions: bg.sizeOptions,
+          sizeCategoryId: bg.sizeCategoryId,
+          sizeCategoryName: bg.sizeCategoryName,
           skuList: (bg.skuList || []).map(function(sku) {
             return { skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size, price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved };
           })
@@ -2270,6 +2276,7 @@ Page({
         var bgImages = validated['bg_sku_' + gi] || [];
         return {
           name: bg.name, colors: bg.colors || [], sizeOptions: bg.sizeOptions || [],
+          sizeCategoryId: bg.sizeCategoryId, sizeCategoryName: bg.sizeCategoryName,
           skuList: (bg.skuList || []).map(function(sku, i) { sku.image = bgImages[i] || ''; return sku; })
         };
       });
@@ -2278,6 +2285,8 @@ Page({
         var ag = restored.bundleGroups[restored.activeGroupIndex];
         restored.colors = ag.colors || [];
         restored.skuList = ag.skuList || [];
+        restored.currentSizeCategoryId = ag.sizeCategoryId || null;
+        restored.currentSizeCategoryName = ag.sizeCategoryName || '';
       }
     }
 
