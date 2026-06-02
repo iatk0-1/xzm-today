@@ -26,9 +26,16 @@
       <view class="item-info">
         <view class="item-title">{{item.name || item.title}}</view>
         
-        <view class="item-sku">
-          {{item.selectedColor ? '颜色：' + item.selectedColor : ''}} 
-          {{item.selectedColor && item.selectedSize ? ' / ' : ''}} 
+        <view class="item-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
+          <view class="bundle-sub-item" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
+            <text class="sub-name">{{sub.bundleGroupName}}</text>
+            <text class="sub-spec">{{sub.color}} / {{sub.size}}</text>
+            <text class="sub-price">¥{{sub.price}}</text>
+          </view>
+        </view>
+        <view class="item-sku" wx:else>
+          {{item.selectedColor ? '颜色：' + item.selectedColor : ''}}
+          {{item.selectedColor && item.selectedSize ? ' / ' : ''}}
           {{item.selectedSize ? '尺码：' + item.selectedSize : ''}}
           {{!item.selectedColor && !item.selectedSize ? '默认规格' : ''}}
         </view>
@@ -36,6 +43,9 @@
         <view class="item-bottom">
           <view class="item-price">¥ {{item.finalPrice || item.price}}</view>
           <view class="item-count">x {{item.count}}</view>
+        </view>
+        <view class="item-remark">
+          <input class="remark-input" placeholder="给这件商品加个备注..." value="{{item.remark}}" bindinput="onRemarkInput" data-index="{{index}}" maxlength="200" />
         </view>
       </view>
     </view>

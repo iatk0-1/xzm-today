@@ -40,6 +40,11 @@ page { background-color: #f2f2f2; }
 .price { font-size: 28rpx; font-weight: 600; font-family: inherit; }
 .count { font-size: 24rpx; color: #999; }
 
+/* 商品备注 */
+.goods-remark { display: flex; align-items: flex-start; gap: 8rpx; margin-top: 8rpx; }
+.remark-tag { font-size: 20rpx; color: #666; background-color: #f0f0f0; padding: 2rpx 10rpx; border-radius: 6rpx; flex-shrink: 0; }
+.remark-text { font-size: 22rpx; color: #888; line-height: 1.5; word-break: break-all; }
+
 .money-breakdown { margin-top: 16rpx; display: flex; flex-direction: column; gap: 8rpx; }
 .money-row { display: flex; justify-content: space-between; align-items: center; }
 .money-label { font-size: 24rpx; color: #999; }

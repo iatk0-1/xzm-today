@@ -31,6 +31,17 @@ page { background-color: #f9f9f9; }
 .item-price { font-family: "Times New Roman", Times, serif; font-size: 14px; color: #333333; }
 .item-count { font-family: -apple-system, sans-serif; font-size: 13px; color: #888888; }
 
+/* 套装子项列表 */
+.item-bundle { margin-top: 4px; }
+.bundle-sub-item { display: flex; align-items: center; padding: 3px 0; }
+.sub-name { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #888; min-width: 36px; }
+.sub-spec { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #aaa; flex: 1; margin-left: 4px; }
+.sub-price { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #555; }
+
+/* 商品备注输入 */
+.item-remark { margin-top: 8px; }
+.remark-input { font-size: 12px; color: #555; background: #f8f8f8; border-radius: 4px; padding: 6px 10px; height: 32px; }
+
 /* 价格明细 */
 .summary-section { background-color: #ffffff; margin-top: 10px; padding: 20px; }
 .summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; }

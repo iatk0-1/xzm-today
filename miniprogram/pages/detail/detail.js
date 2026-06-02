@@ -103,7 +103,9 @@ Page({
         uniqueColors: colors,
         uniqueSizes: sizes,
         selectedColor: colors.length === 1 ? colors[0] : '',
-        selectedSize: sizes.length === 1 ? sizes[0] : ''
+        selectedSize: sizes.length === 1 ? sizes[0] : '',
+        bundleSelections: [],
+        bundleAllSelected: false
       });
 
       this.checkSkuMatch();
@@ -229,6 +231,7 @@ Page({
     const initialSize = uniqueSizes.length === 1 ? uniqueSizes[0] : '';
     this.setData({
       showSku: true, skuAction: action,
+      bundleSelections: [],
       selectedColor: initialColor, selectedSize: initialSize,
       currentSkuImage: product.coverUrl
     });
@@ -298,9 +301,9 @@ Page({
     this.setData(result);
   },
 
-  // 一次性计算 bundleSelections: 应用变更 + SKU匹配 + allSelected判断
+  // 一次性计算 bundleSelections: 应用变更 + SKU匹配 + anySelected判断
   _computeBundleSelections: function(sel, changeIdx, changeField, changeValue) {
-    var allOk = true;
+    var anyOk = false;
     var totalPrice = 0;
     var newSel = sel.map(function(s, i) {
       var ns = Object.assign({}, s);
@@ -311,21 +314,23 @@ Page({
         if (match) {
           ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price || match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
           totalPrice += Number(ns.selectedSku.price) || 0;
-        } else { allOk = false; }
-      } else { allOk = false; }
+          anyOk = true;
+        }
+      }
       return ns;
     });
-    return { bundleSelections: newSel, bundleAllSelected: allOk, currentSkuPrice: totalPrice > 0 ? totalPrice : null };
+    return { bundleSelections: newSel, bundleAllSelected: anyOk, currentSkuPrice: totalPrice > 0 ? totalPrice : null };
   },
 
   confirmSkuAction(e) {
     const action = e.currentTarget.dataset.action || this.data.skuAction;
     const { product, bundleSelections, bundleAllSelected } = this.data;
 
-    // 套装商品：收集所有子项 SKU 一起提交
+    // 套装商品：仅收集完整选好的子项
     if (bundleSelections && bundleSelections.length > 0) {
-      if (!bundleAllSelected) return wx.showToast({ title: '请选择所有子项的规格', icon: 'none' });
-      var bundleConfig = bundleSelections.map(function(s) {
+      if (!bundleAllSelected) return wx.showToast({ title: '请至少完整选择一个子项', icon: 'none' });
+      var selectedSubs = bundleSelections.filter(function(s) { return s.selectedSku != null; });
+      var bundleConfig = selectedSubs.map(function(s) {
         return { bundleGroupName: s.bundleGroupName, skuId: s.selectedSku.skuId, color: s.selectedSku.color, size: s.selectedSku.size, price: s.selectedSku.price, imageUrl: s.selectedSku.imageUrl || '' };
       });
       var totalPrice = 0;

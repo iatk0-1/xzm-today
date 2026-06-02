@@ -74,6 +74,7 @@
             <view class="goods-sku" wx:else>
               {{goods.productSpec || '图片色'}} / {{goods.productSize || '均码'}}
             </view>
+            <view class="remark-badge" wx:if="{{goods.remark}}">备注</view>
             <view class="goods-price-row">
               <text class="price">¥ {{goods.salePrice}}</text>
               <text class="count">x {{goods.qty}}</text>

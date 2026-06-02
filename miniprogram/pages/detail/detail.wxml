@@ -152,15 +152,17 @@
 
   <!-- 按钮区域 -->
   <block wx:if="{{bundleSelections.length > 0}}">
-    <view class="sku-btn-confirm disabled" wx:if="{{!bundleAllSelected}}">请选择所有子项规格</view>
-    <view class="sku-btn-confirm" wx:else bindtap="confirmSkuAction" data-action="{{skuAction}}">
-      {{skuAction === 'buy' ? '下一步：立即购买' : '确定加入购物车'}}
+    <view class="sku-btn-confirm disabled" wx:if="{{!bundleAllSelected}}">请至少完整选择一个子项</view>
+    <view class="sku-actions" wx:else>
+      <view class="sku-btn-cart" bindtap="confirmSkuAction" data-action="cart">加入购物车</view>
+      <view class="sku-btn-buy" bindtap="confirmSkuAction" data-action="buy">立即购买</view>
     </view>
   </block>
   <block wx:else>
     <view class="sku-btn-confirm disabled" wx:if="{{currentSkuStock === 0 && !currentSkuUnlimited}}">已售罄</view>
-    <view class="sku-btn-confirm" wx:if="{{currentSkuStock > 0 || currentSkuUnlimited || currentSkuStock === null}}" bindtap="confirmSkuAction" data-action="{{skuAction}}">
-      {{skuAction === 'buy' ? '下一步：立即购买' : '确定加入购物车'}}
+    <view class="sku-actions" wx:else>
+      <view class="sku-btn-cart" bindtap="confirmSkuAction" data-action="cart">加入购物车</view>
+      <view class="sku-btn-buy" bindtap="confirmSkuAction" data-action="buy">立即购买</view>
     </view>
   </block>
 </view>

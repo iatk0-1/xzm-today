@@ -44,6 +44,10 @@
           <text class="price">¥ {{item.salePrice}}</text>
           <text class="count">x {{item.qty}}</text>
         </view>
+        <view class="goods-remark" wx:if="{{item.remark}}">
+          <text class="remark-tag">备注</text>
+          <text class="remark-text">{{item.remark}}</text>
+        </view>
       </view>
     </view>
 

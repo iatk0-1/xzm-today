@@ -47,9 +47,16 @@
           <image class="goods-img" src="{{goods.skuImageUrl || goods.productImage}}" mode="aspectFill"></image>
           <view class="goods-info">
             <view class="goods-title">{{goods.productName}}</view>
-            <view class="goods-sku">
+            <view class="goods-bundle" wx:if="{{goods.bundleConfig && goods.bundleConfig.length > 0}}">
+              <view class="bundle-sub" wx:for="{{goods.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
+                <text class="bundle-sub-name">{{sub.bundleGroupName}}:</text>
+                <text class="bundle-sub-spec">{{sub.color}} / {{sub.size}}</text>
+              </view>
+            </view>
+            <view class="goods-sku" wx:else>
               {{goods.productSpec || '图片色'}} / {{goods.productSize || '均码'}}
             </view>
+            <view class="remark-badge" wx:if="{{goods.remark}}">备注</view>
             <view class="goods-price-row">
               <text class="price">¥ {{goods.salePrice}}</text>
               <text class="count">x {{goods.qty}}</text>

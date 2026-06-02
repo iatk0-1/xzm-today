@@ -66,6 +66,10 @@
       <text>售后管理</text>
       <text class="arrow">></text>
     </view>
+    <view class="menu-item sales-entry" wx:if="{{isAdmin}}" bindtap="goToSales">
+      <text>销售数据</text>
+      <text class="arrow">></text>
+    </view>
   </view>
 
   <view class="bottom-tab-bar">

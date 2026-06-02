@@ -135,6 +135,15 @@ Page({
     }
   },
 
+  // 输入商品备注
+  onRemarkInput: function(e) {
+    const index = e.currentTarget.dataset.index;
+    const value = e.detail.value;
+    this.setData({
+      ['checkoutItems[' + index + '].remark']: value
+    });
+  },
+
   // 选择收货地址
   chooseAddress: function() {
     wx.chooseAddress({
@@ -195,6 +204,10 @@ Page({
         // 套装商品：传递 bundleConfig
         if (item.bundleConfig && item.bundleConfig.length > 0) {
           orderItem.bundleConfig = item.bundleConfig;
+        }
+        // 商品备注
+        if (item.remark && item.remark.trim()) {
+          orderItem.remark = item.remark.trim();
         }
         return orderItem;
       });

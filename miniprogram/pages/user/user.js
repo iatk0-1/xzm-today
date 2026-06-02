@@ -217,5 +217,11 @@ Page({
     wx.navigateTo({
       url: '/pages/adminAfterSaleList/adminAfterSaleList'
     });
+  },
+
+  goToSales: function() {
+    wx.navigateTo({
+      url: '/pages/adminSales/adminSales'
+    });
   }
 });

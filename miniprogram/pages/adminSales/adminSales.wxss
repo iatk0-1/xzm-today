@@ -1,0 +1,36 @@
+page { background-color: #f5f5f5; }
+.page-wrapper { padding: 16rpx; padding-bottom: 40rpx; }
+
+/* 汇总卡片 */
+.overview-card { background: #fff; border-radius: 16rpx; padding: 32rpx 24rpx; margin-bottom: 16rpx; }
+.stat-row { display: flex; margin-bottom: 20rpx; }
+.stat-row:last-child { margin-bottom: 0; }
+.stat-item { flex: 1; text-align: center; }
+.stat-val { display: block; font-size: 40rpx; font-weight: 700; color: #1a1a1a; font-family: "Times New Roman", Times, serif; }
+.stat-label { display: block; font-size: 24rpx; color: #999; margin-top: 4rpx; }
+
+/* 筛选 */
+.filter-bar { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.search-row { display: flex; gap: 16rpx; margin-bottom: 16rpx; }
+.search-input { flex: 1; height: 68rpx; background: #f5f5f5; border-radius: 8rpx; padding: 0 20rpx; font-size: 26rpx; }
+.search-btn { width: 120rpx; height: 68rpx; line-height: 68rpx; text-align: center; background: #1a1a1a; color: #fff; border-radius: 8rpx; font-size: 26rpx; }
+.date-row { display: flex; align-items: center; gap: 12rpx; }
+.date-pick { flex: 1; height: 60rpx; line-height: 60rpx; text-align: center; background: #f5f5f5; border-radius: 8rpx; font-size: 24rpx; color: #666; }
+.date-sep { color: #ccc; font-size: 24rpx; }
+.clear-date { font-size: 24rpx; color: #d32f2f; padding: 0 8rpx; }
+
+/* 流水 */
+.records-section { background: #fff; border-radius: 16rpx; padding: 24rpx; }
+.section-title { font-size: 28rpx; font-weight: 600; color: #1a1a1a; margin-bottom: 20rpx; }
+.record-card { padding: 20rpx 0; border-bottom: 1rpx solid #f0f0f0; }
+.record-card:last-child { border-bottom: none; }
+.record-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6rpx; }
+.record-product { font-size: 28rpx; color: #333; font-weight: 500; }
+.record-amount { font-size: 30rpx; font-weight: 700; color: #1a1a1a; font-family: "Times New Roman", Times, serif; }
+.record-spec { font-size: 24rpx; color: #999; margin-bottom: 8rpx; }
+.record-bundle { display: flex; flex-wrap: wrap; gap: 4rpx; margin-bottom: 6rpx; }
+.bundle-sub { font-size: 22rpx; color: #666; background: #f5f5f5; padding: 2rpx 10rpx; border-radius: 6rpx; margin-right: 4rpx; }
+.record-footer { display: flex; align-items: center; gap: 16rpx; font-size: 22rpx; color: #aaa; }
+.record-status { color: #666; }
+.load-more { text-align: center; padding: 24rpx 0; font-size: 26rpx; color: #1a1a1a; }
+.empty-state { text-align: center; padding: 80rpx 0; font-size: 26rpx; color: #999; }
