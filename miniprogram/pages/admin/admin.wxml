@@ -24,7 +24,7 @@
         disabled="{{dragIndex !== index}}">
 
         <view class="img-box">
-          <image src="{{item.url}}" mode="aspectFill" class="media-img"></image>
+          <image src="{{item.url}}" mode="aspectFill" class="media-img" catchtap="previewMediaImage" data-index="{{index}}"></image>
           <view class="cover-tag" wx:if="{{index === 0}}">封面</view>
           <view class="delete-btn" catchtap="removeMedia" data-index="{{index}}">×</view>
         </view>
@@ -193,7 +193,7 @@
       <input class="console-input" type="number" placeholder="库存" model:value="{{quickStock}}" />
       
       <view class="console-img-btn" bindtap="chooseQuickImage">
-        <image wx:if="{{quickImage}}" src="{{quickImage}}" mode="aspectFill"></image>
+        <image wx:if="{{quickImage}}" src="{{quickImage}}" mode="aspectFill" catchtap="previewQuickImage"></image>
         <text wx:else class="icon-camera">📷</text>
       </view>
       
@@ -213,7 +213,7 @@
           <input class="mini-input" type="number" placeholder="无限" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" maxlength="9" />
 
           <view class="mini-img-upload" bindtap="uploadSkuImage" data-index="{{index}}">
-            <image wx:if="{{item.image}}" src="{{item.image}}" mode="aspectFill"></image>
+            <image wx:if="{{item.image}}" src="{{item.image}}" mode="aspectFill" catchtap="previewSkuImage" data-index="{{index}}"></image>
             <text class="icon-plus" wx:else>+</text>
             <view wx:if="{{item.image}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
           </view>
@@ -261,7 +261,7 @@
   <view class="form-group">
     <view class="label">Lookbook 详情长图 (选填，多张)</view>
     <view class="multi-image-box">
-      <image wx:for="{{lookbookImgs}}" wx:key="*this" src="{{item}}" mode="aspectFill" class="multi-preview" bindtap="removeExtraImage" data-type="lookbook" data-index="{{index}}"></image>
+      <image wx:for="{{lookbookImgs}}" wx:key="*this" src="{{item}}" mode="aspectFill" class="multi-preview" catchtap="previewExtraImage" bindlongpress="removeExtraImage" data-type="lookbook" data-index="{{index}}"></image>
       <view class="multi-upload-btn" bindtap="chooseExtraImage" data-type="lookbook">+</view>
     </view>
   </view>
@@ -269,7 +269,7 @@
   <view class="form-group">
     <view class="label">Detail 细节横滑图 (选填，多张)</view>
     <view class="multi-image-box">
-      <image wx:for="{{detailImgs}}" wx:key="*this" src="{{item}}" mode="aspectFill" class="multi-preview" bindtap="removeExtraImage" data-type="detail" data-index="{{index}}"></image>
+      <image wx:for="{{detailImgs}}" wx:key="*this" src="{{item}}" mode="aspectFill" class="multi-preview" catchtap="previewExtraImage" bindlongpress="removeExtraImage" data-type="detail" data-index="{{index}}"></image>
       <view class="multi-upload-btn" bindtap="chooseExtraImage" data-type="detail">+</view>
     </view>
   </view>
@@ -278,7 +278,7 @@
     <view class="label">搭配商品 (Shop the Look)</view>
     <view class="related-list" wx:if="{{manualRelated.length > 0}}">
       <view class="related-item" wx:for="{{manualRelated}}" wx:key="id">
-        <image class="related-img" src="{{item.coverUrl}}" mode="aspectFill"></image>
+        <image class="related-img" src="{{item.coverUrl}}" mode="aspectFill" catchtap="previewRelatedImage" data-index="{{index}}"></image>
         <view class="related-info">
           <view class="related-title">{{item.name}}</view>
           <view class="related-price">¥ {{item.displayPrice || item.retailPrice}}</view>
@@ -369,7 +369,7 @@
       
       <view class="batch-image-section">
         <view class="batch-image-preview" wx:if="{{batchImage}}">
-          <image class="batch-image" src="{{batchImage}}" mode="aspectFill" bindtap="chooseBatchImage"></image>
+          <image class="batch-image" src="{{batchImage}}" mode="aspectFill" catchtap="previewBatchImage"></image>
           <view class="batch-image-del" catchtap="onInput" data-field="batchImage" data-value="">×</view>
         </view>
         <view class="batch-image-upload" wx:else bindtap="chooseBatchImage">

@@ -2313,4 +2313,46 @@ Page({
       message: '表单内容未保存，确定离开吗？'
     });
   },
+
+  // ========== 图片全屏预览 ==========
+
+  // A: 商品主图预览（支持左右滑动切换）
+  previewMediaImage(e) {
+    var index = e.currentTarget.dataset.index;
+    var urls = this.data.mediaList.map(function(m) { return m.url; });
+    wx.previewImage({ current: urls[index], urls: urls });
+  },
+
+  // B: SKU 明细图预览
+  previewSkuImage(e) {
+    var index = e.currentTarget.dataset.index;
+    var skuList = this.data.skuList;
+    var urls = skuList.filter(function(s) { return s.image; }).map(function(s) { return s.image; });
+    wx.previewImage({ current: skuList[index].image, urls: urls });
+  },
+
+  // C: 一键填充预览图（单张）
+  previewQuickImage() {
+    wx.previewImage({ current: this.data.quickImage, urls: [this.data.quickImage] });
+  },
+
+  // D: 批量设置预览图（单张）
+  previewBatchImage() {
+    wx.previewImage({ current: this.data.batchImage, urls: [this.data.batchImage] });
+  },
+
+  // E+F: Lookbook / Detail 图片预览
+  previewExtraImage(e) {
+    var type = e.currentTarget.dataset.type;
+    var index = e.currentTarget.dataset.index;
+    var urls = type === 'lookbook' ? this.data.lookbookImgs : this.data.detailImgs;
+    wx.previewImage({ current: urls[index], urls: urls });
+  },
+
+  // G: 搭配商品图片预览
+  previewRelatedImage(e) {
+    var index = e.currentTarget.dataset.index;
+    var urls = this.data.manualRelated.map(function(r) { return r.coverUrl; });
+    wx.previewImage({ current: urls[index], urls: urls });
+  },
 });

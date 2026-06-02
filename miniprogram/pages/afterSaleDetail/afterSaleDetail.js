@@ -72,6 +72,13 @@ Page({
         description: `审核拒绝：${afterSale.rejectReason || '原因未填写'}`
       });
       return timeline;
+    } else if (afterSale.status === 'cancelled') {
+      timeline.push({
+        status: '已撤销',
+        time: this.formatTime(afterSale.updatedAt),
+        description: '用户主动撤销申请'
+      });
+      return timeline;
     }
 
     // 3. 用户退货（仅退货退款）
