@@ -35,12 +35,27 @@ page { background-color: #f5f5f5; }
 /* 订单卡片 */
 .order-card { padding: 20rpx 0; border-bottom: 1rpx solid #f0f0f0; }
 .order-card:last-child { border-bottom: none; }
-.order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8rpx; }
+.order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
 .order-no { font-size: 26rpx; color: #333; font-weight: 500; }
 .order-status { font-size: 24rpx; color: #666; background: #f5f5f5; padding: 2rpx 12rpx; border-radius: 6rpx; }
-.order-body { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6rpx; }
-.order-items { font-size: 24rpx; color: #999; }
-.order-amount { font-size: 28rpx; font-weight: 700; color: #1a1a1a; font-family: "Times New Roman", Times, serif; }
+
+/* 订单内明细列表 */
+.order-items-list { background: #fafafa; border-radius: 10rpx; padding: 12rpx 16rpx; margin-bottom: 12rpx; }
+.oi-row { display: flex; align-items: flex-start; padding: 10rpx 0; }
+.oi-row + .oi-row { border-top: 1rpx dashed #eee; }
+.oi-img { width: 64rpx; height: 64rpx; border-radius: 8rpx; background: #eee; flex-shrink: 0; margin-top: 2rpx; }
+.oi-info { flex: 1; margin-left: 14rpx; display: flex; flex-direction: column; gap: 4rpx; }
+.oi-name { font-size: 26rpx; color: #333; font-weight: 500; }
+.oi-spec { font-size: 23rpx; color: #888; }
+
+/* 套装子项 */
+.oi-bundle { display: flex; flex-wrap: wrap; gap: 4rpx; margin-top: 2rpx; }
+.bundle-tag { font-size: 20rpx; color: #f5a623; background: #fff8f0; padding: 2rpx 10rpx; border-radius: 6rpx; border: 1rpx solid #f5e6cc; }
+
+.oi-price { font-size: 26rpx; font-weight: 600; color: #1a1a1a; font-family: "Times New Roman", Times, serif; flex-shrink: 0; margin-left: 12rpx; margin-top: 2rpx; }
+
+.order-footer { display: flex; justify-content: space-between; align-items: center; }
 .order-time { font-size: 22rpx; color: #aaa; }
+.order-total { font-size: 26rpx; color: #333; font-weight: 500; }
 .load-more { text-align: center; padding: 24rpx 0; font-size: 26rpx; color: #1a1a1a; }
 .empty-inner { text-align: center; padding: 40rpx 0; font-size: 26rpx; color: #999; }

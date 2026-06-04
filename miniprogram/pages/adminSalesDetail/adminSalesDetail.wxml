@@ -60,15 +60,29 @@
     <view class="section-title">关联订单 ({{orderTotal}})</view>
     <view class="order-card" wx:for="{{orders}}" wx:key="orderId">
       <view class="order-header">
-        <text class="order-no">订单: {{item.outTradeNo || item.orderId}}</text>
+        <text class="order-no">{{item.outTradeNo || item.orderId}}</text>
         <text class="order-status">{{item.statusDisplay}}</text>
       </view>
-      <view class="order-body">
-        <text class="order-items">本商品 {{item.productQty || 0}} 件 ({{item.itemCount || 0}} 个 SKU)</text>
-        <text class="order-amount">¥{{item.payAmount || 0}}</text>
+      <!-- 订单内各明细项 -->
+      <view class="order-items-list">
+        <view class="oi-row" wx:for="{{item.items}}" wx:key="orderItemId" wx:for-item="oi">
+          <image class="oi-img" src="{{oi.productImage || ''}}" mode="aspectFill" />
+          <view class="oi-info">
+            <text class="oi-name">{{oi.productName}}</text>
+            <text class="oi-spec">{{oi.skuSpec || '默认'}} / {{oi.skuSize || '均码'}}  x{{oi.qty}}</text>
+            <!-- 套装子项 -->
+            <view class="oi-bundle" wx:if="{{oi.bundleParsed && oi.bundleParsed.length > 0}}">
+              <text class="bundle-tag" wx:for="{{oi.bundleParsed}}" wx:key="skuId" wx:for-item="sub">
+                {{sub.bundleGroupName}}: {{sub.color}}/{{sub.size}}
+              </text>
+            </view>
+          </view>
+          <text class="oi-price">¥{{oi.salePrice}}</text>
+        </view>
       </view>
-      <view class="order-time">
-        <text>{{item.createdAtDisplay}}</text>
+      <view class="order-footer">
+        <text class="order-time">{{item.createdAtDisplay}}</text>
+        <text class="order-total">订单金额 ¥{{item.payAmount || 0}}</text>
       </view>
     </view>
     <view class="load-more" wx:if="{{orders.length < orderTotal}}" bindtap="loadMoreOrders">加载更多</view>

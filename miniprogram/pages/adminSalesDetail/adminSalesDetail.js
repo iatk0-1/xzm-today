@@ -80,7 +80,11 @@ Page({
       const items = (res.items || []).map(r => ({
         ...r,
         createdAtDisplay: this.formatTime(r.createdAt),
-        statusDisplay: this.statusDisplay(r.status)
+        statusDisplay: this.statusDisplay(r.status),
+        items: (r.items || []).map(oi => ({
+          ...oi,
+          bundleParsed: this.parseBundle(oi.bundleConfig)
+        }))
       }));
       if (reset) {
         this.setData({ orders: items, orderPage: 1, orderTotal: res.total || 0 });
@@ -124,5 +128,13 @@ Page({
   statusDisplay(s) {
     const m = { 'paid': '待发货', 'partial_shipped': '部分发货', 'shipped': '已发货', 'completed': '已完成' };
     return m[s] || s;
+  },
+
+  parseBundle(json) {
+    if (!json) return null;
+    if (typeof json !== 'string') return json;
+    try {
+      return JSON.parse(json);
+    } catch (e) { return null; }
   }
 });
