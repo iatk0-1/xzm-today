@@ -69,13 +69,14 @@
           <image class="oi-img" src="{{oi.productImage || ''}}" mode="aspectFill" />
           <view class="oi-info">
             <text class="oi-name">{{oi.productName}}</text>
-            <text class="oi-spec">{{oi.skuSpec || '默认'}} / {{oi.skuSize || '均码'}}  x{{oi.qty}}</text>
-            <!-- 套装子项 -->
-            <view class="oi-bundle" wx:if="{{oi.bundleParsed && oi.bundleParsed.length > 0}}">
-              <text class="bundle-tag" wx:for="{{oi.bundleParsed}}" wx:key="skuId" wx:for-item="sub">
-                {{sub.bundleGroupName}}: {{sub.color}}/{{sub.size}}
+            <!-- 套装：逐行展示子项 -->
+            <block wx:if="{{oi.bundleParsed && oi.bundleParsed.length > 0}}">
+              <text class="oi-spec" wx:for="{{oi.bundleParsed}}" wx:key="skuId" wx:for-item="sub">
+                {{sub.bundleGroupName}}  {{sub.color}}/{{sub.size}}
               </text>
-            </view>
+            </block>
+            <!-- 普通单品：显示规格尺码数量 -->
+            <text class="oi-spec" wx:else>{{oi.skuSpec || '默认'}} / {{oi.skuSize || '均码'}}  x{{oi.qty}}</text>
           </view>
           <text class="oi-price">¥{{oi.salePrice}}</text>
         </view>
