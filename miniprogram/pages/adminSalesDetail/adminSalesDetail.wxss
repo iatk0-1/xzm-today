@@ -1,0 +1,46 @@
+page { background-color: #f5f5f5; }
+.page-wrapper { padding: 16rpx; padding-bottom: 40rpx; }
+
+/* 商品名称 */
+.product-header { background: #fff; border-radius: 16rpx; padding: 28rpx 24rpx; margin-bottom: 16rpx; }
+.product-title { font-size: 34rpx; font-weight: 700; color: #1a1a1a; }
+
+/* 统计卡片 */
+.overview-card { background: #fff; border-radius: 16rpx; padding: 32rpx 24rpx; margin-bottom: 16rpx; }
+.stat-row { display: flex; margin-bottom: 20rpx; }
+.stat-row:last-child { margin-bottom: 0; }
+.stat-item { flex: 1; text-align: center; }
+.stat-val { display: block; font-size: 40rpx; font-weight: 700; color: #1a1a1a; font-family: "Times New Roman", Times, serif; }
+.stat-label { display: block; font-size: 24rpx; color: #999; margin-top: 4rpx; }
+
+/* 日期筛选 */
+.date-filter { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; display: flex; align-items: center; gap: 12rpx; }
+.date-pick { flex: 1; height: 60rpx; line-height: 60rpx; text-align: center; background: #f5f5f5; border-radius: 8rpx; font-size: 24rpx; color: #666; }
+.date-sep { color: #ccc; font-size: 24rpx; }
+.clear-date { font-size: 24rpx; color: #d32f2f; padding: 0 8rpx; }
+
+/* 通用 section */
+.section-card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.section-title { font-size: 28rpx; font-weight: 600; color: #1a1a1a; margin-bottom: 16rpx; }
+
+/* SKU 行 */
+.sku-row { display: flex; align-items: center; justify-content: space-between; padding: 16rpx 0; border-bottom: 1rpx solid #f0f0f0; }
+.sku-row:last-child { border-bottom: none; }
+.sku-info { flex: 1; }
+.sku-spec { font-size: 26rpx; color: #333; }
+.sku-stats { display: flex; align-items: baseline; gap: 20rpx; }
+.sku-qty { font-size: 24rpx; color: #666; }
+.sku-amount { font-size: 28rpx; font-weight: 600; color: #1a1a1a; font-family: "Times New Roman", Times, serif; }
+
+/* 订单卡片 */
+.order-card { padding: 20rpx 0; border-bottom: 1rpx solid #f0f0f0; }
+.order-card:last-child { border-bottom: none; }
+.order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8rpx; }
+.order-no { font-size: 26rpx; color: #333; font-weight: 500; }
+.order-status { font-size: 24rpx; color: #666; background: #f5f5f5; padding: 2rpx 12rpx; border-radius: 6rpx; }
+.order-body { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6rpx; }
+.order-items { font-size: 24rpx; color: #999; }
+.order-amount { font-size: 28rpx; font-weight: 700; color: #1a1a1a; font-family: "Times New Roman", Times, serif; }
+.order-time { font-size: 22rpx; color: #aaa; }
+.load-more { text-align: center; padding: 24rpx 0; font-size: 26rpx; color: #1a1a1a; }
+.empty-inner { text-align: center; padding: 40rpx 0; font-size: 26rpx; color: #999; }

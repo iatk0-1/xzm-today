@@ -1,0 +1,77 @@
+<view class="page-wrapper">
+  <!-- 商品名称 -->
+  <view class="product-header">
+    <text class="product-title">{{productName}}</text>
+  </view>
+
+  <!-- 统计卡片 -->
+  <view class="overview-card">
+    <view class="stat-row">
+      <view class="stat-item">
+        <text class="stat-val">{{overview.soldQty || 0}}</text>
+        <text class="stat-label">售出数量</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-val">¥{{overview.totalAmount || 0}}</text>
+        <text class="stat-label">售出金额</text>
+      </view>
+    </view>
+    <view class="stat-row">
+      <view class="stat-item">
+        <text class="stat-val">{{overview.afterSaleCount || 0}}</text>
+        <text class="stat-label">售后数</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-val">¥{{overview.afterSaleAmount || 0}}</text>
+        <text class="stat-label">退款金额</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 日期筛选 -->
+  <view class="date-filter">
+    <picker mode="date" value="{{startDate}}" end="{{endDate || today}}" bindchange="onStartDateChange">
+      <view class="date-pick">{{startDate || '开始日期'}}</view>
+    </picker>
+    <text class="date-sep">—</text>
+    <picker mode="date" value="{{endDate}}" start="{{startDate}}" end="{{today}}" bindchange="onEndDateChange">
+      <view class="date-pick">{{endDate || '结束日期'}}</view>
+    </picker>
+    <view class="clear-date" wx:if="{{startDate || endDate}}" bindtap="clearDate">清除</view>
+  </view>
+
+  <!-- SKU 售出明细 -->
+  <view class="section-card">
+    <view class="section-title">SKU 售出明细 ({{skuTotal}})</view>
+    <view class="sku-row" wx:for="{{skus}}" wx:key="skuSpec">
+      <view class="sku-info">
+        <text class="sku-spec">{{item.skuSpec || '默认'}} / {{item.skuSize || '均码'}}</text>
+      </view>
+      <view class="sku-stats">
+        <text class="sku-qty">x{{item.soldQty || 0}}</text>
+        <text class="sku-amount">¥{{item.totalAmount || 0}}</text>
+      </view>
+    </view>
+    <view class="empty-inner" wx:if="{{skus.length === 0}}">暂无 SKU 数据</view>
+  </view>
+
+  <!-- 关联订单 -->
+  <view class="section-card">
+    <view class="section-title">关联订单 ({{orderTotal}})</view>
+    <view class="order-card" wx:for="{{orders}}" wx:key="orderId">
+      <view class="order-header">
+        <text class="order-no">订单: {{item.outTradeNo || item.orderId}}</text>
+        <text class="order-status">{{item.statusDisplay}}</text>
+      </view>
+      <view class="order-body">
+        <text class="order-items">本商品 {{item.productQty || 0}} 件 ({{item.itemCount || 0}} 个 SKU)</text>
+        <text class="order-amount">¥{{item.payAmount || 0}}</text>
+      </view>
+      <view class="order-time">
+        <text>{{item.createdAtDisplay}}</text>
+      </view>
+    </view>
+    <view class="load-more" wx:if="{{orders.length < orderTotal}}" bindtap="loadMoreOrders">加载更多</view>
+    <view class="empty-inner" wx:if="{{orders.length === 0}}">暂无关联订单</view>
+  </view>
+</view>

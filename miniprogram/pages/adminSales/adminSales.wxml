@@ -1,28 +1,4 @@
 <view class="page-wrapper">
-  <!-- 汇总卡片 -->
-  <view class="overview-card">
-    <view class="stat-row">
-      <view class="stat-item">
-        <text class="stat-val">{{overview.soldQty || 0}}</text>
-        <text class="stat-label">售出数量</text>
-      </view>
-      <view class="stat-item">
-        <text class="stat-val">¥{{overview.totalAmount || 0}}</text>
-        <text class="stat-label">售出金额</text>
-      </view>
-    </view>
-    <view class="stat-row">
-      <view class="stat-item">
-        <text class="stat-val">{{overview.afterSaleCount || 0}}</text>
-        <text class="stat-label">售后数</text>
-      </view>
-      <view class="stat-item">
-        <text class="stat-val">¥{{overview.afterSaleAmount || 0}}</text>
-        <text class="stat-label">退款金额</text>
-      </view>
-    </view>
-  </view>
-
   <!-- 筛选区 -->
   <view class="filter-bar">
     <view class="search-row">
@@ -41,28 +17,21 @@
     </view>
   </view>
 
-  <!-- 售卖流水 -->
-  <view class="records-section">
-    <view class="section-title">售卖流水 ({{total}})</view>
-    <view class="record-card" wx:for="{{records}}" wx:key="orderItemId">
-      <view class="record-header">
-        <text class="record-product">{{item.productName}}</text>
-        <text class="record-amount">¥{{item.salePrice}}</text>
+  <!-- 商品列表 -->
+  <view class="products-section">
+    <view class="section-title">商品销售 ({{total}})</view>
+    <view class="product-card" wx:for="{{products}}" wx:key="productId" bindtap="goToDetail" data-item="{{item}}">
+      <image class="product-img" src="{{item.productImage || '/images/placeholder.png'}}" mode="aspectFill" />
+      <view class="product-info">
+        <text class="product-name">{{item.productName}}</text>
+        <view class="product-stats">
+          <text class="product-qty">售出 {{item.soldQty || 0}} 件</text>
+          <text class="product-amount">¥{{item.totalAmount || 0}}</text>
+        </view>
       </view>
-      <!-- 套装子项 -->
-      <view class="record-bundle" wx:if="{{item.bundleItems && item.bundleItems.length > 0}}">
-        <text class="bundle-sub" wx:for="{{item.bundleItems}}" wx:key="skuId" wx:for-item="sub">
-          {{sub.bundleGroupName}}: {{sub.color}}/{{sub.size}}
-        </text>
-      </view>
-      <view class="record-spec" wx:else>{{item.skuSpec || '默认'}} / {{item.skuSize || '均码'}}  x{{item.qty}}</view>
-      <view class="record-footer">
-        <text class="record-order">订单: {{item.outTradeNo || item.orderId}}</text>
-        <text class="record-status">{{item.statusDisplay}}</text>
-        <text class="record-time">{{item.createdAtDisplay}}</text>
-      </view>
+      <view class="product-arrow">></view>
     </view>
-    <view class="load-more" wx:if="{{records.length < total}}" bindtap="loadMore">加载更多</view>
-    <view class="empty-state" wx:if="{{records.length === 0}}">暂无售卖记录</view>
+    <view class="load-more" wx:if="{{products.length < total}}" bindtap="loadMore">加载更多</view>
+    <view class="empty-state" wx:if="{{products.length === 0}}">暂无销售记录</view>
   </view>
 </view>
