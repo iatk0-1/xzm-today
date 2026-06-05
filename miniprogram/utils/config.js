@@ -2,8 +2,8 @@
 module.exports = {
   // 本地运行
   // API_BASE_URL: 'http://localhost:8080/api/v1',
-  // 后端 API 基础 URL - dev 环境（使用域名模式）
-  API_BASE_URL: 'https://api-dev.xianzaimai.com/api/v1',
+  // 后端 API 线上 URL (v2 并行版本)
+  API_BASE_URL: 'https://api.xianzaimai.com/api/v2',
 
   // 小程序 AppID
   MINIAPP_APPID: 'wx7692230ac8ecdaa8',
@@ -20,6 +20,5 @@ module.exports = {
   SELLER_USER_ID: 1,
 
   // 腾讯云 COS / CDN 配置
-  CDN_BASE_URL: 'https://upload-dev.xianzaimai.com'
-  // CDN_BASE_URL: 'https://upload.xianzaimai.com'
+  CDN_BASE_URL: 'https://upload.xianzaimai.com'
 };
