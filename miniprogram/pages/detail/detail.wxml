@@ -107,28 +107,40 @@
       <view class="sku-choose-tip">已选: {{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
     </view>
   </view>
+  <!-- 套装商品颜色/尺码选择 -->
+  <scroll-view scroll-y style="max-height: 55vh; padding: 0 16rpx; padding-bottom: 40rpx;" wx:if="{{bundleSelections.length > 0}}">
+    <view class="bundle-group-card {{sel.isChecked === false ? 'disabled-card' : ''}}" wx:for="{{bundleSelections}}" wx:key="index" wx:for-item="sel" wx:for-index="bgIdx">
+      
+      <image class="bundle-card-img" src="{{sel.selectedSku.imageUrl || sel.skus[0].imageUrl || currentProduct.coverUrl}}" mode="aspectFill"></image>
+      
+      <view class="bundle-card-right">
+        <view class="bundle-card-header">
+          <view class="bundle-card-title">
+            <text class="bg-step">{{bgIdx + 1}}</text>
+            <text>{{sel.bundleGroupName}}</text>
+          </view>
+          <view class="bundle-checkbox {{sel.isChecked !== false ? 'checked' : ''}}" bindtap="toggleBundleCheck" data-index="{{bgIdx}}"></view>
+        </view>
+        
+        <view class="bundle-card-specs" wx:if="{{sel.uniqueColors.length > 0}}">
+          <text class="spec-label">颜色</text>
+          <view class="sku-options minimal">
+            <view class="sku-tag minimal {{sel.selectedColor === item ? 'active' : ''}}" wx:for="{{sel.uniqueColors}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleColor" data-index="{{bgIdx}}" data-color="{{item}}">{{item}}</view>
+          </view>
+        </view>
+        
+        <view class="bundle-card-specs" wx:if="{{sel.uniqueSizes.length > 0}}">
+          <text class="spec-label">尺码</text>
+          <view class="sku-options minimal">
+            <view class="sku-tag minimal {{sel.selectedSize === item ? 'active' : ''}}" wx:for="{{sel.uniqueSizes}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleSize" data-index="{{bgIdx}}" data-size="{{item}}">{{item}}</view>
+          </view>
+        </view>
 
-  <!-- 套装商品子项选择 -->
-  <scroll-view scroll-y style="max-height: 50vh;padding:0 16rpx;" wx:if="{{bundleSelections.length > 0}}">
-    <view class="bundle-group-card" wx:for="{{bundleSelections}}" wx:key="index" wx:for-item="sel" wx:for-index="bgIdx">
-      <view class="bundle-group-name">
-        <text class="bg-step">{{bgIdx + 1}}</text>
-        <text>{{sel.bundleGroupName}}</text>
-      </view>
-      <view class="bundle-group-colors" wx:if="{{sel.uniqueColors.length > 0}}">
-        <text class="bundle-group-label">颜色</text>
-        <view class="sku-options">
-          <view class="sku-tag {{sel.selectedColor === item ? 'active' : ''}}" wx:for="{{sel.uniqueColors}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleColor" data-index="{{bgIdx}}" data-color="{{item}}">{{item}}</view>
+        <view class="bundle-card-footer" wx:if="{{sel.selectedSku}}">
+          <text class="stock-status out" wx:if="{{!sel.selectedSku.unlimitedStock && sel.selectedSku.stock === 0}}">已售罄</text>
+          <text class="stock-status danger" wx:elif="{{!sel.selectedSku.unlimitedStock && sel.selectedSku.stock <= 5}}">🔥 仅剩少量</text>
+          <text class="stock-status normal" wx:else>已选定</text>
         </view>
-      </view>
-      <view class="bundle-group-sizes" wx:if="{{sel.uniqueSizes.length > 0}}">
-        <text class="bundle-group-label">尺码</text>
-        <view class="sku-options">
-          <view class="sku-tag {{sel.selectedSize === item ? 'active' : ''}}" wx:for="{{sel.uniqueSizes}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleSize" data-index="{{bgIdx}}" data-size="{{item}}">{{item}}</view>
-        </view>
-      </view>
-      <view wx:if="{{sel.selectedSku}}" class="bundle-group-selected">
-        <text class="bg-check">✓</text> {{sel.selectedColor}} / {{sel.selectedSize}} · 库存 {{sel.selectedSku.unlimitedStock ? '无限' : sel.selectedSku.stock}}
       </view>
     </view>
   </scroll-view>

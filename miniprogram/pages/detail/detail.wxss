@@ -412,59 +412,149 @@ page {
   color: #333;
 }
 
-/* 套装子项卡片 */
+/* ================== 新版套装子项独立卡片 ================== */
 .bundle-group-card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx 28rpx;
-  margin-bottom: 18rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.06);
+  display: flex;
+  gap: 24rpx;
+  transition: all 0.3s;
 }
-.bundle-group-name {
+
+/* 卡片禁用(未勾选)状态 */
+.bundle-group-card.disabled-card {
+  opacity: 0.5;
+  background: #fafafa;
+}
+
+/* 左侧正方形图片 */
+.bundle-card-img {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  background-color: #f5f5f5;
+  flex-shrink: 0;
+  border: 1rpx solid #eee;
+}
+
+/* 右侧信息区 */
+.bundle-card-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 标题和右上角勾选框 */
+.bundle-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.bundle-card-title {
   font-size: 28rpx;
   font-weight: 600;
   color: #1a1a1a;
-  margin-bottom: 16rpx;
   display: flex;
   align-items: center;
 }
+
 .bg-step {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34rpx;
-  height: 34rpx;
+  width: 32rpx;
+  height: 32rpx;
   border-radius: 50%;
-  background: #f2f2f2;
-  color: #999;
+  background: #1a1a1a;
+  color: #ffffff;
   font-size: 20rpx;
-  font-weight: 600;
-  margin-right: 10rpx;
+  font-weight: 700;
+  margin-right: 12rpx;
   flex-shrink: 0;
 }
-.bundle-group-label {
-  font-size: 22rpx;
-  color: #999;
-  margin-bottom: 8rpx;
-  display: block;
-  letter-spacing: 1rpx;
+
+/* 勾选圈圈 */
+.bundle-checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  border: 2rpx solid #ccc;
+  box-sizing: border-box;
+  transition: all 0.2s;
+  position: relative;
 }
-.bundle-group-colors, .bundle-group-sizes {
-  margin-bottom: 8rpx;
+.bundle-checkbox.checked {
+  background: #07c160;
+  border-color: #07c160;
 }
-.bundle-group-selected {
-  font-size: 22rpx;
-  color: #666;
-  margin-top: 12rpx;
-  padding-top: 12rpx;
-  border-top: 1rpx solid #f5f5f5;
+.bundle-checkbox.checked::after {
+  content: '';
+  position: absolute;
+  left: 12rpx;
+  top: 8rpx;
+  width: 10rpx;
+  height: 16rpx;
+  border: solid white;
+  border-width: 0 4rpx 4rpx 0;
+  transform: rotate(45deg);
+}
+
+/* 规格选择区 (颜色和尺码) */
+.bundle-card-specs {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  margin-bottom: 12rpx;
 }
-.bg-check {
-  color: #07c160;
-  font-weight: 700;
-  margin-right: 6rpx;
+
+.spec-label {
+  font-size: 24rpx;
+  color: #999;
+  width: 60rpx;
+  flex-shrink: 0;
+  line-height: 44rpx;
+}
+
+.sku-options.minimal {
+  margin-bottom: 0;
+  gap: 12rpx;
+}
+
+.sku-tag.minimal {
+  padding: 4rpx 20rpx;
+  font-size: 24rpx;
+  border-radius: 6rpx;
+  line-height: 36rpx;
+}
+
+/* 底部状态区 */
+.bundle-card-footer {
+  margin-top: 8rpx;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.stock-status {
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+}
+.stock-status.out {
+  background: #ffeeee;
+  color: #ff4d4f;
+}
+.stock-status.danger {
+  background: #fff2e8;
+  color: #fa541c;
+}
+.stock-status.normal {
+  background: #f6ffed;
+  color: #52c41a;
 }
 
 .sku-options { 

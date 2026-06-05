@@ -1,6 +1,4 @@
-/* ==================
-   全局基础设定
-================== */
+/* ==================全局基础设定================== */
 page {
   background-color: #f8f9fa;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
@@ -392,9 +390,7 @@ page {
   opacity: 0.8;
 }
 
-/* ==================
-   底部 TabBar
-================== */
+/* ==================   底部 TabBar================== */
 .bottom-tab-bar {
   position: fixed;
   bottom: 0;
@@ -468,7 +464,7 @@ page {
   background-color: #ffffff;
   border-radius: 32rpx 32rpx 0 0;
   z-index: 1001;
-  padding: 40rpx;
+  padding: 40rpx 40rpx 0 40rpx !important;
   box-sizing: border-box;
   transform: translateY(100%);
   padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
@@ -588,109 +584,211 @@ page {
   font-weight: 700;
   box-shadow: 0 10rpx 20rpx rgba(0, 0, 0, 0.15);
 }
-
+sku-panel
 .sku-btn-confirm.disabled {
   background-color: #e0e0e0 !important;
   color: #999 !important;
   box-shadow: none;
 }
 
-/* 套装子项卡片 */
+/* ================== 新版无圈独立卡片排版 ================== */
 .bundle-group-card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx 28rpx;
-  margin-bottom: 18rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.06);
+  display: flex;
+  gap: 24rpx;
+  transition: all 0.3s;
 }
-.bundle-group-name {
+
+/* 彻底没货置灰状态拦截 */
+.out-of-stock-card {
+  opacity: 0.4;
+  filter: grayscale(100%);
+  pointer-events: none; /* 物理阻断一切误操作 */
+}
+
+/* 缩略图 */
+.bundle-card-img {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  background-color: #f5f5f5;
+  flex-shrink: 0;
+  border: 1rpx solid #eee;
+}
+
+/* 卡片右侧布局容器 */
+.bundle-card-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bundle-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.bundle-card-title {
   font-size: 28rpx;
   font-weight: 600;
   color: #1a1a1a;
-  margin-bottom: 16rpx;
   display: flex;
   align-items: center;
 }
+
 .bg-step {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34rpx;
-  height: 34rpx;
+  width: 32rpx;
+  height: 32rpx;
   border-radius: 50%;
-  background: #f2f2f2;
-  color: #999;
+  background: #1a1a1a;
+  color: #ffffff;
   font-size: 20rpx;
-  font-weight: 600;
-  margin-right: 10rpx;
+  font-weight: 700;
+  margin-right: 12rpx;
   flex-shrink: 0;
 }
-.bundle-group-label {
-  font-size: 22rpx;
-  color: #999;
-  margin-bottom: 8rpx;
-  display: block;
-  letter-spacing: 1rpx;
-}
-.bundle-group-colors, .bundle-group-sizes {
-  margin-bottom: 8rpx;
-}
-.bundle-group-selected {
-  font-size: 22rpx;
-  color: #666;
-  margin-top: 12rpx;
-  padding-top: 12rpx;
-  border-top: 1rpx solid #f5f5f5;
+
+.bundle-card-specs {
   display: flex;
-  align-items: center;
-}
-.bg-check {
-  color: #07c160;
-  font-weight: 700;
-  margin-right: 6rpx;
+  align-items: flex-start;
+  margin-bottom: 12rpx;
 }
 
-/* ==================
-   新增：SKU 面板双按钮样式
-================== */
-.sku-actions {
+.spec-label {
+  font-size: 24rpx;
+  color: #999;
+  width: 60rpx;
+  flex-shrink: 0;
+  line-height: 44rpx;
+}
+
+.sku-options.minimal {
+  margin-bottom: 0;
+  gap: 12rpx;
+}
+
+.sku-tag.minimal {
+  padding: 4rpx 20rpx;
+  font-size: 24rpx;
+  border-radius: 6rpx;
+  line-height: 36rpx;
+}
+
+/* 左下角单价 + 右侧加减输入框 */
+.bundle-card-footer {
   display: flex;
   justify-content: space-between;
-  gap: 20rpx; /* 两个按钮中间的间隙 */
-  width: 100%;
+  align-items: center;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx dashed #f0f0f0;
 }
 
-.sku-btn-cart {
-  flex: 1;
-  height: 90rpx;
-  border-radius: 100rpx;
+.bundle-sku-price {
+  font-size: 34rpx;
+  color: #ff4d4f;
+  font-weight: 800;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  border: 1rpx solid #e0e0e0;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.step-btn {
+  width: 56rpx;
+  height: 50rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #f8f8f8;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+.step-btn.disabled {
+  color: #ccc;
+  background: #f5f5f5;
+}
+
+.step-input {
+  width: 70rpx;
+  height: 50rpx;
+  text-align: center;
+  font-size: 26rpx;
+  font-weight: bold;
+  background: #ffffff;
+  border-left: 1rpx solid #e0e0e0;
+  border-right: 1rpx solid #e0e0e0;
+  min-height: auto;
+}
+
+/* 新版纯享双按钮（去除了变形的金额容器） */
+.sku-actions-new {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0rpx 0rpx calc(0rpx + env(safe-area-inset-bottom)) ;
+  background: #ffffff;
+  gap: 20rpx;
+  box-sizing: border-box;
+}
+
+.sku-btn-item {
+  flex: 1;
+  height: 84rpx;
+  line-height: 84rpx;
+  text-align: center;
   font-size: 30rpx;
   font-weight: 700;
-  background-color: #f5f5f5; /* 浅灰底色，代表次要操作 */
+  border-radius: 42rpx;
+  transition: all 0.2s ease;
+}
+
+.sku-btn-item.cart {
+  background: #f5f5f5;
   color: #1a1a1a;
-  transition: all 0.2s;
+  border: 1rpx solid #e0e0e0;
+  box-sizing: border-box;
 }
 
-.sku-btn-buy {
-  flex: 1;
-  height: 90rpx;
-  border-radius: 100rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 30rpx;
-  font-weight: 700;
-  background-color: #1a1a1a; /* 纯黑底色，吸引视觉焦点促单 */
+.sku-btn-item.buy {
+  background: #1a1a1a;
   color: #ffffff;
-  box-shadow: 0 10rpx 20rpx rgba(0, 0, 0, 0.15);
-  transition: all 0.2s;
 }
 
-.sku-btn-cart:active, .sku-btn-buy:active {
-  transform: scale(0.96);
-  opacity: 0.9;
+.sku-btn-item.btn-disabled {
+  opacity: 0.35;
+  pointer-events: none;
 }
 
+/* 方案C：微缩总计栏（置于底部双按钮之上） */
+.bundle-summary-bar {
+  padding: 10rpx 10rpx 0rpx 0rpx; /* 重新给合计栏一点呼吸空间 */
+  font-size: 26rpx;
+  color: #666;
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  background: #ffffff;
+  border-top: 1rpx solid #eee; /* ✨ 分割线移到合计栏上方，巧妙隔开商品滚动区 */
+}
+.summary-price {
+  font-size: 36rpx;
+  color: #ff4d4f;
+  font-weight: 800;
+  margin-left: 12rpx;
+}

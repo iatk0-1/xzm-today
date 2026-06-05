@@ -380,18 +380,45 @@ Page({
       }
     }
 
-    // 套装商品：初始化子项选择
-    if (bundleGroups && bundleGroups.length > 0) {
-      var rawSel = bundleGroups.map(function(bg) {
-        var skus = bg.skus || [];
-        var colors = [...new Set(skus.map(function(s) { return s.color || s.spec; }))];
-        var sizes = [...new Set(skus.map(function(s) { return s.size; }))];
-        return { bundleGroupName: bg.name, skus: skus, uniqueColors: colors, uniqueSizes: sizes, selectedColor: colors.length === 1 ? colors[0] : '', selectedSize: sizes.length === 1 ? sizes[0] : '', selectedSku: null };
+// 套装商品：初始化子项选择
+if (bundleGroups && bundleGroups.length > 0) {
+  // ✨ 新增逻辑 1：提取所有真实价格算区间，提取所有单品名称做拼接
+  var allPrices = [];
+  var bundleNames = [];
+  bundleGroups.forEach(function(bg) {
+    bundleNames.push(bg.name); // 收集商品名称（如上衣、裤子）
+    if (bg.skus) {
+      bg.skus.forEach(function(sku) {
+        if (sku.price) allPrices.push(Number(sku.price));
+        else if (sku.retailPrice) allPrices.push(Number(sku.retailPrice));
       });
-      var result = this._computeBundleSelections(rawSel, -1, null, null);
-      this.setData({ currentProduct: product, showSku: true, bundleSelections: result.bundleSelections, bundleAllSelected: result.bundleAllSelected, currentSkuPrice: result.currentSkuPrice });
-      return;
     }
+  });
+  // 算最高和最低价
+  var minP = allPrices.length > 0 ? Math.min(...allPrices) : 0;
+  var maxP = allPrices.length > 0 ? Math.max(...allPrices) : 0;
+  var rangeStr = (minP === maxP) ? '¥' + minP : '¥' + minP + ' - ¥' + maxP;
+  var joinedNames = bundleNames.join('，'); // 拼接文案，如：上衣，裤子，牛仔裤
+
+  var rawSel = bundleGroups.map(function(bg) {
+    var skus = bg.skus || [];
+    var colors = [...new Set(skus.map(function(s) { return s.color || s.spec; }))];
+    var sizes = [...new Set(skus.map(function(s) { return s.size; }))];
+    var hasStock = skus.some(function(s) { return s.unlimitedStock || s.stock > 0; });
+    return { bundleGroupName: bg.name, skus: skus, uniqueColors: colors, uniqueSizes: sizes, selectedColor: '', selectedSize: '', selectedSku: null, quantity: 1, isOutOfStock: !hasStock };
+  });
+  var result = this._computeBundleSelections(rawSel, -1, null, null);
+  this.setData({ 
+    currentProduct: product, 
+    currentSkuImage: product.coverUrl || product.image, 
+    showSku: true, 
+    bundleSelections: result.bundleSelections, 
+    bundleAllSelected: result.bundleAllSelected,
+    bundlePriceRange: rangeStr, // ✨ 价格区间下发到前端
+    bundleNamesStr: result.bundleNamesStr // ✨ 修复：初始化时接收大脑传来的“待选择”状态
+  });
+  return;
+}
 
     let colors = [];
     let sizes = [];
@@ -477,68 +504,205 @@ Page({
   },
 
   _computeBundleSelections: function(sel, changeIdx, changeField, changeValue) {
-    var anyOk = false;
-    var totalPrice = 0;
+    var allCheckedSelected = true;
+    var hasChecked = false;
+    var latestImage = null; // ✨ 专门捕获买家最新点击的那张图片
+
     var newSel = sel.map(function(s, i) {
       var ns = Object.assign({}, s);
-      if (i === changeIdx && changeField) ns[changeField] = changeValue;
-      ns.selectedSku = null;
-      if (ns.selectedColor && ns.selectedSize && ns.skus && ns.skus.length > 0) {
-        var match = ns.skus.find(function(sku) { return (sku.color || sku.spec) === ns.selectedColor && sku.size === ns.selectedSize; });
-        if (match) { ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price || match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl }; totalPrice += Number(ns.selectedSku.price) || 0; anyOk = true; }
+
+      if (i === changeIdx && changeField) {
+          // 极简反选逻辑：再点一次选中的规格，即视为取消
+          if (ns[changeField] === changeValue) {
+              ns[changeField] = ''; 
+          } else {
+              ns[changeField] = changeValue;
+          }
       }
-      return ns;
-    });
-    return { bundleSelections: newSel, bundleAllSelected: anyOk, currentSkuPrice: totalPrice > 0 ? totalPrice : null };
+
+      ns.selectedSku = null;
+      var needColor = ns.uniqueColors && ns.uniqueColors.length > 0;
+      var needSize = ns.uniqueSizes && ns.uniqueSizes.length > 0;
+      var colorOk = !needColor || ns.selectedColor;
+      var sizeOk = !needSize || ns.selectedSize;
+
+      if (colorOk && sizeOk && ns.skus && ns.skus.length > 0) {
+          var match = ns.skus.find(function(sku) {
+              var cMatch = !needColor || (sku.color || sku.spec) === ns.selectedColor;
+              var sMatch = !needSize || sku.size === ns.selectedSize;
+              return cMatch && sMatch;
+          });
+          if (match) {
+            ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price || match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
+            if (!ns.quantity) ns.quantity = 1; // 默认数量置为1
+            ns.computedPrice = parseFloat((Number(ns.selectedSku.price || 0) * ns.quantity).toFixed(2)); // ✨ 新增：自动计算并挂载卡片小计金额
+        }
+      }
+
+      // ✨ 核心逻辑：拦截买家刚刚点击的那件商品，提取它的专属图片上报
+      if (i === changeIdx) {
+          if (ns.selectedSku && ns.selectedSku.imageUrl) {
+              latestImage = ns.selectedSku.imageUrl;
+          } else if (ns.selectedColor && ns.skus) {
+              var colorMatch = ns.skus.find(function(sku) { return (sku.color || sku.spec) === ns.selectedColor && sku.imageUrl; });
+              if (colorMatch) latestImage = colorMatch.imageUrl;
+          }
+          if (!latestImage && ns.skus && ns.skus.length > 0 && ns.skus[0].imageUrl) {
+              latestImage = ns.skus[0].imageUrl;
+          }
+      }
+
+      var isPartiallySelected = (needColor && ns.selectedColor && needSize && !ns.selectedSize) || (needSize && ns.selectedSize && needColor && !ns.selectedColor);
+      
+      if (ns.selectedSku) {
+        hasChecked = true;
+    } else if (isPartiallySelected) {
+        allCheckedSelected = false; // 如果有选了一半的规格，阻断结算
+    }
+    return ns;
+  });
+
+  // ✨ 核心修复：动态计算“已选”商品名称组合，没选就输出“待选择”
+  var selectedNames = newSel.filter(function(s) { return s.selectedSku != null; }).map(function(s) { return s.bundleGroupName; });
+  var dynamicNamesStr = selectedNames.length > 0 ? selectedNames.join('，') : '待选择';
+
+  // ✨ 新增：遍历已选商品，计算总件数和总金额
+  var tCount = 0;
+  var tPrice = 0;
+  newSel.forEach(function(s) {
+    if (s.selectedSku) {
+      tCount += s.quantity;
+      tPrice += s.computedPrice || (Number(s.selectedSku.price || 0) * s.quantity);
+    }
+  });
+
+  var result = { 
+    bundleSelections: newSel, 
+    bundleAllSelected: hasChecked && allCheckedSelected,
+    bundleNamesStr: dynamicNamesStr, 
+    bundleTotalCount: tCount, // ✨ 传递合计件数给前端
+    bundleTotalPrice: tPrice.toFixed(2) // ✨ 传递合计金额给前端
+  };
+  // ✨ 将捕获到的图片更新到页面顶部
+  if (latestImage) {
+      result.currentSkuImage = latestImage;
+  }
+  return result;
+},
+
+  // ====== 开放图片全屏预览 ======
+  previewBundleImage(e) {
+    var url = e.currentTarget.dataset.url;
+    if (url) { wx.previewImage({ urls: [url], current: url }); }
   },
 
+// ====== 精巧的数量增减器核心控制 ======
+// ✨ 新增助手函数：点加减号时，同步重新算一次底部总价
+_updateBundleTotals(sel) {
+  var tCount = 0;
+  var tPrice = 0;
+  sel.forEach(function(s) {
+    if (s.selectedSku) {
+      tCount += s.quantity;
+      tPrice += s.computedPrice || (Number(s.selectedSku.price || 0) * s.quantity);
+    }
+  });
+  this.setData({ 
+    bundleSelections: sel,
+    bundleTotalCount: tCount,
+    bundleTotalPrice: tPrice.toFixed(2)
+  });
+},
+bundleMinus(e) {
+  var index = e.currentTarget.dataset.index;
+  var sel = this.data.bundleSelections;
+  if (sel[index].quantity > 1) {
+    sel[index].quantity--;
+    sel[index].computedPrice = parseFloat((Number(sel[index].selectedSku.price || 0) * sel[index].quantity).toFixed(2)); 
+    this._updateBundleTotals(sel); // ✨ 刷新视图和总价
+  }
+},
+bundlePlus(e) {
+  var index = e.currentTarget.dataset.index;
+  var sel = this.data.bundleSelections;
+  var sku = sel[index].selectedSku;
+  if (sku && (sku.unlimitedStock || sel[index].quantity < sku.stock)) {
+    sel[index].quantity++;
+    sel[index].computedPrice = parseFloat((Number(sku.price || 0) * sel[index].quantity).toFixed(2)); 
+    this._updateBundleTotals(sel); // ✨ 刷新视图和总价
+  } else {
+    wx.showToast({ title: '没库存了哦～', icon: 'none' });
+  }
+},
+bundleInput(e) {
+  var index = e.currentTarget.dataset.index;
+  var val = parseInt(e.detail.value);
+  var sel = this.data.bundleSelections;
+  var sku = sel[index].selectedSku;
+  if (!sku) return;
+  if (isNaN(val) || val < 1) val = 1;
+  if (!sku.unlimitedStock && val > sku.stock) {
+    val = sku.stock;
+    wx.showToast({ title: '没库存了哦～', icon: 'none' });
+  }
+  sel[index].quantity = val;
+  sel[index].computedPrice = parseFloat((Number(sku.price || 0) * val).toFixed(2)); 
+  this._updateBundleTotals(sel); // ✨ 刷新视图和总价
+},
+bundleInputBlur(e) {
+  var index = e.currentTarget.dataset.index;
+  var val = parseInt(e.detail.value);
+  var sel = this.data.bundleSelections;
+  if (isNaN(val) || val < 1) {
+    sel[index].quantity = 1;
+    sel[index].computedPrice = parseFloat((Number(sel[index].selectedSku.price || 0) * 1).toFixed(2)); 
+    this._updateBundleTotals(sel); // ✨ 刷新视图和总价
+  }
+},
+
+
   // 套装商品加入购物车
-  addToCartWithBundle(bundleConfig, totalPrice) {
-    var self = this;
-    var product = this.data.currentProduct;
+  addToCartWithBundle(bundleConfig) {
     wx.showLoading({ title: '添加中...' });
     var cartData = {
-      productId: product.id,
+      productId: this.data.currentProduct.id,
       skuId: bundleConfig[0].skuId,
       color: bundleConfig[0].color,
       size: bundleConfig[0].size,
-      count: 1,
+      count: 1, 
       bundleConfig: bundleConfig
     };
     api.post('/cart/items', cartData)
       .then(function() {
         wx.hideLoading();
         wx.showToast({ title: '已加入购物车', icon: 'success' });
-        self.setData({ showSku: false });
+        // 大厂逻辑：加入购物车不关闭弹窗，保障买家的连续购物流
       })
       .catch(function(err) {
         wx.hideLoading();
-        if (err.error === 'UNAUTHORIZED') {
-          wx.showToast({ title: '请先登录', icon: 'none' });
-        } else {
-          wx.showToast({ title: '添加失败', icon: 'none' });
-        }
+        if (err.error === 'UNAUTHORIZED') wx.showToast({ title: '请先登录', icon: 'none' });
+        else wx.showToast({ title: '添加失败', icon: 'none' });
       });
   },
 
   confirmAddToCart(e) {
     const actionType = e.currentTarget.dataset.action;
-
     const { currentProduct, bundleSelections, bundleAllSelected, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuUnlimited, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes } = this.data;
     if (!currentProduct) return;
 
-    // 套装商品：仅收集完整选好的子项
     if (bundleSelections && bundleSelections.length > 0) {
-      if (!bundleAllSelected) return wx.showToast({ title: '请至少完整选择一个子项', icon: 'none' });
+      if (!bundleAllSelected) return wx.showToast({ title: '请完善已选的规格', icon: 'none' });
       var selectedSubs = bundleSelections.filter(function(s) { return s.selectedSku != null; });
+      if (selectedSubs.length === 0) return wx.showToast({ title: '请至少勾选一个商品', icon: 'none' });
+      
       var bundleConfig = selectedSubs.map(function(s) {
-        return { bundleGroupName: s.bundleGroupName, skuId: s.selectedSku.skuId, color: s.selectedSku.color, size: s.selectedSku.size, price: s.selectedSku.price, imageUrl: s.selectedSku.imageUrl || '' };
+        return { bundleGroupName: s.bundleGroupName, skuId: s.selectedSku.skuId, color: s.selectedSku.color, size: s.selectedSku.size, price: s.selectedSku.price, imageUrl: s.selectedSku.imageUrl || '', count: s.quantity };
       });
-      var totalPrice = 0;
-      bundleConfig.forEach(function(b) { totalPrice += Number(b.price) || 0; });
 
-      this.setData({ showSku: false });
       if (actionType === 'buy') {
+        this.setData({ showSku: false });
+        var totalPrice = 0;
+        bundleConfig.forEach(function(b) { totalPrice += (Number(b.price) || 0) * b.count; });
         var item = {
           productId: currentProduct.id, skuId: bundleConfig[0].skuId,
           name: currentProduct.name, image: currentProduct.coverUrl,
@@ -549,10 +713,11 @@ Page({
         wx.setStorageSync('checkoutItems', [item]);
         wx.navigateTo({ url: '/pages/checkout/checkout' });
       } else {
-        this.addToCartWithBundle(bundleConfig, totalPrice);
+        this.addToCartWithBundle(bundleConfig);
       }
       return;
     }
+
 
     if (uniqueColors.length > 0 && !selectedColor) {
       return wx.showToast({ title: '请选择颜色', icon: 'none' });

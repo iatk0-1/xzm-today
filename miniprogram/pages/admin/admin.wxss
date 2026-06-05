@@ -1,4 +1,4 @@
-page { background-color: #f2f2f2; padding-bottom: 60rpx; }
+page { background-color: #f2f2f2; padding-bottom: 160rpx; /* 将原本的60rpx加大到160rpx，留足悬浮按钮的空间 */ }
 .admin-container { padding: 24rpx; }
 
 .header-title { font-size: 34rpx; font-weight: 600; margin-bottom: 8rpx; color: #1a1a1a; }
@@ -196,9 +196,23 @@ page { background-color: #f2f2f2; padding-bottom: 60rpx; }
 .btn-remove-related { font-size: 12px; color: #ff4d4f; padding: 5px 10px; }
 
 /* 提交按钮 */
-.submit-area { display: flex; gap: 20rpx; margin-top: 32rpx; }
-.btn-draft { flex: 1; background: #f5f5f5; color: #666; text-align: center; line-height: 88rpx; border-radius: 12rpx; font-size: 28rpx; border: 2rpx solid #e0e0e0; }
-.btn-submit { flex: 2; background: #1a1a1a; color: #fff; text-align: center; line-height: 88rpx; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; }
+.submit-area { 
+  position: fixed; 
+  bottom: 0; 
+  left: 0; 
+  width: 100%; 
+  box-sizing: border-box;
+  background: #ffffff; 
+  padding: 24rpx 24rpx calc(env(safe-area-inset-bottom)); /* 适配苹果手机底部黑条 */
+  display: flex; 
+  gap: 20rpx; 
+  z-index: 998; 
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.05); /* 添加顶部轻微阴影，更具立体感 */
+}
+.btn-draft { flex: 1; background: #f5f5f5; color: #666; text-align: center;
+line-height: 88rpx; border-radius: 12rpx; font-size: 28rpx; border: 2rpx solid #e0e0e0; }
+.btn-submit { flex: 2; background: #1a1a1a; color: #fff; text-align: center;
+line-height: 88rpx; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; }
 
 /* 套装模式 */
 .bundle-mode-row { display: flex; align-items: center; justify-content: space-between; }
