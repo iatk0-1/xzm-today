@@ -41,84 +41,6 @@
     <input class="input-box" placeholder="例如：经典藏青百褶裙" value="{{title}}" bindinput="onInput" data-field="title" />
   </view>
 
-  <!-- 所属档口 -->
-  <view class="form-group stall-section" style="position: relative; z-index: 100;">
-    <view class="label-with-edit">
-      <view class="label">所属档口 (可多选)</view>
-      <view class="edit-btn" bindtap="openStallManageModal">编辑</view>
-    </view>
-    <view class="tags-display">
-      <block wx:for="{{selectedStalls}}" wx:key="id">
-        <view class="tag-capsule active-tag">
-          {{item.name}} <text class="remove-icon" catchtap="removeStall" data-id="{{item.id}}">×</text>
-        </view>
-      </block>
-    </view>
-    <!-- 历史档口记录 -->
-    <view class="history-section" wx:if="{{recentStalls.length > 0}}">
-      <view class="history-label">最近使用</view>
-      <scroll-view scroll-x class="history-scroll" enable-flex>
-        <view class="history-item" wx:for="{{recentStalls}}" wx:key="id" bindtap="selectRecentStall" data-item="{{item}}">
-          {{item.name}}
-        </view>
-      </scroll-view>
-    </view>
-    <view class="search-input-row">
-      <input class="input-box tag-input" placeholder="输入档口名称搜索..." value="{{stallSearchKeyword}}" bindinput="onStallSearchInput" />
-    </view>
-    <view class="search-results floating-dropdown" wx:if="{{showStallSearch || showStallCreate}}">
-      <view class="search-result-item" wx:for="{{stallSearchResults}}" wx:key="id" bindtap="selectStall" data-item="{{item}}">
-        {{item.name}}
-      </view>
-      <view class="search-empty-item" wx:if="{{stallSearchResults.length === 0 && showStallCreate}}" bindtap="createStall">
-        <text>暂无相关档口，</text>
-        <text class="add-new-text">新增"{{stallSearchKeyword}}"</text>
-      </view>
-      <view class="search-result-item" wx:if="{{stallSearchResults.length > 0 && showStallCreate}}" bindtap="createStall" style="color: #007aff; font-weight: bold;">
-        + 新增档口："{{stallSearchKeyword}}"
-      </view>
-    </view>
-  </view>
-
-  <!-- 标签分类 -->
-  <view class="form-group tag-section" style="position: relative; z-index: 99;">
-    <view class="label-with-edit">
-      <view class="label">标签分类 (可多选)</view>
-      <view class="edit-btn" bindtap="openTagManageModal">编辑</view>
-    </view>
-    <view class="tags-display">
-      <block wx:for="{{selectedTags}}" wx:key="id">
-        <view class="tag-capsule active-tag">
-          {{item.name}} <text class="remove-icon" catchtap="removeTag" data-id="{{item.id}}">×</text>
-        </view>
-      </block>
-    </view>
-    <!-- 历史标签记录 -->
-    <view class="history-section" wx:if="{{recentTags.length > 0}}">
-      <view class="history-label">最近使用</view>
-      <scroll-view scroll-x class="history-scroll" enable-flex>
-        <view class="history-item" wx:for="{{recentTags}}" wx:key="id" bindtap="selectRecentTag" data-item="{{item}}">
-          {{item.name}}
-        </view>
-      </scroll-view>
-    </view>
-    <view class="search-input-row">
-      <input class="input-box tag-input" placeholder="输入标签名称搜索..." value="{{tagSearchKeyword}}" bindinput="onTagSearchInput" />
-    </view>
-    <view class="search-results floating-dropdown" wx:if="{{showTagSearch || showTagCreate}}">
-      <view class="search-result-item" wx:for="{{tagSearchResults}}" wx:key="id" bindtap="selectTag" data-item="{{item}}">
-        {{item.name}}
-      </view>
-      <view class="search-empty-item" wx:if="{{tagSearchResults.length === 0 && showTagCreate}}" bindtap="createTag">
-        <text>暂无相关标签，</text>
-        <text class="add-new-text">新增"{{tagSearchKeyword}}"</text>
-      </view>
-      <view class="search-result-item" wx:if="{{tagSearchResults.length > 0 && showTagCreate}}" bindtap="createTag" style="color: #007aff; font-weight: bold;">
-        + 新增标签："{{tagSearchKeyword}}"
-      </view>
-    </view>
-  </view>
-
   <!-- 套装模式开关 -->
   <view class="form-group">
     <view class="bundle-mode-row">
@@ -144,9 +66,11 @@
     <!-- 当前子项名称 -->
     <view class="bundle-group-name-row" wx:if="{{activeGroupIndex >= 0}}">
       <text class="bundle-group-name-label">子项名称：</text>
-      <input class="bundle-group-name-input" placeholder="如：上衣"
+      <input id="bundleGroupNameInput" class="bundle-group-name-input" placeholder="如：上衣"
              value="{{bundleGroups[activeGroupIndex].name}}"
-             bindinput="onBundleGroupNameInput" />
+             bindinput="onBundleGroupNameInput"
+             focus="{{bundleGroupNameFocus}}"
+             bindblur="onBundleGroupNameBlur" />
     </view>
   </view>
 
@@ -226,6 +150,83 @@
   </view>
 
   <view class="divider">--- 以下为高级选填项 (丰富详情页) ---</view>
+
+  <!-- 所属档口 -->
+  <view class="form-group stall-section" style="position: relative; z-index: 100;">
+    <view class="label-with-edit">
+      <view class="label">所属档口 (可多选)</view>
+      <view class="edit-btn" bindtap="openStallManageModal">编辑</view>
+    </view>
+    <view class="tags-display">
+      <block wx:for="{{selectedStalls}}" wx:key="id">
+        <view class="tag-capsule active-tag">
+          {{item.name}} <text class="remove-icon" catchtap="removeStall" data-id="{{item.id}}">×</text>
+        </view>
+      </block>
+    </view>
+    <view class="history-section" wx:if="{{recentStalls.length > 0}}">
+      <view class="history-label">最近使用</view>
+      <scroll-view scroll-x class="history-scroll" enable-flex>
+        <view class="history-item" wx:for="{{recentStalls}}" wx:key="id" bindtap="selectRecentStall" data-item="{{item}}">
+          {{item.name}}
+        </view>
+      </scroll-view>
+    </view>
+    <view class="search-input-row">
+      <input class="input-box tag-input" placeholder="输入档口名称搜索..." value="{{stallSearchKeyword}}" bindinput="onStallSearchInput" />
+    </view>
+    <view class="search-results floating-dropdown" wx:if="{{showStallSearch || showStallCreate}}">
+      <view class="search-result-item" wx:for="{{stallSearchResults}}" wx:key="id" bindtap="selectStall" data-item="{{item}}">
+        {{item.name}}
+      </view>
+      <view class="search-empty-item" wx:if="{{stallSearchResults.length === 0 && showStallCreate}}" bindtap="createStall">
+        <text>暂无相关档口，</text>
+        <text class="add-new-text">新增"{{stallSearchKeyword}}"</text>
+      </view>
+      <view class="search-result-item" wx:if="{{stallSearchResults.length > 0 && showStallCreate}}" bindtap="createStall" style="color: #007aff; font-weight: bold;">
+        + 新增档口："{{stallSearchKeyword}}"
+      </view>
+    </view>
+  </view>
+
+  <!-- 标签分类 -->
+  <view class="form-group tag-section" style="position: relative; z-index: 99;">
+    <view class="label-with-edit">
+      <view class="label">标签分类 (可多选)</view>
+      <view class="edit-btn" bindtap="openTagManageModal">编辑</view>
+    </view>
+    <view class="tags-display">
+      <block wx:for="{{selectedTags}}" wx:key="id">
+        <view class="tag-capsule active-tag">
+          {{item.name}} <text class="remove-icon" catchtap="removeTag" data-id="{{item.id}}">×</text>
+        </view>
+      </block>
+    </view>
+    <view class="history-section" wx:if="{{recentTags.length > 0}}">
+      <view class="history-label">最近使用</view>
+      <scroll-view scroll-x class="history-scroll" enable-flex>
+        <view class="history-item" wx:for="{{recentTags}}" wx:key="id" bindtap="selectRecentTag" data-item="{{item}}">
+          {{item.name}}
+        </view>
+      </scroll-view>
+    </view>
+    <view class="search-input-row">
+      <input class="input-box tag-input" placeholder="输入标签名称搜索..." value="{{tagSearchKeyword}}" bindinput="onTagSearchInput" />
+    </view>
+    <view class="search-results floating-dropdown" wx:if="{{showTagSearch || showTagCreate}}">
+      <view class="search-result-item" wx:for="{{tagSearchResults}}" wx:key="id" bindtap="selectTag" data-item="{{item}}">
+        {{item.name}}
+      </view>
+      <view class="search-empty-item" wx:if="{{tagSearchResults.length === 0 && showTagCreate}}" bindtap="createTag">
+        <text>暂无相关标签，</text>
+        <text class="add-new-text">新增"{{tagSearchKeyword}}"</text>
+      </view>
+      <view class="search-result-item" wx:if="{{tagSearchResults.length > 0 && showTagCreate}}" bindtap="createTag" style="color: #007aff; font-weight: bold;">
+        + 新增标签："{{tagSearchKeyword}}"
+      </view>
+    </view>
+  </view>
+
   <view class="form-group">
     <view class="label">预计发货时间</view>
     <input class="input-box" placeholder="例如：付款后 48 小时内发货" value="{{shippingInfo}}" bindinput="onInput" data-field="shippingInfo" />
@@ -292,11 +293,11 @@
     <view class="btn-add-related" bindtap="openRelatedModal">+ 添加搭配商品</view>
     <view style="font-size: 11px; color: #999; margin-top: 8px;">未添加将根据分类标签自动智能匹配</view>
   </view>
+</view>
 
-  <view class="submit-area">
-    <view class="btn-draft" bindtap="saveDraft">保存草稿</view>
-    <view class="btn-submit" bindtap="submitProduct">确认上架</view>
-  </view>
+<view class="submit-area">
+  <view class="btn-draft" bindtap="saveDraft">保存草稿</view>
+  <view class="btn-submit" bindtap="submitProduct">确认上架</view>
 </view>
 
 <view class="modal-mask" wx:if="{{showRelatedModal}}" catchtap="closeRelatedModal"></view>

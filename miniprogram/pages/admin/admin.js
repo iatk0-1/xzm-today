@@ -53,7 +53,7 @@ Page({
     newSizeCategoryName: '',
     newCategoryName: '',
     newSizeName: '',
-    colors: [],
+    colors: ['图片色'],
     colorInput: '',
     skuList: [],
     batchPrice: '',
@@ -92,7 +92,10 @@ Page({
     manageStallSearchKeyword: '',  // 管理弹窗 - 档口搜索关键词
     manageTagSearchKeyword: '',    // 管理弹窗 - 标签搜索关键词
     newStallName: '',
-    newTagName: ''
+    newTagName: '',
+
+    // 子项名称输入框聚焦
+    bundleGroupNameFocus: false
   },
 
   onLoad(options) {
@@ -121,26 +124,27 @@ Page({
     } else {
       this._draftType = 'create';
       this._relatedId = null;
-      // 创建模式：检测是否有未完成的草稿
+      // 创建模式：恢复上次的档口选择（仅当天有效）
+      this._loadLastStallSelection();
+      // 初始化默认 SKU（图片色 × 均码）
+      this.generateSkuMatrix();
+      // 检测是否有未完成的草稿
       this.checkDraft();
     }
   },
 
   onUnload() {
-    // 优化：仅在最后一次编辑后尚未保存过草稿时才询问
-    if (this.hasFormContent() && (!this._lastDraftSavedAt || this._lastDraftSavedAt < (this._lastEditTime || 0))) {
-      var self = this;
-      wx.showModal({
-        title: '保存草稿',
-        content: '是否将当前内容保存为草稿？',
-        confirmText: '保存',
-        cancelText: '不保存',
-        success: function(res) {
-          if (res.confirm) {
-            self.saveDraft();
-          }
-        }
-      });
+    // 已提交成功 → 无需操作
+    if (this._submitted) return;
+    // 有未保存变更时自动保存草稿（不做弹窗，系统 alert 已处理确认）
+    var currentSnapshot = JSON.stringify(this.collectDraftData());
+    if (this.hasFormContent() && currentSnapshot !== this._lastSavedSnapshot) {
+      this.saveDraft();
+    }
+    // 清理
+    if (this._alertEnabled) {
+      wx.disableAlertBeforeUnload();
+      this._alertEnabled = false;
     }
   },
 
@@ -575,11 +579,29 @@ Page({
     }
   },
 
+  // 检查是否需要启用系统退出拦截（与上次保存快照对比）
+  _updateExitGuard: function() {
+    if (this._submitted || this._alertEnabled) return;
+    if (!this.hasFormContent()) return;
+    var currentSnapshot = JSON.stringify(this.collectDraftData());
+    if (currentSnapshot !== this._lastSavedSnapshot) {
+      this._alertEnabled = true;
+      wx.enableAlertBeforeUnload({
+        message: '当前内容尚未保存为草稿，确定离开吗？'
+      });
+    }
+  },
+
+  // 标记表单已变更，检查是否需要启用退出拦截
+  _markDirty: function() {
+    this._lastEditTime = Date.now();
+    this._updateExitGuard();
+  },
+
   onInput(e) {
     const field = e.currentTarget.dataset.field;
     this.setData({ [field]: e.detail.value });
-    this._lastEditTime = Date.now();
-    this.enableExitConfirm();
+    this._markDirty();
   },
 
   // ================= 拖拽媒体池 =================
@@ -606,6 +628,7 @@ Page({
   },
 
   chooseMedia() {
+    this._markDirty();
     wx.chooseMedia({
       count: 9 - this.data.mediaList.length,
       mediaType: ['image'],
@@ -628,6 +651,7 @@ Page({
   },
 
   removeMedia(e) {
+    this._markDirty();
     const index = e.currentTarget.dataset.index;
     let list = this.data.mediaList;
     list.splice(index, 1);
@@ -647,6 +671,7 @@ Page({
 
   onDragEnd() {
     if (this.data.dragIndex === -1) return;
+    this._markDirty();
     let dragIdx = this.data.dragIndex;
     let list = [...this.data.mediaList];
 
@@ -672,6 +697,7 @@ Page({
 
   // ================= 视频上传 =================
   uploadVideo() {
+    this._markDirty();
     wx.chooseMedia({
       count: 1,
       mediaType: ['video'],
@@ -691,6 +717,7 @@ Page({
   },
 
   removeVideo() {
+    this._markDirty();
     this.setData({ videoUrl: '' });
   },
 
@@ -726,6 +753,7 @@ Page({
 
   // ================= 选填图上传 =================
   chooseExtraImage(e) {
+    this._markDirty();
     const type = e.currentTarget.dataset.type;
     let currentList = this.data[`${type}Imgs`];
     wx.chooseMedia({
@@ -740,6 +768,7 @@ Page({
   },
 
   removeExtraImage(e) {
+    this._markDirty();
     const { type, index } = e.currentTarget.dataset;
     let list = this.data[`${type}Imgs`];
     list.splice(index, 1);
@@ -748,23 +777,27 @@ Page({
 
   // ================= 分类、尺码、颜色、SKU =================
   removeTag(e) {
+    this._markDirty();
     let id = e.currentTarget.dataset.id;
     this.setData({ selectedTags: this.data.selectedTags.filter(t => t.id !== id) });
   },
 
   // ================= 选择历史档口 =================
   selectRecentStall(e) {
+    this._markDirty();
     const item = e.currentTarget.dataset.item;
     const exists = this.data.selectedStalls.find(s => s.id === item.id);
     if (!exists) {
       this.setData({
         selectedStalls: [...this.data.selectedStalls, item]
       });
+      this._saveLastStallSelection();
     }
   },
 
   // ================= 选择历史标签 =================
   selectRecentTag(e) {
+    this._markDirty();
     const item = e.currentTarget.dataset.item;
     const exists = this.data.selectedTags.find(t => t.id === item.id);
     if (!exists) {
@@ -815,12 +848,54 @@ Page({
         stallSearchKeyword: '',
         stallSearchResults: []
       });
+      this._saveLastStallSelection();
     }
   },
 
   removeStall(e) {
     const id = e.currentTarget.dataset.id;
     this.setData({ selectedStalls: this.data.selectedStalls.filter(s => s.id !== id) });
+    this._saveLastStallSelection();
+  },
+
+  // 保存当前档口选择到本地（记忆功能，当天有效）
+  _saveLastStallSelection: function() {
+    try {
+      var today = new Date();
+      var dateStr = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+        String(today.getDate()).padStart(2, '0');
+      wx.setStorageSync('last_stall_selection', {
+        date: dateStr,
+        stalls: this.data.selectedStalls
+      });
+    } catch (e) {
+      // ignore
+    }
+  },
+
+  // 加载上次的档口选择（仅当天有效，仅创建模式使用）
+  _loadLastStallSelection: function() {
+    try {
+      var saved = wx.getStorageSync('last_stall_selection');
+      if (!saved || !saved.date || !saved.stalls) return;
+
+      var today = new Date();
+      var dateStr = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+        String(today.getDate()).padStart(2, '0');
+
+      if (saved.date !== dateStr) {
+        wx.removeStorageSync('last_stall_selection');
+        return;
+      }
+
+      if (saved.stalls.length > 0) {
+        this.setData({ selectedStalls: saved.stalls });
+      }
+    } catch (e) {
+      // ignore
+    }
   },
 
   // ================= 标签搜索与选择 =================
@@ -887,6 +962,7 @@ Page({
         stallSearchKeyword: '',
         stallSearchResults: []
       });
+      this._saveLastStallSelection();
     } catch (err) {
       wx.hideLoading();
       console.error('创建档口失败:', err);
@@ -970,6 +1046,7 @@ Page({
 
   // 切换尺码类型
   switchSizeCategory: function(e) {
+    this._markDirty();
     const categoryId = e.currentTarget.dataset.id;
     const category = this.data.sizeCategoryList.find(c => c.id === categoryId);
 
@@ -1116,6 +1193,7 @@ Page({
 
   // ================= SKU 删除 =================
   removeSku(e) {
+    this._markDirty();
     const index = e.currentTarget.dataset.index;
     const skuList = this.data.skuList;
     skuList.splice(index, 1);
@@ -1132,6 +1210,7 @@ Page({
 
   // ====== 修复：颜色输入为空时，默认赋值“图片色” ======
   addColor() {
+    this._markDirty();
     let val = this.data.colorInput.trim();
     
     // 🚀 核心逻辑：如果什么都不填，默认赋予“图片色”
@@ -1155,6 +1234,7 @@ Page({
   },
 
   removeColor(e) {
+    this._markDirty();
     const index = e.currentTarget.dataset.index;
     let colors = this.data.colors;
     colors.splice(index, 1);
@@ -1166,11 +1246,8 @@ Page({
   generateSkuMatrix() {
     let activeSizes = this.data.sizeOptions.filter(s => s.selected).map(s => s.name);
     let activeColors = this.data.colors;
-    if (activeSizes.length === 0 && activeColors.length === 0) {
-      this.setData({ skuList: [] });
-      return;
-    }
-    let sizes = activeSizes.length > 0 ? activeSizes : ['默认尺码'];
+    // 不选尺码默认"均码"，不选颜色默认"图片色"
+    let sizes = activeSizes.length > 0 ? activeSizes : ['均码'];
     let colors = activeColors.length > 0 ? activeColors : ['图片色'];
     let newSkuList = [];
     let oldSkuList = this.data.skuList;
@@ -1269,6 +1346,7 @@ Page({
   },
 
   confirmBatch() {
+    this._markDirty();
     const { batchPrice, batchStock, batchImage, batchSelectedColors, batchSelectedSizes, skuList } = this.data;
 
     if (!batchPrice && !batchStock && !batchImage) {
@@ -1307,10 +1385,12 @@ Page({
     const { index, field } = e.currentTarget.dataset;
     const key = `skuList[${index}].${field}`;
     this.setData({ [key]: e.detail.value });
+    this._markDirty();
   },
 
   // 上传 SKU 图片
   uploadSkuImage(e) {
+    this._markDirty();
     const index = e.currentTarget.dataset.index;
     wx.chooseMedia({
       count: 1,
@@ -1330,6 +1410,7 @@ Page({
   },
 
   removeSkuImage(e) {
+    this._markDirty();
     const index = e.currentTarget.dataset.index;
     const key = `skuList[${index}].image`;
     this.setData({ [key]: '' });
@@ -1337,6 +1418,7 @@ Page({
 
   // 批量设置弹窗图片选择
   chooseBatchImage() {
+    this._markDirty();
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
@@ -1426,11 +1508,13 @@ Page({
   },
 
   confirmRelated() {
+    this._markDirty();
     let selectedItems = this.data.allProducts.filter(p => p.selected);
     this.setData({ manualRelated: selectedItems, showRelatedModal: false });
   },
 
   removeRelated(e) {
+    this._markDirty();
     let id = e.currentTarget.dataset.id;
     let newList = this.data.manualRelated.filter(item => item.id !== id);
     this.setData({ manualRelated: newList });
@@ -1596,9 +1680,9 @@ Page({
         }
       }
 
-      // 成功后清除草稿并关闭退出确认
+      // 成功后清除草稿并标记已提交（跳过退出拦截）
       this.clearDraft();
-      wx.disableAlertBeforeUnload();
+      this._submitted = true;
 
       setTimeout(() => {
         wx.navigateBack();
@@ -1699,6 +1783,7 @@ Page({
 
   // 选择填充用的统一图片
   chooseQuickImage: function() {
+    this._markDirty();
     wx.chooseImage({
       count: 1,
       sizeType: ['compressed'],
@@ -1711,12 +1796,14 @@ Page({
   },
 
   removeQuickImage: function() {
+    this._markDirty();
     this.setData({ quickImage: '' });
   },
 
   // 一键填充核心逻辑
   // ====== 核心重构：一键填充 + 状态自动重置 ======
   applyQuickFillAll: function() {
+    this._markDirty();
     const { skuList, quickPrice, quickStock, quickImage } = this.data;
 
     if (!skuList || skuList.length === 0) {
@@ -2092,12 +2179,13 @@ Page({
   },
 
   addBundleGroup() {
+    this._markDirty();
     var groups = this.data.bundleGroups.slice();
     // 新建子项继承当前主商品的尺码类型和尺码列表
     var data = this.data;
     groups.push({
       name: '',
-      colors: [],
+      colors: ['图片色'],
       sizeOptions: data.sizeOptions.map(function(s) { return { id: s.id, name: s.name, selected: s.selected }; }),
       sizeCategoryId: data.currentSizeCategoryId,
       sizeCategoryName: data.currentSizeCategoryName,
@@ -2106,10 +2194,22 @@ Page({
     var newIdx = groups.length - 1;
     this.setData({ bundleGroups: groups });
     this.loadGroupState(newIdx);
+    // 初始化新子项的默认 SKU（图片色 × 均码）
+    this.generateSkuMatrix();
+    // 自动滚动到子项名称输入框并聚焦
+    wx.pageScrollTo({ selector: '#bundleGroupNameInput', duration: 200 });
+    setTimeout(function(self) {
+      self.setData({ bundleGroupNameFocus: true });
+    }, 250, this);
     wx.showToast({ title: '已添加子项 ' + (newIdx + 1), icon: 'none' });
   },
 
+  onBundleGroupNameBlur: function() {
+    this.setData({ bundleGroupNameFocus: false });
+  },
+
   removeBundleGroup(e) {
+    this._markDirty();
     var idx = e.currentTarget.dataset.index;
     var groups = this.data.bundleGroups.slice();
     groups.splice(idx, 1);
@@ -2118,11 +2218,12 @@ Page({
     if (newIdx >= 0) {
       this.loadGroupState(newIdx);
     } else {
-      this.setData({ colors: [], skuList: [], sizeOptions: [] });
+      this.setData({ colors: ['图片色'], skuList: [], sizeOptions: [] });
     }
   },
 
   onBundleGroupNameInput(e) {
+    this._markDirty();
     var idx = this.data.activeGroupIndex;
     if (idx < 0) return;
     var groups = this.data.bundleGroups;
@@ -2200,6 +2301,12 @@ Page({
         relatedId: this._relatedId
       });
       this._lastDraftSavedAt = Date.now();
+      // 保存成功：更新快照 & 关闭退出拦截
+      this._lastSavedSnapshot = JSON.stringify(this.collectDraftData());
+      if (this._alertEnabled) {
+        wx.disableAlertBeforeUnload();
+        this._alertEnabled = false;
+      }
       wx.hideLoading();
       wx.showToast({ title: '草稿已保存', icon: 'success' });
     } catch (e) {
@@ -2235,7 +2342,6 @@ Page({
         } else {
           self.clearDraft();
         }
-        self.enableExitConfirm();
       }
     });
   },
@@ -2295,6 +2401,12 @@ Page({
 
     this.setData(restored);
     this.refreshGrid(restored.mediaList);
+    // 恢复后记录快照，关闭退出拦截
+    this._lastSavedSnapshot = JSON.stringify(this.collectDraftData());
+    if (this._alertEnabled) {
+      wx.disableAlertBeforeUnload();
+      this._alertEnabled = false;
+    }
     wx.showToast({ title: '草稿已恢复', icon: 'success', duration: 1500 });
   },
 
@@ -2310,14 +2422,6 @@ Page({
       (d.lookbookImgs && d.lookbookImgs.length > 0) ||
       (d.isBundleMode && d.bundleGroups && d.bundleGroups.length > 0) ||
       (d.detailImgs && d.detailImgs.length > 0));
-  },
-
-  enableExitConfirm() {
-    if (this._alertEnabled) return;
-    this._alertEnabled = true;
-    wx.enableAlertBeforeUnload({
-      message: '表单内容未保存，确定离开吗？'
-    });
   },
 
   // ========== 图片全屏预览 ==========
