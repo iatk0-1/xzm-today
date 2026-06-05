@@ -2,7 +2,7 @@
 const api = require('../../utils/api');
 const config = require('../../utils/config');
 const { compressImage, compressVideo } = require('../../utils/media');
-const { saveDraft, loadDraft, removeDraft, hasDraft, persistMediaFiles, cleanupDraftFiles, validatePersistedUrls } = require('../../utils/draft');
+const draft = require('../../utils/draft');
 
 
 // 拖拽网格配置
@@ -104,31 +104,43 @@ Page({
     // 加载尺码类型和尺码
     this.loadSizeCategories();
 
-    // 如果是编辑模式，加载商品详情
+    // 设置草稿类型（用于保存时标记到后端）
     if (options && options.editId) {
+      this._draftType = 'edit';
+      this._relatedId = options.editId;
       this.setData({ editId: options.editId });
       this.loadProductForEdit(options.editId);
-    }
-
-    // 如果是从直播商品转换而来，加载直播商品详情
-    if (options && options.convertFromLiveProductId) {
+    } else if (options && options.convertFromLiveProductId) {
+      this._draftType = 'convert';
+      this._relatedId = options.convertFromLiveProductId;
       this.setData({
         convertFromLiveProductId: options.convertFromLiveProductId,
         sessionId: options.sessionId
       });
       this.loadLiveProductForConvert(options.convertFromLiveProductId);
-    }
-
-    // 创建模式：检测是否有未完成的草稿
-    if (!options.editId && !options.convertFromLiveProductId) {
+    } else {
+      this._draftType = 'create';
+      this._relatedId = null;
+      // 创建模式：检测是否有未完成的草稿
       this.checkDraft();
     }
   },
 
   onUnload() {
-    // 页面卸载时自动保存草稿
-    if (this.hasFormContent()) {
-      this.saveDraft();
+    // 优化：仅在最后一次编辑后尚未保存过草稿时才询问
+    if (this.hasFormContent() && (!this._lastDraftSavedAt || this._lastDraftSavedAt < (this._lastEditTime || 0))) {
+      var self = this;
+      wx.showModal({
+        title: '保存草稿',
+        content: '是否将当前内容保存为草稿？',
+        confirmText: '保存',
+        cancelText: '不保存',
+        success: function(res) {
+          if (res.confirm) {
+            self.saveDraft();
+          }
+        }
+      });
     }
   },
 
@@ -566,6 +578,7 @@ Page({
   onInput(e) {
     const field = e.currentTarget.dataset.field;
     this.setData({ [field]: e.detail.value });
+    this._lastEditTime = Date.now();
     this.enableExitConfirm();
   },
 
@@ -697,6 +710,14 @@ Page({
       }
     } catch (e) {
       console.warn('压缩异常，使用原文件:', e);
+    }
+
+    // 二次确认文件路径有效（macOS 上压缩后的 temp 路径可能已失效）
+    try {
+      var fs = wx.getFileSystemManager();
+      fs.accessSync(filePath);
+    } catch (e) {
+      throw new Error('图片文件已失效，请重新选择图片');
     }
 
     const cosUpload = require('../../utils/cos-upload');
@@ -1689,6 +1710,10 @@ Page({
     });
   },
 
+  removeQuickImage: function() {
+    this.setData({ quickImage: '' });
+  },
+
   // 一键填充核心逻辑
   // ====== 核心重构：一键填充 + 状态自动重置 ======
   applyQuickFillAll: function() {
@@ -2068,7 +2093,16 @@ Page({
 
   addBundleGroup() {
     var groups = this.data.bundleGroups.slice();
-    groups.push({ name: '', colors: [], sizeOptions: [], skuList: [] });
+    // 新建子项继承当前主商品的尺码类型和尺码列表
+    var data = this.data;
+    groups.push({
+      name: '',
+      colors: [],
+      sizeOptions: data.sizeOptions.map(function(s) { return { id: s.id, name: s.name, selected: s.selected }; }),
+      sizeCategoryId: data.currentSizeCategoryId,
+      sizeCategoryName: data.currentSizeCategoryName,
+      skuList: []
+    });
     var newIdx = groups.length - 1;
     this.setData({ bundleGroups: groups });
     this.loadGroupState(newIdx);
@@ -2103,13 +2137,8 @@ Page({
     }
   },
 
-  // ================= 草稿功能 =================
-
-  getDraftKey() {
-    if (this.data.editId) return 'admin_edit_' + this.data.editId;
-    if (this.data.convertFromLiveProductId) return 'admin_convert_' + this.data.convertFromLiveProductId;
-    return 'admin_create';
-  },
+  // ================= 草稿功能（后端数据库存储） =================
+  // 向下兼容：恢复时对草稿中缺失的字段使用默认空值，多余的字段自动忽略
 
   collectDraftData() {
     var data = this.data;
@@ -2141,7 +2170,7 @@ Page({
       // 套装模式
       isBundleMode: data.isBundleMode,
       activeGroupIndex: data.activeGroupIndex,
-      bundleGroups: data.bundleGroups.map(function(bg) {
+      bundleGroups: (data.bundleGroups || []).map(function(bg) {
         return {
           name: bg.name,
           colors: bg.colors,
@@ -2156,66 +2185,44 @@ Page({
     };
   },
 
-  saveDraft() {
-    // 套装模式：先存档当前子项，避免 collectDraftData 读到过时数据
+  // 保存草稿到后端：先上传所有临时图片到 CDN，再将 JSON 存入数据库
+  saveDraft: async function() {
+    // 套装模式：先存档当前子项
     if (this.data.isBundleMode && this.data.activeGroupIndex >= 0) {
       this.saveActiveGroupState();
     }
-    var key = this.getDraftKey();
     var draftData = this.collectDraftData();
 
-    // 收集所有需要持久化的媒体路径
-    var mediaLists = {
-      mediaList: draftData.mediaList,
-      lookbookImgs: draftData.lookbookImgs,
-      detailImgs: draftData.detailImgs,
-      skuImages: draftData.skuList.map(function(s) { return s.image; }),
-      videoUrl: [draftData.videoUrl]
-    };
-    // 套装模式下同时持久化子项 SKU 图片
-    if (draftData.isBundleMode && draftData.bundleGroups) {
-      for (var gi = 0; gi < draftData.bundleGroups.length; gi++) {
-        var bg = draftData.bundleGroups[gi];
-        mediaLists['bg_sku_' + gi] = (bg.skuList || []).map(function(s) { return s.image; });
-      }
+    wx.showLoading({ title: '保存草稿...', mask: true });
+    try {
+      await draft.saveDraft(draftData, this.uploadFile.bind(this), {
+        draftType: this._draftType,
+        relatedId: this._relatedId
+      });
+      this._lastDraftSavedAt = Date.now();
+      wx.hideLoading();
+      wx.showToast({ title: '草稿已保存', icon: 'success' });
+    } catch (e) {
+      wx.hideLoading();
+      console.error('草稿保存失败:', e);
+      wx.showToast({ title: '保存失败', icon: 'none' });
     }
-    var persisted = persistMediaFiles(key, mediaLists);
-
-    draftData.mediaList = persisted.mediaList;
-    draftData.lookbookImgs = persisted.lookbookImgs;
-    draftData.detailImgs = persisted.detailImgs;
-    draftData.videoUrl = persisted.videoUrl && persisted.videoUrl.length > 0 ? persisted.videoUrl[0] : '';
-    var skuImages = persisted.skuImages || [];
-    draftData.skuList = draftData.skuList.map(function(sku, i) { sku.image = skuImages[i] || ''; return sku; });
-    // 回填套装子项 SKU 图片
-    if (draftData.isBundleMode && draftData.bundleGroups) {
-      for (var gi2 = 0; gi2 < draftData.bundleGroups.length; gi2++) {
-        var bgImages = persisted['bg_sku_' + gi2] || [];
-        draftData.bundleGroups[gi2].skuList = draftData.bundleGroups[gi2].skuList.map(function(sku, i) { sku.image = bgImages[i] || ''; return sku; });
-      }
-    }
-
-    // 新文件已安全持久化后才清理旧文件
-    cleanupDraftFiles(key);
-
-    var ok = saveDraft(key, draftData);
-    if (ok) { wx.showToast({ title: '草稿已保存', icon: 'success' }); }
-    else { wx.showToast({ title: '保存失败', icon: 'none' }); }
   },
 
-  clearDraft() {
-    var key = this.getDraftKey();
-    removeDraft(key);
-    cleanupDraftFiles(key);
+  clearDraft: async function() {
+    try {
+      await draft.removeDraft();
+    } catch (e) {
+      // ignore
+    }
   },
 
-  checkDraft() {
+  checkDraft: async function() {
     var self = this;
-    var key = this.getDraftKey();
-    if (!hasDraft(key)) return;
+    var draftRes = await draft.loadDraft();
+    if (!draftRes) return;
 
-    var draft = loadDraft(key);
-    var savedAt = draft._savedAt ? new Date(draft._savedAt).toLocaleString() : '未知时间';
+    var savedAt = draftRes.savedAt ? new Date(draftRes.savedAt).toLocaleString() : '未知时间';
 
     wx.showModal({
       title: '发现草稿',
@@ -2224,73 +2231,63 @@ Page({
       cancelText: '忽略',
       success: function(res) {
         if (res.confirm) {
-          self.restoreDraft(draft);
+          self.restoreDraft(draftRes.draftData);
         } else {
-          removeDraft(key);
-          cleanupDraftFiles(key);
+          self.clearDraft();
         }
         self.enableExitConfirm();
       }
     });
   },
 
-  restoreDraft(draft) {
+  // 恢复草稿：向下兼容 — 缺失字段用默认值，多余字段自动忽略
+  restoreDraft: function(draftData) {
     var data = this.data;
-    // 收集所有需要验证的媒体路径
-    var mediaLists = {
-      mediaList: draft.mediaList || [],
-      lookbookImgs: draft.lookbookImgs || [],
-      detailImgs: draft.detailImgs || [],
-      skuImages: (draft.skuList || []).map(function(s) { return s.image || ''; }),
-      videoUrl: [draft.videoUrl || '']
+    // 安全取值辅助：draftData 中取不到时用默认值
+    var safeGet = function(obj, key, defaultVal) {
+      return (obj && obj[key] !== undefined) ? obj[key] : defaultVal;
     };
-    if (draft.isBundleMode && draft.bundleGroups) {
-      for (var gi = 0; gi < draft.bundleGroups.length; gi++) {
-        var bg = draft.bundleGroups[gi];
-        mediaLists['bg_sku_' + gi] = (bg.skuList || []).map(function(s) { return s.image || ''; });
-      }
-    }
-    var validated = validatePersistedUrls(mediaLists);
-    var skuImages = validated.skuImages || [];
+
+    // 图片已是 CDN URL，无需 validatePersistedUrls
+    var mediaList = safeGet(draftData, 'mediaList', []);
+    // mediaList 中的对象格式向下兼容：确保 {id, url, x, y} 结构
+    mediaList = (mediaList || []).map(function(m) {
+      if (typeof m === 'string') return { id: 'legacy_' + Date.now(), url: m, x: 0, y: 0 };
+      return { id: m.id || ('legacy_' + Date.now()), url: m.url || '', x: m.x || 0, y: m.y || 0 };
+    });
 
     var restored = {
-      title: draft.title || '',
-      videoUrl: validated.videoUrl && validated.videoUrl.length > 0 ? validated.videoUrl[0] : '',
-      shippingInfo: draft.shippingInfo || '付款后按排单顺序发货',
-      description: draft.description || '',
-      fabricCare: draft.fabricCare || '',
-      sizeChartTip: draft.sizeChartTip || '',
-      warmTips: draft.warmTips || '',
-      mediaList: validated.mediaList,
-      lookbookImgs: validated.lookbookImgs,
-      detailImgs: validated.detailImgs,
-      selectedStalls: draft.selectedStalls || [],
-      selectedTags: draft.selectedTags || [],
-      currentSizeCategoryId: draft.currentSizeCategoryId || data.currentSizeCategoryId,
-      currentSizeCategoryName: draft.currentSizeCategoryName || data.currentSizeCategoryName,
-      sizeOptions: draft.sizeOptions || data.sizeOptions,
-      colors: draft.colors || [],
-      skuList: (draft.skuList || []).map(function(sku, i) { sku.image = skuImages[i] || ''; return sku; }),
-      manualRelated: draft.manualRelated || [],
-      displayPrice: draft.displayPrice || '',
-      isBundleMode: draft.isBundleMode || false,
-      activeGroupIndex: draft.activeGroupIndex != null ? draft.activeGroupIndex : -1
+      title: safeGet(draftData, 'title', ''),
+      videoUrl: safeGet(draftData, 'videoUrl', ''),
+      shippingInfo: safeGet(draftData, 'shippingInfo', '付款后按排单顺序发货'),
+      description: safeGet(draftData, 'description', ''),
+      fabricCare: safeGet(draftData, 'fabricCare', ''),
+      sizeChartTip: safeGet(draftData, 'sizeChartTip', ''),
+      warmTips: safeGet(draftData, 'warmTips', ''),
+      mediaList: mediaList,
+      lookbookImgs: safeGet(draftData, 'lookbookImgs', []),
+      detailImgs: safeGet(draftData, 'detailImgs', []),
+      selectedStalls: safeGet(draftData, 'selectedStalls', []),
+      selectedTags: safeGet(draftData, 'selectedTags', []),
+      currentSizeCategoryId: safeGet(draftData, 'currentSizeCategoryId', data.currentSizeCategoryId),
+      currentSizeCategoryName: safeGet(draftData, 'currentSizeCategoryName', data.currentSizeCategoryName),
+      sizeOptions: safeGet(draftData, 'sizeOptions', data.sizeOptions),
+      colors: safeGet(draftData, 'colors', []),
+      skuList: safeGet(draftData, 'skuList', []),
+      manualRelated: safeGet(draftData, 'manualRelated', []),
+      displayPrice: safeGet(draftData, 'displayPrice', ''),
+      isBundleMode: safeGet(draftData, 'isBundleMode', false),
+      activeGroupIndex: safeGet(draftData, 'activeGroupIndex', -1),
+      bundleGroups: safeGet(draftData, 'bundleGroups', [])
     };
-    // 恢复套装子项
-    if (draft.isBundleMode && draft.bundleGroups) {
-      restored.bundleGroups = draft.bundleGroups.map(function(bg, gi) {
-        var bgImages = validated['bg_sku_' + gi] || [];
-        return {
-          name: bg.name, colors: bg.colors || [], sizeOptions: bg.sizeOptions || [],
-          sizeCategoryId: bg.sizeCategoryId, sizeCategoryName: bg.sizeCategoryName,
-          skuList: (bg.skuList || []).map(function(sku, i) { sku.image = bgImages[i] || ''; return sku; })
-        };
-      });
-      // 恢复当前子项到主字段
+
+    // 恢复套装子项到主字段
+    if (restored.isBundleMode && restored.bundleGroups.length > 0) {
       if (restored.activeGroupIndex >= 0 && restored.activeGroupIndex < restored.bundleGroups.length) {
         var ag = restored.bundleGroups[restored.activeGroupIndex];
         restored.colors = ag.colors || [];
         restored.skuList = ag.skuList || [];
+        restored.sizeOptions = ag.sizeOptions || [];
         restored.currentSizeCategoryId = ag.sizeCategoryId || null;
         restored.currentSizeCategoryName = ag.sizeCategoryName || '';
       }
@@ -2298,13 +2295,7 @@ Page({
 
     this.setData(restored);
     this.refreshGrid(restored.mediaList);
-
-    var hasImages = restored.mediaList.some(function(m) { return m.url; });
-    if (!hasImages) {
-      wx.showToast({ title: '草稿已恢复，请重新选择图片', icon: 'none', duration: 2000 });
-    } else {
-      wx.showToast({ title: '草稿已恢复', icon: 'success', duration: 1500 });
-    }
+    wx.showToast({ title: '草稿已恢复', icon: 'success', duration: 1500 });
   },
 
   hasFormContent() {
@@ -2331,43 +2322,57 @@ Page({
 
   // ========== 图片全屏预览 ==========
 
+  // 通用安全预览：过滤空 URL，避免黑屏无法退出
+  previewImageSafe: function(url, urlList) {
+    var validUrls = (urlList || [url]).filter(function(u) { return u && u !== ''; });
+    if (validUrls.length === 0) {
+      return wx.showToast({ title: '图片已丢失，请重新上传', icon: 'none' });
+    }
+    // 确保 current 在有效列表中
+    var current = (url && url !== '') ? url : validUrls[0];
+    wx.previewImage({ current: current, urls: validUrls });
+  },
+
   // A: 商品主图预览（支持左右滑动切换）
   previewMediaImage(e) {
     var index = e.currentTarget.dataset.index;
-    var urls = this.data.mediaList.map(function(m) { return m.url; });
-    wx.previewImage({ current: urls[index], urls: urls });
+    var urls = this.data.mediaList.map(function(m) { return m.url; }).filter(function(u) { return u && u !== ''; });
+    if (urls.length === 0) return this.previewImageSafe('', []);
+    this.previewImageSafe(urls[index], urls);
   },
 
   // B: SKU 明细图预览
   previewSkuImage(e) {
     var index = e.currentTarget.dataset.index;
     var skuList = this.data.skuList;
-    var urls = skuList.filter(function(s) { return s.image; }).map(function(s) { return s.image; });
-    wx.previewImage({ current: skuList[index].image, urls: urls });
+    var urls = skuList.filter(function(s) { return s.image && s.image !== ''; }).map(function(s) { return s.image; });
+    this.previewImageSafe(skuList[index].image, urls);
   },
 
   // C: 一键填充预览图（单张）
   previewQuickImage() {
-    wx.previewImage({ current: this.data.quickImage, urls: [this.data.quickImage] });
+    this.previewImageSafe(this.data.quickImage, [this.data.quickImage]);
   },
 
   // D: 批量设置预览图（单张）
   previewBatchImage() {
-    wx.previewImage({ current: this.data.batchImage, urls: [this.data.batchImage] });
+    this.previewImageSafe(this.data.batchImage, [this.data.batchImage]);
   },
 
   // E+F: Lookbook / Detail 图片预览
   previewExtraImage(e) {
     var type = e.currentTarget.dataset.type;
     var index = e.currentTarget.dataset.index;
-    var urls = type === 'lookbook' ? this.data.lookbookImgs : this.data.detailImgs;
-    wx.previewImage({ current: urls[index], urls: urls });
+    var urls = (type === 'lookbook' ? this.data.lookbookImgs : this.data.detailImgs).filter(function(u) { return u && u !== ''; });
+    if (urls.length === 0) return this.previewImageSafe('', []);
+    this.previewImageSafe(urls[index], urls);
   },
 
   // G: 搭配商品图片预览
   previewRelatedImage(e) {
     var index = e.currentTarget.dataset.index;
-    var urls = this.data.manualRelated.map(function(r) { return r.coverUrl; });
-    wx.previewImage({ current: urls[index], urls: urls });
+    var urls = this.data.manualRelated.map(function(r) { return r.coverUrl; }).filter(function(u) { return u && u !== ''; });
+    if (urls.length === 0) return this.previewImageSafe('', []);
+    this.previewImageSafe(urls[index], urls);
   },
 });

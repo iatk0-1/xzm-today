@@ -194,6 +194,7 @@
       
       <view class="console-img-btn" bindtap="chooseQuickImage">
         <image wx:if="{{quickImage}}" src="{{quickImage}}" mode="aspectFill" catchtap="previewQuickImage"></image>
+        <view wx:if="{{quickImage}}" class="console-img-del" catchtap="removeQuickImage">×</view>
         <text wx:else class="icon-camera">📷</text>
       </view>
       
@@ -213,9 +214,11 @@
           <input class="mini-input" type="number" placeholder="无限" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" maxlength="9" />
 
           <view class="mini-img-upload" bindtap="uploadSkuImage" data-index="{{index}}">
-            <image wx:if="{{item.image}}" src="{{item.image}}" mode="aspectFill" catchtap="previewSkuImage" data-index="{{index}}"></image>
+            <image wx:if="{{item.image && item.image !== ''}}" src="{{item.image}}" mode="aspectFill" catchtap="previewSkuImage" data-index="{{index}}"></image>
+            <text wx:elif="{{item.image === ''}}" class="img-lost-text">丢失</text>
             <text class="icon-plus" wx:else>+</text>
-            <view wx:if="{{item.image}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
+            <view wx:if="{{item.image && item.image !== ''}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
+            <view wx:elif="{{item.image === ''}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
           </view>
         </view>
       </view>

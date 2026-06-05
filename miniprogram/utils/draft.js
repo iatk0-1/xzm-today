@@ -1,245 +1,119 @@
 // miniprogram/utils/draft.js
-// 草稿存储工具 — 提供通用的草稿保存/恢复/清除/检查能力，支持媒体文件本地持久化
+// 草稿存储工具 — 后端数据库存储（图片先上传 CDN，JSON 存入 PostgreSQL）
+//
+// 向下兼容设计：
+//   - 恢复草稿时，草稿中没有的字段使用默认空值，不会报错
+//   - 草稿中多余的字段（旧版本遗留）会被静默忽略
+//
+// 图片上传逻辑：
+//   - isRemoteUrl() 判断是否已是 CDN URL（https:// 开头且非 temp）
+//   - 所有非远程 URL 的图片路径都会在上传草稿前递归上传到 CDN
 
-var STORAGE_PREFIX = 'draft_';
-var fs = wx.getFileSystemManager();
+var api = require('./api');
 
-function saveDraft(key, data) {
-  try {
-    var payload = Object.assign({}, data, { _savedAt: Date.now() });
-    wx.setStorageSync(STORAGE_PREFIX + key, payload);
-    return true;
-  } catch (e) {
-    console.error('草稿保存失败:', e);
-    return false;
-  }
+// 已知的图片字段名（值为路径/URL 的字符串，需要上传判断）
+var IMAGE_FIELDS = ['url', 'image', 'imageUrl', 'coverUrl', 'videoUrl'];
+
+// 判断是否为有效的远程 URL（CDN 地址，无需上传）
+function isRemoteUrl(url) {
+  if (!url) return false;
+  if (url.startsWith('http://tmp/')) return false;
+  if (url.startsWith('http://127.0.0.1')) return false;
+  if (url.startsWith('http://localhost')) return false;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) return false;
+  return true;
 }
 
-function loadDraft(key) {
+// 递归遍历草稿数据，上传所有临时图片到 CDN，返回替换后的副本
+// uploadFn: (filePath, contentType) => Promise<url>
+async function _uploadAllImages(obj, uploadFn) {
+  if (!obj || typeof obj !== 'object') return obj;
+
+  if (Array.isArray(obj)) {
+    var result = [];
+    for (var i = 0; i < obj.length; i++) {
+      result.push(await _uploadAllImages(obj[i], uploadFn));
+    }
+    return result;
+  }
+
+  var copy = {};
+  for (var key in obj) {
+    if (!obj.hasOwnProperty || !obj.hasOwnProperty(key)) continue;
+    var val = obj[key];
+
+    // 字符串：如果字段名是图片字段且值是需要上传的临时路径
+    if (typeof val === 'string' && IMAGE_FIELDS.indexOf(key) >= 0) {
+      if (val && !isRemoteUrl(val)) {
+        try {
+          copy[key] = await uploadFn(val, 'image/jpeg');
+        } catch (e) {
+          console.warn('[draft] 图片上传失败，置空:', val, e);
+          copy[key] = '';
+        }
+      } else {
+        copy[key] = val;
+      }
+    }
+    // 对象或数组：递归处理
+    else if (val && typeof val === 'object') {
+      copy[key] = await _uploadAllImages(val, uploadFn);
+    }
+    // 其他类型：直接复制
+    else {
+      copy[key] = val;
+    }
+  }
+  return copy;
+}
+
+// 保存草稿：先上传所有临时图片到 CDN，再将完整的 JSON 存入后端
+// uploadFn: (filePath, contentType) => Promise<url>  — admin.js 的 uploadFile 方法
+// opts: { draftType: 'create'|'edit'|'convert', relatedId: number|null }
+async function saveDraftRemote(draftData, uploadFn, opts) {
+  // 1. 递归遍历，上传所有临时图片
+  var processed = await _uploadAllImages(draftData, uploadFn);
+  // 2. POST 到后端
+  return api.post('/drafts', {
+    draftType: (opts && opts.draftType) || 'create',
+    relatedId: (opts && opts.relatedId) || null,
+    draftData: processed
+  });
+}
+
+// 加载草稿：GET /drafts，返回 { id, draftType, relatedId, draftData, savedAt }
+// 无草稿时返回 null
+async function loadDraftRemote() {
   try {
-    return wx.getStorageSync(STORAGE_PREFIX + key) || null;
+    return await api.get('/drafts');
   } catch (e) {
     return null;
   }
 }
 
-function removeDraft(key) {
+// 删除草稿
+async function removeDraftRemote() {
   try {
-    wx.removeStorageSync(STORAGE_PREFIX + key);
+    await api.delete('/drafts');
   } catch (e) {
-    // ignore
+    // 服务端返回 404 也无所谓
   }
 }
 
-function hasDraft(key) {
-  return !!loadDraft(key);
-}
-
-// 判断是否为有效的远程 URL（非临时文件）
-function isRemoteUrl(url) {
-  if (!url) return false;
-  if (!/^https?:\/\//.test(url)) return false;
-  if (/^http:\/\/tmp/.test(url)) return false;
-  return true;
-}
-
-// 判断是否为临时文件路径（需要持久化处理）
-function isTempPath(url) {
-  if (!url) return false;
-  // 微信临时 HTTP 服务
-  if (/^http:\/\/tmp\//.test(url)) return true;
-  // 微信文件系统临时路径
-  if (/^wxfile:\/\/tmp_/.test(url)) return true;
-  // 不含协议的本地路径（wx.chooseMedia 可能返回这种格式）
-  // 远程 URL 已在 isRemoteUrl 中处理，此处只命中本地路径
-  if (!/^https?:\/\//.test(url) && !/^wxfile:\/\//.test(url) && url.indexOf('/') >= 0) return true;
-  return false;
-}
-
-// 获取草稿持久文件目录
-function getDraftDir(key) {
-  return wx.env.USER_DATA_PATH + '/draft_' + key.replace(/[^a-zA-Z0-9_]/g, '_');
-}
-
-// 清理草稿对应的持久文件目录
-function cleanupDraftFiles(key) {
+// 检查是否有草稿
+async function hasDraftRemote() {
   try {
-    var dir = getDraftDir(key);
-    fs.rmdirSync(dir, true);
-  } catch (e) {
-    // 目录不存在或无法删除，忽略
-  }
-}
-
-// 将临时文件复制到持久目录，返回替换路径后的数组副本
-function _persistUrl(key, url) {
-  if (!url) return '';
-  if (isRemoteUrl(url)) return url;
-
-  // 已经是本地持久化路径（wxfile://usr/...），无需再次复制
-  if (/^wxfile:\/\/usr\//.test(url)) {
-    try {
-      fs.accessSync(url);
-      return url; // 文件仍存在，直接使用
-    } catch (e) {
-      return ''; // 文件不存在，丢弃
-    }
-  }
-
-  // 临时文件，复制到持久目录
-  try {
-    var dir = getDraftDir(key);
-    // 确保目录存在
-    try { fs.mkdirSync(dir, true); } catch (e) { /* 目录已存在 */ }
-
-    var ext = '.tmp';
-    var m = url.match(/\.(\w{3,4})\b/);
-    if (m) ext = '.' + m[1].toLowerCase();
-
-    var dest = dir + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + ext;
-    fs.copyFileSync(url, dest);
-    return dest;
-  } catch (e) {
-    console.error('草稿文件持久化失败:', url, e);
-    return '';
-  }
-}
-
-// 持久化媒体列表中的临时文件，返回替换后的新数组
-function persistMediaList(key, list) {
-  if (!list || !Array.isArray(list)) return list;
-  return list.map(function(item) {
-    // 字符串类型的媒体列表（如 lookbookImgs、detailImgs）
-    if (typeof item === 'string') {
-      return _persistUrl(key, item);
-    }
-    // 对象类型的媒体列表（如 mediaList 的 {id, url}、skuList 的 {image}）
-    if (item && typeof item === 'object') {
-      var copy = Object.assign({}, item);
-      if (copy.url !== undefined) copy.url = _persistUrl(key, copy.url);
-      if (copy.image !== undefined) copy.image = _persistUrl(key, copy.image);
-      if (copy.imageUrl !== undefined) copy.imageUrl = _persistUrl(key, copy.imageUrl);
-      return copy;
-    }
-    return item;
-  }).filter(function(item) {
-    // 过滤掉空字符串（持久化失败的项）
-    if (typeof item === 'string') return !!item;
+    await api.get('/drafts');
     return true;
-  });
-}
-
-// 批量持久化多个媒体列表
-// listsObj: { fieldName: array, ... }
-// 返回替换后的 listsObj
-function persistMediaFiles(key, listsObj) {
-  var result = {};
-  for (var field in listsObj) {
-    result[field] = persistMediaList(key, listsObj[field]);
-  }
-  return result;
-}
-
-// 验证恢复时媒体列表中的路径是否有效
-function validatePersistedList(list) {
-  if (!list || !Array.isArray(list)) return list;
-  return list.map(function(item) {
-    if (typeof item === 'string') {
-      if (isRemoteUrl(item)) return item;
-      if (item && /^wxfile:\/\/usr\//.test(item)) {
-        try { fs.accessSync(item); return item; } catch (e) { return ''; }
-      }
-      return ''; // 临时路径或无效路径
-    }
-    if (item && typeof item === 'object') {
-      var copy = Object.assign({}, item);
-      if (copy.url !== undefined) {
-        if (isRemoteUrl(copy.url)) { /* keep */ }
-        else if (copy.url && /^wxfile:\/\/usr\//.test(copy.url)) {
-          try { fs.accessSync(copy.url); } catch (e) { copy.url = ''; }
-        } else {
-          copy.url = '';
-        }
-      }
-      if (copy.image !== undefined) {
-        if (isRemoteUrl(copy.image)) { /* keep */ }
-        else if (copy.image && /^wxfile:\/\/usr\//.test(copy.image)) {
-          try { fs.accessSync(copy.image); } catch (e) { copy.image = ''; }
-        } else {
-          copy.image = '';
-        }
-      }
-      if (copy.imageUrl !== undefined) {
-        if (isRemoteUrl(copy.imageUrl)) { /* keep */ }
-        else if (copy.imageUrl && /^wxfile:\/\/usr\//.test(copy.imageUrl)) {
-          try { fs.accessSync(copy.imageUrl); } catch (e) { copy.imageUrl = ''; }
-        } else {
-          copy.imageUrl = '';
-        }
-      }
-      return copy;
-    }
-    return item;
-  }).filter(function(item) {
-    if (typeof item === 'string') return !!item;
-    return true;
-  });
-}
-
-// 验证多个列表
-function validatePersistedUrls(listsObj) {
-  var result = {};
-  for (var field in listsObj) {
-    result[field] = validatePersistedList(listsObj[field]);
-  }
-  return result;
-}
-
-// 过滤数组中的临时文件路径，保留远程 URL（用于向后兼容）
-function filterTempFiles(list) {
-  if (!list || !Array.isArray(list)) return list;
-  return list.map(function(item) {
-    if (typeof item === 'string') {
-      return isRemoteUrl(item) ? item : '';
-    }
-    if (item && typeof item === 'object') {
-      var filtered = {};
-      for (var k in item) {
-        if (k === 'url' || k === 'image' || k === 'imageUrl') {
-          filtered[k] = isRemoteUrl(item[k]) ? item[k] : '';
-        } else {
-          filtered[k] = item[k];
-        }
-      }
-      return filtered;
-    }
-    return item;
-  });
-}
-
-// 检查数组中是否还有远程 URL
-function hasRemoteUrls(list) {
-  if (!list || !Array.isArray(list)) return false;
-  return list.some(function(item) {
-    if (typeof item === 'string') return isRemoteUrl(item);
-    if (item && typeof item === 'object') {
-      var url = item.url || item.image || item.imageUrl || '';
-      return isRemoteUrl(url);
-    }
+  } catch (e) {
     return false;
-  });
+  }
 }
 
 module.exports = {
-  saveDraft: saveDraft,
-  loadDraft: loadDraft,
-  removeDraft: removeDraft,
-  hasDraft: hasDraft,
-  isRemoteUrl: isRemoteUrl,
-  isTempPath: isTempPath,
-  persistMediaFiles: persistMediaFiles,
-  cleanupDraftFiles: cleanupDraftFiles,
-  validatePersistedUrls: validatePersistedUrls,
-  filterTempFiles: filterTempFiles,
-  hasRemoteUrls: hasRemoteUrls
+  saveDraft: saveDraftRemote,
+  loadDraft: loadDraftRemote,
+  removeDraft: removeDraftRemote,
+  hasDraft: hasDraftRemote,
+  isRemoteUrl: isRemoteUrl
 };

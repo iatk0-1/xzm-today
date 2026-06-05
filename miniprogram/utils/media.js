@@ -75,6 +75,9 @@ function ensureWebpExt(filePath) {
   var newPath = base + '.webp';
   try {
     var fs = wx.getFileSystemManager();
+    // 先验证原文件存在（macOS temp 路径可能已失效）
+    try { fs.accessSync(filePath); }
+    catch (e) { console.warn('[ensureWebpExt] 原文件不存在，跳过重命名'); return filePath; }
     fs.renameSync(filePath, newPath);
     return newPath;
   } catch (e) {

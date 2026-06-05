@@ -23,17 +23,32 @@ function getApi() {
 
 function extractExtension(filePath) {
   if (!filePath) return '';
-  var lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
-  var filename = lastSlash >= 0 ? filePath.substring(lastSlash + 1) : filePath;
+  // 去除 URL query 参数（macOS temp 路径可能带 ?）
+  var qIdx = filePath.indexOf('?');
+  var cleanPath = qIdx >= 0 ? filePath.substring(0, qIdx) : filePath;
+  var lastSlash = Math.max(cleanPath.lastIndexOf('/'), cleanPath.lastIndexOf('\\'));
+  var filename = lastSlash >= 0 ? cleanPath.substring(lastSlash + 1) : cleanPath;
   var dotIndex = filename.lastIndexOf('.');
   if (dotIndex < 0 || dotIndex === filename.length - 1) return '';
   var ext = filename.substring(dotIndex + 1).toLowerCase();
-  return /^[a-z0-9]{1,10}$/.test(ext) ? ext : '';
+  if (/^[a-z0-9]{1,10}$/.test(ext)) return ext;
+  // macOS 上扩展名可能混入下划线（如 .jpg_large），取纯字母部分
+  var cleanExt = ext.match(/^[a-z]+/);
+  return cleanExt ? cleanExt[0] : '';
 }
 
 function readFile(filePath) {
   return new Promise(function (resolve, reject) {
     console.log('[COS] 读取文件:', filePath);
+    // 先验证文件是否存在（macOS 上 wx.chooseMedia 返回的 temp HTTP 路径可能已被 GC 回收）
+    try {
+      var fs = wx.getFileSystemManager();
+      fs.accessSync(filePath);
+    } catch (e) {
+      console.error('[COS] 文件不存在（可能已被系统回收）:', filePath);
+      reject(new Error('文件已失效，请重新选择图片'));
+      return;
+    }
     wx.getFileSystemManager().readFile({
       filePath: filePath,
       success: function (res) {
