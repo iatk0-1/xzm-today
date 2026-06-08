@@ -778,5 +778,22 @@ bundleInputBlur(e) {
           }
         });
     }
+  },
+
+  onShareAppMessage: function() {
+    const tabName = this.data.currentMainTab || '上新';
+    return {
+      title: `现在买 - ${tabName}`,
+      path: '/pages/index/index',
+      imageUrl: ''
+    };
+  },
+
+  onShareTimeline: function() {
+    return {
+      title: '现在买 - 潮流服饰好物',
+      query: '',
+      imageUrl: ''
+    };
   }
 });

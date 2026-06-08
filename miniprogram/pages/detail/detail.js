@@ -38,6 +38,7 @@ Page({
     });
 
     const productId = options.id;
+    this._productId = productId;
     if (productId) {
       this.getProductDetail(productId);
     } else {
@@ -498,5 +499,25 @@ switchAuraTab(e) {
     wx.navigateTo({
       url: '/pages/chat/chat?sellerId=' + sellerId + '&productId=' + product.id
     });
+  },
+
+  onShareAppMessage: function() {
+    const { product } = this.data;
+    const id = product.id || this._productId;
+    return {
+      title: product.name || product.title || '好物推荐',
+      path: id ? `/pages/detail/detail?id=${id}` : '/pages/index/index',
+      imageUrl: product.coverUrl || product.image || ''
+    };
+  },
+
+  onShareTimeline: function() {
+    const { product } = this.data;
+    const id = product.id || this._productId;
+    return {
+      title: product.name || product.title || '好物推荐',
+      query: id ? `id=${id}` : '',
+      imageUrl: product.coverUrl || product.image || ''
+    };
   }
 });

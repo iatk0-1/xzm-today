@@ -225,5 +225,21 @@ Page({
       console.error('创建直播失败:', err);
       wx.showToast({ title: err.message || '创建失败', icon: 'none' });
     }
+  },
+
+  onShareAppMessage: function() {
+    return {
+      title: '现在买 · 直播场次',
+      path: '/pages/liveRoomList/index',
+      imageUrl: ''
+    };
+  },
+
+  onShareTimeline: function() {
+    return {
+      title: '现在买 · 直播场次 — 潮流服饰直播精选',
+      query: '',
+      imageUrl: ''
+    };
   }
 });

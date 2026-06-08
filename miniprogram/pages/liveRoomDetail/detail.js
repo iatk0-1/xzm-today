@@ -646,4 +646,22 @@ Page({
       filteredProducts: this.data.products
     });
   },
+
+  onShareAppMessage: function() {
+    const { session } = this.data;
+    return {
+      title: session.title || '直播详情',
+      path: `/pages/liveRoomDetail/detail?id=${this.data.sessionId}`,
+      imageUrl: ''
+    };
+  },
+
+  onShareTimeline: function() {
+    const { session } = this.data;
+    return {
+      title: session.title || '直播详情',
+      query: `id=${this.data.sessionId}`,
+      imageUrl: ''
+    };
+  },
 });

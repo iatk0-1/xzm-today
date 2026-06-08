@@ -176,5 +176,21 @@ Page({
         }
       }
     });
+  },
+
+  onShareAppMessage: function() {
+    return {
+      title: '现在买 · 许愿市集',
+      path: '/pages/market/market',
+      imageUrl: ''
+    };
+  },
+
+  onShareTimeline: function() {
+    return {
+      title: '现在买 · 许愿市集 — 说出你的心愿，潮流好物来找你',
+      query: '',
+      imageUrl: ''
+    };
   }
 });

@@ -187,16 +187,27 @@ Page({
   // 去发货
   goToShip: function(e) {
     const order = e.currentTarget.dataset.order;
-    const item = order.items && order.items[0];
-    
-    if (!item) {
-      wx.showToast({ title: '订单无商品', icon: 'none' });
-      return;
-    }
 
-    // 跳转到订单发货页面，携带商品 ID 和 SKU ID
-    wx.navigateTo({
-      url: `/pages/adminOrder/adminOrder?productId=${item.productId}&skuIds=${item.skuId}`
+    wx.showActionSheet({
+      itemList: ['手动发货', '快速发货（批量）'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          // 手动发货 → 跳转新页面
+          wx.navigateTo({
+            url: `/pages/manualShip/manualShip?orderId=${order.id}`
+          });
+        } else if (res.tapIndex === 1) {
+          // 快速发货 → 现有批量发货流程
+          const item = order.items && order.items[0];
+          if (!item) {
+            wx.showToast({ title: '订单无商品', icon: 'none' });
+            return;
+          }
+          wx.navigateTo({
+            url: `/pages/adminOrder/adminOrder?productId=${item.productId}&skuIds=${item.skuId}`
+          });
+        }
+      }
     });
   },
 

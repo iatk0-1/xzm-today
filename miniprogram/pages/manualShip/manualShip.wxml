@@ -1,0 +1,148 @@
+<!-- miniprogram/pages/manualShip/manualShip.wxml -->
+<view class="container">
+  <!-- 订单信息卡片 -->
+  <view class="card order-card">
+    <view class="card-title">订单信息</view>
+    <view class="info-row">
+      <text class="label">订单号</text>
+      <text class="value">{{orderNo}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">收件人</text>
+      <text class="value">{{recipientName}}  {{recipientPhone}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">地址</text>
+      <text class="value address-text">{{recipientAddress}}</text>
+    </view>
+  </view>
+
+  <!-- 发货统计 -->
+  <view class="stats-bar">
+    <view class="stat-item stat-total">
+      <text class="stat-num">{{totalQty}}</text>
+      <text class="stat-label">总量</text>
+    </view>
+    <view class="stat-item stat-shipped">
+      <text class="stat-num">{{shippedQty}}</text>
+      <text class="stat-label">已发</text>
+    </view>
+    <view class="stat-item stat-pending">
+      <text class="stat-num">{{unshippedQty}}</text>
+      <text class="stat-label">待发</text>
+    </view>
+  </view>
+
+  <!-- 快递信息表单 -->
+  <view class="card form-card">
+    <view class="card-title">快递信息</view>
+
+    <!-- 快递公司选择 -->
+    <view class="form-row">
+      <text class="form-label">快递公司</text>
+      <picker mode="selector" range="{{expressCodes}}" value="{{expressCodeIndex}}" bindchange="onExpressCodeChange">
+        <view class="picker-value">
+          {{expressCodes[expressCodeIndex]}}
+          <text class="picker-arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 快递单号输入 -->
+    <view class="form-row">
+      <text class="form-label">快递单号</text>
+      <input class="form-input"
+             placeholder="请输入快递单号"
+             value="{{expressNo}}"
+             bindinput="onExpressNoInput"
+             bindblur="onExpressNoBlur" />
+    </view>
+
+    <!-- 自动检测提示 -->
+    <view class="detect-hint" wx:if="{{detectedCourier && !expressNoUsed}}">
+      <text class="detect-icon">✓</text>
+      <text>已识别为 {{detectedCourier.name}}</text>
+    </view>
+
+    <!-- 重复单号警告 -->
+    <view class="duplicate-warning" wx:if="{{expressNoUsed}}">
+      <text class="warn-icon">⚠</text>
+      <text>{{expressNoUsageInfo}}</text>
+    </view>
+
+    <!-- 检查中 -->
+    <view class="checking-hint" wx:if="{{expressNoChecking}}">
+      <text>正在检查运单号...</text>
+    </view>
+  </view>
+
+  <!-- 商品列表 -->
+  <view class="items-section">
+    <view class="items-header">
+      <text class="items-title">本次发货商品</text>
+      <view class="items-actions">
+        <text class="action-link" bindtap="selectAll">全选</text>
+        <text class="action-link" bindtap="clearAll">清空</text>
+      </view>
+    </view>
+
+    <view class="item-card {{item.canShip ? '' : 'shipped'}}" wx:for="{{items}}" wx:key="id" wx:for-item="item" wx:for-index="index">
+      <!-- 商品图片 -->
+      <view class="item-img-wrap">
+        <image class="item-img" src="{{item.skuImageUrl}}" mode="aspectFill"></image>
+        <view class="shipped-mask" wx:if="{{!item.canShip}}">
+          <text class="shipped-tag">已发完</text>
+        </view>
+      </view>
+
+      <!-- 商品信息 -->
+      <view class="item-info">
+        <view class="item-name">{{item.productName}}</view>
+        <view class="item-spec">{{item.productSpec}} / {{item.productSize}}</view>
+        <!-- 套装子项 -->
+        <view class="bundle-subs" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
+          <text class="bundle-sub" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
+            {{sub.bundleGroupName}}: {{sub.color}}/{{sub.size}}
+          </text>
+        </view>
+        <view class="item-qty-info" wx:if="{{item.canShip}}">
+          <text>订购{{item.qty}}件</text>
+          <text wx:if="{{item.shippedQty > 0}}">，已发{{item.shippedQty}}件</text>
+          <text class="pending-text">，待发{{item.unshippedQty}}件</text>
+        </view>
+        <view class="item-qty-info" wx:else>
+          <text>已发完 {{item.shippedQty}}/{{item.qty}} 件</text>
+        </view>
+      </view>
+
+      <!-- 数量控制 -->
+      <view class="item-ctrl" wx:if="{{item.canShip}}">
+        <view class="stepper">
+          <view class="step-btn" catchtap="decreaseQuantity" data-index="{{index}}">−</view>
+          <view class="step-num">{{item.shipQty}}</view>
+          <view class="step-btn" catchtap="increaseQuantity" data-index="{{index}}">+</view>
+        </view>
+      </view>
+      <view class="item-ctrl" wx:else>
+        <text class="shipped-done">已发货</text>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{items.length === 0}}">
+      <text>暂无商品数据</text>
+    </view>
+  </view>
+
+  <!-- 底部统计与提交 -->
+  <view class="bottom-bar">
+    <view class="ship-summary">
+      <text>本次共发 <text class="highlight">{{totalShipQty}}</text> 件</text>
+    </view>
+    <button class="btn-submit"
+            bindtap="submitShipment"
+            disabled="{{totalShipQty === 0 || isSubmitting || !expressNo}}">
+      {{isSubmitting ? '发货中...' : '确认发货'}}
+    </button>
+  </view>
+</view>
