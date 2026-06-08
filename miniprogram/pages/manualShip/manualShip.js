@@ -22,23 +22,21 @@ Page({
     recipientAddress: '',
     orderStatus: '',
 
-    // 快递表单
     expressCodeList: [],
     expressCodeIndex: 0,
     expressCode: 'ZTO',
     expressNo: '',
     detectedCourier: null,
     manualCourierSelected: false,
-    expressNoUsed: false,        // 单号已被使用
-    expressNoChecking: false,    // 正在检查
-    expressNoUsageInfo: '',      // 已使用提示
+    expressNoUsed: false,
+    expressNoChecking: false,
+    expressNoUsageInfo: '',
 
-    // 商品列表
     items: [],
+    selectedCount: 0,
     totalShipQty: 0,
     isSubmitting: false,
 
-    // 统计
     totalQty: 0,
     shippedQty: 0,
     unshippedQty: 0,
@@ -56,7 +54,6 @@ Page({
     this.loadOrderDetail(orderId);
   },
 
-  // 加载快递公司列表
   loadDeliveryCompanies: async function() {
     try {
       const res = await api.get('/logistics/delivery-companies');
@@ -95,7 +92,6 @@ Page({
     });
   },
 
-  // 加载订单详情
   loadOrderDetail: async function(orderId) {
     wx.showLoading({ title: '加载中...' });
     try {
@@ -103,12 +99,20 @@ Page({
 
       let totalQty = 0;
       let shippedQty = 0;
+      let canShipCount = 0;
+      let onlyItem = null;
+
       const items = (order.items || []).map(item => {
         const shipped = item.shippedQty || 0;
         const qty = item.qty || 0;
         const unshipped = qty - shipped;
+        const canShip = shipped < qty;
         totalQty += qty;
         shippedQty += shipped;
+        if (canShip) {
+          canShipCount++;
+          onlyItem = { idx: canShipCount === 1 ? null : null }; // placeholder
+        }
         return {
           id: item.id,
           productId: item.productId,
@@ -121,11 +125,28 @@ Page({
           shippedQty: shipped,
           unshippedQty: unshipped,
           maxShipQty: unshipped,
-          shipQty: unshipped,  // 默认填满未发数量
-          canShip: shipped < qty,
+          shipQty: 0,
+          selected: false,
+          canShip: canShip,
           bundleConfig: item.bundleConfig || null
         };
       });
+
+      // 数出可发货的商品数，以及那个唯一的可发货商品
+      canShipCount = 0;
+      let soloItem = null;
+      items.forEach(item => {
+        if (item.canShip) {
+          canShipCount++;
+          soloItem = item;
+        }
+      });
+
+      // 只有「仅一个商品可发 且 未发数量=1」才自动勾选
+      if (canShipCount === 1 && soloItem && soloItem.maxShipQty === 1) {
+        soloItem.selected = true;
+        soloItem.shipQty = 1;
+      }
 
       const unshippedQty = totalQty - shippedQty;
 
@@ -133,14 +154,14 @@ Page({
         orderNo: order.outTradeNo || '',
         recipientName: order.recipientName || '',
         recipientPhone: order.recipientPhone || '',
-        recipientAddress: this.buildAddress(order),
+        recipientAddress: order.recipientAddress || '',
         orderStatus: order.status || '',
         items: items,
         totalQty: totalQty,
         shippedQty: shippedQty,
         unshippedQty: unshippedQty
       }, () => {
-        this.updateTotalShipQty();
+        this.updateSummary();
       });
       wx.hideLoading();
     } catch (err) {
@@ -155,28 +176,22 @@ Page({
     }
   },
 
-  buildAddress: function(order) {
-    return [order.recipientProvince, order.recipientCity, order.recipientDistrict, order.recipientDetail]
-      .filter(s => s).join('');
-  },
+  // ── 快递表单 ──
 
-  // 快递公司选择
   onExpressCodeChange: function(e) {
     const index = e.detail.value;
     const selected = this.data.expressCodeList[index];
     this.setData({
       expressCodeIndex: index,
       expressCode: selected.code,
-      manualCourierSelected: true  // 手动选择后不再自动覆盖
+      manualCourierSelected: true
     });
   },
 
-  // 快递单号输入（含自动检测）
   onExpressNoInput: function(e) {
     const expressNo = e.detail.value.trim().toUpperCase();
     this.setData({ expressNo, expressNoUsed: false, expressNoUsageInfo: '' });
 
-    // 自动检测快递公司（仅在用户未手动选择时）
     if (!this.data.manualCourierSelected && expressNo.length >= 8) {
       const matched = COURIER_PATTERNS.find(c => c.pattern.test(expressNo));
       if (matched) {
@@ -194,7 +209,6 @@ Page({
     this.setData({ detectedCourier: null });
   },
 
-  // 快递单号输入完成（失焦时检查是否重复）
   onExpressNoBlur: function() {
     const expressNo = this.data.expressNo.trim();
     if (!expressNo || expressNo.length < 4) return;
@@ -212,22 +226,36 @@ Page({
           this.setData({ expressNoUsed: false, expressNoUsageInfo: '' });
         }
       })
-      .catch(() => {
-        // 检查失败不阻塞操作
-      })
-      .finally(() => {
-        this.setData({ expressNoChecking: false });
-      });
+      .catch(() => {})
+      .finally(() => this.setData({ expressNoChecking: false }));
   },
 
-  // 数量控制
+  // ── 勾选 ──
+
+  toggleSelect: function(e) {
+    const index = e.currentTarget.dataset.index;
+    const items = [...this.data.items];
+    const item = items[index];
+    if (!item.canShip) return;
+    item.selected = !item.selected;
+    if (item.selected && item.shipQty === 0) {
+      item.shipQty = item.maxShipQty;
+    } else if (!item.selected) {
+      item.shipQty = 0;
+    }
+    this.setData({ items }, () => this.updateSummary());
+  },
+
+  // ── 数量 ──
+
   decreaseQuantity: function(e) {
     const index = e.currentTarget.dataset.index;
     const items = [...this.data.items];
     const item = items[index];
-    if (item.shipQty > 0) {
+    if (!item.canShip || !item.selected) return;
+    if (item.shipQty > 1) {
       item.shipQty--;
-      this.setData({ items }, () => this.updateTotalShipQty());
+      this.setData({ items }, () => this.updateSummary());
     }
   },
 
@@ -235,34 +263,45 @@ Page({
     const index = e.currentTarget.dataset.index;
     const items = [...this.data.items];
     const item = items[index];
+    if (!item.canShip || !item.selected) return;
     if (item.shipQty < item.maxShipQty) {
       item.shipQty++;
-      this.setData({ items }, () => this.updateTotalShipQty());
+      this.setData({ items }, () => this.updateSummary());
     }
   },
 
   selectAll: function() {
     const items = this.data.items.map(item => ({
       ...item,
+      selected: item.canShip,
       shipQty: item.canShip ? item.maxShipQty : 0
     }));
-    this.setData({ items }, () => this.updateTotalShipQty());
+    this.setData({ items }, () => this.updateSummary());
   },
 
   clearAll: function() {
     const items = this.data.items.map(item => ({
       ...item,
+      selected: false,
       shipQty: 0
     }));
-    this.setData({ items }, () => this.updateTotalShipQty());
+    this.setData({ items }, () => this.updateSummary());
   },
 
-  updateTotalShipQty: function() {
-    const total = this.data.items.reduce((sum, item) => sum + (item.canShip ? item.shipQty : 0), 0);
-    this.setData({ totalShipQty: total });
+  updateSummary: function() {
+    let selectedCount = 0;
+    let totalShipQty = 0;
+    this.data.items.forEach(item => {
+      if (item.canShip && item.selected) {
+        selectedCount++;
+        totalShipQty += item.shipQty;
+      }
+    });
+    this.setData({ selectedCount, totalShipQty });
   },
 
-  // 提交发货
+  // ── 提交 ──
+
   submitShipment: async function() {
     if (this.data.isSubmitting) return;
 
@@ -272,9 +311,11 @@ Page({
       return;
     }
 
-    const shippingItems = this.data.items.filter(item => item.canShip && item.shipQty > 0);
+    const shippingItems = this.data.items.filter(
+      item => item.canShip && item.selected && item.shipQty > 0
+    );
     if (shippingItems.length === 0) {
-      wx.showToast({ title: '请选择至少一件商品', icon: 'none' });
+      wx.showToast({ title: '请勾选并填写发货数量', icon: 'none' });
       return;
     }
 
@@ -304,7 +345,7 @@ Page({
               url: `/pages/bluetoothPrint/bluetoothPrint?shipmentId=${res.id}`
             });
           } else {
-            this.navigateBackAndRefresh();
+            this.goBack();
           }
         }
       });
@@ -320,7 +361,7 @@ Page({
     }
   },
 
-  navigateBackAndRefresh: function() {
+  goBack: function() {
     const pages = getCurrentPages();
     const prevPage = pages[pages.length - 2];
     if (prevPage && prevPage.loadOrders) {
