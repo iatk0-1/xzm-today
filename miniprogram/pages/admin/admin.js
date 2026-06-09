@@ -649,6 +649,11 @@ Page({
         }));
         let list = this.data.mediaList.concat(newItems);
         this.refreshGrid(list);
+
+        // 上传图片后，自动取消"使用视频封面"的勾选
+        if (this.data.useVideoCover) {
+          this.setData({ useVideoCover: false });
+        }
       },
       fail: (err) => {
         console.error('选择图片失败:', err);
