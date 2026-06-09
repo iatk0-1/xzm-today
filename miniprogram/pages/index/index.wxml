@@ -149,7 +149,7 @@
 
 <view class="sku-mask {{showSku ? 'fade-in' : ''}}" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
 
-<view class="sku-panel {{showSku ? 'slide-up' : ''}}">
+<view class="sku-panel {{showSku ? 'slide-up' : ''}}" wx:if="{{showSku}}">
   <view class="sku-close" catchtap="closeSkuPanel">×</view>
 
   <view class="sku-header" wx:if="{{currentProduct}}">
