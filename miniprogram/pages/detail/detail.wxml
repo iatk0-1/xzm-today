@@ -7,6 +7,18 @@
   </view>
 
   <swiper class="main-swiper" indicator-dots="true" indicator-color="rgba(0,0,0,0.15)" indicator-active-color="#111" circular="true">
+    <swiper-item wx:if="{{product.videoUrl}}">
+      <video class="swiper-video"
+             src="{{product.videoUrl}}"
+             poster="{{product.image}}"
+             object-fit="cover"
+             show-play-btn="{{true}}"
+             controls="{{false}}"
+             autoplay="{{false}}"
+             muted
+             loop>
+      </video>
+    </swiper-item>
     <swiper-item wx:for="{{bannerImgs}}" wx:key="*this">
       <image class="swiper-img" src="{{item}}" mode="aspectFill"></image>
     </swiper-item>

@@ -4,6 +4,25 @@
     请检查并编辑商品信息，确认后创建新商品并自动关联
   </view>
 
+  <!-- 视频上传区（在图片池上方，体现"视频排第一"） -->
+  <view class="form-group">
+    <view class="label">商品视频 (选填，上传后展示在轮播图第一位，最长1分钟)</view>
+    <view class="video-upload-box" wx:if="{{!videoUrl}}" bindtap="uploadVideo">
+      <view class="upload-placeholder">+ 添加视频</view>
+    </view>
+    <view class="video-preview-box" wx:else>
+      <video src="{{videoUrl}}" class="preview-video" object-fit="cover" show-play-btn="{{false}}" controls="{{false}}" autoplay loop muted></video>
+      <view class="delete-btn" catchtap="removeVideo">×</view>
+    </view>
+    <view class="video-cover-checkbox" wx:if="{{videoUrl}}">
+      <view class="checkbox-row" bindtap="toggleVideoCover">
+        <view class="checkbox-icon {{useVideoCover ? 'checked' : ''}}"></view>
+        <text class="checkbox-label">使用视频封面作为商品封面</text>
+      </view>
+      <text class="checkbox-hint">勾选后，视频首帧将作为商品在列表中的封面图</text>
+    </view>
+  </view>
+
   <view class="form-group">
     <view class="label"><text class="required">*</text>商品图片 (首图自动设为封面，长按可拖拽排序)</view>
 
@@ -251,17 +270,6 @@
     <view class="label">温馨提示 (Tip / Q&A)</view>
     <textarea id="warmtips-input" class="textarea-box" placeholder="例如：深色衣物首次洗涤可能轻微浮色，属正常现象..." value="{{warmTips}}" bindinput="onInput" data-field="warmTips" maxlength="-1" adjust-position="{{true}}" adjust-keyboard-to="cursor" cursor-spacing="140"></textarea>
   </view>
-  <view class="form-group">
-    <view class="label">商品动态展示视频 (选填，单视频)</view>
-    <view class="video-upload-box" wx:if="{{!videoUrl}}" bindtap="uploadVideo">
-      <view class="upload-placeholder">+ 添加视频</view>
-    </view>
-    <view class="video-preview-box" wx:else>
-      <video src="{{videoUrl}}" class="preview-video" object-fit="cover" show-center-play-btn="{{false}}" controls="{{false}}" autoplay loop muted></video>
-      <view class="delete-btn" catchtap="removeVideo">×</view>
-    </view>
-  </view>
-
   <view class="form-group">
     <view class="label">Lookbook 详情长图 (选填，多张)</view>
     <view class="multi-image-box">

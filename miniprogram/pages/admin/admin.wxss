@@ -288,6 +288,42 @@ line-height: 88rpx; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; }
 }
 /* 这里的 .delete-btn 借用了你原本的删除按钮样式，如果不居中，可以加一行 z-index: 10; */
 
+/* 视频封面勾选框 */
+.video-cover-checkbox {
+  margin-top: 16rpx;
+  padding: 16rpx;
+  background: #f9f9f9;
+  border-radius: 8rpx;
+}
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.checkbox-icon {
+  width: 36rpx;
+  height: 36rpx;
+  border: 2rpx solid #ccc;
+  border-radius: 6rpx;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.checkbox-icon.checked {
+  background: #07c160;
+  border-color: #07c160;
+}
+.checkbox-label {
+  font-size: 26rpx;
+  color: #333;
+}
+.checkbox-hint {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 8rpx;
+  margin-left: 48rpx;
+  display: block;
+}
+
 /* SKU 图片上传样式 */
 .sku-image-upload {
   width: 40px;

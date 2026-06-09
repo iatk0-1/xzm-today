@@ -91,10 +91,17 @@ page {
   background-color: #f9f9f9; /* 图片未加载出时的浅灰底色 */
 }
 
-.swiper-img { 
+.swiper-img {
   width: 100%; /* 图片宽度撑满轮播图 */
   height: 100%; /* 图片高度撑满轮播图 */
   display: block; /* 清除图片默认的底部留白 */
+}
+
+.swiper-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-color: #000;
 }
 
 .content-wrapper { 

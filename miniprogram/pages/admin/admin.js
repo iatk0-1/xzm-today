@@ -12,6 +12,8 @@ const COLUMNS = 3;
 Page({
   data: {
     videoUrl: '',
+    videoThumbPath: '',
+    useVideoCover: false,
     mediaList: [],
     dragIndex: -1,
     dragAreaHeight: ITEM_SIZE,
@@ -228,6 +230,8 @@ Page({
       const formData = {
         title: product.name || '',
         videoUrl: product.videoUrl || '',
+        videoThumbPath: '',
+        useVideoCover: false,
         shippingInfo: product.shippingInfo || '',
         description: product.description || '',
         fabricCare: product.fabricCare || '',
@@ -436,6 +440,8 @@ Page({
       const formData = {
         title: product.name || '',
         videoUrl: product.videoUrl || '',
+        videoThumbPath: '',
+        useVideoCover: false,
         shippingInfo: product.shippingInfo || '',
         description: product.description || '',
         fabricCare: product.fabricCare || '',
@@ -704,10 +710,18 @@ Page({
       sourceType: ['camera', 'album'],
       compressed: true,
       success: (res) => {
-        const tempFilePath = res.tempFiles[0].tempFilePath;
-        console.log('视频选择成功，临时路径:', tempFilePath);
-        // 直接保存临时文件路径，等提交时再统一上传
-        this.setData({ videoUrl: tempFilePath });
+        const tempFile = res.tempFiles[0];
+        // 时长校验：最长 60 秒
+        if (tempFile.duration && tempFile.duration > 60) {
+          wx.showToast({ title: '视频最长1分钟，请重新选择', icon: 'none' });
+          return;
+        }
+        console.log('视频选择成功，临时路径:', tempFile.tempFilePath);
+        this.setData({
+          videoUrl: tempFile.tempFilePath,
+          videoThumbPath: tempFile.thumbTempFilePath || '',
+          useVideoCover: false
+        });
       },
       fail: (err) => {
         console.error('选择视频失败:', err);
@@ -718,7 +732,16 @@ Page({
 
   removeVideo() {
     this._markDirty();
-    this.setData({ videoUrl: '' });
+    this.setData({
+      videoUrl: '',
+      videoThumbPath: '',
+      useVideoCover: false
+    });
+  },
+
+  toggleVideoCover() {
+    this._markDirty();
+    this.setData({ useVideoCover: !this.data.useVideoCover });
   },
 
   // ================= 通用文件上传（COS 直传） =================
@@ -1523,7 +1546,7 @@ Page({
   // ================= 提交商品 =================
   submitProduct: async function() {
     const { mediaList, title, selectedStalls, selectedTags, skuList, lookbookImgs, detailImgs, manualRelated,
-            videoUrl, shippingInfo, description, fabricCare, sizeChartTip, warmTips, editId } = this.data;
+            videoUrl, videoThumbPath, useVideoCover, shippingInfo, description, fabricCare, sizeChartTip, warmTips, editId } = this.data;
 
     var isBundle = this.data.isBundleMode && this.data.bundleGroups.length > 0;
     var hasSkus = isBundle
@@ -1563,6 +1586,23 @@ Page({
         uploadedVideoUrl = videoUrl || null;
       }
 
+      // 2.6. 上传视频封面缩略图（如果勾选了"使用视频封面"）
+      let uploadedVideoThumbUrl = null;
+      if (useVideoCover && videoThumbPath) {
+        wx.showLoading({ title: '上传视频封面...', mask: true });
+        uploadedVideoThumbUrl = await this.uploadFile(videoThumbPath, 'image/jpeg');
+      }
+
+      // 3. 构造封面图和轮播图（视频封面逻辑）
+      let coverUrl, bannerImages;
+      if (useVideoCover && uploadedVideoThumbUrl) {
+        coverUrl = uploadedVideoThumbUrl;
+        bannerImages = uploadedMediaUrls;  // 所有图片都作为轮播图
+      } else {
+        coverUrl = uploadedMediaUrls[0];
+        bannerImages = uploadedMediaUrls.slice(1);
+      }
+
       // 3. 构造后端要求的 SKU 格式
       // 过滤掉 _toBeRemoved 标记的 SKU，这些是用户已删除的规格，不应该提交给后端
       console.log('提交前 skuList:', JSON.stringify(skuList));
@@ -1596,11 +1636,11 @@ Page({
       });
       console.log('构造后的 skus:', JSON.stringify(skus));
 
-      // 3. 构造商品请求数据
+      // 4. 构造商品请求数据
       const productData = {
         name: title,
-        coverUrl: uploadedMediaUrls[0],
-        bannerImages: uploadedMediaUrls.slice(1),
+        coverUrl: coverUrl,
+        bannerImages: bannerImages,
         stallIds: selectedStalls.map(s => s.id),
         relateTagIds: selectedTags.map(t => t.id),
         status: 'on',
@@ -2246,6 +2286,8 @@ Page({
     return {
       title: data.title,
       videoUrl: data.videoUrl || '',
+      videoThumbPath: data.videoThumbPath || '',
+      useVideoCover: data.useVideoCover || false,
       shippingInfo: data.shippingInfo,
       description: data.description,
       fabricCare: data.fabricCare,
@@ -2365,6 +2407,8 @@ Page({
     var restored = {
       title: safeGet(draftData, 'title', ''),
       videoUrl: safeGet(draftData, 'videoUrl', ''),
+      videoThumbPath: '',  // 临时路径草稿恢复后已失效，置空
+      useVideoCover: safeGet(draftData, 'useVideoCover', false),
       shippingInfo: safeGet(draftData, 'shippingInfo', '付款后按排单顺序发货'),
       description: safeGet(draftData, 'description', ''),
       fabricCare: safeGet(draftData, 'fabricCare', ''),
