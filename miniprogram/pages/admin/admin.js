@@ -1552,8 +1552,12 @@ Page({
     var hasSkus = isBundle
       ? this.data.bundleGroups.some(function(g) { return g.skuList && g.skuList.length > 0; })
       : skuList.length > 0;
-    if (mediaList.length === 0 || !title || !hasSkus) {
-      return wx.showToast({ title: '首图/名称/尺码颜色不能为空', icon: 'none' });
+
+    // 校验：如果勾选了"使用视频封面"，可以不上传图片（视频缩略图作为封面）
+    // 否则必须至少上传一张图片
+    const hasMediaOrVideoCover = mediaList.length > 0 || (useVideoCover && videoUrl && videoThumbPath);
+    if (!hasMediaOrVideoCover || !title || !hasSkus) {
+      return wx.showToast({ title: '封面/名称/尺码颜色不能为空', icon: 'none' });
     }
 
     // 计算价格范围
@@ -1596,11 +1600,16 @@ Page({
       // 3. 构造封面图和轮播图（视频封面逻辑）
       let coverUrl, bannerImages;
       if (useVideoCover && uploadedVideoThumbUrl) {
+        // 勾选了"使用视频封面" → 视频缩略图作封面，所有图片作 banner
         coverUrl = uploadedVideoThumbUrl;
-        bannerImages = uploadedMediaUrls;  // 所有图片都作为轮播图
-      } else {
+        bannerImages = uploadedMediaUrls;  // 可能为空数组（用户只上传了视频）
+      } else if (uploadedMediaUrls.length > 0) {
+        // 未勾选 + 有图片 → 首图作封面，其余作 banner
         coverUrl = uploadedMediaUrls[0];
         bannerImages = uploadedMediaUrls.slice(1);
+      } else {
+        // 没有图片也没有勾选视频封面 → 不应该走到这里（前面已校验）
+        throw new Error('封面图片缺失');
       }
 
       // 3. 构造后端要求的 SKU 格式
@@ -1690,13 +1699,11 @@ Page({
         wx.showLoading({ title: '保存修改...', mask: true });
         await api.put(`/products/${editId}`, productData);
         wx.hideLoading();
-        wx.showToast({ title: '修改成功!', icon: 'success' });
       } else {
         // 创建模式：调用创建接口
         wx.showLoading({ title: '创建商品...', mask: true });
         const createRes = await api.post('/products', productData);
         wx.hideLoading();
-        wx.showToast({ title: '上架成功!', icon: 'success' });
 
         // 如果是从直播商品转换而来，调用关联接口
         if (this.data.convertFromLiveProductId) {
@@ -1721,9 +1728,16 @@ Page({
       }
 
       // 成功后清除草稿并标记已提交（跳过退出拦截）
-      this.clearDraft();
       this._submitted = true;
+      // 解除退出拦截
+      if (this._alertEnabled) {
+        wx.disableAlertBeforeUnload();
+        this._alertEnabled = false;
+      }
+      // 清除草稿
+      this.clearDraft();
 
+      wx.showToast({ title: editId ? '修改成功!' : '上架成功!', icon: 'success' });
       setTimeout(() => {
         wx.navigateBack();
       }, 1500);
