@@ -89,12 +89,12 @@ page { background-color: #ffffff; }
   font-family: "Times New Roman", Times, serif;
   font-size: 11px;
   color: #aaaaaa;
+  margin-right: 6rpx;
 }
 .bundle-sub-count {
   font-family: "Times New Roman", Times, serif;
   font-size: 11px;
-  color: #aaaaaa;
-  margin-left: 2rpx;
+  color: #777;
 }
 
 /* 价格与加减器同行分布 */

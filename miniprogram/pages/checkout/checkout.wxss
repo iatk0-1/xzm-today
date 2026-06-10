@@ -35,9 +35,9 @@ page { background-color: #f9f9f9; }
 .item-bundle { margin-top: 4px; }
 .bundle-sub-item { display: flex; align-items: center; padding: 3px 0; }
 .sub-name { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #888; min-width: 36px; }
-.sub-spec { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #aaa; flex: 1; margin-left: 4px; }
-.sub-count { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #aaa; margin-right: 6rpx; }
-.sub-price { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #555; }
+.sub-spec { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #aaa; margin-left: 4px; margin-right: 8rpx; }
+.sub-count { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #777; margin-right: 8rpx; }
+.sub-price { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #555; margin-left: auto; }
 
 /* 商品备注输入 */
 .item-remark { margin-top: 8px; }
