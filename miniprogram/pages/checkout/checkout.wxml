@@ -30,6 +30,7 @@
           <view class="bundle-sub-item" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
             <text class="sub-name">{{sub.bundleGroupName}}</text>
             <text class="sub-spec">{{sub.color}} / {{sub.size}}</text>
+            <text class="sub-count" wx:if="{{sub.count && sub.count > 1}}">×{{sub.count}}</text>
             <text class="sub-price">¥{{sub.price}}</text>
           </view>
         </view>

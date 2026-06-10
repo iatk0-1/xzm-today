@@ -36,12 +36,12 @@ Page({
         const isRemoved = item.validityStatus === 'removed';  // SKU 已被移除
         const isDisabled = isOutOfStock || isInvalid || isProductOff || isRemoved;
 
-        // 套装商品总价 = 各子项价格之和
+        // 套装商品总价 = 各子项价格 × 数量 之和
         var bundleConfig = item.bundleConfig || null;
         var itemPrice = Number(item.price);
         if (bundleConfig && bundleConfig.length > 0) {
           itemPrice = bundleConfig.reduce(function(sum, b) {
-            return sum + (Number(b.price) || 0);
+            return sum + (Number(b.price) || 0) * (b.count || 1);
           }, 0);
         }
 

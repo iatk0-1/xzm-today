@@ -90,6 +90,13 @@ page { background-color: #ffffff; }
   font-size: 11px;
   color: #aaaaaa;
 }
+.bundle-sub-count {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11px;
+  color: #333;
+  margin-left: 8rpx;
+  font-weight: 600;
+}
 
 /* 价格与加减器同行分布 */
 .item-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
