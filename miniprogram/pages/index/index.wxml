@@ -203,7 +203,7 @@
           <view class="bundle-sku-price" style="color: #1a1a1a;">
             ¥{{sel.computedPrice || sel.selectedSku.price || sel.skus[0].price || sel.skus[0].retailPrice}}
           </view>
-          <view class="stepper" style="{{sel.selectedSku ? '' : 'visibility: hidden;'}}">
+          <view class="stepper" wx:if="{{sel.selectedSku}}">
             <view class="step-btn {{sel.quantity <= 1 ? 'disabled' : ''}}" catchtap="bundleMinus" data-index="{{bgIdx}}">-</view>
             <input class="step-input" type="number" value="{{sel.quantity}}" bindinput="bundleInput" bindblur="bundleInputBlur" data-index="{{bgIdx}}" />
             <view class="step-btn {{(!sel.selectedSku.unlimitedStock && sel.quantity >= sel.selectedSku.stock) ? 'disabled' : ''}}" catchtap="bundlePlus" data-index="{{bgIdx}}">+</view>

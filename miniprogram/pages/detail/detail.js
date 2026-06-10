@@ -332,10 +332,10 @@ Page({
       if (!bundleAllSelected) return wx.showToast({ title: '请至少完整选择一个子项', icon: 'none' });
       var selectedSubs = bundleSelections.filter(function(s) { return s.selectedSku != null; });
       var bundleConfig = selectedSubs.map(function(s) {
-        return { bundleGroupName: s.bundleGroupName, skuId: s.selectedSku.skuId, color: s.selectedSku.color, size: s.selectedSku.size, price: s.selectedSku.price, imageUrl: s.selectedSku.imageUrl || '' };
+        return { bundleGroupName: s.bundleGroupName, skuId: s.selectedSku.skuId, color: s.selectedSku.color, size: s.selectedSku.size, price: s.selectedSku.price, imageUrl: s.selectedSku.imageUrl || '', count: s.quantity || 1 };
       });
       var totalPrice = 0;
-      bundleConfig.forEach(function(b) { totalPrice += Number(b.price) || 0; });
+      bundleConfig.forEach(function(b) { totalPrice += (Number(b.price) || 0) * (b.count || 1); });
 
       this.setData({ showSku: false });
       if (action === 'buy') {
