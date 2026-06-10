@@ -197,7 +197,7 @@ page { background-color: #f2f2f2; }
 .bundle-sub { display: flex; align-items: center; padding: 2rpx 0; }
 .bundle-sub-name { font-size: 22rpx; color: #666; margin-right: 6rpx; }
 .bundle-sub-spec { font-size: 22rpx; color: #999; }
-.bundle-sub-count { font-size: 22rpx; color: #333; margin-left: 4rpx; font-weight: 600; }
+.bundle-sub-count { font-size: 22rpx; color: #999; }
 .goods-price-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8rpx; }
 .price { font-size: 28rpx; font-weight: 600; font-family: inherit; }
 .count { font-size: 24rpx; color: #999; font-family: inherit; }
