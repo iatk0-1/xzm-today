@@ -33,8 +33,7 @@
         <view class="goods-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
           <view class="bundle-sub" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
             <text class="bundle-sub-name">{{sub.bundleGroupName}}:</text>
-            <text class="bundle-sub-spec">{{sub.color}} / {{sub.size}}</text>
-            <text class="bundle-sub-count" wx:if="{{sub.count && sub.count > 1}}">×{{sub.count}}</text>
+            <text class="bundle-sub-spec">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
           </view>
           <text class="after-sale-tag" wx:if="{{item.afterSaleStatus}}" style="margin-top:4rpx;">{{item.afterSaleStatus === 'refunded' ? '已退款' : '售后中'}}</text>
         </view>
@@ -112,6 +111,7 @@
             <view class="goods-info">
               <view class="goods-title">{{goodsItem.productName || '商品'}}</view>
               <view class="goods-sku">
+                <text wx:if="{{goodsItem.bundleGroupName}}">{{goodsItem.bundleGroupName}}: </text>
                 <text wx:if="{{goodsItem.spec}}">{{goodsItem.spec}}</text>
                 <text wx:if="{{goodsItem.size}}"> / {{goodsItem.size}}</text>
               </view>

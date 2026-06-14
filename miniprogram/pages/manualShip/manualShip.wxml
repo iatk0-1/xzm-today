@@ -100,7 +100,9 @@
         <!-- 信息 -->
         <view class="goods-info">
           <view class="goods-name">{{item.productName}}</view>
-          <view class="goods-spec">{{item.productSpec}} / {{item.productSize}}</view>
+          <view class="goods-spec">
+            <text wx:if="{{item.bundleGroupName}}">{{item.bundleGroupName}}: </text>{{item.productSpec}} / {{item.productSize}}
+          </view>
           <block wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
             <text class="bundle-sub" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
               {{sub.bundleGroupName}}: {{sub.color}}/{{sub.size}}

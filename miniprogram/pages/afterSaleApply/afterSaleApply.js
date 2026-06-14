@@ -46,7 +46,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
 
     try {
-      const res = await api.get(`/orders/${orderId}`);
+      const res = await api.get(`/orders/${orderId}?flat=true`);
       wx.hideLoading();
 
       if (!res || !res.items || res.items.length === 0) {
@@ -80,6 +80,9 @@ Page({
             productImage: item.productImage || item.skuImageUrl,
             skuSpec: item.productSpec || '默认颜色',
             skuSize: item.productSize || '均码',
+            bundleConfig: item.bundleConfig || null,
+            bundleProductName: item.bundleProductName || null,
+            bundleGroupName: item.bundleGroupName || null,
             salePrice: item.salePrice,
             qty: shippedQty,
             shippedQty: shippedQty,
@@ -101,6 +104,9 @@ Page({
             productImage: item.productImage || item.skuImageUrl,
             skuSpec: item.productSpec || '默认颜色',
             skuSize: item.productSize || '均码',
+            bundleConfig: item.bundleConfig || null,
+            bundleProductName: item.bundleProductName || null,
+            bundleGroupName: item.bundleGroupName || null,
             salePrice: item.salePrice,
             qty: unshippedQty,
             shippedQty: 0,

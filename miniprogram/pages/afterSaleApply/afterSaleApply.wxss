@@ -110,6 +110,12 @@
   color: #999;
 }
 
+.goods-bundle { margin-top: 4rpx; }
+.bundle-sub { display: flex; align-items: center; padding: 2rpx 0; }
+.bundle-sub-name { font-size: 22rpx; color: #666; margin-right: 6rpx; }
+.bundle-sub-spec { font-size: 22rpx; color: #999; }
+.bundle-sub-count { font-size: 22rpx; color: #777; }
+
 .goods-status {
   display: flex;
   align-items: center;

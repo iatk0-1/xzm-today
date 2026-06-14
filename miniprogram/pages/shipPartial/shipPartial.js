@@ -139,7 +139,7 @@ Page({
 
         // 获取所有订单的商品
         for (const orderId of orderIds) {
-          const detail = await api.get(`/orders/${orderId}`);
+          const detail = await api.get(`/orders/${orderId}?flat=true`);
 
           const orderItems = detail.items.map(item => ({
             ...item,
@@ -160,7 +160,7 @@ Page({
 
         // 获取所有订单的商品（从订单详情读取，以保证 shippedQty 正确）
         for (const orderId of orderIds) {
-          const detail = await api.get(`/orders/${orderId}`);
+          const detail = await api.get(`/orders/${orderId}?flat=true`);
 
           const orderItems = detail.items.map(item => ({
             ...item,

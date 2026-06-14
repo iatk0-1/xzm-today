@@ -32,7 +32,21 @@
         <!-- 商品信息 -->
         <view class="goods-info">
           <view class="goods-title">{{item.productName}}</view>
-          <view class="goods-sku">{{item.skuSpec}} / {{item.skuSize}}</view>
+          <view class="goods-sku">
+            <!-- 旧格式套装子项列表（bundleConfig JSONB） -->
+            <view class="goods-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
+              <view class="bundle-sub" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
+                <text class="bundle-sub-name">{{sub.bundleGroupName}}:</text>
+                <text class="bundle-sub-spec">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
+              </view>
+            </view>
+            <!-- 新格式扁平化套装子项（bundleGroupName） -->
+            <text wx:elif="{{item.bundleGroupName}}">
+              <text class="bundle-sub-name">{{item.bundleGroupName}}:</text> {{item.skuSpec}} / {{item.skuSize}}
+            </text>
+            <!-- 普通商品 -->
+            <text wx:else>{{item.skuSpec}} / {{item.skuSize}}</text>
+          </view>
           <view class="goods-status">
             <text class="status-tag {{item.status}}">{{item.displayStatus}}</text>
             <text class="qty-info">数量：{{item.qty}}件</text>

@@ -95,7 +95,7 @@ Page({
   loadOrderDetail: async function(orderId) {
     wx.showLoading({ title: '加载中...' });
     try {
-      const order = await api.get(`/orders/${orderId}`);
+      const order = await api.get(`/orders/${orderId}?flat=true`);
 
       let totalQty = 0;
       let shippedQty = 0;
@@ -128,7 +128,9 @@ Page({
           shipQty: 0,
           selected: false,
           canShip: canShip,
-          bundleConfig: item.bundleConfig || null
+          bundleConfig: item.bundleConfig || null,
+          bundleProductName: item.bundleProductName || null,
+          bundleGroupName: item.bundleGroupName || null
         };
       });
 

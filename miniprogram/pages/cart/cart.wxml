@@ -41,8 +41,7 @@
                 <view class="item-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
                   <view class="bundle-sub-row" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
                     <text class="bundle-sub-name">{{sub.bundleGroupName}}</text>
-                    <text class="bundle-sub-spec">{{sub.color || '默认'}} / {{sub.size || '均码'}}</text>
-                    <text class="bundle-sub-count" wx:if="{{sub.count && sub.count > 1}}">×{{sub.count}}</text>
+                    <text class="bundle-sub-spec">{{sub.color || '默认'}} / {{sub.size || '均码'}} x {{sub.count}}</text>
                   </view>
                 </view>
 
