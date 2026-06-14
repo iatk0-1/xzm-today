@@ -52,6 +52,14 @@ Page({
       const { page, pageSize } = this.data;
       const res = await api.get(`/wishes?page=${page}&size=${pageSize}`);
 
+      console.log('=== loadWishes 返回数据 ===');
+      console.log('res.content:', res.content);
+      if (res.content && res.content.length > 0) {
+        console.log('第一个 wish 示例:', res.content[0]);
+        console.log('第一个 wish 的 _id:', res.content[0]._id);
+        console.log('第一个 wish 的 id:', res.content[0].id);
+      }
+
       // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
       const newWishes = res.content || [];
       const hasMore = res.hasNext !== undefined ? res.hasNext : newWishes.length === pageSize;
@@ -67,6 +75,9 @@ Page({
           rightColumn.push(item);
         }
       });
+
+      console.log('leftColumn 第一个元素:', leftColumn[0]);
+      console.log('rightColumn 第一个元素:', rightColumn[0]);
 
       this.setData({
         wishes: allWishes,
@@ -86,39 +97,101 @@ Page({
 
   // 改造：点赞/取消点赞
   handleLike: async function(e) {
-    const index = e.currentTarget.dataset.index;
+    console.log('=== handleLike 开始 ===');
+    console.log('event dataset:', e.currentTarget.dataset);
+
     const wishId = e.currentTarget.dataset.id;
+    console.log('wishId:', wishId);
+
+    if (!wishId) {
+      console.error('wishId 为空');
+      wx.showToast({ title: '操作失败：ID为空', icon: 'none' });
+      return;
+    }
+
     let currentWishes = this.data.wishes;
-    let targetWish = currentWishes[index];
+    console.log('当前 wishes 数量:', currentWishes.length);
+
+    // 根据 wishId 查找目标心愿（使用 id 字段而非 _id）
+    const targetIndex = currentWishes.findIndex(wish => wish.id === wishId);
+    console.log('找到的索引:', targetIndex);
+
+    if (targetIndex === -1) {
+      console.error('未找到对应的心愿');
+      wx.showToast({ title: '操作失败：未找到', icon: 'none' });
+      return;
+    }
+
+    let targetWish = currentWishes[targetIndex];
+    const originalLiked = targetWish.isLiked;
+    const originalLikes = targetWish.likes || 0;
+    console.log('原始状态 - isLiked:', originalLiked, 'likes:', originalLikes);
 
     // 先更新本地状态
     targetWish.isLiked = !targetWish.isLiked;
     if (targetWish.isLiked) {
-      targetWish.likes = (targetWish.likes || 0) + 1;
+      targetWish.likes = originalLikes + 1;
     } else {
-      targetWish.likes = (targetWish.likes || 0) - 1;
-      if (targetWish.likes < 0) targetWish.likes = 0;
+      targetWish.likes = Math.max(0, originalLikes - 1);
     }
+    console.log('新状态 - isLiked:', targetWish.isLiked, 'likes:', targetWish.likes);
 
-    this.setData({ wishes: currentWishes });
+    // 重新分配左右列数据
+    const leftColumn = [];
+    const rightColumn = [];
+    currentWishes.forEach((item, index) => {
+      if (index % 2 === 0) {
+        leftColumn.push(item);
+      } else {
+        rightColumn.push(item);
+      }
+    });
+
+    this.setData({
+      wishes: currentWishes,
+      leftColumn: leftColumn,
+      rightColumn: rightColumn
+    });
 
     // 调用后端 API
     try {
+      const apiUrl = `/wishes/${wishId}/${targetWish.isLiked ? 'like' : 'unlike'}`;
+      console.log('准备调用 API:', apiUrl);
+
       if (targetWish.isLiked) {
         await api.post(`/wishes/${wishId}/like`);
       } else {
         await api.post(`/wishes/${wishId}/unlike`);
       }
+
+      console.log('API 调用成功');
     } catch (err) {
+      console.error('API 调用失败:', err);
+      console.error('错误详情:', JSON.stringify(err));
+
       // 回滚状态
-      targetWish.isLiked = !targetWish.isLiked;
-      if (targetWish.isLiked) {
-        targetWish.likes = (targetWish.likes || 0) + 1;
-      } else {
-        targetWish.likes = (targetWish.likes || 0) - 1;
-      }
-      this.setData({ wishes: currentWishes });
-      wx.showToast({ title: '操作失败', icon: 'none' });
+      targetWish.isLiked = originalLiked;
+      targetWish.likes = originalLikes;
+
+      // 重新分配左右列数据
+      const leftColumn = [];
+      const rightColumn = [];
+      currentWishes.forEach((item, index) => {
+        if (index % 2 === 0) {
+          leftColumn.push(item);
+        } else {
+          rightColumn.push(item);
+        }
+      });
+
+      this.setData({
+        wishes: currentWishes,
+        leftColumn: leftColumn,
+        rightColumn: rightColumn
+      });
+
+      const errorMsg = err.message || err.error || '操作失败';
+      wx.showToast({ title: errorMsg, icon: 'none' });
     }
   },
 

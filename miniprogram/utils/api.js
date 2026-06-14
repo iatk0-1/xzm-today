@@ -48,6 +48,12 @@ function request(options) {
     const token = getToken();
     const url = config.API_BASE_URL + options.url;
 
+    console.log('[API] 请求开始:', {
+      method: options.method || 'GET',
+      url: url,
+      hasToken: !!token
+    });
+
     // 为写操作生成幂等性 Key
     const headers = {
       'Content-Type': 'application/json',
@@ -67,6 +73,11 @@ function request(options) {
       data: options.data || {},
       header: headers,
       success: (res) => {
+        console.log('[API] 请求成功:', {
+          statusCode: res.statusCode,
+          data: res.data
+        });
+
         // 处理不同的成功状态码
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data);
@@ -84,7 +95,7 @@ function request(options) {
         }
       },
       fail: (err) => {
-        console.error('网络请求失败:', err);
+        console.error('[API] 网络请求失败:', err);
         reject(err);
       }
     });
@@ -127,7 +138,10 @@ module.exports = {
   /**
    * POST 请求
    */
-  post: (url, data) => request({ url, method: 'POST', data }),
+  post: (url, data) => {
+    console.log('[API] POST 请求:', url, data);
+    return request({ url, method: 'POST', data });
+  },
 
   /**
    * PUT 请求

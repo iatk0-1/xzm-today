@@ -1,5 +1,5 @@
 <view class="market-wrapper">
-  
+
   <view class="header-section">
     <view class="page-title">Curation Market</view>
     <view class="page-subtitle">探索 · 许愿 · 为你寻觅</view>
@@ -8,7 +8,7 @@
   <view class="masonry-grid" wx:if="{{wishes.length > 0}}">
     <!-- 左列 -->
     <view class="masonry-column">
-      <view class="wish-card" wx:for="{{leftColumn}}" wx:key="_id">
+      <view class="wish-card" wx:for="{{leftColumn}}" wx:key="id">
 
         <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
 
@@ -21,7 +21,7 @@
             </view>
 
             <view class="progress-text">
-              <text class="heart-btn" bindtap="handleLike" data-index="{{index}}">{{item.isLiked ? '♥' : '♡'}}</text>
+              <text class="heart-btn" bindtap="handleLike" data-index="{{index}}" data-id="{{item.id}}">{{item.isLiked ? '♥' : '♡'}}</text>
               <text>热度 {{item.likes || 0}} / 50</text>
             </view>
           </view>
@@ -36,7 +36,7 @@
 
     <!-- 右列 -->
     <view class="masonry-column">
-      <view class="wish-card" wx:for="{{rightColumn}}" wx:key="_id">
+      <view class="wish-card" wx:for="{{rightColumn}}" wx:key="id">
 
         <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
 
@@ -49,7 +49,7 @@
             </view>
 
             <view class="progress-text">
-              <text class="heart-btn" bindtap="handleLike" data-index="{{index}}">{{item.isLiked ? '♥' : '♡'}}</text>
+              <text class="heart-btn" bindtap="handleLike" data-index="{{index}}" data-id="{{item.id}}">{{item.isLiked ? '♥' : '♡'}}</text>
               <text>热度 {{item.likes || 0}} / 50</text>
             </view>
           </view>
