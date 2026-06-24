@@ -40,12 +40,54 @@ Page({
     const productId = options.id;
     this._productId = productId;
     if (productId) {
-      this.getProductDetail(productId);
+      this.loadProductSafe(productId);
     } else {
       wx.showToast({ title: '商品数据丢失', icon: 'none', duration: 2000 });
       setTimeout(() => {
         wx.navigateBack();
       }, 1500);
+    }
+  },
+
+  // 安全加载：等待认证就绪 + 带重试（解决分享链接冷启动 401 问题）
+  loadProductSafe: async function(productId) {
+    await this.waitForAuth(5000);
+    await this.getProductDetailWithRetry(productId, 2);
+  },
+
+  // 等待认证初始化完成（分享链接冷启动时 auth 可能尚未完成）
+  waitForAuth: function(timeout) {
+    var app = getApp();
+    var self = this;
+    return new Promise(function(resolve) {
+      if (app.globalData && app.globalData.isAuthReady) return resolve();
+      var start = Date.now();
+      var timer = setInterval(function() {
+        if ((app.globalData && app.globalData.isAuthReady) || (Date.now() - start > timeout)) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 200);
+    });
+  },
+
+  // 带重试的加载
+  getProductDetailWithRetry: async function(id, retries) {
+    for (var i = 0; i <= retries; i++) {
+      try {
+        await this.getProductDetail(id);
+        return; // 成功
+      } catch (err) {
+        if (err && err.error === 'UNAUTHORIZED' && i < retries) {
+          console.log('[detail] 未授权，等待认证后重试... 第' + (i + 1) + '次');
+          await this.waitForAuth(3000);
+          continue;
+        }
+        // 最终失败
+        wx.hideLoading();
+        console.error('获取详情失败:', err);
+        wx.showModal({ title: '提示', content: '找不到该商品', showCancel: false });
+      }
     }
   },
 
@@ -490,6 +532,54 @@ switchAuraTab(e) {
 
   doNothing: function() {
     // 阻止视频点击事件冒泡
+  },
+
+  // ========== 图片全屏预览 ==========
+
+  // 安全预览（过滤无效 URL，对齐管理端 previewImageSafe 模式）
+  previewImageSafe: function(current, urls) {
+    var validUrls = (urls || []).filter(function(u) { return u && u.trim(); });
+    if (validUrls.length === 0) {
+      wx.showToast({ title: '暂无图片', icon: 'none' });
+      return;
+    }
+    wx.previewImage({ current: current || validUrls[0], urls: validUrls });
+  },
+
+  // A: 轮播图预览（支持左右滑动）
+  previewBannerImage: function(e) {
+    var index = e.currentTarget.dataset.index;
+    var urls = this.data.bannerImgs;
+    this.previewImageSafe(urls[index], urls);
+  },
+
+  // B: Lookbook 图片预览
+  previewLookbookImage: function(e) {
+    var index = e.currentTarget.dataset.index;
+    var urls = this.data.lookbookImgs;
+    this.previewImageSafe(urls[index], urls);
+  },
+
+  // C: Detail Views 图片预览
+  previewDetailImage: function(e) {
+    var index = e.currentTarget.dataset.index;
+    var urls = this.data.detailImgs;
+    this.previewImageSafe(urls[index], urls);
+  },
+
+  // D: 关联商品图片预览
+  previewRelatedImage: function(e) {
+    var index = e.currentTarget.dataset.index;
+    var urls = (this.data.relatedProducts || []).map(function(r) { return r.image || r.coverUrl; });
+    this.previewImageSafe(urls[index], urls);
+  },
+
+  // E: SKU 面板商品图预览（单张）
+  previewSkuPanelImage: function() {
+    var current = this.data.currentSkuImage || this.data.product.image || this.data.product.coverUrl;
+    if (current) {
+      wx.previewImage({ urls: [current], current: current });
+    }
   },
 
   consultService: function() {

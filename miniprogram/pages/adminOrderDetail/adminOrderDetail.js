@@ -219,6 +219,27 @@ Page({
     }
   },
 
+  // 联系买家
+  contactBuyer: async function() {
+    var order = this.data.order;
+    if (!order || !order.id) return;
+
+    wx.showLoading({ title: '发起会话...' });
+    try {
+      var res = await api.post('/conversations/start-from-order', {
+        orderId: order.id
+      });
+      wx.hideLoading();
+      wx.navigateTo({
+        url: '/pages/chat/chat?conversationId=' + res.conversationId + '&perspective=seller'
+      });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('发起会话失败:', err);
+      wx.showToast({ title: '发起会话失败', icon: 'none' });
+    }
+  },
+
   // 查看售后详情
   viewAfterSaleDetail: function(e) {
     const afterSaleId = e.currentTarget.dataset.id;

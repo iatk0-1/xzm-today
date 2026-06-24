@@ -1,0 +1,39 @@
+<view class="page-wrapper">
+
+  <!-- 心愿图片 -->
+  <view class="image-section">
+    <image class="wish-image" src="{{wish.image}}" mode="widthFix" catchtap="previewImage"></image>
+  </view>
+
+  <!-- 内容区 -->
+  <view class="content-section">
+    <view class="wish-content">{{wish.content}}</view>
+
+    <!-- 点赞区域 -->
+    <view class="like-section">
+      <view class="like-btn {{wish.isLiked ? 'liked' : ''}}" bindtap="handleLike">
+        <text class="heart-icon">{{wish.isLiked ? '♥' : '♡'}}</text>
+        <text class="like-count">热度 {{wish.likes || 0}}</text>
+      </view>
+      <text class="like-hint">点赞支持这个心愿，达到50热度主理人将为你寻觅</text>
+    </view>
+
+    <!-- 已关联商品入口 -->
+    <view class="linked-section" wx:if="{{wish.linkedProductId}}">
+      <view class="section-divider"></view>
+      <view class="linked-label">已关联商品</view>
+      <view class="btn-go-product" bindtap="goToProduct">查看商品详情 →</view>
+    </view>
+
+    <!-- 底部信息 -->
+    <view class="meta-section">
+      <text class="meta-text">发布于 {{createdAtDisplay}}</text>
+    </view>
+  </view>
+
+</view>
+
+<!-- 底部删除按钮（仅创建者/管理员可见） -->
+<view class="bottom-delete-bar" wx:if="{{canDelete}}">
+  <view class="btn-delete" bindtap="deleteWish">删除此心愿</view>
+</view>

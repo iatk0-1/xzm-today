@@ -11,8 +11,8 @@
         <!-- 已绑定手机号：显示手机号，点击可重新授权 -->
         <view class="user-tag" wx:if="{{isPhoneBound}}" catchtap="requestPhoneAuth">手机号：{{phone}}</view>
         <!-- 未绑定手机号：使用官方按钮直接触发授权 -->
-        <button wx:else class="user-tag-btn unbound" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" catchtap="stopPropagation">
-          未绑定手机号，点击去绑定
+        <button wx:else class="user-tag-btn unbound" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" catchtap="stopPropagation" disabled="{{phoneBinding}}">
+          {{phoneBinding ? '绑定中...' : '未绑定手机号，点击去绑定'}}
         </button>
       </view>
       <view class="edit-icon" bindtap="goToEditProfile">✏️</view>

@@ -21,6 +21,7 @@
     "pages/adminProductRecycleBin/adminProductRecycleBin",
     "pages/adminWish/adminWish",
     "pages/publishWish/publishWish",
+    "pages/wishDetail/wishDetail",
     "pages/shipPartial/shipPartial",
     "pages/unbindOrder/unbindOrder",
     "pages/mergeGroupDetail/mergeGroupDetail",

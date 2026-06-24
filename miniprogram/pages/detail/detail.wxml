@@ -20,7 +20,7 @@
       </video>
     </swiper-item>
     <swiper-item wx:for="{{bannerImgs}}" wx:key="*this">
-      <image class="swiper-img" src="{{item}}" mode="aspectFill"></image>
+      <image class="swiper-img" src="{{item}}" mode="aspectFill" catchtap="previewBannerImage" data-index="{{index}}"></image>
     </swiper-item>
   </swiper>
 
@@ -74,7 +74,7 @@
   </view> 
 
   <view class="lookbook-section" wx:if="{{lookbookImgs && lookbookImgs.length > 0}}">
-    <image class="lookbook-img" wx:for="{{lookbookImgs}}" wx:key="*this" src="{{item}}" mode="widthFix"></image>
+    <image class="lookbook-img" wx:for="{{lookbookImgs}}" wx:key="*this" src="{{item}}" mode="widthFix" catchtap="previewLookbookImage" data-index="{{index}}"></image>
   </view>
 
   <view class="detail-views-section" wx:if="{{detailImgs && detailImgs.length > 0}}">
@@ -84,7 +84,7 @@
     </view>
     <swiper class="detail-swiper" bindchange="onDetailSwiperChange" next-margin="25px">
       <swiper-item class="detail-swiper-item" wx:for="{{detailImgs}}" wx:key="*this">
-        <image class="detail-swiper-img" src="{{item}}" mode="aspectFill"></image>
+        <image class="detail-swiper-img" src="{{item}}" mode="aspectFill" catchtap="previewDetailImage" data-index="{{index}}"></image>
       </swiper-item>
     </swiper>
   </view>
@@ -93,7 +93,7 @@
     <view class="section-title-eng" style="text-align: left; padding-left: 20px;">关联商品</view>
     <view class="related-grid">
       <view class="related-item" wx:for="{{relatedProducts}}" wx:key="id" bindtap="goToRelatedDetail" data-id="{{item.id}}">
-        <image class="related-img" src="{{item.image}}" mode="aspectFill"></image>
+        <image class="related-img" src="{{item.image}}" mode="aspectFill" catchtap="previewRelatedImage" data-index="{{index}}"></image>
         <view class="related-info">
           <view class="related-title">{{item.title}}</view>
           <view class="related-price">¥ {{item.displayPrice || item.price}}</view>
@@ -112,7 +112,7 @@
 <view class="sku-panel {{showSku ? 'show' : ''}}">
   <view class="sku-close" catchtap="closeSkuPanel">×</view>
   <view class="sku-header">
-    <image class="sku-img" src="{{currentSkuImage || product.image}}" mode="aspectFill"></image>
+    <image class="sku-img" src="{{currentSkuImage || product.image}}" mode="aspectFill" catchtap="previewSkuPanelImage"></image>
     <view class="sku-main">
       <view class="sku-price" style="color: #d32f2f;">¥ {{currentSkuPrice || product.displayPrice || product.price}}</view>
       <view class="sku-stock" style="color: {{currentSkuStock === 0 && !currentSkuUnlimited ? 'red' : '#999'}};">库存: {{currentSkuStockText || '请选择规格'}}</view>

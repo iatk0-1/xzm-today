@@ -23,6 +23,16 @@ page { background-color: #f2f2f2; }
 .name { font-size: 28rpx; font-weight: 600; color: #1a1a1a; }
 .phone { font-size: 26rpx; color: #666; }
 .detail-row { font-size: 26rpx; color: #666; line-height: 1.5; }
+.contact-buyer-btn {
+  margin-top: 20rpx;
+  padding: 14rpx 0;
+  text-align: center;
+  font-size: 26rpx;
+  color: #111;
+  background: #f8f8f8;
+  border-radius: 8rpx;
+}
+.contact-buyer-btn:active { background: #eee; }
 
 /* === 商品列表 === */
 .shop-title { font-size: 26rpx; font-weight: 600; color: #666; margin-bottom: 16rpx; }

@@ -221,6 +221,7 @@ page { background-color: #f2f2f2; }
 .btn-ghost { margin: 0; padding: 0 18rpx; height: 56rpx; line-height: 54rpx; font-size: 24rpx; color: #333; background: #fff; border: 1rpx solid #ddd; border-radius: 8rpx; white-space: nowrap; }
 .btn-ghost::after { display: none; }
 .btn-solid { margin: 0; padding: 0 18rpx; height: 56rpx; line-height: 56rpx; font-size: 24rpx; color: #fff; background: #1a1a1a; border-radius: 8rpx; font-weight: 600; white-space: nowrap; }
+.btn-contact { margin: 0; padding: 0 18rpx; height: 56rpx; line-height: 54rpx; font-size: 24rpx; color: #1a1a1a; background: #fff; border: 1rpx solid #1a1a1a; border-radius: 8rpx; white-space: nowrap; }
 
 /* 时间选择器模态框 */
 .modal {

@@ -202,6 +202,16 @@ Page({
     });
   },
 
+  // 跳转到心愿详情
+  goToWishDetail: function(e) {
+    var wishId = e.currentTarget.dataset.id;
+    if (wishId) {
+      wx.navigateTo({
+        url: '/pages/wishDetail/wishDetail?id=' + wishId
+      });
+    }
+  },
+
   // 跳转到商品
   goToProduct: function(e) {
     const productId = e.currentTarget.dataset.id;

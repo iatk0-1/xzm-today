@@ -101,6 +101,10 @@ page {
   opacity: 0.7;
 }
 
+.user-tag-btn[disabled] {
+  opacity: 0.5;
+}
+
 .edit-icon {
   font-size: 32rpx;
   margin-left: 20rpx;

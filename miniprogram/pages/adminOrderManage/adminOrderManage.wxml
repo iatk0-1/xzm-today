@@ -119,22 +119,25 @@
         </view>
 
         <view class="action-row">
+          <!-- 联系买家（所有状态） -->
+          <view class="btn-contact" catchtap="contactBuyer" data-id="{{item.id}}">联系</view>
+
           <!-- 待付款 -->
           <view class="btn-ghost" wx:if="{{item.status === 'pending'}}" catchtap="cancelOrder" data-id="{{item.id}}">关闭订单</view>
-          
+
           <!-- 待发货 -->
           <view class="btn-ghost" wx:if="{{item.status === 'paid'}}" catchtap="cancelOrder" data-id="{{item.id}}">关闭订单</view>
           <view class="btn-solid" wx:if="{{item.status === 'paid'}}" catchtap="goToShip" data-order="{{item}}">去发货</view>
-          
+
           <!-- 已发货 -->
           <view class="btn-ghost" wx:if="{{item.status === 'shipped' && item.shipmentId}}" catchtap="cancelWaybill" data-shipment-id="{{item.shipmentId}}" data-order-no="{{item.outTradeNo}}">取消运单</view>
           <view class="btn-ghost" wx:if="{{item.status === 'shipped'}}" catchtap="viewLogistics" data-express-code="{{item.expressCode}}" data-express-no="{{item.expressNo}}">查看物流</view>
-          
+
           <!-- 部分发货 -->
           <view class="btn-ghost" wx:if="{{item.status === 'partial_shipped' && item.shipmentId}}" catchtap="cancelWaybill" data-shipment-id="{{item.shipmentId}}" data-order-no="{{item.outTradeNo}}">取消运单</view>
           <view class="btn-solid" wx:if="{{item.status === 'partial_shipped'}}" catchtap="goToShip" data-order="{{item}}">去发货</view>
           <view class="btn-ghost" wx:if="{{item.status === 'partial_shipped'}}" catchtap="viewLogistics" data-express-code="{{item.expressCode}}" data-express-no="{{item.expressNo}}">查看物流</view>
-          
+
           <!-- 已完成 -->
           <view class="btn-ghost" wx:if="{{item.status === 'completed'}}" catchtap="viewLogistics" data-express-code="{{item.expressCode}}" data-express-no="{{item.expressNo}}">查看物流</view>
         </view>

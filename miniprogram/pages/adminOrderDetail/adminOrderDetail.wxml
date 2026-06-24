@@ -20,6 +20,7 @@
         <text class="phone">{{order.recipientPhone}}</text>
       </view>
       <view class="detail-row">{{order.recipientAddress}}</view>
+      <view class="contact-buyer-btn" bindtap="contactBuyer">💬 联系买家</view>
     </view>
   </view>
 

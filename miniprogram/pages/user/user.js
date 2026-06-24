@@ -11,7 +11,8 @@ Page({
     userInfo: null,
     avatarUrl: null,
     phone: null,
-    isPhoneBound: false
+    isPhoneBound: false,
+    phoneBinding: false // 手机号绑定中状态，防止重复点击
   },
 
   onLoad: function() {
@@ -104,18 +105,61 @@ Page({
 
   // 获取手机号（微信官方回调）
   onGetPhoneNumber: async function(e) {
-    if (e.detail.errMsg !== 'getPhoneNumber:ok') {
-      wx.showToast({ title: '授权取消', icon: 'none' });
+    const errMsg = e.detail.errMsg || '';
+
+    // ── 用户取消或拒绝授权 ──
+    if (errMsg !== 'getPhoneNumber:ok') {
+      this.setData({ phoneBinding: false });
+
+      // 区分不同的失败原因，给予针对性引导
+      if (errMsg.includes('fail user deny') || errMsg.includes('fail cancel')) {
+        // 用户主动点击了"拒绝"
+        wx.showModal({
+          title: '需授权手机号',
+          content: '您拒绝了手机号授权。微信有短暂的冷却时间，请稍候几秒后重试；或前往「设置」手动开启授权。',
+          confirmText: '前往设置',
+          cancelText: '稍后重试',
+          success: (res) => {
+            if (res.confirm) {
+              wx.openSetting();
+            }
+          }
+        });
+      } else if (errMsg.includes('too frequently')) {
+        // 微信频率限制 —— 上一个请求的 resolve() 未被正确调用时会触发
+        wx.showModal({
+          title: '操作过于频繁',
+          content: '由于微信平台限制，请稍候 10 秒后再点击授权按钮。',
+          showCancel: false,
+          confirmText: '知道了'
+        });
+      } else if (errMsg.includes('privacy permission is not authorized')) {
+        // 隐私协议未授权
+        wx.showModal({
+          title: '需同意隐私协议',
+          content: '请先同意隐私协议后才能获取手机号。请前往设置开启。',
+          confirmText: '前往设置',
+          cancelText: '取消',
+          success: (res) => {
+            if (res.confirm) {
+              wx.openSetting();
+            }
+          }
+        });
+      } else {
+        // 其他未知错误
+        wx.showToast({ title: '授权失败，请稍后重试', icon: 'none', duration: 3000 });
+      }
       return;
     }
 
-    // 微信返回的 code 用于后端解密手机号
-    const { code } = e.detail;
+    // ── 授权成功，开始绑定 ──
+    this.setData({ phoneBinding: true });
 
-    wx.showLoading({ title: '绑定中...' });
+    const { code } = e.detail;
+    wx.showLoading({ title: '绑定中...', mask: true });
 
     try {
-      // 调用后端绑定接口
       const res = await api.post('/users/me/phone/bind', {
         code: code
       });
@@ -127,19 +171,28 @@ Page({
       if (userInfo) {
         userInfo.phone = res.phone;
         userInfo.isPhoneBound = true;
-        wx.setStorageSync('userInfo', userInfo);
+        wx.setStorageSync(config.USER_INFO_KEY, userInfo);
       }
 
       this.setData({
         phone: res.phone,
-        isPhoneBound: true
+        isPhoneBound: true,
+        phoneBinding: false
       });
 
       wx.showToast({ title: '绑定成功', icon: 'success' });
     } catch (err) {
       wx.hideLoading();
+      this.setData({ phoneBinding: false });
       console.error('绑定手机号失败:', err);
-      wx.showToast({ title: err?.message || '绑定失败', icon: 'none' });
+
+      // 后端返回的错误（如手机号已被绑定等）
+      wx.showModal({
+        title: '绑定失败',
+        content: err?.message || '手机号绑定失败，请稍后重试',
+        showCancel: false,
+        confirmText: '知道了'
+      });
     }
   },
 

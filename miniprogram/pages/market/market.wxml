@@ -8,7 +8,7 @@
   <view class="masonry-grid" wx:if="{{wishes.length > 0}}">
     <!-- 左列 -->
     <view class="masonry-column">
-      <view class="wish-card" wx:for="{{leftColumn}}" wx:key="id">
+      <view class="wish-card" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToWishDetail" data-id="{{item.id}}">
 
         <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
 
@@ -36,7 +36,7 @@
 
     <!-- 右列 -->
     <view class="masonry-column">
-      <view class="wish-card" wx:for="{{rightColumn}}" wx:key="id">
+      <view class="wish-card" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToWishDetail" data-id="{{item.id}}">
 
         <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
 
