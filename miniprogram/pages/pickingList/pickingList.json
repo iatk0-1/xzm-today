@@ -1,4 +1,5 @@
 {
   "usingComponents": {},
-  "navigationBarTitleText": "拣货单推荐"
+  "navigationBarTitleText": "拣货单推荐",
+  "onReachBottomDistance": 120
 }
