@@ -34,8 +34,18 @@ Page({
 
   // 加载推荐拣货单（分页）
   loadRecommendations: async function(reset = true) {
+    if (this.data.loading) return;
+
     if (reset) {
-      this.setData({ page: 0, recommendList: [], filteredList: [], hasMore: true });
+      this.setData({
+        page: 0,
+        recommendList: [],
+        filteredList: [],
+        hasMore: true,
+        selectedCount: 0,
+        totalQty: 0,
+        allSelected: false
+      });
     }
     
     if (!this.data.hasMore) return;
@@ -53,14 +63,16 @@ Page({
         imageUrl: item.imageUrl || '',
         defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png'
       }));
+      const nextList = reset ? newList : [...this.data.recommendList, ...newList];
+      const hasMore = res.hasNext !== undefined ? res.hasNext : newList.length === size;
       
       this.setData({
-        recommendList: reset ? newList : [...this.data.recommendList, ...newList],
-        filteredList: reset ? newList : [...this.data.filteredList, ...newList],
-        page: this.data.page + 1,
-        hasMore: res.hasNext,
-        selectedCount: 0,
-        totalQty: 0,
+        recommendList: nextList,
+        filteredList: nextList,
+        page: page + 1,
+        hasMore: hasMore,
+        selectedCount: reset ? 0 : this.data.selectedCount,
+        totalQty: reset ? 0 : this.data.totalQty,
         allSelected: false,
         loading: false
       });
@@ -68,6 +80,13 @@ Page({
       console.error('加载推荐拣货单失败:', err);
       wx.showToast({ title: '加载失败', icon: 'none' });
       this.setData({ loading: false });
+    }
+  },
+
+  // 触底加载更多
+  onReachBottom: function() {
+    if (this.data.hasMore && !this.data.loading) {
+      this.loadRecommendations(false);
     }
   },
 

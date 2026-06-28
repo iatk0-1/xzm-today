@@ -80,6 +80,11 @@
     <view class="loading-state" wx:if="{{loading}}">
       <text>加载中...</text>
     </view>
+
+    <!-- 没有更多 -->
+    <view class="loading-state" wx:if="{{recommendList.length > 0 && !loading && !hasMore}}">
+      <text>没有更多了</text>
+    </view>
   </view>
 
   <!-- 报单详情弹窗 -->
