@@ -586,12 +586,18 @@ Page({
       return;
     }
 
-    // 检查剩余单号
+    // 检查剩余单号：按收件人分组后需要的面单数 vs 剩余余额
     const account = this.data.logisticsAccounts[this.data.logisticsIndex];
-    if (account.quotaNum < this.data.selectedItems.length) {
-      wx.showToast({ 
-        title: `剩余单号不足 (${account.quotaNum} < ${this.data.selectedItems.length})`, 
-        icon: 'none' 
+    const groupsMap = {};
+    this.data.selectedItems.forEach(item => {
+      const key = `${item.recipientName}|${item.recipientPhone}|${item.recipientAddress}`;
+      groupsMap[key] = true;
+    });
+    const neededWaybills = Object.keys(groupsMap).length;
+    if (account.quotaNum < neededWaybills) {
+      wx.showToast({
+        title: `剩余单号不足 (${account.quotaNum} < ${neededWaybills})`,
+        icon: 'none'
       });
       return;
     }
