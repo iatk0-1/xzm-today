@@ -29,17 +29,19 @@
       </view>
       <text>全选</text>
     </view>
-    <view class="selected-info" wx:if="{{selectedCount > 0}}">
-      <text>已选 {{selectedCount}} 个</text>
+    <view class="selected-info {{selectedCount === 0 ? 'empty' : ''}}">
+      <text wx:if="{{selectedCount > 0}}">已选 {{selectedCount}} 个报单</text>
+      <text wx:else>未选择报单</text>
     </view>
     <button class="btn-batch-cancel" bindtap="batchCancel" disabled="{{selectedCount === 0}}">
-      批量撤销 ({{selectedCount}})
+      <text wx:if="{{selectedCount > 0}}">撤销 {{selectedCount}}</text>
+      <text wx:else>撤销</text>
     </button>
   </view>
 
   <!-- 报单列表 -->
   <view class="order-list">
-    <view class="order-item" wx:for="{{displayList}}" wx:key="id">
+    <view class="order-item {{item.selected ? 'selected' : ''}}" wx:for="{{displayList}}" wx:key="id">
       <view class="item-checkbox" wx:if="{{status === 'ordered'}}">
         <view class="checkbox {{item.selected ? 'checked' : ''}}" bindtap="toggleSelect" data-index="{{index}}">
           <text wx:if="{{item.selected}}">✓</text>
@@ -47,14 +49,16 @@
       </view>
       <image class="order-image" src="{{item.imageUrl ? item.imageUrl : (item.defaultImageUrl || '/images/default-goods-image.png')}}" mode="aspectFill" lazy-load="true" binderror="onImageError" data-index="{{index}}" />
       <view class="order-info">
-        <view class="order-name">{{item.productName}}</view>
-        <view class="order-sku">{{item.spec}} {{item.size}}</view>
-        <view class="order-detail">
-          <text class="qty">数量：{{item.qty}}</text>
-          <text class="time">{{item.createdAt}}</text>
+        <view class="order-main">
+          <view class="order-name">{{item.productName}}</view>
+          <view class="order-status {{item.status}}">
+            {{item.status === 'ordered' ? '已报单' : '已撤销'}}
+          </view>
         </view>
-        <view class="order-status {{item.status}}">
-          {{item.status === 'ordered' ? '已报单' : '已撤销'}}
+        <view class="order-sku">{{item.spec || '默认规格'}} · {{item.size || '均码'}}</view>
+        <view class="order-meta">
+          <view class="meta-chip">数量 {{item.qty}}</view>
+          <view class="meta-time">{{item.createdAt}}</view>
         </view>
       </view>
       <view class="order-action" wx:if="{{item.status === 'ordered'}}">

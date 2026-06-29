@@ -38,8 +38,9 @@
       </view>
       <text>全选</text>
     </view>
-    <view class="selected-info" wx:if="{{selectedCount > 0}}">
-      <text>已选 {{selectedCount}} 个 SKU，共 {{totalQty}} 件</text>
+    <view class="selected-info {{selectedCount === 0 ? 'empty' : ''}}">
+      <text wx:if="{{selectedCount > 0}}">已选 {{selectedCount}} 个 SKU，共 {{totalQty}} 件</text>
+      <text wx:else>未选择商品</text>
     </view>
     <button class="btn-order" bindtap="createPurchaseOrder" disabled="{{selectedCount === 0}}">去报单</button>
   </view>

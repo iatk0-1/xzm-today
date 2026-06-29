@@ -65,6 +65,7 @@ page {
   padding: 16rpx;
   margin-bottom: 14rpx;
   box-sizing: border-box;
+  width: 100%;
 }
 
 .filter-tabs {
@@ -132,6 +133,8 @@ page {
   margin-bottom: 14rpx;
   gap: 12rpx;
   box-sizing: border-box;
+  width: 100%;
+  min-height: 86rpx;
 }
 
 .select-all {
@@ -148,6 +151,12 @@ page {
   color: #666;
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.selected-info.empty text {
+  color: #a1a8b3;
 }
 
 .selected-info text {
