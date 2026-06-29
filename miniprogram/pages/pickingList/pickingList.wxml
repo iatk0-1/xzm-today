@@ -2,7 +2,10 @@
 <view class="container">
   <!-- 顶部导航栏 -->
   <view class="header-bar">
-    <view class="header-title">拣货单推荐</view>
+    <view class="header-main">
+      <view class="header-title">拣货单推荐</view>
+      <view class="header-subtitle">按未发货需求生成报单数量</view>
+    </view>
     <button class="btn-history" bindtap="goToOrders">报单记录</button>
   </view>
 
@@ -36,15 +39,14 @@
       <text>全选</text>
     </view>
     <view class="selected-info" wx:if="{{selectedCount > 0}}">
-      <text>已选 {{selectedCount}} 个 SKU</text>
-      <text>共 {{totalQty}} 件</text>
+      <text>已选 {{selectedCount}} 个 SKU，共 {{totalQty}} 件</text>
     </view>
     <button class="btn-order" bindtap="createPurchaseOrder" disabled="{{selectedCount === 0}}">去报单</button>
   </view>
 
   <!-- 推荐列表 -->
   <view class="recommend-list">
-    <view class="recommend-item" wx:for="{{recommendList}}" wx:key="skuId">
+    <view class="recommend-item {{item.selected ? 'selected' : ''}}" wx:for="{{recommendList}}" wx:key="skuId">
       <view class="item-checkbox" wx:if="{{filterStatus === 'pending'}}">
         <view class="checkbox {{item.selected ? 'checked' : ''}}" bindtap="toggleSelect" data-index="{{index}}">
           <text wx:if="{{item.selected}}">✓</text>
@@ -61,11 +63,20 @@
         />
         <view class="item-info">
           <view class="item-name">{{item.productName}}</view>
-          <view class="item-sku">{{item.spec}} {{item.size}}</view>
+          <view class="item-sku">{{item.spec || '默认规格'}} · {{item.size || '均码'}}</view>
           <view class="item-stats">
-            <text class="stat">未发货：{{item.unshippedQty}}</text>
-            <text class="stat">已报单：{{item.orderedQty}}</text>
-            <text class="stat recommend">待报单：{{item.recommendQty}}</text>
+            <view class="stat">
+              <text class="stat-label">未发</text>
+              <text class="stat-value">{{item.unshippedQty}}</text>
+            </view>
+            <view class="stat">
+              <text class="stat-label">已报</text>
+              <text class="stat-value">{{item.orderedQty}}</text>
+            </view>
+            <view class="stat recommend">
+              <text class="stat-label">待报</text>
+              <text class="stat-value">{{item.recommendQty}}</text>
+            </view>
           </view>
         </view>
       </view>
