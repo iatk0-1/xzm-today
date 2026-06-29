@@ -170,6 +170,23 @@ page {
   flex: 1;
   font-size: 28rpx;
   color: #111;
+  min-width: 0;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+
+.form-actions .copy-link {
+  margin-left: 0;
+}
+
+.scan-link {
+  background: #eef7ff;
+  color: #2b5aad;
 }
 
 .form-hint {

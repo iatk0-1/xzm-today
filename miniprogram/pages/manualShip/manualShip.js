@@ -208,33 +208,89 @@ Page({
   },
 
   onExpressNoInput: function(e) {
-    const expressNo = e.detail.value.trim().toUpperCase();
-    this.setData({ expressNo, expressNoUsed: false, expressNoUsageInfo: '' });
+    const expressNo = this.normalizeExpressNo(e.detail.value);
+    this.applyExpressNo(expressNo);
+  },
+
+  onExpressNoBlur: function() {
+    const expressNo = this.data.expressNo.trim();
+    this.checkExpressNoUsage(expressNo);
+  },
+
+  scanExpressNo: function() {
+    wx.scanCode({
+      onlyFromCamera: true,
+      scanType: ['barCode', 'qrCode'],
+      success: (res) => {
+        const expressNo = this.normalizeExpressNo(res.result);
+        if (!expressNo) {
+          wx.showToast({ title: '未识别到单号', icon: 'none' });
+          return;
+        }
+        this.applyExpressNo(expressNo, true);
+      },
+      fail: (err) => {
+        if (err && err.errMsg && err.errMsg.indexOf('cancel') !== -1) {
+          return;
+        }
+        wx.showToast({ title: '扫码失败', icon: 'none' });
+      }
+    });
+  },
+
+  normalizeExpressNo: function(value) {
+    const lines = String(value || '')
+      .split('\n')
+      .map(item => item.trim());
+    const firstValidLine = lines.find(Boolean);
+    return firstValidLine ? firstValidLine.toUpperCase() : '';
+  },
+
+  applyExpressNo: function(expressNo, shouldCheckUsage) {
+    const nextData = {
+      expressNo,
+      expressNoUsed: false,
+      expressNoUsageInfo: '',
+      detectedCourier: null
+    };
 
     if (!this.data.manualCourierSelected && expressNo.length >= 8) {
       const matched = COURIER_PATTERNS.find(c => c.pattern.test(expressNo));
       if (matched) {
         const idx = this.data.expressCodeList.findIndex(c => c.code === matched.code);
         if (idx >= 0) {
-          this.setData({
-            detectedCourier: matched,
-            expressCodeIndex: idx,
-            expressCode: matched.code
-          });
-          return;
+          nextData.detectedCourier = matched;
+          nextData.expressCodeIndex = idx;
+          nextData.expressCode = matched.code;
         }
       }
     }
-    this.setData({ detectedCourier: null });
+
+    this.setData(nextData, () => {
+      if (shouldCheckUsage) {
+        this.checkExpressNoUsage(expressNo);
+      }
+    });
   },
 
-  onExpressNoBlur: function() {
-    const expressNo = this.data.expressNo.trim();
-    if (!expressNo || expressNo.length < 4) return;
+  checkExpressNoUsage: function(expressNo) {
+    if (!expressNo || expressNo.length < 4) {
+      this.setData({
+        expressNoChecking: false,
+        expressNoUsed: false,
+        expressNoUsageInfo: ''
+      });
+      return;
+    }
 
+    this.expressNoCheckToken = expressNo;
     this.setData({ expressNoChecking: true });
     api.get(`/shipments/check-express-no?expressNo=${encodeURIComponent(expressNo)}`)
       .then(res => {
+        if (this.expressNoCheckToken !== expressNo) {
+          return;
+        }
+
         if (res && res.used) {
           const orderNos = res.usages.map(u => u.outTradeNo).join('、');
           this.setData({
@@ -246,7 +302,11 @@ Page({
         }
       })
       .catch(() => {})
-      .finally(() => this.setData({ expressNoChecking: false }));
+      .finally(() => {
+        if (this.expressNoCheckToken === expressNo) {
+          this.setData({ expressNoChecking: false });
+        }
+      });
   },
 
   // ── 勾选 ──

@@ -62,7 +62,10 @@
              value="{{expressNo}}"
              bindinput="onExpressNoInput"
              bindblur="onExpressNoBlur" />
-      <text class="copy-link" wx:if="{{expressNo}}" catchtap="copyExpressNo">复制</text>
+      <view class="form-actions">
+        <text class="copy-link scan-link" catchtap="scanExpressNo">扫码</text>
+        <text class="copy-link" wx:if="{{expressNo}}" catchtap="copyExpressNo">复制</text>
+      </view>
     </view>
 
     <!-- 单号检测 -->

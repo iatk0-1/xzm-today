@@ -75,6 +75,14 @@ Page({
     clipboard.copyText(this.data.expressNo, '快递单号');
   },
 
+  normalizeExpressNo: function(value) {
+    const lines = String(value || '')
+      .split('\n')
+      .map(item => item.trim());
+    const firstValidLine = lines.find(Boolean);
+    return firstValidLine ? firstValidLine.toUpperCase() : '';
+  },
+
   // 加载快递公司列表
   loadDeliveryCompanies: async function() {
     try {
@@ -427,10 +435,54 @@ Page({
             this.doSubmitShipment();
           });
         } else if (res.cancel) {
-          // 手动填单模式 - 先输入单号
+          // 手动填单模式 - 支持扫码或手动输入
+          this.showManualWaybillOptions();
+        }
+      }
+    });
+  },
+
+  showManualWaybillOptions: function() {
+    wx.showActionSheet({
+      itemList: ['扫码录入', '手动输入'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          this.scanManualWaybill();
+        } else if (res.tapIndex === 1) {
           this.showManualWaybillInput();
         }
       }
+    });
+  },
+
+  scanManualWaybill: function() {
+    wx.scanCode({
+      onlyFromCamera: true,
+      scanType: ['barCode', 'qrCode'],
+      success: (res) => {
+        const expressNo = this.normalizeExpressNo(res.result);
+        if (!expressNo) {
+          wx.showToast({ title: '未识别到单号', icon: 'none' });
+          return;
+        }
+        this.confirmManualWaybill(expressNo);
+      },
+      fail: (err) => {
+        if (err && err.errMsg && err.errMsg.indexOf('cancel') !== -1) {
+          return;
+        }
+        wx.showToast({ title: '扫码失败', icon: 'none' });
+      }
+    });
+  },
+
+  confirmManualWaybill: function(expressNo) {
+    this.setData({
+      mode: 'manual',
+      expressNo: expressNo,
+      hasSelectedShipping: true
+    }, () => {
+      this.doSubmitShipment();
     });
   },
 
@@ -442,14 +494,9 @@ Page({
       placeholderText: '中通快递单号，例如：755308483428',
       confirmText: '确认发货',
       success: (res) => {
-        if (res.confirm && res.content && res.content.trim()) {
-          this.setData({
-            mode: 'manual',
-            expressNo: res.content.trim(),
-            hasSelectedShipping: true
-          }, () => {
-            this.doSubmitShipment();
-          });
+        const expressNo = this.normalizeExpressNo(res.content);
+        if (res.confirm && expressNo) {
+          this.confirmManualWaybill(expressNo);
         } else if (res.confirm) {
           wx.showToast({ title: '请输入快递单号', icon: 'none' });
           this.showManualWaybillInput();  // 重新输入
