@@ -61,16 +61,24 @@
         <view class="order-checkbox {{group.selected ? 'checked' : ''}}" bindtap="toggleGroupSelect" data-index="{{index}}">
           <text wx:if="{{group.selected}}">✓</text>
         </view>
-        <view class="order-info">
-          <view class="order-no-line">
-            <text class="order-no">订单：{{group.orderNo}}</text>
-            <text class="copy-link" catchtap="copyOrderNo" data-order-no="{{group.orderNo}}">复制</text>
+        <view class="order-summary">
+          <view class="summary-row">
+            <view class="summary-main">
+              <text class="summary-label">订单号</text>
+              <text class="order-no">{{group.orderNo}}</text>
+            </view>
+            <text class="copy-link summary-action" catchtap="copyOrderNo" data-order-no="{{group.orderNo}}">复制</text>
           </view>
           <text class="order-date">{{group.createdAt}}</text>
-        </view>
-        <view class="recipient-info">
-          <text>{{group.recipientName}} {{group.recipientPhone}}</text>
-          <text class="copy-link" catchtap="copyRecipientInfo" data-name="{{group.recipientName}}" data-phone="{{group.recipientPhone}}" data-address="{{group.recipientAddress}}">复制</text>
+          <view class="summary-row recipient-row">
+            <view class="summary-main recipient-main">
+              <text class="summary-label">收件人</text>
+              <text class="recipient-name">{{group.recipientName}}</text>
+              <text class="recipient-phone">{{group.recipientPhone}}</text>
+            </view>
+            <text class="copy-link summary-action" catchtap="copyRecipientInfo" data-name="{{group.recipientName}}" data-phone="{{group.recipientPhone}}" data-address="{{group.recipientAddress}}">复制</text>
+          </view>
+          <text class="recipient-address">{{group.recipientAddress}}</text>
         </view>
       </view>
 
