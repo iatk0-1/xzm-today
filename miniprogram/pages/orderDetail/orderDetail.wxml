@@ -21,6 +21,7 @@
       </view>
       <view class="detail-row">{{order.recipientAddress}}</view>
     </view>
+    <view class="btn-copy address-copy" catchtap="copyRecipientInfo">复制</view>
   </view>
 
   <view class="info-card goods-card">
@@ -100,7 +101,10 @@
           </view>
           <view class="info-row">
             <text class="label">快递单号</text>
-            <text class="value">{{item.expressNo}}</text>
+            <view class="value-box">
+              <text class="value">{{item.expressNo}}</text>
+              <text class="btn-copy" catchtap="copyExpressNo" data-express-no="{{item.expressNo}}">复制</text>
+            </view>
           </view>
         </view>
 

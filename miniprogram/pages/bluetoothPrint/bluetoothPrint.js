@@ -1,5 +1,6 @@
 // miniprogram/pages/bluetoothPrint/bluetoothPrint.js
 const api = require('../../utils/api');
+const clipboard = require('../../utils/clipboard');
 const { printer } = require('../../utils/bluetooth-printer');
 
 Page({
@@ -67,6 +68,10 @@ Page({
 
   onUnload: function() {
     // 页面卸载时不断开蓝牙，保持连接状态
+  },
+
+  copyExpressNo: function() {
+    clipboard.copyText(this.data.expressNo, '快递单号');
   },
 
   // 加载面单图片

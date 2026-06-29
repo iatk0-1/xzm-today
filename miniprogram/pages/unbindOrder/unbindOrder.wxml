@@ -5,7 +5,10 @@
     <view class="info-title">发货单 #{{shipmentId}}</view>
     <view class="info-detail">
       <text>快递公司：{{expressCode}}</text>
-      <text wx:if="{{expressNo}}">运单号：{{expressNo}}</text>
+      <view class="copy-line" wx:if="{{expressNo}}">
+        <text>运单号：{{expressNo}}</text>
+        <text class="copy-btn" catchtap="copyExpressNo">复制</text>
+      </view>
     </view>
   </view>
 
@@ -16,7 +19,10 @@
     <view class="order-item" wx:for="{{orders}}" wx:key="id" wx:for-item="order" wx:for-index="index">
       <!-- 订单头部 -->
       <view class="order-header">
-        <view class="order-id">订单号：{{order.outTradeNo}}</view>
+        <view class="order-id-box">
+          <view class="order-id">订单号：{{order.outTradeNo}}</view>
+          <text class="copy-btn" catchtap="copyOrderNo" data-order-no="{{order.outTradeNo}}">复制</text>
+        </view>
         <view class="order-status {{order.status}}">{{order.status === 'paid' ? '待发货' : (order.status === 'shipped' ? '已发货' : order.status)}}</view>
       </view>
 

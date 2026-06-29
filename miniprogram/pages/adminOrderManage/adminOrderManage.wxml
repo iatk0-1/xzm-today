@@ -52,7 +52,10 @@
     <view class="order-card" wx:for="{{orders}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
 
       <view class="card-header">
-        <text class="order-sn">订单号：{{item.outTradeNo}}</text>
+        <view class="order-sn-wrap">
+          <text class="order-sn">订单号：{{item.outTradeNo}}</text>
+          <text class="copy-link" catchtap="copyOrderNo" data-order-no="{{item.outTradeNo}}">复制</text>
+        </view>
         <view class="status-wrapper">
           <text class="order-status {{item.status === 'paid' ? 'highlight' : ''}}">{{item.statusDisplay}}</text>
           <text class="after-sale-badge" wx:if="{{item.hasAfterSale}}">售后</text>
@@ -104,13 +107,17 @@
       <view class="card-footer">
         <!-- 收件人信息 -->
         <view class="recipient-info" wx:if="{{item.recipientName}}">
-          <text>{{item.recipientName}} {{item.recipientPhone}}</text>
+          <view class="recipient-head">
+            <text>{{item.recipientName}} {{item.recipientPhone}}</text>
+            <text class="copy-link" catchtap="copyRecipientInfo" data-name="{{item.recipientName}}" data-phone="{{item.recipientPhone}}" data-address="{{item.recipientAddress}}">复制</text>
+          </view>
           <text class="recipient-address">{{item.recipientAddress}}</text>
         </view>
         
         <!-- 物流信息 -->
         <view class="logistics-info" wx:if="{{item.expressCode && item.expressNo}}">
           <text class="express-text">{{item.expressCompany}}：{{item.expressNo}}</text>
+          <text class="copy-link express-copy" catchtap="copyExpressNo" data-express-no="{{item.expressNo}}">复制</text>
         </view>
         
         <view class="total-row">

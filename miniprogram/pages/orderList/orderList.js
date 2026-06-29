@@ -1,5 +1,6 @@
 // miniprogram/pages/orderList/orderList.js
 const api = require('../../utils/api');
+const clipboard = require('../../utils/clipboard');
 
 // 状态映射（前端中文 -> 后端英文）
 const STATUS_MAP = {
@@ -67,6 +68,10 @@ Page({
     wx.navigateTo({
       url: `/pages/orderDetail/orderDetail?id=${id}`
     });
+  },
+
+  copyOrderNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.orderNo, '订单号');
   },
 
   // 改造：从后端 API 获取订单列表

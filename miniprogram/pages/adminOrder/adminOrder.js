@@ -1,5 +1,6 @@
 // adminOrder.js - 完整版
 const api = require('../../utils/api');
+const clipboard = require('../../utils/clipboard');
 
 Page({
   data: {
@@ -27,6 +28,18 @@ Page({
     this.loadLogisticsAccounts();
     // 空搜索时，自动加载所有未发货商品明细
     this.loadAllPendingItems();
+  },
+
+  copyOrderNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.orderNo, '订单号');
+  },
+
+  copyRecipientInfo: function(e) {
+    clipboard.copyRecipient({
+      recipientName: e.currentTarget.dataset.name,
+      recipientPhone: e.currentTarget.dataset.phone,
+      recipientAddress: e.currentTarget.dataset.address
+    });
   },
 
   // ==================== 物流账号管理 ====================

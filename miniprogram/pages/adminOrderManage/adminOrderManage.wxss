@@ -77,6 +77,13 @@ page { background-color: #f2f2f2; }
   gap: 6rpx;
 }
 
+.recipient-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
 .recipient-address {
   color: #999;
   font-size: 22rpx;
@@ -91,11 +98,19 @@ page { background-color: #f2f2f2; }
   border: 1rpx solid #fce4e4;
   font-size: 22rpx;
   color: #d32f2f;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
 }
 
 .express-text {
   font-family: inherit;
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
 }
+
+.express-copy { color: #d32f2f; background: #fff; }
 
 /* 顶部 Tab 栏 */
 .tabs-bar-wrapper {
@@ -162,7 +177,9 @@ page { background-color: #f2f2f2; }
 .order-card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
 
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24rpx; padding-bottom: 16rpx; border-bottom: 1rpx solid #f0f0f0; }
+.order-sn-wrap { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10rpx; }
 .order-sn { font-size: 22rpx; color: #999; font-family: inherit; }
+.copy-link { flex-shrink: 0; padding: 4rpx 12rpx; font-size: 22rpx; line-height: 1.3; color: #576b95; background: #f5f7fa; border-radius: 6rpx; }
 .status-wrapper { display: flex; align-items: center; gap: 12rpx; }
 .order-status { font-size: 26rpx; color: #1a1a1a; font-weight: 600; }
 .order-status.highlight { color: #d32f2f; }

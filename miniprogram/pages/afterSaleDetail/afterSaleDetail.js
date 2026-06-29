@@ -1,5 +1,6 @@
 // miniprogram/pages/afterSaleDetail/afterSaleDetail.js
 const api = require('../../utils/api');
+const clipboard = require('../../utils/clipboard');
 
 Page({
   data: {
@@ -224,16 +225,11 @@ Page({
   // 复制快递单号
   copyExpressNo: function() {
     const afterSale = this.data.afterSale;
-    if (!afterSale.returnExpressNo) {
-      wx.showToast({ title: '没有物流单号', icon: 'none' });
-      return;
-    }
+    clipboard.copyText(afterSale && afterSale.returnExpressNo, '快递单号');
+  },
 
-    wx.setClipboardData({
-      data: afterSale.returnExpressNo,
-      success: () => {
-        wx.showToast({ title: '已复制', icon: 'success' });
-      }
-    });
+  copyOrderNo: function() {
+    const afterSale = this.data.afterSale || {};
+    clipboard.copyText(afterSale.outTradeNo, '订单号');
   }
 });

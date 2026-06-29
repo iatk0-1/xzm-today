@@ -47,6 +47,17 @@ page {
   margin-left: 16rpx;
 }
 
+.copy-link {
+  flex-shrink: 0;
+  padding: 4rpx 12rpx;
+  font-size: 22rpx;
+  line-height: 1.3;
+  color: #576b95;
+  background: #eef3fb;
+  border-radius: 6rpx;
+  margin-left: 12rpx;
+}
+
 .recipient-block {
   background: #f8f8fa;
   border-radius: 12rpx;
@@ -57,6 +68,15 @@ page {
   display: flex;
   align-items: center;
   margin-bottom: 8rpx;
+}
+
+.recipient-line-head {
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.recipient-user {
+  min-width: 0;
 }
 
 .recipient-name {

@@ -1,5 +1,6 @@
 // miniprogram/pages/afterSaleApply/afterSaleApply.js
 const api = require('../../utils/api');
+const clipboard = require('../../utils/clipboard');
 
 // 售后原因选项
 const REASON_OPTIONS = [
@@ -39,6 +40,11 @@ Page({
       wx.showToast({ title: '订单参数丢失', icon: 'none' });
       setTimeout(() => wx.navigateBack(), 1500);
     }
+  },
+
+  copyOrderNo: function() {
+    const order = this.data.order || {};
+    clipboard.copyText(order.outTradeNo, '订单号');
   },
 
   // 加载订单详情并拆分商品

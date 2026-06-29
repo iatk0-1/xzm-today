@@ -5,11 +5,15 @@
     <view class="card-hd">
       <text class="card-hd-title">订单信息</text>
       <text class="order-no">{{orderNo}}</text>
+      <text class="copy-link" catchtap="copyOrderNo">复制</text>
     </view>
     <view class="recipient-block">
-      <view class="recipient-line">
-        <text class="recipient-name">{{recipientName}}</text>
-        <text class="recipient-phone">{{recipientPhone}}</text>
+      <view class="recipient-line recipient-line-head">
+        <view class="recipient-user">
+          <text class="recipient-name">{{recipientName}}</text>
+          <text class="recipient-phone">{{recipientPhone}}</text>
+        </view>
+        <text class="copy-link" catchtap="copyRecipientInfo">复制</text>
       </view>
       <view class="recipient-addr">{{recipientAddress}}</view>
     </view>
@@ -58,6 +62,7 @@
              value="{{expressNo}}"
              bindinput="onExpressNoInput"
              bindblur="onExpressNoBlur" />
+      <text class="copy-link" wx:if="{{expressNo}}" catchtap="copyExpressNo">复制</text>
     </view>
 
     <!-- 单号检测 -->

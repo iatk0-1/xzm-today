@@ -1,5 +1,6 @@
 // miniprogram/pages/shipPartial/shipPartial.js
 const api = require('../../utils/api');
+const clipboard = require('../../utils/clipboard');
 
 Page({
   data: {
@@ -66,6 +67,14 @@ Page({
     this.loadOrderItems();
   },
 
+  copyOrderNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.orderNo, '订单号');
+  },
+
+  copyExpressNo: function() {
+    clipboard.copyText(this.data.expressNo, '快递单号');
+  },
+
   // 加载快递公司列表
   loadDeliveryCompanies: async function() {
     try {
@@ -126,10 +135,10 @@ Page({
       let allItems = [];
 
       // 从库存发货模式
-      if (this.data.fromInventory) {
-        await this.loadFromInventoryItems();
-        return;
-      }
+    if (this.data.fromInventory) {
+      await this.loadFromInventoryItems();
+      return;
+    }
 
       // 如果有 mergeGroupId，从合并组加载所有订单的商品
       if (this.data.mergeGroupId) {
@@ -145,6 +154,7 @@ Page({
             ...item,
             id: item.id,  // 订单项 ID
             orderId: orderId,
+            orderNo: detail.outTradeNo || orderId,
             maxShipQty: item.qty - (item.shippedQty || 0),  // 可发货数量 = 总数量 - 已发数量
             shipQty: 0,  // 本次发货数量，默认 0
             shippedQty: item.shippedQty || 0,  // 已发货数量
@@ -166,6 +176,7 @@ Page({
             ...item,
             id: item.id,
             orderId: orderId,
+            orderNo: detail.outTradeNo || orderId,
             maxShipQty: item.qty - (item.shippedQty || 0),
             shipQty: 0,
             shippedQty: item.shippedQty || 0,
@@ -186,6 +197,7 @@ Page({
             ...item,
             id: item.orderItemId,
             orderId: this.data.orderId,
+            orderNo: detail.outTradeNo || this.data.orderId,
             maxShipQty: item.canShipQty,
             shipQty: 0,
             shippedQty: item.shippedQty,
@@ -198,6 +210,7 @@ Page({
             ...item,
             id: item.id,
             orderId: this.data.orderId,
+            orderNo: detail.outTradeNo || this.data.orderId,
             maxShipQty: item.qty - (item.shippedQty || 0),
             shipQty: 0,
             shippedQty: item.shippedQty || 0,

@@ -1,6 +1,7 @@
 // miniprogram/pages/logistics/expressBatchManage/expressBatchManage.js
 const api = require('../../../utils/api');
 const config = require('../../../utils/config');
+const clipboard = require('../../../utils/clipboard');
 
 Page({
   data: {
@@ -32,6 +33,14 @@ Page({
   onLoad: function() {
     this.loadDeliveryCompanies();
     this.loadWaybills();
+  },
+
+  copyOrderNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.orderNo, '订单号');
+  },
+
+  copyWaybillNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.waybillNo, '快递单号');
   },
 
   // 加载快递公司列表

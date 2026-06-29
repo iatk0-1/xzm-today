@@ -62,11 +62,15 @@
           <text wx:if="{{group.selected}}">✓</text>
         </view>
         <view class="order-info">
-          <text class="order-no">订单：{{group.orderNo}}</text>
+          <view class="order-no-line">
+            <text class="order-no">订单：{{group.orderNo}}</text>
+            <text class="copy-link" catchtap="copyOrderNo" data-order-no="{{group.orderNo}}">复制</text>
+          </view>
           <text class="order-date">{{group.createdAt}}</text>
         </view>
         <view class="recipient-info">
           <text>{{group.recipientName}} {{group.recipientPhone}}</text>
+          <text class="copy-link" catchtap="copyRecipientInfo" data-name="{{group.recipientName}}" data-phone="{{group.recipientPhone}}" data-address="{{group.recipientAddress}}">复制</text>
         </view>
       </view>
 
@@ -151,7 +155,10 @@
         <view class="preview-group" wx:for="{{previewGroups}}" wx:key="index" wx:for-index="index" wx:for-item="group">
           <view class="preview-title">包裹 {{index + 1}} (共 {{group.totalItems}} 件)</view>
           <view class="preview-recipient">
-            <text>{{group.recipientName}} {{group.recipientPhone}}</text>
+            <view class="preview-recipient-head">
+              <text>{{group.recipientName}} {{group.recipientPhone}}</text>
+              <text class="copy-link" catchtap="copyRecipientInfo" data-name="{{group.recipientName}}" data-phone="{{group.recipientPhone}}" data-address="{{group.recipientAddress}}">复制</text>
+            </view>
             <text>{{group.recipientAddress}}</text>
           </view>
           <view class="preview-items">

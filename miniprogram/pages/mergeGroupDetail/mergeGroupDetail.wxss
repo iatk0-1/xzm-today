@@ -22,6 +22,28 @@ page {
   margin-bottom: 24rpx;
 }
 
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.card-title-row .card-title {
+  margin-bottom: 0;
+}
+
+.copy-btn {
+  flex-shrink: 0;
+  padding: 4rpx 12rpx;
+  font-size: 22rpx;
+  line-height: 1.3;
+  color: #576b95;
+  background: #f5f7fa;
+  border-radius: 6rpx;
+}
+
 .info-row {
   display: flex;
   justify-content: space-between;
@@ -85,6 +107,13 @@ page {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12rpx;
+}
+
+.order-id-box {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  min-width: 0;
 }
 
 .order-id {
@@ -231,6 +260,20 @@ page {
   font-size: 24rpx;
   color: #333;
   font-family: -apple-system, sans-serif;
+}
+
+.value-copy-box {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.value-copy-box .value {
+  word-break: break-all;
+  text-align: right;
 }
 
 /* 空状态 */

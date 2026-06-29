@@ -82,8 +82,8 @@
       <!-- 订单号 -->
       <view class="item-order">
         <text class="order-label">订单号：</text>
-        <text class="order-no" bindtap="copyOrderNo" data-orderno="{{item.outTradeNo}}" catchtap="copyOrderNo">{{item.outTradeNo}}</text>
-        <text class="copy-hint">复制</text>
+        <text class="order-no">{{item.outTradeNo}}</text>
+        <text class="copy-hint" catchtap="copyOrderNo" data-orderno="{{item.outTradeNo}}">复制</text>
       </view>
 
       <!-- 商品信息 -->

@@ -1,5 +1,6 @@
 // miniprogram/pages/mergeGroupDetail/mergeGroupDetail.js
 const api = require('../../utils/api');
+const clipboard = require('../../utils/clipboard');
 
 Page({
   data: {
@@ -20,6 +21,18 @@ Page({
       this.loadMergeGroupDetail();
     });
     wx.setNavigationBarTitle({ title: `合并订单 #${mergeGroupId}` });
+  },
+
+  copyOrderNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.orderNo, '订单号');
+  },
+
+  copyExpressNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.expressNo, '快递单号');
+  },
+
+  copyRecipientInfo: function() {
+    clipboard.copyRecipient(this.data.mergeGroup || {});
   },
 
   // 加载合并组详情

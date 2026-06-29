@@ -80,6 +80,20 @@
   color: #111;
 }
 
+.info-value-box {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.info-value-box .info-value {
+  word-break: break-all;
+  text-align: right;
+}
+
 /* 商品列表 */
 .items-list {
   display: flex;

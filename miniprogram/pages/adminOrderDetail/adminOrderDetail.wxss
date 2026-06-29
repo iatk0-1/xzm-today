@@ -23,16 +23,27 @@ page { background-color: #f2f2f2; }
 .name { font-size: 28rpx; font-weight: 600; color: #1a1a1a; }
 .phone { font-size: 26rpx; color: #666; }
 .detail-row { font-size: 26rpx; color: #666; line-height: 1.5; }
-.contact-buyer-btn {
+.address-actions {
+  display: flex;
+  gap: 12rpx;
   margin-top: 20rpx;
+}
+.contact-buyer-btn, .copy-recipient-btn {
+  flex: 1;
   padding: 14rpx 0;
   text-align: center;
   font-size: 26rpx;
-  color: #111;
-  background: #f8f8f8;
   border-radius: 8rpx;
 }
+.contact-buyer-btn {
+  color: #111;
+  background: #f8f8f8;
+}
 .contact-buyer-btn:active { background: #eee; }
+.copy-recipient-btn {
+  color: #576b95;
+  background: #f5f7fa;
+}
 
 /* === 商品列表 === */
 .shop-title { font-size: 26rpx; font-weight: 600; color: #666; margin-bottom: 16rpx; }
@@ -77,6 +88,8 @@ page { background-color: #f2f2f2; }
 .shipment-index { font-size: 26rpx; font-weight: 600; color: #1a1a1a; }
 .shipment-time { font-size: 22rpx; color: #999; }
 .shipment-info { margin-bottom: 12rpx; }
+.value-box { display: flex; align-items: center; justify-content: flex-end; gap: 12rpx; flex: 1; min-width: 0; }
+.value-box .value { word-break: break-all; text-align: right; }
 .shipment-items { margin-top: 12rpx; }
 .shipment-goods { display: flex; gap: 16rpx; padding: 10rpx 0; }
 .goods-qty { font-size: 22rpx; color: #999; }

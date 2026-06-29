@@ -43,9 +43,11 @@
         </view>
         <view class="col-order">
           <text class="order-text">{{item.orderId || '-'}}</text>
+          <text class="copy-mini" wx:if="{{item.orderId}}" catchtap="copyOrderNo" data-order-no="{{item.orderId}}">复制</text>
         </view>
         <view class="col-waybill">
           <text class="waybill-text">{{item.waybillId}}</text>
+          <text class="copy-mini" catchtap="copyWaybillNo" data-waybill-no="{{item.waybillId}}">复制</text>
         </view>
         <view class="col-company">
           <text class="company-text">{{item.deliveryName}}</text>

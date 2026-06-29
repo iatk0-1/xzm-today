@@ -15,6 +15,7 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
 .address-card { display: flex; align-items: center; }
 .location-icon { font-size: 40rpx; margin-right: 20rpx; }
 .address-content { flex: 1; }
+.address-copy { flex-shrink: 0; margin-left: 16rpx; }
 .user-row { margin-bottom: 8rpx; }
 .name { font-size: 30rpx; font-weight: bold; color: #333; margin-right: 20rpx; }
 .phone { font-size: 26rpx; color: #666; font-family: -apple-system, sans-serif; }
@@ -177,6 +178,8 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
 .shipment-info .info-row:last-child { margin-bottom: 0; }
 .shipment-info .label { color: #999; }
 .shipment-info .value { color: #333; font-family: -apple-system, sans-serif; }
+.value-box { display: flex; align-items: center; justify-content: flex-end; gap: 12rpx; flex: 1; min-width: 0; }
+.value-box .value { word-break: break-all; text-align: right; }
 
 /* 发货单商品列表 */
 .shipment-items {

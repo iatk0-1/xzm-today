@@ -1,5 +1,6 @@
 // miniprogram/pages/adminOrderDetail/adminOrderDetail.js
 const api = require('../../utils/api');
+const clipboard = require('../../utils/clipboard');
 
 Page({
   data: {
@@ -149,12 +150,17 @@ Page({
 
   // 一键复制订单号
   copyOrderSn: function() {
-    wx.setClipboardData({
-      data: String(this.data.order.outTradeNo || this.data.order.id),
-      success: () => {
-        wx.showToast({ title: '单号已复制', icon: 'success' });
-      }
-    });
+    var order = this.data.order || {};
+    clipboard.copyText(order.outTradeNo || order.id, '订单号');
+  },
+
+  copyExpressNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.expressNo, '快递单号');
+  },
+
+  copyRecipientInfo: function() {
+    var order = this.data.order || {};
+    clipboard.copyRecipient(order);
   },
 
   // 预览面单 PDF

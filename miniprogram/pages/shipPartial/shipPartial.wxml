@@ -8,7 +8,10 @@
   <!-- 发货模式提示（选择后才显示） -->
   <view class="mode-banner {{mode}}" wx:if="{{hasSelectedShipping}}">
     <text wx:if="{{mode === 'electronic'}}">电子面单模式 - 自动生成运单号</text>
-    <text wx:if="{{mode === 'manual'}}">手动填单 - 单号：{{expressNo}}</text>
+    <view class="manual-express-line" wx:if="{{mode === 'manual'}}">
+      <text>手动填单 - 单号：{{expressNo}}</text>
+      <text class="copy-btn" catchtap="copyExpressNo">复制</text>
+    </view>
   </view>
 
   <!-- 快递公司选择 -->
@@ -40,7 +43,10 @@
         <view class="item-info">
           <view class="item-title">{{item.productName}}</view>
           <view class="item-sku">{{item.productSpec}} / {{item.productSize}}</view>
-          <view class="item-order-id" wx:if="{{isMerge}}">订单号：{{item.orderId}}</view>
+          <view class="item-order-id" wx:if="{{isMerge}}">
+            <text>订单号：{{item.orderNo || item.orderId}}</text>
+            <text class="copy-btn" catchtap="copyOrderNo" data-order-no="{{item.orderNo || item.orderId}}">复制</text>
+          </view>
           <view class="item-max-qty" wx:if="{{item.canShip}}">
             <text>最多可发：{{item.maxShipQty}} 件</text>
             <text wx:if="{{item.shippedQty > 0}}" class="item-partial-shipped">（已发 {{item.shippedQty}} 件）</text>

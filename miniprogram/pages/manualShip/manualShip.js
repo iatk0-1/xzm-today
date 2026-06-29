@@ -1,5 +1,6 @@
 // miniprogram/pages/manualShip/manualShip.js
 const api = require('../../utils/api');
+const clipboard = require('../../utils/clipboard');
 
 // 快递单号正则模式库 — 按匹配优先级排序
 const COURIER_PATTERNS = [
@@ -52,6 +53,22 @@ Page({
     this.setData({ orderId: orderId });
     this.loadDeliveryCompanies();
     this.loadOrderDetail(orderId);
+  },
+
+  copyOrderNo: function() {
+    clipboard.copyText(this.data.orderNo, '订单号');
+  },
+
+  copyRecipientInfo: function() {
+    clipboard.copyRecipient({
+      recipientName: this.data.recipientName,
+      recipientPhone: this.data.recipientPhone,
+      recipientAddress: this.data.recipientAddress
+    });
+  },
+
+  copyExpressNo: function() {
+    clipboard.copyText(this.data.expressNo, '快递单号');
   },
 
   loadDeliveryCompanies: async function() {

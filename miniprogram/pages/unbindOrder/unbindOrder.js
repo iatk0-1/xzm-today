@@ -1,5 +1,6 @@
 // miniprogram/pages/unbindOrder/unbindOrder.js
 const api = require('../../utils/api');
+const clipboard = require('../../utils/clipboard');
 
 Page({
   data: {
@@ -16,6 +17,14 @@ Page({
       this.loadShipmentOrders();
     });
     wx.setNavigationBarTitle({ title: `解绑订单 #${shipmentId}` });
+  },
+
+  copyOrderNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.orderNo, '订单号');
+  },
+
+  copyExpressNo: function() {
+    clipboard.copyText(this.data.expressNo, '快递单号');
   },
 
   // 加载发货单关联的订单列表

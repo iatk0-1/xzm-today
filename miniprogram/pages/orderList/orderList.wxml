@@ -35,7 +35,10 @@
     <view class="order-card" wx:for="{{orders}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
 
       <view class="card-header">
-        <text class="order-sn">订单号：{{item.outTradeNo}}</text>
+        <view class="order-sn-wrap">
+          <text class="order-sn">订单号：{{item.outTradeNo}}</text>
+          <text class="copy-link" catchtap="copyOrderNo" data-order-no="{{item.outTradeNo}}">复制</text>
+        </view>
         <view class="status-wrapper">
           <text class="order-status {{item.status === 'paid' ? 'highlight' : ''}}">{{item.statusDisplay}}</text>
           <text class="after-sale-badge" wx:if="{{item.hasAfterSale}}">售后</text>

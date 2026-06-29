@@ -117,12 +117,18 @@
   flex: 1;
   min-width: 0;
   padding-right: 6rpx;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
 }
 
 .col-waybill {
   flex: 1.2;
   min-width: 0;
   padding-right: 6rpx;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
 }
 
 .col-company {
@@ -154,6 +160,16 @@
   font-weight: 500;
   font-family: monospace;
   word-break: break-all;
+}
+
+.copy-mini {
+  flex-shrink: 0;
+  padding: 3rpx 8rpx;
+  font-size: 20rpx;
+  line-height: 1.3;
+  color: #576b95;
+  background: #f5f7fa;
+  border-radius: 6rpx;
 }
 
 .company-text {

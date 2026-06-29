@@ -1,5 +1,6 @@
 // miniprogram/pages/adminOrderManage/adminOrderManage.js
 const api = require('../../utils/api');
+const clipboard = require('../../utils/clipboard');
 
 // 状态映射（前端中文 -> 后端英文）
 const STATUS_MAP = {
@@ -70,6 +71,22 @@ Page({
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
       url: `/pages/adminOrderDetail/adminOrderDetail?id=${id}`
+    });
+  },
+
+  copyOrderNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.orderNo, '订单号');
+  },
+
+  copyExpressNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.expressNo, '快递单号');
+  },
+
+  copyRecipientInfo: function(e) {
+    clipboard.copyRecipient({
+      recipientName: e.currentTarget.dataset.name,
+      recipientPhone: e.currentTarget.dataset.phone,
+      recipientAddress: e.currentTarget.dataset.address
     });
   },
 

@@ -1,5 +1,6 @@
 // miniprogram/pages/adminAfterSaleList/adminAfterSaleList.js
 const api = require('../../utils/api');
+const clipboard = require('../../utils/clipboard');
 
 // 状态映射
 const STATUS_MAP = {
@@ -205,12 +206,6 @@ Page({
 
   // 复制订单号
   copyOrderNo: function(e) {
-    const orderNo = e.currentTarget.dataset.orderno;
-    wx.setClipboardData({
-      data: orderNo,
-      success: () => {
-        wx.showToast({ title: '已复制', icon: 'success' });
-      }
-    });
+    clipboard.copyText(e.currentTarget.dataset.orderno, '订单号');
   }
 });

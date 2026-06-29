@@ -24,6 +24,23 @@
   color: #666;
 }
 
+.order-id-box {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  min-width: 0;
+}
+
+.copy-btn {
+  flex-shrink: 0;
+  padding: 4rpx 12rpx;
+  font-size: 22rpx;
+  line-height: 1.3;
+  color: #576b95;
+  background: #f5f7fa;
+  border-radius: 6rpx;
+}
+
 .order-status {
   font-size: 26rpx;
   color: #111;

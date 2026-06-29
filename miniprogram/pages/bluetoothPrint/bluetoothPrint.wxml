@@ -20,7 +20,10 @@
       ></image>
     </view>
     <view class="waybill-info">
-      <text class="express-code">{{expressCode}} - {{expressNo}}</text>
+      <view class="express-line">
+        <text class="express-code">{{expressCode}} - {{expressNo}}</text>
+        <text class="copy-btn" catchtap="copyExpressNo" wx:if="{{expressNo}}">复制</text>
+      </view>
       <text class="waybill-type-tag {{waybillType}}" wx:if="{{waybillType}}">
         {{waybillType === 'electronic' ? '电子面单' : '自定义面单'}}
       </text>
