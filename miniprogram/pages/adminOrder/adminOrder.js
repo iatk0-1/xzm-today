@@ -393,6 +393,7 @@ Page({
       if (!groupsMap[key]) {
         groupsMap[key] = {
           orderId: item.orderId,
+          adminSeqNo: item.adminSeqNo || '',
           orderNo: item.orderNo,
           createdAt: this.formatDate(item.orderCreatedAt),
           recipientName: item.recipientName,

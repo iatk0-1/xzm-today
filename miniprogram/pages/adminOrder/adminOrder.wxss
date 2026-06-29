@@ -69,6 +69,7 @@ page { background-color: #f2f2f2; }
 .summary-row { display: flex; align-items: flex-start; gap: 12rpx; min-width: 0; }
 .summary-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8rpx; flex-wrap: wrap; }
 .summary-label { flex-shrink: 0; font-size: 22rpx; color: #999; }
+.summary-chip { flex-shrink: 0; font-size: 22rpx; color: #576b95; background: #eef3fb; padding: 2rpx 10rpx; border-radius: 6rpx; }
 .summary-action { align-self: flex-start; }
 .order-no { font-size: 26rpx; font-weight: 600; min-width: 0; word-break: break-all; }
 .order-date { font-size: 22rpx; color: #999; margin-top: 4rpx; }

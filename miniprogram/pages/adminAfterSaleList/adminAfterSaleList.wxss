@@ -207,12 +207,36 @@
 /* 订单号 */
 .item-order {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8rpx;
   margin-bottom: 20rpx;
   padding: 12rpx;
   background-color: #fafafa;
   border-radius: 8rpx;
+}
+
+.order-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.order-line {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  min-width: 0;
+}
+
+.admin-seq {
+  align-self: flex-start;
+  font-size: 22rpx;
+  color: #576b95;
+  background: #eef3fb;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
 }
 
 .order-label {
