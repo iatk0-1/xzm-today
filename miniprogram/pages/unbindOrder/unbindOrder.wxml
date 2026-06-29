@@ -23,7 +23,7 @@
           <view class="order-id">订单号：{{order.outTradeNo}}</view>
           <text class="copy-btn" catchtap="copyOrderNo" data-order-no="{{order.outTradeNo}}">复制</text>
         </view>
-        <view class="order-status {{order.status}}">{{order.status === 'paid' ? '待发货' : (order.status === 'shipped' ? '已发货' : order.status)}}</view>
+        <view class="order-status {{order.status}}">{{order.status === 'stocking' ? '备货中' : (order.status === 'paid' ? '待发货' : (order.status === 'shipped' ? '已发货' : order.status))}}</view>
       </view>
 
       <!-- 商品信息 -->

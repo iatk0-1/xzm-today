@@ -132,6 +132,7 @@ Page({
   getOrderStatusDisplay: function(status) {
     const map = {
       pending: '待付款',
+      stocking: '备货中',
       paid: '待发货',
       partial_shipped: '部分发货',
       shipped: '已发货',

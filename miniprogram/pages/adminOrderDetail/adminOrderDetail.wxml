@@ -5,6 +5,7 @@
   <view class="status-header">
     <view class="status-title">{{order.statusDisplay}}</view>
     <view class="status-desc" wx:if="{{order.status === 'pending'}}">待支付</view>
+    <view class="status-desc" wx:if="{{order.status === 'stocking'}}">备货中</view>
     <view class="status-desc" wx:if="{{order.status === 'paid'}}">待发货</view>
     <view class="status-desc" wx:if="{{order.status === 'partial_shipped'}}">部分已发货</view>
     <view class="status-desc" wx:if="{{order.status === 'shipped'}}">已发货</view>

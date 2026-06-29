@@ -6,6 +6,7 @@ const clipboard = require('../../utils/clipboard');
 const STATUS_MAP = {
   '全部': null,
   '待付款': 'pending',
+  '备货中': 'stocking',
   '待发货': 'paid',
   '部分发货': 'partial_shipped',
   '已发货': 'shipped',
@@ -16,6 +17,7 @@ const STATUS_MAP = {
 // 后端状态 -> 前端中文显示
 const STATUS_DISPLAY_MAP = {
   'pending': '待付款',
+  'stocking': '备货中',
   'paid': '待发货',
   'partial_shipped': '部分发货',
   'shipped': '已发货',
@@ -25,7 +27,7 @@ const STATUS_DISPLAY_MAP = {
 
 Page({
   data: {
-    tabs: ['全部', '待付款', '待发货', '部分发货', '已发货', '已完成', '已关闭'],
+    tabs: ['全部', '待付款', '备货中', '待发货', '部分发货', '已发货', '已完成', '已关闭'],
     currentTab: '全部',
     orders: [],
     isLoading: true,
@@ -47,6 +49,7 @@ Page({
     const statusMap = {
       'all': '全部',
       'pay': '待付款',
+      'stocking': '备货中',
       'paid': '待发货',
       'shipped': '已发货',
       'completed': '已完成',
@@ -296,13 +299,13 @@ Page({
 
     wx.showModal({
       title: '关闭订单',
-      content: '确定要关闭该订单吗？关闭后库存将释放',
+      content: '确定要关闭该订单吗？待付款订单会释放库存，已付款订单会发起退款',
       confirmColor: '#f44336',
       success: async (res) => {
         if (res.confirm) {
           wx.showLoading({ title: '处理中...' });
           try {
-            await api.post(`/orders/${orderId}/cancel`);
+            await api.post(`/admin/orders-manage/orders/${orderId}/cancel`);
             wx.hideLoading();
             wx.showToast({ title: '订单已关闭', icon: 'success' });
             this.loadOrders();

@@ -99,6 +99,7 @@ page {
   color: #fff;
 }
 
+.order-status.stocking,
 .order-status.paid {
   background-color: #1890ff;
 }

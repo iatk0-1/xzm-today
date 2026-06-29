@@ -30,6 +30,10 @@
         <view class="icon-box">💳</view>
         <text>待付款</text>
       </view>
+      <view class="grid-item" bindtap="goToOrderList" data-status="stocking">
+        <view class="icon-box">📦</view>
+        <text>备货中</text>
+      </view>
       <view class="grid-item" bindtap="goToOrderList" data-status="paid">
         <view class="icon-box">📦</view>
         <text>待发货</text>

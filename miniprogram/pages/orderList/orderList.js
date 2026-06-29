@@ -6,6 +6,7 @@ const clipboard = require('../../utils/clipboard');
 const STATUS_MAP = {
   '全部': null,
   '待付款': 'pending',
+  '备货中': 'stocking',
   '待发货': 'paid',
   '部分发货': 'partial_shipped',
   '已发货': 'shipped',
@@ -17,6 +18,7 @@ const STATUS_MAP = {
 // 后端状态 -> 前端中文显示
 const STATUS_DISPLAY_MAP = {
   'pending': '待付款',
+  'stocking': '备货中',
   'paid': '待发货',
   'partial_shipped': '部分发货',
   'shipped': '已发货',
@@ -26,7 +28,7 @@ const STATUS_DISPLAY_MAP = {
 
 Page({
   data: {
-    tabs: ['全部', '待付款', '待发货', '部分发货', '已发货', '已完成', '退款/售后', '已关闭'],
+    tabs: ['全部', '待付款', '备货中', '待发货', '部分发货', '已发货', '已完成', '退款/售后', '已关闭'],
     currentTab: '全部',
     orders: [],
     isLoading: true
@@ -43,6 +45,7 @@ Page({
     const statusMap = {
       'all': '全部',
       'pay': '待付款',
+      'stocking': '备货中',
       'paid': '待发货',
       'shipped': '已发货',
       'completed': '已完成',
@@ -162,6 +165,13 @@ Page({
             wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' });
           });
       }
+    });
+  },
+
+  requestRefund: function(e) {
+    const orderId = e.currentTarget.dataset.id;
+    wx.navigateTo({
+      url: `/pages/afterSaleApply/afterSaleApply?orderId=${orderId}`
     });
   },
 

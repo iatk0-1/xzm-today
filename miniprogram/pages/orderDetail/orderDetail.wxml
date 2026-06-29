@@ -6,6 +6,7 @@
       <text>请尽快完成支付，超时将自动取消</text>
       <text wx:if="{{countdownText}}" class="countdown-timer">{{countdownText}}</text>
     </view>
+    <view class="status-desc" wx:if="{{order.status === 'stocking'}}">订单已支付，正在备货中</view>
     <view class="status-desc" wx:if="{{order.status === 'paid'}}">主理人正在为您精心打包中...</view>
     <view class="status-desc" wx:if="{{order.status === 'partial_shipped'}}">部分商品已发货，其余正在准备中</view>
     <view class="status-desc" wx:if="{{order.status === 'shipped'}}">包裹正飞奔向您，请耐心等待</view>
@@ -174,7 +175,7 @@
     <view class="btn-ghost" wx:if="{{order.status === 'pending'}}" bindtap="cancelOrder">取消订单</view>
 
     <view class="btn-solid" wx:if="{{order.canConfirmReceipt}}" bindtap="confirmReceipt">确认收货</view>
-    <view class="btn-ghost" wx:if="{{order.status === 'completed' || order.status === 'paid'}}" bindtap="requestRefund">申请售后</view>
+    <view class="btn-ghost" wx:if="{{order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped' || order.status === 'shipped' || order.status === 'completed'}}" bindtap="requestRefund">申请售后</view>
   </view>
 
 </view>

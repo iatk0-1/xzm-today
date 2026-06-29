@@ -126,7 +126,7 @@ Page({
   },
 
   statusDisplay(s) {
-    const m = { 'paid': '待发货', 'partial_shipped': '部分发货', 'shipped': '已发货', 'completed': '已完成' };
+    const m = { 'stocking': '备货中', 'paid': '待发货', 'partial_shipped': '部分发货', 'shipped': '已发货', 'completed': '已完成' };
     return m[s] || s;
   },
 

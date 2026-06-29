@@ -40,7 +40,7 @@
           <text class="copy-link" catchtap="copyOrderNo" data-order-no="{{item.outTradeNo}}">复制</text>
         </view>
         <view class="status-wrapper">
-          <text class="order-status {{item.status === 'paid' ? 'highlight' : ''}}">{{item.statusDisplay}}</text>
+          <text class="order-status {{(item.status === 'stocking' || item.status === 'paid') ? 'highlight' : ''}}">{{item.statusDisplay}}</text>
           <text class="after-sale-badge" wx:if="{{item.hasAfterSale}}">售后</text>
         </view>
       </view>
@@ -98,6 +98,7 @@
           <view class="btn-solid" wx:if="{{item.status === 'pending'}}" catchtap="payOrder" data-id="{{item.id}}">立即支付</view>
           <view class="btn-ghost" wx:if="{{item.status === 'pending'}}" catchtap="cancelOrder" data-id="{{item.id}}">取消订单</view>
           <view class="btn-solid" wx:if="{{item.canConfirmReceipt}}" catchtap="confirmReceipt" data-id="{{item.id}}">确认收货</view>
+          <view class="btn-ghost" wx:if="{{item.status === 'stocking' || item.status === 'paid' || item.status === 'partial_shipped' || item.status === 'shipped' || item.status === 'completed'}}" catchtap="requestRefund" data-id="{{item.id}}">申请售后</view>
         </view>
       </view>
 
