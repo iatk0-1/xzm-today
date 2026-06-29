@@ -64,7 +64,10 @@ Page({
       this.loadAfterSaleRecords(orderId);
 
       // 如果是已发货/部分发货/已支付订单，加载物流信息
-      if (res.status === 'shipped' || res.status === 'paid' || res.status === 'partial_shipped') {
+      if (res.status === 'shipped'
+        || res.status === 'paid'
+        || res.status === 'partial_shipped'
+        || res.status === 'completed') {
         this.loadShipmentInfo(orderId);
       }
 
@@ -192,7 +195,7 @@ Page({
       if (trace) {
         wx.showModal({
           title: '物流轨迹',
-          content: trace.list ? trace.list.map(node => node.description).join('\n') : '暂无物流信息',
+          content: trace.nodes ? trace.nodes.map(node => node.description).join('\n') : '暂无物流信息',
           showCancel: false
         });
       }
