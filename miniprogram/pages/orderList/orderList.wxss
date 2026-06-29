@@ -95,6 +95,12 @@ page { background-color: #f7f8fa; }
   padding: 4rpx 12rpx;
   border-radius: 8rpx;
   border: 1rpx solid #ffcccc;
+  white-space: nowrap;
+}
+.after-sale-badge.handled {
+  color: #4f6f52;
+  background-color: #f1f8f2;
+  border-color: #c8e6c9;
 }
 .remark-badge {
   display: inline-block;
@@ -124,6 +130,28 @@ page { background-color: #f7f8fa; }
 .goods-price-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: auto; }
 .price { font-size: 28rpx; font-weight: bold; font-family: "Times New Roman", Times, serif; }
 .count { font-size: 24rpx; color: #999; font-family: "Times New Roman", Times, serif; }
+
+.after-sale-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  line-height: 1.4;
+}
+.after-sale-line text {
+  padding: 3rpx 10rpx;
+  border-radius: 6rpx;
+}
+.after-sale-line.active text {
+  color: #d84315;
+  background: #fff3e0;
+}
+.after-sale-line.handled text {
+  color: #4f6f52;
+  background: #f1f8f2;
+}
 
 /* 发货数量信息 */
 .goods-shipment-info {

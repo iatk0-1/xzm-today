@@ -53,6 +53,15 @@ page { background-color: #f2f2f2; }
 .goods-info { flex: 1; display: flex; flex-direction: column; gap: 6rpx; }
 .goods-title { font-size: 26rpx; color: #1a1a1a; }
 .goods-sku { font-size: 22rpx; color: #999; }
+.after-sale-tag {
+  align-self: flex-start;
+  margin-top: 8rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 6rpx;
+  color: #d84315;
+  background: #fff3e0;
+  font-size: 22rpx;
+}
 .goods-bundle { margin-top: 4rpx; }
 .bundle-sub { display: flex; align-items: center; padding: 2rpx 0; }
 .bundle-sub-name { font-size: 22rpx; color: #666; margin-right: 6rpx; }

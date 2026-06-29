@@ -21,7 +21,8 @@ Page({
     previewGroups: [],
     canShip: false,
     page: 0,
-    hasMore: true
+    hasMore: true,
+    blockedAfterSaleCount: 0
   },
 
   onLoad: function() {
@@ -74,10 +75,11 @@ Page({
       const items = res || [];
       
       // 按订单分组
-      const groups = this.groupByOrder(items);
+      const grouped = this.groupByOrder(items);
       
       this.setData({
-        orderGroups: groups,
+        orderGroups: grouped.groups,
+        blockedAfterSaleCount: grouped.blockedAfterSaleCount,
         hasMore: false,
         page: 1
       });
@@ -369,10 +371,11 @@ Page({
       const items = res || [];
       
       // 按订单分组
-      const groups = this.groupByOrder(items);
+      const grouped = this.groupByOrder(items);
       
       this.setData({
-        orderGroups: groups,
+        orderGroups: grouped.groups,
+        blockedAfterSaleCount: grouped.blockedAfterSaleCount,
         hasMore: false,
         page: 1
       });
@@ -416,20 +419,33 @@ Page({
         totalQty: item.totalQty,
         shippedQty: item.shippedQty,
         unshippedQty: item.unshippedQty,
+        afterSaleQty: item.afterSaleQty || 0,
+        afterSaleStatusText: item.afterSaleStatusText || (item.afterSaleStatus ? '售后' : ''),
+        afterSaleSummary: item.afterSaleSummary || null,
         afterSaleStatus: item.afterSaleStatus,
-        shipQty: item.unshippedQty,
+        canShip: (item.unshippedQty || 0) > 0,
+        shipQty: Math.max(0, item.unshippedQty || 0),
         selected: false
       });
     });
 
-    // 过滤：去掉所有商品都已售后的订单
-    return Object.values(groupsMap)
-      .filter(group => group.items.some(item => !item.afterSaleStatus))
+    const allGroups = Object.values(groupsMap);
+    const blockedAfterSaleCount = allGroups.filter(group =>
+      group.items.length > 0 &&
+      group.items.every(item => !item.canShip) &&
+      group.items.some(item => item.afterSaleQty > 0 || item.afterSaleStatus)
+    ).length;
+
+    // 过滤：去掉所有商品都因售后不可发的订单，但保留部分售后仍可发的订单
+    const groups = allGroups
+      .filter(group => group.items.some(item => item.canShip))
       .sort((a, b) => {
         const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return timeB - timeA;
       });
+
+    return { groups, blockedAfterSaleCount };
   },
 
   // ==================== 选择逻辑 ====================
@@ -440,7 +456,7 @@ Page({
     const orderGroups = this.data.orderGroups.map(group => ({
       ...group,
       selected: allSelected,
-      items: group.items.map(item => ({ ...item, selected: allSelected }))
+      items: group.items.map(item => ({ ...item, selected: item.canShip ? allSelected : false }))
     }));
 
     this.updateSelectedItems(orderGroups);
@@ -451,7 +467,7 @@ Page({
     const group = this.data.orderGroups[index];
     
     group.selected = !group.selected;
-    group.items = group.items.map(item => ({ ...item, selected: group.selected }));
+    group.items = group.items.map(item => ({ ...item, selected: item.canShip ? group.selected : false }));
     
     const orderGroups = [...this.data.orderGroups];
     orderGroups[index] = group;
@@ -464,11 +480,15 @@ Page({
     const itemIndex = e.currentTarget.dataset.itemIndex;
     
     const item = this.data.orderGroups[groupIndex].items[itemIndex];
+    if (!item.canShip) {
+      return;
+    }
     item.selected = !item.selected;
     
     // 更新分组选中状态
     const group = this.data.orderGroups[groupIndex];
-    group.selected = group.items.every(i => i.selected);
+    const selectableItems = group.items.filter(i => i.canShip);
+    group.selected = selectableItems.length > 0 && selectableItems.every(i => i.selected);
     
     const orderGroups = [...this.data.orderGroups];
     orderGroups[groupIndex] = group;
@@ -481,7 +501,7 @@ Page({
 
     orderGroups.forEach(group => {
       group.items.forEach(item => {
-        if (item.selected) {
+        if (item.canShip && item.selected) {
           selectedItems.push({
             orderItemId: item.orderItemId,
             productId: item.productId,
@@ -506,7 +526,8 @@ Page({
     });
 
     // 检查是否全选
-    const allSelected = orderGroups.length > 0 && orderGroups.every(g => g.selected);
+    const selectableGroups = orderGroups.filter(g => g.items.some(item => item.canShip));
+    const allSelected = selectableGroups.length > 0 && selectableGroups.every(g => g.selected);
 
     this.setData({
       orderGroups,

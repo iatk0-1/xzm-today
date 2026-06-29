@@ -44,6 +44,17 @@ page { background-color: #f2f2f2; }
   display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap;
   width: 100%; max-width: 100%; box-sizing: border-box;
 }
+.after-sale-alert {
+  margin-bottom: 16rpx;
+  padding: 14rpx 18rpx;
+  background: #fff7e6;
+  color: #ad6800;
+  border: 1rpx solid #ffe0a3;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
 .logistics-picker {
   height: 64rpx; background: #f5f5f5; border-radius: 8rpx; padding: 0 20rpx;
   display: flex; align-items: center; font-size: 26rpx; flex-shrink: 0;
@@ -89,6 +100,19 @@ page { background-color: #f2f2f2; }
 .item-name { font-size: 26rpx; font-weight: 600; }
 .item-sku { font-size: 22rpx; color: #666; }
 .item-qty { font-size: 20rpx; color: #999; }
+.item-after-sale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 4rpx;
+}
+.item-after-sale text {
+  font-size: 20rpx;
+  color: #d84315;
+  background: #fff3e0;
+  padding: 3rpx 10rpx;
+  border-radius: 6rpx;
+}
 
 .item-ship-qty { display: flex; align-items: center; gap: 8rpx; font-size: 24rpx; }
 .stepper { display: flex; align-items: center; }

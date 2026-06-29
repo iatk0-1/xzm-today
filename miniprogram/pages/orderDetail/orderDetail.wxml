@@ -37,10 +37,11 @@
             <text class="bundle-sub-name">{{sub.bundleGroupName}}:</text>
             <text class="bundle-sub-spec">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
           </view>
-          <text class="after-sale-tag" wx:if="{{item.afterSaleStatus}}" style="margin-top:4rpx;">{{item.afterSaleStatus === 'refunded' ? '已退款' : '售后中'}}</text>
         </view>
-        <view class="goods-sku" wx:else>{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}
-          <text class="after-sale-tag" wx:if="{{item.afterSaleStatus}}"> · {{item.afterSaleStatus === 'refunded' ? '已退款' : '售后中'}}</text>
+        <view class="goods-sku" wx:else>{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}</view>
+        <view class="after-sale-tag" wx:if="{{item.afterSaleSummary && item.afterSaleSummary.hasAfterSale}}">
+          {{item.afterSaleSummary.statusText}} {{item.afterSaleSummary.totalQty}}/{{item.qty}}
+          <text wx:if="{{item.afterSaleSummary.shipmentBlockedQty > 0}}"> · 可发 {{item.afterSaleSummary.canShipQty}}</text>
         </view>
         <view class="goods-price-row">
           <text class="price">¥ {{item.salePrice}}</text>

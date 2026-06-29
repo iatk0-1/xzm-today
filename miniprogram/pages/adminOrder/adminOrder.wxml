@@ -54,6 +54,10 @@
     </button>
   </view>
 
+  <view class="after-sale-alert" wx:if="{{blockedAfterSaleCount > 0}}">
+    有 {{blockedAfterSaleCount}} 个待发货订单因售后暂无可发商品，已从可发列表中隐藏
+  </view>
+
   <!-- 订单列表 -->
   <view class="order-list">
     <view class="order-group" wx:for="{{orderGroups}}" wx:key="orderId" wx:for-item="group" wx:for-index="index">
@@ -85,14 +89,14 @@
 
       <view class="order-items">
         <view class="order-item" wx:for="{{group.items}}" wx:key="orderItemId" wx:for-item="item" wx:for-index="itemIndex">
-          <!-- 已退款商品：不可选、灰色 -->
-          <block wx:if="{{item.afterSaleStatus}}">
+          <!-- 售后占用后无可发数量：不可选、灰色 -->
+          <block wx:if="{{!item.canShip}}">
             <view class="item-checkbox disabled"></view>
             <image class="item-image refunded" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
             <view class="item-info">
               <view class="item-name">{{item.productName}}</view>
-              <view class="item-sku">{{item.skuSpec}} {{item.skuSize}} <text class="refund-tag">已退款</text></view>
-              <view class="item-qty">已通过售后退款，无需发货</view>
+              <view class="item-sku">{{item.skuSpec}} {{item.skuSize}} <text class="refund-tag">{{item.afterSaleStatusText || '售后'}}</text></view>
+              <view class="item-qty">售后 {{item.afterSaleQty || 0}} 件，暂无可发数量</view>
             </view>
           </block>
           <!-- 正常商品：可选、可编辑数量 -->
@@ -106,6 +110,10 @@
               <view class="item-sku">{{item.skuSpec}} {{item.skuSize}}</view>
               <view class="item-qty">
                 总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}
+              </view>
+              <view class="item-after-sale" wx:if="{{item.afterSaleQty > 0}}">
+                <text>{{item.afterSaleStatusText || '售后'}} {{item.afterSaleQty}} 件</text>
+                <text>可发 {{item.unshippedQty}}</text>
               </view>
             </view>
             <view class="item-ship-qty">

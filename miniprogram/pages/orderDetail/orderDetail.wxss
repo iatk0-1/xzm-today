@@ -1,5 +1,13 @@
 page { background-color: #f7f8fa; padding-bottom: 120rpx; }
-.after-sale-tag { color: #e74c3c; font-size: 24rpx; }
+.after-sale-tag {
+  align-self: flex-start;
+  margin-top: 8rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 6rpx;
+  color: #d84315;
+  background: #fff3e0;
+  font-size: 22rpx;
+}
 .detail-wrapper { width: 100%; }
 
 /* 顶部状态栏 */
