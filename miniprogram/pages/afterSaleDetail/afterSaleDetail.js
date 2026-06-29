@@ -28,16 +28,13 @@ Page({
     try {
       const res = await api.get(`/after-sales/${this.data.afterSaleId}`);
       wx.hideLoading();
+      const formatted = this.formatAfterSaleDetail(res);
 
       // 构建售后进度时间轴
-      const timeline = this.buildTimeline(res);
+      const timeline = this.buildTimeline(formatted);
 
       this.setData({
-        afterSale: {
-          ...res,
-          statusDisplay: this.getStatusDisplay(res.status),
-          typeDisplay: res.type === 'refund' ? '仅退款' : '退货退款'
-        },
+        afterSale: formatted,
         timeline,
         isLoading: false
       });
@@ -48,6 +45,35 @@ Page({
     }
   },
 
+  formatAfterSaleDetail: function(res) {
+    const orderDetail = res.orderDetail ? this.formatOrderDetail(res.orderDetail) : null;
+    return {
+      ...res,
+      statusDisplay: this.getStatusDisplay(res.status),
+      typeDisplay: this.getAfterSaleTypeDisplay(res.type),
+      createdAtDisplay: this.formatDateTime(res.createdAt),
+      updatedAtDisplay: this.formatDateTime(res.updatedAt),
+      returnShippedAtDisplay: this.formatDateTime(res.returnShippedAt),
+      orderDetail
+    };
+  },
+
+  formatOrderDetail: function(orderDetail) {
+    const items = (orderDetail.items || []).map(item => ({
+      ...item,
+      afterSaleStatusDisplay: this.getAfterSaleItemStatusDisplay(item.afterSaleStatus),
+      salePriceDisplay: this.formatAmount(item.salePrice)
+    }));
+    return {
+      ...orderDetail,
+      statusDisplay: this.getOrderStatusDisplay(orderDetail.status),
+      createdAtDisplay: this.formatDateTime(orderDetail.createdAt),
+      payAmountDisplay: this.formatAmount(orderDetail.payAmount),
+      totalPriceDisplay: this.formatAmount(orderDetail.totalPrice),
+      items
+    };
+  },
+
   // 构建售后进度时间轴
   buildTimeline: function(afterSale) {
     const timeline = [];
@@ -56,7 +82,7 @@ Page({
     timeline.push({
       status: '用户申请',
       time: this.formatTime(afterSale.createdAt),
-      description: `申请${afterSale.typeDisplay}，退款 ¥${afterSale.totalRefundAmount}`
+      description: `申请${afterSale.typeDisplay}，退款 ¥${this.formatAmount(afterSale.totalRefundAmount)}`
     });
 
     // 2. 管理员审核
@@ -64,7 +90,7 @@ Page({
       timeline.push({
         status: '商家审核',
         time: '-',
-        description: '审核通过，等待用户退货'
+        description: afterSale.type === 'return_refund' ? '审核通过，等待用户退货' : '审核通过，等待退款处理'
       });
     } else if (afterSale.status === 'rejected') {
       timeline.push({
@@ -140,10 +166,56 @@ Page({
     return map[status] || status;
   },
 
+  getAfterSaleTypeDisplay: function(type) {
+    return type === 'refund' ? '仅退款' : '退货退款';
+  },
+
+  getAfterSaleItemStatusDisplay: function(status) {
+    const map = {
+      pending: '售后中',
+      approved: '处理中',
+      received: '待退款',
+      refunded: '已退款',
+      rejected: '已拒绝',
+      cancelled: '已取消'
+    };
+    return map[status] || '';
+  },
+
+  getOrderStatusDisplay: function(status) {
+    const map = {
+      pending: '待付款',
+      paid: '待发货',
+      partial_shipped: '部分发货',
+      shipped: '已发货',
+      completed: '已完成',
+      cancelled: '已关闭'
+    };
+    return map[status] || status;
+  },
+
   formatTime: function(timeStr) {
     if (!timeStr) return '-';
     const date = new Date(timeStr);
     return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  },
+
+  formatDateTime: function(raw) {
+    if (!raw) return '-';
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return String(raw);
+    }
+    const pad = num => String(num).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  },
+
+  formatAmount: function(value) {
+    const amount = Number(value);
+    if (Number.isNaN(amount)) {
+      return value || '0.00';
+    }
+    return amount.toFixed(2);
   },
 
   // 填写退货物流
@@ -231,5 +303,27 @@ Page({
   copyOrderNo: function() {
     const afterSale = this.data.afterSale || {};
     clipboard.copyText(afterSale.outTradeNo, '订单号');
+  },
+
+  copyRecipientInfo: function() {
+    const orderDetail = this.data.afterSale && this.data.afterSale.orderDetail;
+    clipboard.copyRecipient(orderDetail || {});
+  },
+
+  previewImage: function(e) {
+    const index = e.currentTarget.dataset.index;
+    const urls = this.data.afterSale && this.data.afterSale.evidenceUrls
+      ? this.data.afterSale.evidenceUrls.split(',')
+      : [];
+
+    if (!urls.length) {
+      wx.showToast({ title: '没有图片', icon: 'none' });
+      return;
+    }
+
+    wx.previewImage({
+      current: urls[index],
+      urls
+    });
   }
 });

@@ -24,7 +24,56 @@
       </view>
       <view class="info-row">
         <text class="info-label">申请时间</text>
-        <text class="info-value">{{afterSale.createdAt}}</text>
+        <text class="info-value">{{afterSale.createdAtDisplay}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section" wx:if="{{afterSale.orderDetail}}">
+    <view class="section-title">关联订单详情</view>
+    <view class="info-group">
+      <view class="info-row">
+        <text class="info-label">订单状态</text>
+        <text class="info-value">{{afterSale.orderDetail.statusDisplay}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">下单时间</text>
+        <text class="info-value">{{afterSale.orderDetail.createdAtDisplay}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">收货人</text>
+        <text class="info-value">{{afterSale.orderDetail.recipientName}} {{afterSale.orderDetail.recipientPhone}}</text>
+      </view>
+      <view class="info-row info-row-top">
+        <text class="info-label">收货地址</text>
+        <view class="info-value-box info-value-box-column">
+          <text class="info-value info-value-multiline">{{afterSale.orderDetail.recipientAddress}}</text>
+          <text class="copy-btn" catchtap="copyRecipientInfo">复制</text>
+        </view>
+      </view>
+    </view>
+    <view class="order-items-list">
+      <view class="order-item-row" wx:for="{{afterSale.orderDetail.items}}" wx:key="id">
+        <image class="item-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
+        <view class="item-info">
+          <view class="item-name">{{item.productName}}</view>
+          <view class="item-sku">{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}</view>
+          <view class="item-detail-row">
+            <text class="item-qty">×{{item.qty}}</text>
+            <text class="item-type" wx:if="{{item.afterSaleStatusDisplay}}">{{item.afterSaleStatusDisplay}}</text>
+          </view>
+        </view>
+        <view class="item-refund">¥ {{item.salePriceDisplay}}</view>
+      </view>
+    </view>
+    <view class="amount-group">
+      <view class="info-row">
+        <text class="info-label">商品总价</text>
+        <text class="info-value">¥ {{afterSale.orderDetail.totalPriceDisplay}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">实付款</text>
+        <text class="info-value amount-strong">¥ {{afterSale.orderDetail.payAmountDisplay}}</text>
       </view>
     </view>
   </view>
@@ -85,7 +134,7 @@
       </view>
       <view class="logistics-row" wx:if="{{afterSale.returnShippedAt}}">
         <text class="logistics-label">发货时间</text>
-        <text class="logistics-value">{{afterSale.returnShippedAt}}</text>
+        <text class="logistics-value">{{afterSale.returnShippedAtDisplay}}</text>
       </view>
     </view>
   </view>

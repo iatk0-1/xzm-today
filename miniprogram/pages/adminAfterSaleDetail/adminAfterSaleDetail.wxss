@@ -70,6 +70,10 @@
   align-items: center;
 }
 
+.info-row-top {
+  align-items: flex-start;
+}
+
 .info-label {
   font-size: 26rpx;
   color: #999;
@@ -92,6 +96,48 @@
 .info-value-box .info-value {
   word-break: break-all;
   text-align: right;
+}
+
+.info-value-box-column {
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.info-value-multiline {
+  white-space: pre-wrap;
+}
+
+.info-group,
+.amount-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.order-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.order-item-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  background-color: #fafafa;
+  border-radius: 12rpx;
+}
+
+.amount-group {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.amount-strong {
+  font-weight: 600;
+  color: #111;
 }
 
 /* 商品列表 */

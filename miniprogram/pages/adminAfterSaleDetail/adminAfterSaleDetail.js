@@ -35,20 +35,10 @@ Page({
     try {
       const res = await api.get(`/after-sales/${this.data.afterSaleId}`);
       wx.hideLoading();
-
-      // 为每个明细项添加中文状态显示
-      const items = (res.items || []).map(item => ({
-        ...item,
-        statusDisplay: this.getStatusDisplay(item.status)
-      }));
+      const formatted = this.formatAfterSaleDetail(res);
 
       this.setData({
-        afterSale: {
-          ...res,
-          items,
-          statusDisplay: this.getStatusDisplay(res.status),
-          typeDisplay: res.type === 'refund' ? '仅退款' : '退货退款'
-        },
+        afterSale: formatted,
         isLoading: false
       });
 
@@ -59,6 +49,40 @@ Page({
       console.error('加载售后详情失败:', err);
       wx.showToast({ title: '加载失败', icon: 'none' });
     }
+  },
+
+  formatAfterSaleDetail: function(res) {
+    const items = (res.items || []).map(item => ({
+      ...item,
+      statusDisplay: this.getStatusDisplay(item.status)
+    }));
+    const orderDetail = res.orderDetail ? this.formatOrderDetail(res.orderDetail) : null;
+    return {
+      ...res,
+      items,
+      orderDetail,
+      statusDisplay: this.getStatusDisplay(res.status),
+      typeDisplay: this.getAfterSaleTypeDisplay(res.type),
+      createdAtDisplay: this.formatDateTime(res.createdAt),
+      updatedAtDisplay: this.formatDateTime(res.updatedAt),
+      returnShippedAtDisplay: this.formatDateTime(res.returnShippedAt)
+    };
+  },
+
+  formatOrderDetail: function(orderDetail) {
+    const items = (orderDetail.items || []).map(item => ({
+      ...item,
+      afterSaleStatusDisplay: this.getAfterSaleItemStatusDisplay(item.afterSaleStatus),
+      salePriceDisplay: this.formatAmount(item.salePrice)
+    }));
+    return {
+      ...orderDetail,
+      statusDisplay: this.getOrderStatusDisplay(orderDetail.status),
+      createdAtDisplay: this.formatDateTime(orderDetail.createdAt),
+      payAmountDisplay: this.formatAmount(orderDetail.payAmount),
+      totalPriceDisplay: this.formatAmount(orderDetail.totalPrice),
+      items
+    };
   },
 
   // 加载售后日志
@@ -89,6 +113,34 @@ Page({
     return map[status] || status;
   },
 
+  getAfterSaleTypeDisplay: function(type) {
+    return type === 'refund' ? '仅退款' : '退货退款';
+  },
+
+  getAfterSaleItemStatusDisplay: function(status) {
+    const map = {
+      pending: '售后中',
+      approved: '处理中',
+      received: '待退款',
+      refunded: '已退款',
+      rejected: '已拒绝',
+      cancelled: '已取消'
+    };
+    return map[status] || '';
+  },
+
+  getOrderStatusDisplay: function(status) {
+    const map = {
+      pending: '待付款',
+      paid: '待发货',
+      partial_shipped: '部分发货',
+      shipped: '已发货',
+      completed: '已完成',
+      cancelled: '已关闭'
+    };
+    return map[status] || status;
+  },
+
   getActionDisplay: function(action) {
     const map = {
       'apply': '用户申请',
@@ -106,6 +158,24 @@ Page({
     if (!timeStr) return '-';
     const date = new Date(timeStr);
     return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  },
+
+  formatDateTime: function(raw) {
+    if (!raw) return '-';
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return String(raw);
+    }
+    const pad = num => String(num).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  },
+
+  formatAmount: function(value) {
+    const amount = Number(value);
+    if (Number.isNaN(amount)) {
+      return value || '0.00';
+    }
+    return amount.toFixed(2);
   },
 
   // 显示审核弹窗
@@ -230,6 +300,11 @@ Page({
   copyOrderNo: function() {
     const afterSale = this.data.afterSale || {};
     clipboard.copyText(afterSale.outTradeNo, '订单号');
+  },
+
+  copyRecipientInfo: function() {
+    const orderDetail = this.data.afterSale && this.data.afterSale.orderDetail;
+    clipboard.copyRecipient(orderDetail || {});
   },
 
   // 预览凭证图片
