@@ -423,9 +423,13 @@ Page({
     });
 
     // 过滤：去掉所有商品都已售后的订单
-    return Object.values(groupsMap).filter(group =>
-      group.items.some(item => !item.afterSaleStatus)
-    );
+    return Object.values(groupsMap)
+      .filter(group => group.items.some(item => !item.afterSaleStatus))
+      .sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
   },
 
   // ==================== 选择逻辑 ====================
