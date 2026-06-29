@@ -41,10 +41,12 @@
         </view>
         <view class="status-wrapper">
           <text class="order-status {{(item.status === 'stocking' || item.status === 'paid') ? 'highlight' : ''}}">{{item.statusDisplay}}</text>
-          <text class="after-sale-badge {{item.afterSaleSummary && item.afterSaleSummary.hasActive ? 'active' : 'handled'}}" wx:if="{{item.afterSaleSummary && item.afterSaleSummary.hasAfterSale}}">
-            {{item.afterSaleSummary.statusText}} {{item.afterSaleSummary.affectedItemCount}}项/{{item.afterSaleSummary.totalQty}}件
-          </text>
         </view>
+      </view>
+
+      <view class="order-after-sale-summary {{item.afterSaleSummary && item.afterSaleSummary.hasActive ? 'active' : 'handled'}}" wx:if="{{item.afterSaleSummary && item.afterSaleSummary.hasAfterSale}}">
+        <text class="order-after-sale-label">售后</text>
+        <text class="order-after-sale-text">{{item.afterSaleSummary.statusText}} {{item.afterSaleSummary.affectedItemCount}}项/{{item.afterSaleSummary.totalQty}}件</text>
       </view>
 
       <view class="goods-list">

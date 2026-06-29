@@ -176,27 +176,53 @@ page { background-color: #f2f2f2; }
 /* 订单卡片 */
 .order-card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
 
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24rpx; padding-bottom: 16rpx; border-bottom: 1rpx solid #f0f0f0; }
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16rpx; margin-bottom: 16rpx; padding-bottom: 16rpx; border-bottom: 1rpx solid #f0f0f0; }
 .order-sn-wrap { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10rpx; flex-wrap: wrap; }
 .admin-seq { font-size: 22rpx; color: #576b95; background: #eef3fb; padding: 2rpx 10rpx; border-radius: 6rpx; }
 .order-sn { font-size: 22rpx; color: #999; font-family: inherit; }
 .copy-link { flex-shrink: 0; padding: 4rpx 12rpx; font-size: 22rpx; line-height: 1.3; color: #576b95; background: #f5f7fa; border-radius: 6rpx; }
-.status-wrapper { display: flex; align-items: center; gap: 12rpx; }
+.status-wrapper { display: flex; align-items: center; gap: 12rpx; flex-shrink: 0; }
 .order-status { font-size: 26rpx; color: #1a1a1a; font-weight: 600; }
 .order-status.highlight { color: #d32f2f; }
-.after-sale-badge {
-  font-size: 20rpx;
-  color: #f44336;
-  background: #fff5f5;
-  padding: 2rpx 10rpx;
-  border-radius: 6rpx;
-  border: 1rpx solid #ffcdd2;
-  white-space: nowrap;
+.order-after-sale-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin: 0 0 20rpx;
+  padding: 12rpx 16rpx;
+  border-radius: 10rpx;
+  border: 1rpx solid #ffd9cc;
+  background: #fff6f3;
 }
-.after-sale-badge.handled {
+.order-after-sale-summary.handled {
+  border-color: #d8e8d9;
+  background: #f4faf5;
+}
+.order-after-sale-label {
+  flex-shrink: 0;
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.88);
+  font-size: 20rpx;
+  line-height: 32rpx;
+  color: #8c8c8c;
+}
+.order-after-sale-summary.active .order-after-sale-label {
+  color: #c65d2f;
+}
+.order-after-sale-summary.handled .order-after-sale-label {
+  color: #5f7b63;
+}
+.order-after-sale-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: #d84315;
+  word-break: break-all;
+}
+.order-after-sale-summary.handled .order-after-sale-text {
   color: #4f6f52;
-  background: #f1f8f2;
-  border-color: #c8e6c9;
 }
 .remark-badge {
   display: inline-block;
