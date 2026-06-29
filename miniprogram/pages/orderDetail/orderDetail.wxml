@@ -173,7 +173,7 @@
     <view class="btn-solid" wx:if="{{order.status === 'pending'}}" bindtap="payOrder">立即支付</view>
     <view class="btn-ghost" wx:if="{{order.status === 'pending'}}" bindtap="cancelOrder">取消订单</view>
 
-    <view class="btn-solid" wx:if="{{order.status === 'shipped'}}" bindtap="confirmReceipt">确认收货</view>
+    <view class="btn-solid" wx:if="{{order.canConfirmReceipt}}" bindtap="confirmReceipt">确认收货</view>
     <view class="btn-ghost" wx:if="{{order.status === 'completed' || order.status === 'paid'}}" bindtap="requestRefund">申请售后</view>
   </view>
 

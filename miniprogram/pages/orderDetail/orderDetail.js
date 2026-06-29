@@ -357,9 +357,9 @@ Page({
             wx.showToast({ title: '交易完成', icon: 'success' });
             self.loadOrderDetail(order.id);
           })
-          .catch(function() {
+          .catch(function(err) {
             wx.hideLoading();
-            wx.showToast({ title: '操作失败', icon: 'none' });
+            wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' });
           });
       }
     });
