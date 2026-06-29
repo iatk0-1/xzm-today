@@ -51,6 +51,10 @@ Page({
   },
 
   onLoad: function() {
+    this._isInitializingHome = false;
+    this._authCheckTimer = null;
+    this._authTimeoutTimer = null;
+
     this.checkAdmin();
 
     const menuButtonInfo = wx.getMenuButtonBoundingClientRect();
@@ -68,56 +72,102 @@ Page({
     // 每次显示页面时检查管理员状态
     this.checkAdmin();
 
-    // 等待认证完成后加载商品
-    if (app.globalData.isAuthReady) {
-      this.checkAdmin(); // 认证完成后再次检查
-      this.getProductsList();
-    } else {
+    // 从商品详情返回时保留当前列表与滚动位置，不在 onShow 里重置首页数据
+    if (!this.hasLoadedHomeData()) {
       this.waitForAuthAndLoad();
+    }
+  },
+
+  onUnload: function() {
+    this.clearHomeInitTimers();
+  },
+
+  hasLoadedHomeData: function() {
+    return this.data.page > 0 || this.data.loading;
+  },
+
+  clearHomeInitTimers: function() {
+    if (this._authCheckTimer) {
+      clearTimeout(this._authCheckTimer);
+      this._authCheckTimer = null;
+    }
+    if (this._authTimeoutTimer) {
+      clearTimeout(this._authTimeoutTimer);
+      this._authTimeoutTimer = null;
     }
   },
 
   // 等待认证完成并加载数据
   waitForAuthAndLoad: function() {
+    if (this._isInitializingHome || this.hasLoadedHomeData()) {
+      return;
+    }
+
     // 检查是否已经认证完成
     if (app.globalData.isAuthReady) {
       this.checkAdmin();
-      this.loadAllData();
+      this._isInitializingHome = true;
+      this.loadAllData().then(() => {
+        this._isInitializingHome = false;
+      });
       return;
     }
+
+    this._isInitializingHome = true;
 
     // 显示加载提示
     wx.showLoading({ title: '加载中...' });
 
+    const startLoad = () => {
+      this.clearHomeInitTimers();
+      wx.hideLoading();
+      this.checkAdmin();
+      this.loadAllData().then(() => {
+        this._isInitializingHome = false;
+      });
+    };
+
     // 等待认证完成
     const checkAuth = () => {
-      if (app.globalData.isAuthReady) {
+      if (this.hasLoadedHomeData()) {
+        this.clearHomeInitTimers();
         wx.hideLoading();
-        this.checkAdmin();
-        this.loadAllData();
+        this._isInitializingHome = false;
+        return;
+      }
+
+      if (app.globalData.isAuthReady) {
+        startLoad();
       } else {
         // 最多等待 5 秒
-        setTimeout(checkAuth, 500);
+        this._authCheckTimer = setTimeout(checkAuth, 500);
       }
     };
 
     checkAuth();
 
     // 超时处理
-    setTimeout(() => {
-      wx.hideLoading();
+    this._authTimeoutTimer = setTimeout(() => {
+      if (this.hasLoadedHomeData()) {
+        this.clearHomeInitTimers();
+        wx.hideLoading();
+        this._isInitializingHome = false;
+        return;
+      }
+
       if (!app.globalData.isAuthReady) {
-        this.checkAdmin();
-        this.loadAllData();
+        startLoad();
       }
     }, 5000);
   },
 
   // 加载所有数据（商品、档口、标签）
   loadAllData: function() {
-    this.getProductsList();
-    this.loadStallList();
-    this.loadTagList();
+    return Promise.all([
+      this.getProductsList(),
+      this.loadStallList(),
+      this.loadTagList()
+    ]);
   },
 
   // 从后端 API 获取商品列表（支持分页）
