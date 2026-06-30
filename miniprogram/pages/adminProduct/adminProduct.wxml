@@ -2,21 +2,31 @@
   <!-- 顶部操作栏 -->
   <view class="admin-header">
     <view class="page-title">商品管理台</view>
-    <view class="recycle-bin-btn" bindtap="goToRecycleBin">
-      <text class="icon">🗑️</text>
-      <text>回收站</text>
+    <view class="header-actions">
+      <view class="header-btn {{selectMode ? 'active' : ''}}" bindtap="toggleSelectMode">
+        {{selectMode ? '退出多选' : '多选'}}
+      </view>
+      <view class="recycle-bin-btn" bindtap="goToRecycleBin">
+        <text class="icon">🗑️</text>
+        <text>回收站</text>
+      </view>
     </view>
   </view>
 
-  <scroll-view scroll-y class="product-scroll-area" enable-flex enhanced bindscrolltolower="loadMore">
+  <scroll-view scroll-y class="product-scroll-area {{selectMode ? 'with-batch-bar' : ''}}" enable-flex enhanced bindscrolltolower="loadMore">
 
     <view class="empty-state" wx:if="{{products.length === 0 && !isLoading}}">
       <view class="empty-text">系统里还没有任何商品</view>
     </view>
 
-    <view class="product-card" wx:for="{{products}}" wx:key="id">
+    <view class="product-card {{item.selected ? 'selected' : ''}}" wx:for="{{products}}" wx:key="id">
 
-      <view class="card-main" bindtap="editProduct" data-id="{{item.id}}">
+      <view class="card-main" bindtap="handleProductTap" data-id="{{item.id}}">
+        <view class="product-select" wx:if="{{selectMode}}" catchtap="toggleProductSelect" data-id="{{item.id}}">
+          <view class="checkbox {{item.selected ? 'checked' : ''}}">
+            <text wx:if="{{item.selected}}">✓</text>
+          </view>
+        </view>
         <image class="product-img" src="{{item.coverUrl}}" mode="aspectFill"></image>
         <view class="product-info">
           <view class="product-title">{{item.name}}</view>
@@ -32,7 +42,7 @@
 
       <view class="card-footer">
         <view class="time">上架时间：{{item.createTimeStr || '早期数据'}}</view>
-        <view class="action-group">
+        <view class="action-group" wx:if="{{!selectMode}}">
           <view class="btn-ghost" catchtap="toggleStatus" data-id="{{item.id}}" data-status="{{item.status}}">
             {{item.status === 'off' ? '重新上架' : '下架'}}
           </view>
@@ -42,4 +52,18 @@
 
     </view>
   </scroll-view>
+
+  <view class="batch-bar" wx:if="{{selectMode}}">
+    <view class="batch-summary">
+      <view class="batch-count">已选 {{selectedCount}} 个</view>
+      <view class="batch-clear {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="clearSelection">清空</view>
+    </view>
+    <view class="batch-actions">
+      <view class="batch-btn secondary" bindtap="toggleSelectAllLoaded">
+        {{allSelected ? '取消全选' : '全选当前列表'}}
+      </view>
+      <view class="batch-btn primary {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="batchSetStatus" data-status="on">上架</view>
+      <view class="batch-btn danger {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="batchSetStatus" data-status="off">下架</view>
+    </view>
+  </view>
 </view>
