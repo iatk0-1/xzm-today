@@ -11,6 +11,8 @@ module.exports = {
   // 存储键名
   TOKEN_KEY: 'accessToken',
   REFRESH_TOKEN_KEY: 'refreshToken',
+  TOKEN_EXPIRES_AT_KEY: 'accessTokenExpiresAt',
+  REFRESH_TOKEN_EXPIRES_AT_KEY: 'refreshTokenExpiresAt',
   USER_INFO_KEY: 'userInfo',
 
   // 管理员 OpenID（需在后端白名单中：application.yml 中的 app.auth.admin.openids）

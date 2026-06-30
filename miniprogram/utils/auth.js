@@ -44,7 +44,7 @@ async function login(nickname = '', avatarUrl = '') {
     const res = await api.post('/auth/miniapp/login', loginData);
 
     // 保存 token 和用户信息
-    api.saveToken(res.accessToken, res.refreshToken);
+    api.saveToken(res.accessToken, res.refreshToken, res);
 
     const userInfo = {
       userId: res.userId,
@@ -93,15 +93,12 @@ async function bindPhone(code, mockPhone = '') {
  */
 async function refreshToken() {
   try {
-    const refresh_token = getRefreshToken();
-    if (!refresh_token) {
+    const refreshTokenValue = getRefreshToken();
+    if (!refreshTokenValue) {
       throw new Error('没有 Refresh Token');
     }
 
-    const res = await api.post('/auth/refresh', { refresh_token });
-
-    // 保存新 token
-    api.saveToken(res.accessToken, res.refreshToken);
+    const res = await api.refreshSession();
 
     console.log('Token 刷新成功');
     return res;

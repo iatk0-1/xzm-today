@@ -1,6 +1,5 @@
 // miniprogram/pages/logistics/expressBatchManage/expressBatchManage.js
 const api = require('../../../utils/api');
-const config = require('../../../utils/config');
 const clipboard = require('../../../utils/clipboard');
 
 Page({
@@ -134,32 +133,24 @@ Page({
   // 上传并解析Excel
   parseExcelFile: async function(filePath) {
     wx.showLoading({ title: '解析中...', mask: true });
-    const token = wx.getStorageSync('accessToken') || '';
-
-    wx.uploadFile({
-      url: config.API_BASE_URL + '/logistics/parse-waybill-excel',
-      filePath: filePath,
-      name: 'file',
-      header: { 'Authorization': token ? 'Bearer ' + token : '' },
-      success: (res) => {
-        wx.hideLoading();
-        try {
-          const data = JSON.parse(res.data);
-          if (data && data.items && data.items.length > 0) {
-            this.mergeImportItems(data.items);
-            wx.showToast({ title: '成功导入 ' + data.items.length + ' 条', icon: 'success' });
-          } else {
-            wx.showToast({ title: '文件中没有有效数据', icon: 'none' });
-          }
-        } catch (e) {
-          wx.showToast({ title: '解析失败', icon: 'none' });
-        }
-      },
-      fail: () => {
-        wx.hideLoading();
-        wx.showToast({ title: '上传失败，请重试', icon: 'none' });
+    try {
+      const data = await api.uploadFile(
+        '/logistics/parse-waybill-excel',
+        filePath,
+        {},
+        { compress: false, useCos: false }
+      );
+      wx.hideLoading();
+      if (data && data.items && data.items.length > 0) {
+        this.mergeImportItems(data.items);
+        wx.showToast({ title: '成功导入 ' + data.items.length + ' 条', icon: 'success' });
+      } else {
+        wx.showToast({ title: '文件中没有有效数据', icon: 'none' });
       }
-    });
+    } catch (err) {
+      wx.hideLoading();
+      wx.showToast({ title: err.message || '上传失败，请重试', icon: 'none' });
+    }
   },
 
   // 合并导入数据（Excel中的expressCode为空，需要用户手动选择）

@@ -2,114 +2,210 @@
 const config = require('./config');
 const { compressImage } = require('./media');
 
-/**
- * 获取存储的 Token
- */
-function getToken() {
+const REFRESH_BUFFER_MS = 5 * 60 * 1000;
+let refreshPromise = null;
+
+function getStorage(key) {
   try {
-    return wx.getStorageSync(config.TOKEN_KEY) || '';
+    return wx.getStorageSync(key) || '';
   } catch (e) {
-    console.error('获取 Token 失败:', e);
+    console.error('读取本地存储失败:', key, e);
     return '';
   }
 }
 
-/**
- * 保存 Token
- */
-function saveToken(accessToken, refreshToken) {
+function setStorage(key, value) {
   try {
-    wx.setStorageSync(config.TOKEN_KEY, accessToken);
-    if (refreshToken) {
-      wx.setStorageSync(config.REFRESH_TOKEN_KEY, refreshToken);
-    }
+    wx.setStorageSync(key, value);
   } catch (e) {
-    console.error('保存 Token 失败:', e);
+    console.error('写入本地存储失败:', key, e);
   }
 }
 
-/**
- * 清除 Token
- */
+function removeStorage(key) {
+  try {
+    wx.removeStorageSync(key);
+  } catch (e) {
+    console.error('删除本地存储失败:', key, e);
+  }
+}
+
+function getToken() {
+  return getStorage(config.TOKEN_KEY);
+}
+
+function getRefreshToken() {
+  return getStorage(config.REFRESH_TOKEN_KEY);
+}
+
+function parseExpireTime(value) {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  var parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function resolveAccessExpireTime(session) {
+  if (!session) return 0;
+  var expiresAt = parseExpireTime(session.expiresAt);
+  if (expiresAt) return expiresAt;
+  if (session.expiresIn) return Date.now() + Number(session.expiresIn) * 1000;
+  return 0;
+}
+
+function resolveRefreshExpireTime(session) {
+  if (!session) return 0;
+  var expiresAt = parseExpireTime(session.refreshExpiresAt);
+  if (expiresAt) return expiresAt;
+  if (session.refreshExpiresIn) return Date.now() + Number(session.refreshExpiresIn) * 1000;
+  return 0;
+}
+
+function saveToken(accessToken, refreshToken, session) {
+  if (accessToken) {
+    setStorage(config.TOKEN_KEY, accessToken);
+  }
+  if (refreshToken) {
+    setStorage(config.REFRESH_TOKEN_KEY, refreshToken);
+  }
+
+  var accessExpiresAt = resolveAccessExpireTime(session);
+  if (accessExpiresAt) {
+    setStorage(config.TOKEN_EXPIRES_AT_KEY, accessExpiresAt);
+  }
+
+  var refreshExpiresAt = resolveRefreshExpireTime(session);
+  if (refreshExpiresAt) {
+    setStorage(config.REFRESH_TOKEN_EXPIRES_AT_KEY, refreshExpiresAt);
+  }
+}
+
 function clearToken() {
-  try {
-    wx.removeStorageSync(config.TOKEN_KEY);
-    wx.removeStorageSync(config.REFRESH_TOKEN_KEY);
-  } catch (e) {
-    console.error('清除 Token 失败:', e);
-  }
+  removeStorage(config.TOKEN_KEY);
+  removeStorage(config.REFRESH_TOKEN_KEY);
+  removeStorage(config.TOKEN_EXPIRES_AT_KEY);
+  removeStorage(config.REFRESH_TOKEN_EXPIRES_AT_KEY);
 }
 
-/**
- * 通用请求封装
- */
-function request(options) {
+function isAuthEndpoint(url) {
+  return url === '/auth/refresh'
+    || url === '/auth/miniapp/login'
+    || url === '/auth/miniapp/phone-login';
+}
+
+function isTokenExpiredOrExpiringSoon() {
+  var refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  var token = getToken();
+  if (!token) return true;
+
+  var expiresAt = Number(getStorage(config.TOKEN_EXPIRES_AT_KEY) || 0);
+  if (!expiresAt) return false;
+
+  return expiresAt - Date.now() <= REFRESH_BUFFER_MS;
+}
+
+function isStoredAccessTokenStillUsable() {
+  var token = getToken();
+  if (!token) return false;
+  var expiresAt = Number(getStorage(config.TOKEN_EXPIRES_AT_KEY) || 0);
+  return !expiresAt || expiresAt > Date.now();
+}
+
+function shouldClearToken(statusCode) {
+  return statusCode === 400 || statusCode === 401 || statusCode === 403;
+}
+
+function normalizeHttpError(res, fallbackMessage) {
+  var data = res && res.data ? res.data : {};
+  var error = typeof data === 'object' ? data : { message: data };
+  if (!error.message && !error.error) {
+    error.message = fallbackMessage || ('请求失败 (' + res.statusCode + ')');
+  }
+  error.statusCode = res.statusCode;
+  return error;
+}
+
+function wxRequest(options) {
   return new Promise((resolve, reject) => {
-    const token = getToken();
-    const url = config.API_BASE_URL + options.url;
-
-    console.log('[API] 请求开始:', {
-      method: options.method || 'GET',
-      url: url,
-      hasToken: !!token
-    });
-
-    // 为写操作生成幂等性 Key
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': token ? `Bearer ${token}` : ''
-    };
-
-    // 对 POST/PUT/PATCH/DELETE 请求添加幂等性 Key
-    const writeMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
-    if (writeMethods.includes((options.method || 'GET').toUpperCase())) {
-      const idempotencyKey = generateIdempotencyKey(options.url, options.data);
-      headers['Idempotency-Key'] = idempotencyKey;
-    }
-
     wx.request({
-      url: url,
+      url: options.url,
       method: options.method || 'GET',
       data: options.data || {},
-      header: headers,
-      success: (res) => {
-        console.log('[API] 请求成功:', {
-          statusCode: res.statusCode,
-          data: res.data
-        });
-
-        // 处理不同的成功状态码
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(res.data);
-        } else if (res.statusCode === 401) {
-          // Token 过期或无效
-          clearToken();
-          // 不立即弹窗，允许访客浏览，只在需要登录的操作时提示
-          console.log('未授权访问，将使用访客模式');
-          reject({ error: 'UNAUTHORIZED', message: '未授权' });
-        } else {
-          // 其他错误
-          const errorMsg = res.data?.message || res.data?.error || `请求失败 (${res.statusCode})`;
-          // 不弹窗，让调用者决定是否提示
-          reject(res.data);
-        }
-      },
-      fail: (err) => {
-        console.error('[API] 网络请求失败:', err);
-        reject(err);
-      }
+      header: options.header || {},
+      success: resolve,
+      fail: reject
     });
   });
 }
 
-/**
- * 生成幂等性 Key（基于 URL + 数据 + 时间戳）
- */
+function rawRefreshSession() {
+  var refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    return Promise.reject({ error: 'NO_REFRESH_TOKEN', message: '没有 Refresh Token' });
+  }
+
+  return wxRequest({
+    url: config.API_BASE_URL + '/auth/refresh',
+    method: 'POST',
+    data: { refreshToken: refreshToken },
+    header: { 'Content-Type': 'application/json' }
+  }).then((res) => {
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      saveToken(res.data.accessToken, res.data.refreshToken, res.data);
+      return res.data;
+    }
+
+    var error = normalizeHttpError(res, 'Token 刷新失败');
+    if (shouldClearToken(res.statusCode)) {
+      clearToken();
+    }
+    throw error;
+  });
+}
+
+function refreshSession() {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = rawRefreshSession()
+    .then((res) => {
+      refreshPromise = null;
+      return res;
+    })
+    .catch((err) => {
+      refreshPromise = null;
+      throw err;
+    });
+
+  return refreshPromise;
+}
+
+async function ensureAccessToken() {
+  if (!isTokenExpiredOrExpiringSoon()) {
+    return true;
+  }
+
+  try {
+    await refreshSession();
+    return true;
+  } catch (err) {
+    // If the current access token is still valid, keep the request moving.
+    // A 401 response will still trigger refresh-and-retry below.
+    if (isStoredAccessTokenStillUsable()) {
+      console.warn('Token 预刷新失败，继续使用当前未过期 token:', err);
+      return true;
+    }
+    throw err;
+  }
+}
+
 function generateIdempotencyKey(url, data) {
   const timestamp = Date.now();
   const dataStr = data ? JSON.stringify(data) : '';
   const str = url + dataStr + timestamp;
-  // 简单 hash
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
@@ -119,114 +215,182 @@ function generateIdempotencyKey(url, data) {
   return 'ik_' + Math.abs(hash) + '_' + timestamp;
 }
 
-/**
- * 将旧的上传 URL 映射到 COS 目录
- * 返回 null 表示不适用 COS 直传
- */
+function buildRequestOptions(options) {
+  const method = (options.method || 'GET').toUpperCase();
+  const writeMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+  const idempotencyKey = options.idempotencyKey
+    || (writeMethods.includes(method) ? generateIdempotencyKey(options.url, options.data) : '');
+
+  return {
+    url: options.url,
+    method,
+    data: options.data || {},
+    idempotencyKey,
+    skipAuthRefresh: options.skipAuthRefresh === true
+  };
+}
+
+function buildHeaders(options) {
+  const token = getToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : ''
+  };
+
+  if (options.idempotencyKey) {
+    headers['Idempotency-Key'] = options.idempotencyKey;
+  }
+
+  return headers;
+}
+
+async function requestWithRetry(options, hasRetried) {
+  const authEndpoint = isAuthEndpoint(options.url);
+  if (!authEndpoint && !options.skipAuthRefresh) {
+    await ensureAccessToken();
+  }
+
+  const fullUrl = config.API_BASE_URL + options.url;
+  const res = await wxRequest({
+    url: fullUrl,
+    method: options.method,
+    data: options.data,
+    header: buildHeaders(options)
+  });
+
+  if (res.statusCode >= 200 && res.statusCode < 300) {
+    return res.data;
+  }
+
+  if (res.statusCode === 401
+      && !hasRetried
+      && !authEndpoint
+      && !options.skipAuthRefresh
+      && getRefreshToken()) {
+    await refreshSession();
+    return requestWithRetry(options, true);
+  }
+
+  if (res.statusCode === 401) {
+    clearToken();
+    throw { error: 'UNAUTHORIZED', message: '未授权', statusCode: 401 };
+  }
+
+  throw normalizeHttpError(res);
+}
+
+function request(options) {
+  return requestWithRetry(buildRequestOptions(options), false);
+}
+
 function mapUrlToCosDir(url) {
   if (url === '/files/upload-wish') return 'wishes';
   if (url === '/files/upload-avatar') return 'avatars';
   return null;
 }
 
-module.exports = {
-  /**
-   * GET 请求
-   */
-  get: (url, data) => request({ url, method: 'GET', data }),
+function parseUploadResponse(res) {
+  if (!res || !res.data) return {};
+  if (typeof res.data === 'object') return res.data;
+  try {
+    return JSON.parse(res.data);
+  } catch (e) {
+    return { message: res.data };
+  }
+}
 
-  /**
-   * POST 请求
-   */
-  post: (url, data) => {
-    console.log('[API] POST 请求:', url, data);
-    return request({ url, method: 'POST', data });
-  },
+function wxUploadFile(url, filePath, formData, idempotencyKey) {
+  const token = getToken();
+  return new Promise((resolve, reject) => {
+    wx.uploadFile({
+      url: config.API_BASE_URL + url,
+      filePath: filePath,
+      name: 'file',
+      formData: formData,
+      header: {
+        'Authorization': token ? `Bearer ${token}` : '',
+        'Idempotency-Key': idempotencyKey
+      },
+      success: resolve,
+      fail: reject
+    });
+  });
+}
 
-  /**
-   * PUT 请求
-   */
-  put: (url, data) => request({ url, method: 'PUT', data }),
+async function uploadToBackend(url, filePath, formData, hasRetried, idempotencyKey) {
+  await ensureAccessToken();
 
-  /**
-   * PATCH 请求
-   */
-  patch: (url, data) => request({ url, method: 'PATCH', data }),
+  const res = await wxUploadFile(url, filePath, formData, idempotencyKey);
+  if (res.statusCode >= 200 && res.statusCode < 300) {
+    return parseUploadResponse(res);
+  }
 
-  /**
-   * DELETE 请求
-   */
-  delete: (url, data) => request({ url, method: 'DELETE', data }),
+  if (res.statusCode === 401 && !hasRetried && getRefreshToken()) {
+    await refreshSession();
+    return uploadToBackend(url, filePath, formData, true, idempotencyKey);
+  }
 
-  /**
-   * 上传文件（已知路径走 COS 直传，其余保留原有行为）
-   */
-  uploadFile: async (url, filePath, formData = {}) => {
-    var cosDir = mapUrlToCosDir(url);
-    if (cosDir !== null) {
-      try {
+  if (res.statusCode === 401) {
+    clearToken();
+    throw { error: 'UNAUTHORIZED', message: '未授权', statusCode: 401 };
+  }
+
+  const data = parseUploadResponse(res);
+  data.statusCode = res.statusCode;
+  if (!data.message && !data.error) {
+    data.message = '上传失败 (' + res.statusCode + ')';
+  }
+  throw data;
+}
+
+async function uploadFile(url, filePath, formData = {}, options = {}) {
+  var shouldCompress = options.compress !== false;
+  var cosDir = options.useCos === false ? null : mapUrlToCosDir(url);
+
+  if (cosDir !== null) {
+    try {
+      if (shouldCompress) {
         try {
           const compressResult = await compressImage(filePath);
           filePath = compressResult.path;
         } catch (e) {
-          console.warn('压缩失败，使用原图:', e);
+          console.warn('图片压缩失败，使用原图:', e);
         }
-        var cosUpload = require('./cos-upload');
-        var cosUrl = await cosUpload.uploadFile(filePath, cosDir);
-        return { url: cosUrl, key: '', originalFilename: '', contentType: '', size: 0 };
-      } catch (err) {
-        console.error('COS 上传失败，回退到服务端上传:', err);
       }
-    }
 
+      var cosUpload = require('./cos-upload');
+      var cosUrl = await cosUpload.uploadFile(filePath, cosDir);
+      return { url: cosUrl, key: '', originalFilename: '', contentType: '', size: 0 };
+    } catch (err) {
+      console.error('COS 上传失败，回退到服务端上传:', err);
+    }
+  }
+
+  if (shouldCompress) {
     try {
       const compressResult = await compressImage(filePath);
       filePath = compressResult.path;
     } catch (e) {
-      console.warn('压缩失败，使用原图:', e);
+      console.warn('图片压缩失败，使用原图:', e);
     }
-    return new Promise((resolve, reject) => {
-      const token = getToken();
-      const idempotencyKey = 'upload_' + Date.now();
-      wx.uploadFile({
-        url: config.API_BASE_URL + url,
-        filePath: filePath,
-        name: 'file',
-        formData: formData,
-        header: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Idempotency-Key': idempotencyKey
-        },
-        success: (res) => {
-          try {
-            const data = JSON.parse(res.data);
-            resolve(data);
-          } catch (e) {
-            reject({ error: '解析失败', message: res.data });
-          }
-        },
-        fail: (err) => {
-          reject(err);
-        }
-      });
-    });
-  },
+  }
 
-  /**
-   * 保存 Token（供 auth 模块使用）
-   */
-  saveToken: saveToken,
+  return uploadToBackend(url, filePath, formData, false, 'upload_' + Date.now());
+}
 
-  /**
-   * 清除 Token（供 auth 模块使用）
-   */
-  clearToken: clearToken,
-
-  /**
-   * 获取 COS 临时上传凭证
-   * @param {string} dir 上传目录
-   * @returns {Promise<object>}
-   */
+module.exports = {
+  get: (url, data) => request({ url, method: 'GET', data }),
+  post: (url, data) => request({ url, method: 'POST', data }),
+  put: (url, data) => request({ url, method: 'PUT', data }),
+  patch: (url, data) => request({ url, method: 'PATCH', data }),
+  delete: (url, data) => request({ url, method: 'DELETE', data }),
+  uploadFile,
+  saveToken,
+  clearToken,
+  getToken,
+  getRefreshToken,
+  refreshSession,
+  ensureAccessToken,
   getCosCredentials: async function(dir) {
     var query = dir ? '?dir=' + encodeURIComponent(dir) : '';
     return this.get('/files/cos-credentials' + query);

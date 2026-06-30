@@ -62,16 +62,33 @@ Page({
   },
 
   // ===== WebSocket =====
-  connectWs() {
-    if (this._socket) return;
+  async connectWs() {
+    if (this._socket || this._connectingWs) return;
+    this._connectingWs = true;
+
+    try {
+      await api.ensureAccessToken();
+    } catch (e) {
+      this._connectingWs = false;
+      return;
+    }
+
     const token = auth.getAccessToken();
-    if (!token) return;
+    if (!token) {
+      this._connectingWs = false;
+      return;
+    }
 
     const wsBase = config.API_BASE_URL.replace('/api/v1', '').replace('http://', 'ws://').replace('https://', 'wss://');
     const wsUrl = wsBase + '/ws/chat?token=' + token;
+    this._manualWsClose = false;
     const socket = wx.connectSocket({ url: wsUrl });
 
-    socket.onOpen(() => { console.log('WS opened'); });
+    socket.onOpen(() => {
+      this._connectingWs = false;
+      this._wsRetriedAfterAuthClose = false;
+      console.log('WS opened');
+    });
     socket.onMessage((res) => {
       try {
         const msg = JSON.parse(res.data);
@@ -83,16 +100,36 @@ Page({
         }
       } catch (e) {}
     });
-    socket.onClose(() => { this._socket = null; });
-    socket.onError(() => { this._socket = null; });
+    socket.onClose(async (res) => {
+      const shouldReconnect = !this._manualWsClose
+        && res
+        && (res.code === 1008 || res.code === 4001 || /unauthorized|token|policy/i.test(res.reason || ''));
+      this._socket = null;
+      this._connectingWs = false;
+
+      if (shouldReconnect && !this._wsRetriedAfterAuthClose) {
+        this._wsRetriedAfterAuthClose = true;
+        try {
+          await api.refreshSession();
+          this.connectWs();
+        } catch (e) {}
+      }
+    });
+    socket.onError(() => {
+      this._socket = null;
+      this._connectingWs = false;
+    });
     this._socket = socket;
   },
 
   disconnectWs() {
     if (this._socket) {
+      this._manualWsClose = true;
       this._socket.close({});
       this._socket = null;
     }
+    this._connectingWs = false;
+    this._wsRetriedAfterAuthClose = false;
   },
 
   // ===== 会话 =====
