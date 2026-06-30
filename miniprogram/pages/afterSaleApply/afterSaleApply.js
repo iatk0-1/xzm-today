@@ -2,8 +2,11 @@
 const api = require('../../utils/api');
 const clipboard = require('../../utils/clipboard');
 
+const DEFAULT_AFTER_SALE_REASON = '不想要了';
+
 // 售后原因选项
 const REASON_OPTIONS = [
+  DEFAULT_AFTER_SALE_REASON,
   '商品质量问题',
   '尺码不符',
   '颜色/款式不喜欢',
@@ -279,12 +282,7 @@ Page({
       return;
     }
 
-    // 验证原因
-    const reason = this.data.reason || this.data.reasonText;
-    if (!reason) {
-      wx.showToast({ title: '请选择或填写售后原因', icon: 'none' });
-      return;
-    }
+    const reason = this.data.reason || this.data.reasonText || DEFAULT_AFTER_SALE_REASON;
 
     wx.showLoading({ title: '提交中...', mask: true });
 
