@@ -1,0 +1,164 @@
+page {
+  background: #f7f8fa;
+  min-height: 100vh;
+}
+
+.page {
+  padding: 20rpx;
+}
+
+.trace-header,
+.trace-card,
+.empty-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+}
+
+.header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.header-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111;
+}
+
+.header-status {
+  font-size: 24rpx;
+  color: #d84315;
+  background: #fff3e0;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+
+.header-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.meta-label {
+  font-size: 24rpx;
+  color: #999;
+  flex-shrink: 0;
+}
+
+.meta-value-box {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12rpx;
+  min-width: 0;
+  flex: 1;
+}
+
+.meta-value {
+  font-size: 24rpx;
+  color: #333;
+  word-break: break-all;
+  text-align: right;
+}
+
+.btn-copy {
+  font-size: 20rpx;
+  color: #1a1a1a;
+  border: 1rpx solid #1a1a1a;
+  padding: 4rpx 14rpx;
+  border-radius: 6rpx;
+  flex-shrink: 0;
+}
+
+.header-tip {
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: #8a929d;
+  line-height: 1.6;
+}
+
+.trace-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.trace-node {
+  display: flex;
+  gap: 18rpx;
+}
+
+.trace-axis {
+  width: 28rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.trace-dot {
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: #c9ced6;
+  margin-top: 8rpx;
+}
+
+.trace-line {
+  width: 2rpx;
+  flex: 1;
+  background: #e5e9ef;
+  margin: 8rpx 0;
+}
+
+.trace-content {
+  flex: 1;
+  padding-bottom: 28rpx;
+}
+
+.trace-node:last-child .trace-content {
+  padding-bottom: 0;
+}
+
+.trace-desc {
+  font-size: 26rpx;
+  color: #333;
+  line-height: 1.6;
+}
+
+.trace-time {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #8a929d;
+}
+
+.trace-node.latest .trace-dot {
+  background: #1f2933;
+}
+
+.trace-node.latest .trace-desc {
+  color: #111;
+  font-weight: 600;
+}
+
+.empty-card {
+  text-align: center;
+  padding: 100rpx 28rpx;
+}
+
+.empty-title {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.empty-desc {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #999;
+}

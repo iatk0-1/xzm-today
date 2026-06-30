@@ -252,9 +252,53 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
   line-height: 1.5;
 }
 
-/* 物流轨迹 */
-.trace-title { font-size: 26rpx; font-weight: 600; color: #111; margin: 20rpx 0 16rpx; }
-.trace-list { display: flex; flex-direction: column; gap: 20rpx; }
-.trace-item { display: flex; gap: 16rpx; align-items: flex-start; }
-.trace-time { min-width: 280rpx; flex-shrink: 0; font-size: 22rpx; color: #999; white-space: nowrap; line-height: 1.6; }
-.trace-content { flex: 1; font-size: 24rpx; color: #333; line-height: 1.6; word-break: break-all; }
+/* 物流轨迹摘要 */
+.logistics-trace-summary {
+  background: #fff;
+  border-radius: 8rpx;
+  padding: 20rpx 16rpx;
+}
+
+.trace-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.trace-summary-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #111;
+}
+
+.trace-summary-link {
+  font-size: 22rpx;
+  color: #576b95;
+  flex-shrink: 0;
+}
+
+.trace-summary-body {
+  margin-top: 14rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.trace-summary-status {
+  font-size: 24rpx;
+  color: #333;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.trace-summary-time {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.trace-summary-empty {
+  margin-top: 14rpx;
+  font-size: 22rpx;
+  color: #999;
+}

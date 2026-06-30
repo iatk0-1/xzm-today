@@ -11,6 +11,7 @@
     "pages/editProfile/editProfile",
     "pages/orderList/orderList",
     "pages/orderDetail/orderDetail",
+    "pages/shipmentTraceDetail/shipmentTraceDetail",
     "pages/afterSaleApply/afterSaleApply",
     "pages/afterSaleDetail/afterSaleDetail",
     "pages/adminAfterSaleList/adminAfterSaleList",

@@ -12,7 +12,8 @@ Page({
     countdownText: '',
     afterSaleRecords: [],
     shipments: [],       // 多个发货单（支持分批发货）
-    logisticsTraceList: []  // 多个发货单的物流轨迹
+    logisticsTraceList: [],  // 多个发货单的物流轨迹
+    logisticsTraceMap: {}
   },
 
   onLoad: function(options) {
@@ -173,12 +174,18 @@ Page({
         var self = this;
         var traceMap = {};
         traceList.forEach(function(trace) {
-          if (trace.nodes) {
-            trace.nodes.forEach(function(node) {
-              node.timeDisplay = self.formatTime(node.time);
-            });
-          }
-          traceMap[trace.shipmentId] = trace;
+          var nodes = (trace.nodes || []).map(function(node, index) {
+            return {
+              ...node,
+              timeDisplay: self.formatTime(node.time),
+              isLatest: index === 0
+            };
+          });
+          traceMap[trace.shipmentId] = {
+            ...trace,
+            nodes: nodes,
+            latestNode: nodes.length > 0 ? nodes[0] : null
+          };
         });
         this.setData({ logisticsTraceMap: traceMap });
       }
@@ -187,21 +194,13 @@ Page({
     }
   },
 
-  // 查看单个发货单的物流轨迹
-  viewShipmentTrace: async function(e) {
+  // 进入单个发货单的物流轨迹详情页
+  viewShipmentTrace: function(e) {
     const shipmentId = e.currentTarget.dataset.id;
-    try {
-      const trace = await api.get(`/shipments/${shipmentId}/trace`);
-      if (trace) {
-        wx.showModal({
-          title: '物流轨迹',
-          content: trace.nodes ? trace.nodes.map(node => node.description).join('\n') : '暂无物流信息',
-          showCancel: false
-        });
-      }
-    } catch (err) {
-      wx.showToast({ title: '加载失败', icon: 'none' });
-    }
+    const orderId = this.data.order ? this.data.order.id : '';
+    wx.navigateTo({
+      url: `/pages/shipmentTraceDetail/shipmentTraceDetail?shipmentId=${shipmentId}&orderId=${orderId}`
+    });
   },
 
   // 预览面单 PDF

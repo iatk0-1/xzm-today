@@ -131,15 +131,17 @@
           <button class="btn-preview" bindtap="previewWaybill" data-url="{{item.pdfShowUrl}}">预览面单</button>
         </view>
 
-        <!-- 物流轨迹 -->
-        <view class="logistics-trace" wx:if="{{logisticsTraceMap[item.id] && logisticsTraceMap[item.id].nodes && logisticsTraceMap[item.id].nodes.length > 0}}">
-          <view class="trace-title">物流轨迹</view>
-          <view class="trace-list">
-            <view class="trace-item" wx:for="{{logisticsTraceMap[item.id].nodes}}" wx:key="time">
-              <text class="trace-time">{{item.timeDisplay}}</text>
-              <text class="trace-content">{{item.description}}</text>
-            </view>
+        <!-- 物流轨迹摘要 -->
+        <view class="logistics-trace-summary" wx:if="{{logisticsTraceMap[item.id]}}" bindtap="viewShipmentTrace" data-id="{{item.id}}">
+          <view class="trace-summary-header">
+            <text class="trace-summary-title">物流轨迹</text>
+            <text class="trace-summary-link">查看详情</text>
           </view>
+          <view class="trace-summary-body" wx:if="{{logisticsTraceMap[item.id].latestNode}}">
+            <text class="trace-summary-status">{{logisticsTraceMap[item.id].latestNode.description}}</text>
+            <text class="trace-summary-time">{{logisticsTraceMap[item.id].latestNode.timeDisplay}}</text>
+          </view>
+          <view class="trace-summary-empty" wx:else>暂无物流轨迹</view>
         </view>
       </view>
     </view>
