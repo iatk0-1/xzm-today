@@ -184,6 +184,7 @@ Page({
 
       const orders = (res || []).map(order => ({
         ...order,
+        createdAtDisplay: this.formatTime(order.createdAt),
         items: (order.items || []).map(item => ({
           ...item,
           skuImageUrl: item.productImage || ''
@@ -324,5 +325,26 @@ Page({
     const month = (d.getMonth() + 1).toString().padStart(2, '0');
     const day = d.getDate().toString().padStart(2, '0');
     return `${d.getFullYear()}-${month}-${day}`;
+  },
+
+  // 格式化时间
+  formatTime: function(raw) {
+    if (!raw) return '';
+    try {
+      var d;
+      if (typeof raw === 'number') {
+        d = new Date(raw < 1e10 ? raw * 1000 : raw);
+      } else if (raw instanceof Array) {
+        d = new Date(raw[0], raw[1] - 1, raw[2], raw[3] || 0, raw[4] || 0, raw[5] || 0);
+      } else {
+        d = new Date(String(raw));
+      }
+      if (isNaN(d.getTime())) return String(raw);
+      var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+      return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' '
+        + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    } catch (e) {
+      return String(raw);
+    }
   }
 });

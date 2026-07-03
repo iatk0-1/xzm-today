@@ -44,7 +44,7 @@
         </view>
         <view class="goods-sku" wx:else>{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}</view>
         <view class="after-sale-tag" wx:if="{{item.afterSaleSummary && item.afterSaleSummary.hasAfterSale}}">
-          {{item.afterSaleSummary.statusText}} {{item.afterSaleSummary.totalQty}}/{{item.qty}}
+          {{item.afterSaleSummary.statusText}} {{item.afterSaleSummary.totalQty}}/{{item.totalOrderQty}}
           <text wx:if="{{item.afterSaleSummary.shipmentBlockedQty > 0}}"> · 可发 {{item.afterSaleSummary.canShipQty}}</text>
         </view>
         <view class="goods-price-row">

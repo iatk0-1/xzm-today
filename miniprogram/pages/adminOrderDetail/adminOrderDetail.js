@@ -32,6 +32,19 @@ Page({
       // 附加格式化字段
       res.statusDisplay = this.getOrderStatusDisplay(res.status);
       res.createdAtDisplay = this.formatTime(res.createdAt);
+      
+      // 预处理商品项的实发/售后总数对比，解决套装商品主项数量与子项售后件数单位不一致的问题
+      if (res && res.items) {
+        res.items.forEach(item => {
+          if (item.bundleConfig && item.bundleConfig.length > 0) {
+            const piecesPerBundle = item.bundleConfig.reduce((sum, sub) => sum + (sub.count || 0), 0);
+            item.totalOrderQty = piecesPerBundle * (item.qty || 1);
+          } else {
+            item.totalOrderQty = item.qty || 1;
+          }
+        });
+      }
+      
       this.setData({ order: res, isLoading: false });
 
       this.loadAfterSaleRecords(this.data.orderId);
