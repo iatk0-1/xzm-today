@@ -14,6 +14,17 @@ page { background-color: #f2f2f2; }
 }
 .status-title { font-size: 36rpx; font-weight: 600; color: #1a1a1a; }
 .status-desc { font-size: 24rpx; color: #999; margin-top: 8rpx; }
+.btn-admin-refund {
+  margin-top: 24rpx;
+  width: 220rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  border-radius: 8rpx;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 26rpx;
+  padding: 0;
+}
 
 /* === 收件地址 === */
 .address-card { display: flex; align-items: flex-start; gap: 16rpx; }
@@ -103,9 +114,10 @@ page { background-color: #f2f2f2; }
 .shipment-goods { display: flex; gap: 16rpx; padding: 10rpx 0; }
 .goods-qty { font-size: 22rpx; color: #999; }
 
-.waybill-actions { display: flex; gap: 16rpx; margin-top: 16rpx; }
-.btn-preview, .btn-cancel-waybill { flex: 1; height: 72rpx; line-height: 72rpx; text-align: center; border-radius: 8rpx; font-size: 26rpx; padding: 0; }
+.waybill-actions { display: flex; gap: 12rpx; margin-top: 16rpx; }
+.btn-preview, .btn-cancel-waybill, .btn-partial-unbind { flex: 1; height: 72rpx; line-height: 72rpx; text-align: center; border-radius: 8rpx; font-size: 24rpx; padding: 0; }
 .btn-preview { background: #f5f5f5; color: #666; }
+.btn-partial-unbind { background: #fff7e6; color: #ad6800; }
 .btn-cancel-waybill { background: #1a1a1a; color: #fff; }
 
 .logistics-trace { margin-top: 16rpx; padding-top: 16rpx; border-top: 1rpx solid #eee; }
@@ -125,3 +137,126 @@ page { background-color: #f2f2f2; }
 .after-sale-qty, .after-sale-amount { font-size: 24rpx; color: #666; }
 .after-sale-reason { font-size: 24rpx; color: #666; margin-bottom: 8rpx; }
 .after-sale-time { font-size: 22rpx; color: #999; }
+
+/* === 操作弹层 === */
+.panel-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.42);
+  z-index: 90;
+}
+.bottom-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 91;
+  background: #fff;
+  border-radius: 16rpx 16rpx 0 0;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+}
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28rpx 28rpx 18rpx;
+  border-bottom: 1rpx solid #eee;
+}
+.panel-title { font-size: 30rpx; font-weight: 600; color: #1a1a1a; }
+.panel-close { font-size: 26rpx; color: #666; }
+.refund-summary {
+  padding: 18rpx 28rpx;
+  font-size: 26rpx;
+  color: #d93026;
+  background: #fff8f6;
+}
+.panel-body {
+  flex: 1;
+  min-height: 240rpx;
+  max-height: 58vh;
+  padding: 0 28rpx;
+  box-sizing: border-box;
+}
+.refund-row {
+  display: flex;
+  gap: 16rpx;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #f1f1f1;
+}
+.refund-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+.refund-title {
+  font-size: 26rpx;
+  color: #1a1a1a;
+  line-height: 1.35;
+}
+.refund-sub, .refund-limit {
+  font-size: 22rpx;
+  color: #888;
+  line-height: 1.35;
+}
+.refund-inputs {
+  width: 220rpx;
+  display: flex;
+  gap: 10rpx;
+  align-items: center;
+}
+.refund-inputs.single { width: 150rpx; }
+.panel-input {
+  width: 100rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  text-align: center;
+  background: #f7f7f7;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  color: #1a1a1a;
+}
+.refund-inputs.single .panel-input { width: 150rpx; }
+.panel-field {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f1f1f1;
+}
+.panel-label {
+  width: 72rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+.panel-text-input {
+  flex: 1;
+  height: 64rpx;
+  background: #f7f7f7;
+  border-radius: 8rpx;
+  padding: 0 18rpx;
+  font-size: 24rpx;
+  box-sizing: border-box;
+}
+.panel-actions {
+  display: flex;
+  gap: 16rpx;
+  padding: 20rpx 28rpx 34rpx;
+  border-top: 1rpx solid #eee;
+}
+.panel-btn {
+  flex: 1;
+  height: 76rpx;
+  line-height: 76rpx;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+  padding: 0;
+}
+.panel-btn.secondary { background: #f5f5f5; color: #666; }
+.panel-btn.danger { background: #d93026; color: #fff; }

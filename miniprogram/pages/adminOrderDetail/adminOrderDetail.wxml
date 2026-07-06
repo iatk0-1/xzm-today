@@ -1,7 +1,4 @@
-<!-- miniprogram/pages/adminOrderDetail/adminOrderDetail.wxml -->
 <view class="admin-detail-wrapper" wx:if="{{!isLoading && order}}">
-
-  <!-- 订单状态 -->
   <view class="status-header">
     <view class="status-title">{{order.statusDisplay}}</view>
     <view class="status-desc" wx:if="{{order.status === 'pending'}}">待支付</view>
@@ -10,9 +7,14 @@
     <view class="status-desc" wx:if="{{order.status === 'partial_shipped'}}">部分已发货</view>
     <view class="status-desc" wx:if="{{order.status === 'shipped'}}">已发货</view>
     <view class="status-desc" wx:if="{{order.status === 'completed'}}">交易完成</view>
+    <button
+      class="btn-admin-refund"
+      wx:if="{{order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped' || order.status === 'shipped' || order.status === 'completed'}}"
+      bindtap="openRefundPanel">
+      主动退款
+    </button>
   </view>
 
-  <!-- 收件信息 -->
   <view class="info-card address-card" wx:if="{{order.recipientName}}">
     <view class="location-icon">📍</view>
     <view class="address-content">
@@ -22,27 +24,25 @@
       </view>
       <view class="detail-row">{{order.recipientAddress}}</view>
       <view class="address-actions">
-        <view class="contact-buyer-btn" bindtap="contactBuyer">💬 联系买家</view>
+        <view class="contact-buyer-btn" bindtap="contactBuyer">联系买家</view>
         <view class="copy-recipient-btn" catchtap="copyRecipientInfo">复制收货信息</view>
       </view>
     </view>
   </view>
 
-  <!-- 商品信息 -->
   <view class="info-card goods-card">
     <view class="shop-title">订单商品</view>
     <view class="goods-item" wx:for="{{order.items}}" wx:key="id">
       <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
       <view class="goods-info">
         <view class="goods-title">{{item.productName}}</view>
-        <!-- 套装子项列表 -->
         <view class="goods-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
           <view class="bundle-sub" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
             <text class="bundle-sub-name">{{sub.bundleGroupName}}:</text>
             <text class="bundle-sub-spec">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
           </view>
         </view>
-        <view class="goods-sku" wx:else>{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}</view>
+        <view class="goods-sku" wx:else>{{item.productSpec || '默认规格'}} / {{item.productSize || '均码'}}</view>
         <view class="after-sale-tag" wx:if="{{item.afterSaleSummary && item.afterSaleSummary.hasAfterSale}}">
           {{item.afterSaleSummary.statusText}} {{item.afterSaleSummary.totalQty}}/{{item.totalOrderQty}}
           <text wx:if="{{item.afterSaleSummary.shipmentBlockedQty > 0}}"> · 可发 {{item.afterSaleSummary.canShipQty}}</text>
@@ -74,7 +74,6 @@
     </view>
   </view>
 
-  <!-- 订单信息 -->
   <view class="info-card order-info-card">
     <view class="info-row">
       <text class="info-label">订单编号</text>
@@ -89,14 +88,12 @@
     </view>
   </view>
 
-  <!-- 物流信息区域（支持分批发货，多个发货单） -->
   <view class="info-card logistics-card" wx:if="{{shipments && shipments.length > 0}}">
     <view class="section-title">物流信息</view>
-
     <view class="shipment-list">
-      <view class="shipment-item" wx:for="{{shipments}}" wx:key="id">
+      <view class="shipment-item" wx:for="{{shipments}}" wx:key="id" wx:for-index="shipmentIndex">
         <view class="shipment-header">
-          <text class="shipment-index">发货单 {{index + 1}}</text>
+          <text class="shipment-index">发货单 {{shipmentIndex + 1}}</text>
           <text class="shipment-time" wx:if="{{item.shippedAtDisplay}}">{{item.shippedAtDisplay}}</text>
         </view>
 
@@ -114,7 +111,6 @@
           </view>
         </view>
 
-        <!-- 发货单商品列表 -->
         <view class="shipment-items">
           <view class="shipment-goods" wx:for="{{item.items}}" wx:for-item="goodsItem" wx:key="id">
             <image class="goods-img" src="{{goodsItem.skuImageUrl || goodsItem.productImage}}" mode="aspectFill"></image>
@@ -124,24 +120,23 @@
                 <text wx:if="{{goodsItem.spec}}">{{goodsItem.spec}}</text>
                 <text wx:if="{{goodsItem.size}}"> / {{goodsItem.size}}</text>
               </view>
-              <view class="goods-qty">× {{goodsItem.shipQty}}</view>
+              <view class="goods-qty">x {{goodsItem.shipQty}}</view>
             </view>
           </view>
         </view>
 
-        <!-- 面单 PDF 预览和取消运单 -->
         <view class="waybill-actions" wx:if="{{(order.status === 'paid' || order.status === 'shipped' || order.status === 'partial_shipped') && item.expressNo}}">
           <button class="btn-preview" bindtap="previewWaybill" data-url="{{item.pdfShowUrl}}" wx:if="{{item.pdfShowUrl}}">预览面单</button>
-          <button class="btn-cancel-waybill" bindtap="cancelWaybill" data-shipment-id="{{item.id}}" data-order-no="{{item.orderNo}}">取消运单</button>
+          <button class="btn-partial-unbind" bindtap="openPartialUnbindPanel" data-shipment-index="{{shipmentIndex}}">部分解绑</button>
+          <button class="btn-cancel-waybill" bindtap="cancelWaybill" data-shipment-id="{{item.id}}" data-order-no="{{item.expressNo}}">完全解绑</button>
         </view>
 
-        <!-- 物流轨迹 -->
         <view class="logistics-trace" wx:if="{{logisticsTraceMap[item.id] && logisticsTraceMap[item.id].nodes && logisticsTraceMap[item.id].nodes.length > 0}}">
           <view class="trace-title">物流轨迹</view>
           <view class="trace-list">
-            <view class="trace-item" wx:for="{{logisticsTraceMap[item.id].nodes}}" wx:key="time">
-              <text class="trace-time">{{item.timeDisplay}}</text>
-              <text class="trace-content">{{item.description}}</text>
+            <view class="trace-item" wx:for="{{logisticsTraceMap[item.id].nodes}}" wx:for-item="node" wx:key="time">
+              <text class="trace-time">{{node.timeDisplay}}</text>
+              <text class="trace-content">{{node.description}}</text>
             </view>
           </view>
         </view>
@@ -149,16 +144,10 @@
     </view>
   </view>
 
-  <!-- 售后记录区域 -->
   <view class="info-card after-sale-card" wx:if="{{afterSaleRecords && afterSaleRecords.length > 0}}">
     <view class="section-title">售后记录</view>
     <view class="after-sale-list">
-      <view
-        class="after-sale-item"
-        wx:for="{{afterSaleRecords}}"
-        wx:key="id"
-        bindtap="viewAfterSaleDetail"
-        data-id="{{item.id}}">
+      <view class="after-sale-item" wx:for="{{afterSaleRecords}}" wx:key="id" bindtap="viewAfterSaleDetail" data-id="{{item.id}}">
         <view class="after-sale-header">
           <text class="after-sale-type">{{item.typeDisplay}}</text>
           <text class="after-sale-status status-{{item.status}}">{{item.statusDisplay}}</text>
@@ -172,9 +161,68 @@
       </view>
     </view>
   </view>
-
 </view>
 
 <view class="loading" wx:if="{{isLoading}}">
   <text>加载中...</text>
+</view>
+
+<view class="panel-mask" wx:if="{{showRefundPanel}}" catchtap="closeRefundPanel"></view>
+<view class="bottom-panel" wx:if="{{showRefundPanel}}">
+  <view class="panel-header">
+    <text class="panel-title">主动退款</text>
+    <text class="panel-close" bindtap="closeRefundPanel">关闭</text>
+  </view>
+  <view class="refund-summary" wx:if="{{refundPreview}}">
+    <text>订单可退：¥ {{refundPreview.availableRefundAmount}}</text>
+  </view>
+  <scroll-view class="panel-body" scroll-y>
+    <view class="refund-row" wx:for="{{refundItems}}" wx:for-item="refundItem" wx:for-index="refundIndex" wx:key="orderItemId">
+      <view class="refund-main">
+        <text class="refund-title">{{refundItem.productName}}</text>
+        <text class="refund-sub">{{refundItem.productSpec}} / {{refundItem.productSize}}</text>
+        <text class="refund-limit">可退 {{refundItem.availableQty}} 件，¥ {{refundItem.availableRefundAmount}}</text>
+      </view>
+      <view class="refund-inputs">
+        <input class="panel-input" type="number" disabled="{{refundItem.disabled}}" placeholder="数量" value="{{refundItem.selectedQty}}" data-index="{{refundIndex}}" bindinput="onRefundQtyInput" />
+        <input class="panel-input" type="digit" disabled="{{refundItem.disabled}}" placeholder="金额" value="{{refundItem.inputAmount}}" data-index="{{refundIndex}}" bindinput="onRefundAmountInput" />
+      </view>
+    </view>
+    <view class="panel-field">
+      <text class="panel-label">原因</text>
+      <input class="panel-text-input" value="{{refundReason}}" bindinput="onRefundReasonInput" />
+    </view>
+    <view class="panel-field">
+      <text class="panel-label">备注</text>
+      <input class="panel-text-input" placeholder="可选" value="{{refundNote}}" bindinput="onRefundNoteInput" />
+    </view>
+  </scroll-view>
+  <view class="panel-actions">
+    <button class="panel-btn secondary" bindtap="closeRefundPanel">取消</button>
+    <button class="panel-btn danger" bindtap="submitAdminRefund">确认退款</button>
+  </view>
+</view>
+
+<view class="panel-mask" wx:if="{{showPartialUnbindPanel}}" catchtap="closePartialUnbindPanel"></view>
+<view class="bottom-panel" wx:if="{{showPartialUnbindPanel}}">
+  <view class="panel-header">
+    <text class="panel-title">部分解绑</text>
+    <text class="panel-close" bindtap="closePartialUnbindPanel">关闭</text>
+  </view>
+  <scroll-view class="panel-body" scroll-y>
+    <view class="refund-row" wx:for="{{partialUnbindItems}}" wx:for-item="unbindItem" wx:for-index="unbindIndex" wx:key="orderItemId">
+      <view class="refund-main">
+        <text class="refund-title">{{unbindItem.productName}}</text>
+        <text class="refund-sub">{{unbindItem.spec}}</text>
+        <text class="refund-limit">包裹内 {{unbindItem.shipQty}} 件</text>
+      </view>
+      <view class="refund-inputs single">
+        <input class="panel-input" type="number" placeholder="解绑数量" value="{{unbindItem.unbindQty}}" data-index="{{unbindIndex}}" bindinput="onPartialUnbindQtyInput" />
+      </view>
+    </view>
+  </scroll-view>
+  <view class="panel-actions">
+    <button class="panel-btn secondary" bindtap="closePartialUnbindPanel">取消</button>
+    <button class="panel-btn danger" bindtap="submitPartialUnbind">确认解绑</button>
+  </view>
 </view>

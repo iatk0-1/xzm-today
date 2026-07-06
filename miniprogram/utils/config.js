@@ -3,7 +3,7 @@ module.exports = {
   // 本地运行
   // API_BASE_URL: 'http://localhost:8080/api/v1',
   // 后端 API 线上 URL
-  API_BASE_URL: 'https://api-dev.xianzaimai.com/api/v1',
+  API_BASE_URL: 'https://api.xzm-dev.xianzaimai.com/api/v1',
 
   // 小程序 AppID
   MINIAPP_APPID: 'wx7692230ac8ecdaa8',

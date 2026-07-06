@@ -79,7 +79,7 @@ Page({
       return;
     }
 
-    const wsBase = config.API_BASE_URL.replace('/api/v1', '').replace('http://', 'ws://').replace('https://', 'wss://');
+    const wsBase = config.API_BASE_URL.replace(/\/api\/v\d+$/, '').replace('http://', 'ws://').replace('https://', 'wss://');
     const wsUrl = wsBase + '/ws/chat?token=' + token;
     this._manualWsClose = false;
     const socket = wx.connectSocket({ url: wsUrl });
