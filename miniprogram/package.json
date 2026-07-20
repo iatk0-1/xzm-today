@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "description": "XianzaiMai WeChat Mini-Program",
   "main": "app.js",
+  "scripts": {
+    "test": "node --test tests/unit/*.test.js",
+    "test:e2e:smoke": "node tests/e2e/smoke.js"
+  },
   "dependencies": {
     "cos-wx-sdk-v5": "^1.7.0"
+  },
+  "devDependencies": {
+    "miniprogram-automator": "^0.12.1"
   }
 }
