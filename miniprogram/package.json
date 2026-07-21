@@ -8,7 +8,9 @@
     "test:e2e:smoke": "node tests/e2e/smoke.js",
     "test:e2e:order": "node tests/e2e/order-flow.js",
     "test:e2e:prepare": "node tests/e2e/prepare-order.js",
-    "test:e2e:ship": "node tests/e2e/ship-order.js"
+    "test:e2e:ship": "node tests/e2e/ship-order.js",
+    "test:e2e:after-sale:pre-ship": "node tests/e2e/after-sale-pre-shipment.js",
+    "test:e2e:after-sale:post-ship": "node tests/e2e/after-sale-post-shipment.js"
   },
   "dependencies": {
     "cos-wx-sdk-v5": "^1.7.0"
