@@ -10,7 +10,8 @@
     "test:e2e:prepare": "node tests/e2e/prepare-order.js",
     "test:e2e:ship": "node tests/e2e/ship-order.js",
     "test:e2e:after-sale:pre-ship": "node tests/e2e/after-sale-pre-shipment.js",
-    "test:e2e:after-sale:post-ship": "node tests/e2e/after-sale-post-shipment.js"
+    "test:e2e:after-sale:post-ship": "node tests/e2e/after-sale-post-shipment.js",
+    "test:e2e:after-sale:failed-resolution": "node tests/e2e/after-sale-failed-resolution.js"
   },
   "dependencies": {
     "cos-wx-sdk-v5": "^1.7.0"
