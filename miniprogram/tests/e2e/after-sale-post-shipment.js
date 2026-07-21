@@ -342,10 +342,7 @@ async function run() {
       await submitReturnViaUi(miniProgram, accessToken, mixedAfterSale.id);
     }
     mixedAfterSale = await getAfterSale(accessToken, mixedAfterSale.id);
-    const returnItemBeforeReceive = mixedAfterSale.items.find(
-      (item) => item.afterSaleType === 'return_refund'
-    );
-    if (returnItemBeforeReceive.status === 'approved') {
+    if (mixedAfterSale.status === 'approved') {
       const receivePage = await miniProgram.reLaunch(
         `/pages/adminAfterSaleDetail/adminAfterSaleDetail?afterSaleId=${mixedAfterSale.id}`
       );
@@ -369,6 +366,7 @@ async function run() {
     }
     mixedAfterSale = await getAfterSale(accessToken, mixedAfterSale.id);
     const mixedStatusAfterReceive = mixedAfterSale.status;
+    assert.equal(mixedStatusAfterReceive, 'received');
 
     const adminMixedPage = await miniProgram.reLaunch(
       `/pages/adminAfterSaleDetail/adminAfterSaleDetail?afterSaleId=${mixedAfterSale.id}`
@@ -382,14 +380,24 @@ async function run() {
     const mixedPrimaryButton = await adminMixedPage.$('.btn-primary');
     const mixedPrimaryButtonText = mixedPrimaryButton ? await mixedPrimaryButton.text() : '';
     assert.equal(adminMixedData.afterSale.status, mixedStatusAfterReceive);
+    assert.equal(mixedPrimaryButtonText, '确认退款');
 
-    const mixedRefundResponse = await apiOk(
+    const mixedRefundResponse = await refundAfterSaleViaUi(
+      miniProgram,
+      accessToken,
+      mixedAfterSale.id
+    );
+    mixedAfterSale = await getAfterSale(accessToken, mixedAfterSale.id);
+    assert.equal(mixedAfterSale.status, 'refunded');
+    assert.ok(mixedAfterSale.items.every((item) => item.status === 'refunded'));
+    const duplicateRefundResponse = await apiOk(
       accessToken,
       'POST',
       `/after-sales/${mixedAfterSale.id}/refund`
     );
-    mixedAfterSale = await getAfterSale(accessToken, mixedAfterSale.id);
+    assert.equal(duplicateRefundResponse.status, 'refunded');
     const mixedOrderAfterRefundAttempt = await getOrder(accessToken, partialOrderId);
+    assert.equal(mixedOrderAfterRefundAttempt.status, 'cancelled');
 
     process.stdout.write(JSON.stringify({
       ok: true,
@@ -407,7 +415,8 @@ async function run() {
         orderStatus: mixedOrderAfterRefundAttempt.status,
         mainStatusAfterWarehouseReceive: mixedStatusAfterReceive,
         adminPrimaryButtonAfterWarehouseReceive: mixedPrimaryButtonText,
-        refundEndpointReturnedStatus: mixedRefundResponse.status
+        refundEndpointReturnedStatus: mixedRefundResponse.status,
+        duplicateRefundReturnedStatus: duplicateRefundResponse.status
       }
     }) + '\n');
   } finally {

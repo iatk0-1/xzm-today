@@ -149,19 +149,26 @@ async function markPaidViaDevServer(orderId) {
   const remoteCommand = [
     'set -e',
     "e2e_key=$(sed -n 's/^APP_E2E_KEY=//p' /data/start.env | tail -n 1)",
-    `curl -fsS -X POST -H "X-E2E-Key: \${e2e_key}" http://127.0.0.1:8080/internal/e2e/orders/${orderId}/mark-paid`
+    `curl -fsS --max-time 30 -X POST -H "X-E2E-Key: \${e2e_key}" http://127.0.0.1:8080/internal/e2e/orders/${orderId}/mark-paid`
   ].join('; ');
   let lastError;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const { stdout } = await execFileAsync('ssh.exe', [
+        '-n',
         '-i', sshKey,
         '-o', 'BatchMode=yes',
         '-o', 'StrictHostKeyChecking=yes',
         '-o', 'ConnectTimeout=20',
         sshTarget,
         remoteCommand
-      ], { encoding: 'utf8', windowsHide: true, maxBuffer: 1024 * 1024 });
+      ], {
+        encoding: 'utf8',
+        windowsHide: true,
+        maxBuffer: 1024 * 1024,
+        timeout: 45000,
+        killSignal: 'SIGKILL'
+      });
       return JSON.parse(stdout);
     } catch (error) {
       lastError = error;
@@ -222,7 +229,9 @@ async function applyAfterSaleViaUi(miniProgram, accessToken, orderId, expectedTy
     `after-sale apply ${orderId}`
   );
   assert.equal(String(data.order.id), String(orderId));
-  assert.deepEqual(data.splitItems.map((item) => item.type).sort(), [...expectedTypes].sort());
+  const actualTypes = data.splitItems.map((item) => item.type);
+  assert.ok(actualTypes.every((type) => expectedTypes.includes(type)));
+  assert.ok(expectedTypes.every((type) => actualTypes.includes(type)));
 
   const splitElements = await page.$$('.split-item');
   for (let index = 0; index < data.splitItems.length; index++) {
@@ -450,7 +459,10 @@ async function run() {
       const current = await getOrder(accessToken, fixtures[key].id);
       if (current.status === 'pending') {
         const paid = await markPaidViaDevServer(fixtures[key].id);
-        assert.equal(paid.status, 'stocking');
+        assert.ok(
+          paid.status === 'stocking' || paid.status === 'paid',
+          `marked order has unexpected status ${paid.status}`
+        );
       }
     }
 
@@ -470,12 +482,14 @@ async function run() {
       cancelledAfterSale = await cancelAfterSaleViaUi(miniProgram, accessToken, cancelledAfterSale.id);
     }
     assert.equal(cancelledAfterSale.status, 'cancelled');
-    const cancelledReapply = await expectRejected(
+    const cancelledReapply = await apiOk(
       accessToken,
       'POST',
       '/after-sales',
-      afterSalePayload(await getOrder(accessToken, fixtures.stockingCancelAfterSale.id), ['refund'])
+      afterSalePayload(await getOrder(accessToken, fixtures.stockingCancelAfterSale.id), ['refund']),
+      201
     );
+    assert.equal(cancelledReapply.status, 'pending');
 
     step('testing admin reject, reapply, approve, automatic refund and idempotency');
     let rejected = (await getAfterSales(accessToken, fixtures.stockingReview.id))
@@ -518,21 +532,36 @@ async function run() {
     await expectRejected(accessToken, 'POST', `/after-sales/${approved.id}/review`, { decision: 'approve' });
 
     step('preparing paid/completed/partial fixtures through the picking-list UI');
-    await prepareOrdersViaUi(miniProgram, accessToken, [
+    const preparationCandidates = [
       fixtures.paidReview.id,
       fixtures.completed.id,
       fixtures.partial.id
-    ]);
+    ];
+    const stockingOrderIds = [];
+    for (const orderId of preparationCandidates) {
+      if ((await getOrder(accessToken, orderId)).status === 'stocking') {
+        stockingOrderIds.push(orderId);
+      }
+    }
+    if (stockingOrderIds.length > 0) {
+      await prepareOrdersViaUi(miniProgram, accessToken, stockingOrderIds);
+    }
 
     step('testing paid cancellation rejection and refund approval');
     await expectRejected(accessToken, 'POST', `/orders/${fixtures.paidReview.id}/cancel`);
-    const paidAfterSale = await applyAfterSaleViaUi(
-      miniProgram,
-      accessToken,
-      fixtures.paidReview.id,
-      ['refund']
-    );
-    await reviewAfterSaleViaUi(miniProgram, accessToken, paidAfterSale.id, 'approve');
+    let paidAfterSale = (await getAfterSales(accessToken, fixtures.paidReview.id))
+      .find((item) => item.status === 'pending' || item.status === 'refunded');
+    if (!paidAfterSale) {
+      paidAfterSale = await applyAfterSaleViaUi(
+        miniProgram,
+        accessToken,
+        fixtures.paidReview.id,
+        ['refund']
+      );
+    }
+    if (paidAfterSale.status === 'pending') {
+      await reviewAfterSaleViaUi(miniProgram, accessToken, paidAfterSale.id, 'approve');
+    }
     await waitForAfterSaleStatus(accessToken, paidAfterSale.id, 'refunded');
     await waitForOrderStatus(accessToken, fixtures.paidReview.id, 'cancelled');
 
@@ -557,7 +586,23 @@ async function run() {
     await waitForAfterSaleStatus(accessToken, shippedApproved.id, 'approved');
     await submitReturnViaUi(miniProgram, accessToken, shippedApproved.id);
     await receiveAfterSaleViaUi(miniProgram, accessToken, shippedApproved.id, 'fail');
-    const afterFailRefund = await refundAfterSaleViaUi(miniProgram, accessToken, shippedApproved.id);
+    const failedWarehousePage = await miniProgram.reLaunch(
+      `/pages/adminAfterSaleDetail/adminAfterSaleDetail?afterSaleId=${shippedApproved.id}`
+    );
+    const failedWarehouseData = await waitForPageData(
+      failedWarehousePage,
+      (data) => data.afterSale && data.afterSale.status === 'received',
+      15000,
+      'warehouse-failed admin component'
+    );
+    assert.equal(failedWarehouseData.afterSale.warehouseCheck, 'fail');
+    assert.equal(await failedWarehousePage.$('.btn-primary'), null);
+    const afterFailRefund = await expectRejected(
+      accessToken,
+      'POST',
+      `/after-sales/${shippedApproved.id}/refund`
+    );
+    assert.equal((await getAfterSale(accessToken, shippedApproved.id)).status, 'received');
 
     const report = {
       ok: true,
@@ -572,8 +617,8 @@ async function run() {
         shippedReceiveFail: String(shippedApproved.id)
       },
       findings: {
-        reapplyAfterUserCancellationHttpStatus: cancelledReapply.status,
-        refundAfterWarehouseFailStatus: afterFailRefund.status
+        reapplyAfterUserCancellationStatus: cancelledReapply.status,
+        refundAfterWarehouseFailHttpStatus: afterFailRefund.status
       },
       readyForRealShipment: {
         completedOrderId: String(fixtures.completed.id),

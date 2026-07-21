@@ -171,8 +171,12 @@
     </view>
 
     <!-- 已收货状态 -->
-    <view class="action-btn-group" wx:if="{{afterSale.status === 'received'}}">
+    <view class="action-btn-group" wx:if="{{afterSale.status === 'received' && afterSale.warehouseCheck === 'pass'}}">
       <view class="btn-primary" bindtap="submitRefund">确认退款</view>
+    </view>
+
+    <view class="action-bar-hint" wx:if="{{afterSale.status === 'received' && afterSale.warehouseCheck === 'fail'}}">
+      <text>仓库验收未通过，退款已锁定，请人工处理</text>
     </view>
 
     <!-- 已拒绝/已退款/已取消 -->
