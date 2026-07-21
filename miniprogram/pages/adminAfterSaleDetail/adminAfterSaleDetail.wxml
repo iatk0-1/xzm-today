@@ -175,8 +175,12 @@
       <view class="btn-primary" bindtap="submitRefund">确认退款</view>
     </view>
 
-    <view class="action-bar-hint" wx:if="{{afterSale.status === 'received' && afterSale.warehouseCheck === 'fail'}}">
-      <text>仓库验收未通过，退款已锁定，请人工处理</text>
+    <view wx:if="{{afterSale.status === 'received' && afterSale.warehouseCheck === 'fail'}}">
+      <view class="action-fail-tip">验收未通过，请重新验收或填写原因进行协商退款</view>
+      <view class="action-btn-group">
+        <view class="btn-ghost" bindtap="showReinspectModal">重新验收</view>
+        <view class="btn-primary" bindtap="showNegotiatedRefundModal">协商退款</view>
+      </view>
     </view>
 
     <!-- 已拒绝/已退款/已取消 -->
@@ -224,7 +228,7 @@
   <!-- 仓库收货弹窗 -->
   <view class="modal-mask" wx:if="{{showReceiveModal}}" bindtap="hideReceiveModal">
     <view class="modal-content" catchtap="true">
-      <view class="modal-title">仓库收货</view>
+      <view class="modal-title">{{isReinspection ? '重新验收' : '退货验收'}}</view>
       <view class="modal-options">
         <view
           class="option-item {{warehouseCheck === 'pass' ? 'selected' : ''}}"
@@ -244,6 +248,57 @@
       <view class="modal-actions">
         <view class="modal-btn cancel" bindtap="hideReceiveModal">取消</view>
         <view class="modal-btn confirm" bindtap="submitReceive">确认</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 协商退款弹窗 -->
+  <view class="modal-mask" wx:if="{{showNegotiatedRefundModal}}" bindtap="hideNegotiatedRefundModal">
+    <view class="modal-content negotiated-modal" catchtap="true">
+      <view class="modal-title">协商退款</view>
+      <view class="negotiated-tip">必须记录协商原因；退款成功后，所选明细将按实际金额结案。</view>
+      <scroll-view class="negotiated-list" scroll-y>
+        <view class="negotiated-item" wx:for="{{negotiatedItems}}" wx:key="id">
+          <view class="negotiated-item-main">
+            <view
+              class="negotiated-check {{item.selected ? 'selected' : ''}}"
+              data-index="{{index}}"
+              bindtap="toggleNegotiatedItem">{{item.selected ? '✓' : ''}}</view>
+            <view class="negotiated-product">
+              <view class="negotiated-name">{{item.productName}}</view>
+              <view class="negotiated-limit">原申请 ¥{{item.refundAmount}}，共 {{item.qty}} 件</view>
+            </view>
+          </view>
+          <input
+            class="negotiated-amount"
+            type="digit"
+            disabled="{{!item.selected}}"
+            value="{{item.inputAmount}}"
+            data-index="{{index}}"
+            bindinput="onNegotiatedAmountInput"
+            placeholder="退款金额" />
+        </view>
+      </scroll-view>
+      <view class="modal-input-group">
+        <view class="input-label">协商原因（必填）</view>
+        <textarea
+          class="input-textarea negotiated-reason"
+          placeholder="例如：退回商品轻微破损，双方协商部分退款"
+          value="{{negotiatedReason}}"
+          bindinput="onNegotiatedReasonInput"
+          maxlength="200" />
+      </view>
+      <view class="modal-input-group">
+        <view class="input-label">处理备注（选填）</view>
+        <input
+          class="negotiated-note"
+          placeholder="补充沟通记录"
+          value="{{negotiatedNote}}"
+          bindinput="onNegotiatedNoteInput" />
+      </view>
+      <view class="modal-actions">
+        <view class="modal-btn cancel" bindtap="hideNegotiatedRefundModal">取消</view>
+        <view class="modal-btn confirm" bindtap="submitNegotiatedRefund">确认退款</view>
       </view>
     </view>
   </view>

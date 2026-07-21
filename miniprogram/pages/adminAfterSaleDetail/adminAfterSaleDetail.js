@@ -13,7 +13,13 @@ Page({
     rejectReason: '',
     // 仓库收货
     showReceiveModal: false,
+    isReinspection: false,
     warehouseCheck: 'pass',
+    // 协商退款
+    showNegotiatedRefundModal: false,
+    negotiatedItems: [],
+    negotiatedReason: '',
+    negotiatedNote: '',
     // 售后日志
     logs: []
   },
@@ -150,7 +156,10 @@ Page({
       'ship_return': '用户已寄回',
       'receive_pass': '仓库验收通过',
       'receive_fail': '仓库验收不通过',
-      'refund': '已退款'
+      'reinspect_pass': '重新验收通过',
+      'reinspect_fail': '重新验收不通过',
+      'refund': '已退款',
+      'negotiated_refund': '协商退款'
     };
     return map[action] || action;
   },
@@ -235,6 +244,15 @@ Page({
   showReceiveModal: function() {
     this.setData({
       showReceiveModal: true,
+      isReinspection: false,
+      warehouseCheck: 'pass'
+    });
+  },
+
+  showReinspectModal: function() {
+    this.setData({
+      showReceiveModal: true,
+      isReinspection: true,
       warehouseCheck: 'pass'
     });
   },
@@ -254,7 +272,8 @@ Page({
     wx.showLoading({ title: '处理中...' });
 
     try {
-      await api.post(`/after-sales/${this.data.afterSaleId}/receive`, {
+      const action = this.data.isReinspection ? 'reinspect' : 'receive';
+      await api.post(`/after-sales/${this.data.afterSaleId}/${action}`, {
         warehouseCheck: this.data.warehouseCheck
       });
 
@@ -265,6 +284,93 @@ Page({
     } catch (err) {
       wx.hideLoading();
       wx.showToast({ title: err.message || '操作失败', icon: 'none' });
+    }
+  },
+
+  showNegotiatedRefundModal: function() {
+    const afterSale = this.data.afterSale || {};
+    const negotiatedItems = (afterSale.items || [])
+      .filter(item => item.afterSaleType === 'return_refund' && item.status === 'received')
+      .map(item => ({
+        ...item,
+        selected: true,
+        inputAmount: Number(item.refundAmount || 0).toFixed(2)
+      }));
+    this.setData({
+      showNegotiatedRefundModal: true,
+      negotiatedItems,
+      negotiatedReason: '',
+      negotiatedNote: ''
+    });
+  },
+
+  hideNegotiatedRefundModal: function() {
+    this.setData({ showNegotiatedRefundModal: false });
+  },
+
+  toggleNegotiatedItem: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const selected = !this.data.negotiatedItems[index].selected;
+    this.setData({ [`negotiatedItems[${index}].selected`]: selected });
+  },
+
+  onNegotiatedAmountInput: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    this.setData({ [`negotiatedItems[${index}].inputAmount`]: e.detail.value });
+  },
+
+  onNegotiatedReasonInput: function(e) {
+    this.setData({ negotiatedReason: e.detail.value });
+  },
+
+  onNegotiatedNoteInput: function(e) {
+    this.setData({ negotiatedNote: e.detail.value });
+  },
+
+  submitNegotiatedRefund: async function() {
+    const reason = (this.data.negotiatedReason || '').trim();
+    if (!reason) {
+      wx.showToast({ title: '请填写协商原因', icon: 'none' });
+      return;
+    }
+    const selectedItems = this.data.negotiatedItems.filter(item => item.selected);
+    if (selectedItems.length === 0) {
+      wx.showToast({ title: '请选择退款商品', icon: 'none' });
+      return;
+    }
+    const invalidItem = selectedItems.find(item => {
+      const amount = Number(item.inputAmount || 0);
+      return amount <= 0 || amount > Number(item.refundAmount || 0);
+    });
+    if (invalidItem) {
+      wx.showToast({ title: '退款金额超出可协商范围', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '退款处理中...' });
+    try {
+      const result = await api.post(
+        `/after-sales/${this.data.afterSaleId}/negotiated-refund`,
+        {
+          reason,
+          note: (this.data.negotiatedNote || '').trim(),
+          items: selectedItems.map(item => ({
+            afterSaleItemId: item.id,
+            refundAmount: Number(item.inputAmount).toFixed(2)
+          }))
+        }
+      );
+      wx.hideLoading();
+      if (result.status === 'failed') {
+        wx.showToast({ title: result.errorMessage || '退款失败，可重试', icon: 'none' });
+        return;
+      }
+      wx.showToast({ title: '协商退款成功', icon: 'success' });
+      this.hideNegotiatedRefundModal();
+      this.loadAfterSaleDetail();
+    } catch (err) {
+      wx.hideLoading();
+      wx.showToast({ title: err.message || '协商退款失败', icon: 'none' });
     }
   },
 
