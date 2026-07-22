@@ -59,6 +59,7 @@ Page({
           count: isDisabled ? 0 : item.count,
           selected: isDisabled ? false : item.selected,
           disabled: isDisabled,
+          soldOut: isOutOfStock && item.validityStatus === 'valid' && !isProductOff,
           stockStatus: item.stockStatus,
           validityStatus: item.validityStatus,
           stockMain: item.stockMain,

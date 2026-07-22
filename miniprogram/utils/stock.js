@@ -18,9 +18,24 @@ function isUnlimited(stock, unlimitedFlag) {
   return (stock || 0) >= UNLIMITED_THRESHOLD;
 }
 
+function isSkuSoldOut(sku) {
+  if (!sku) return true;
+  var stock = sku.stock != null ? sku.stock : sku.stockMain;
+  var unlimitedFlag = sku.unlimitedStock === true || sku.isUnlimitedStock === true;
+  return !isUnlimited(stock, unlimitedFlag) && Number(stock || 0) <= 0;
+}
+
+function isProductSoldOut(product) {
+  var skus = product && Array.isArray(product.skuMatrix) ? product.skuMatrix : [];
+  if (skus.length === 0) return true;
+  return skus.every(isSkuSoldOut);
+}
+
 module.exports = {
   UNLIMITED_THRESHOLD: UNLIMITED_THRESHOLD,
   formatStock: formatStock,
   hasStock: hasStock,
-  isUnlimited: isUnlimited
+  isUnlimited: isUnlimited,
+  isSkuSoldOut: isSkuSoldOut,
+  isProductSoldOut: isProductSoldOut
 };

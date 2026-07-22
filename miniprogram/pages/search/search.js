@@ -1,5 +1,6 @@
 // miniprogram/pages/search/search.js
 const api = require('../../utils/api');
+const { isProductSoldOut } = require('../../utils/stock');
 
 Page({
   data: {
@@ -53,7 +54,9 @@ Page({
         size: pageSize
       });
 
-      const newResults = res.content || [];
+      const newResults = (res.content || []).map(function(product) {
+        return Object.assign({}, product, { soldOut: isProductSoldOut(product) });
+      });
       const hasMore = res.hasNext !== undefined ? res.hasNext : newResults.length === pageSize;
 
       wx.hideLoading();
@@ -148,7 +151,9 @@ Page({
         size: pageSize
       });
 
-      const newResults = res.content || [];
+      const newResults = (res.content || []).map(function(product) {
+        return Object.assign({}, product, { soldOut: isProductSoldOut(product) });
+      });
       const hasMore = res.hasNext !== undefined ? res.hasNext : newResults.length === pageSize;
 
       if (reset) {

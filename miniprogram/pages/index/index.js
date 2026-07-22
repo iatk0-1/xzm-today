@@ -1,7 +1,7 @@
 // miniprogram/pages/index/index.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
-const { formatStock, hasStock } = require('../../utils/stock');
+const { formatStock, hasStock, isProductSoldOut } = require('../../utils/stock');
 const app = getApp();
 
 Page({
@@ -206,7 +206,9 @@ Page({
       const res = await api.get('/products/search', params);
 
       // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
-      const newProducts = res.content || [];
+      const newProducts = (res.content || []).map(function(product) {
+        return Object.assign({}, product, { soldOut: isProductSoldOut(product) });
+      });
       const hasMore = res.hasNext !== undefined ? res.hasNext : newProducts.length === pageSize;
 
       if (reset) {

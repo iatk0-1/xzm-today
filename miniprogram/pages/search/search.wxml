@@ -36,7 +36,10 @@
       <!-- 左列 -->
       <view class="goods-column">
         <view class="goods-item" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
-          <image class="goods-img" src="{{item.coverUrl || item.image}}" mode="widthFix"></image>
+          <view class="goods-image-wrap">
+            <image class="goods-img" src="{{item.coverUrl || item.image}}" mode="widthFix"></image>
+            <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
+          </view>
           <view class="goods-info">
             <view class="goods-title">{{item.name || item.title}}</view>
             <view class="goods-price">¥ {{item.displayPrice || item.price || '0.00'}}</view>
@@ -47,7 +50,10 @@
       <!-- 右列 -->
       <view class="goods-column">
         <view class="goods-item" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
-          <image class="goods-img" src="{{item.coverUrl || item.image}}" mode="widthFix"></image>
+          <view class="goods-image-wrap">
+            <image class="goods-img" src="{{item.coverUrl || item.image}}" mode="widthFix"></image>
+            <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
+          </view>
           <view class="goods-info">
             <view class="goods-title">{{item.name || item.title}}</view>
             <view class="goods-price">¥ {{item.displayPrice || item.price || '0.00'}}</view>

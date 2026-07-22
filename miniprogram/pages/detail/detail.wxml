@@ -6,23 +6,26 @@
     </view>
   </view>
 
-  <swiper class="main-swiper" indicator-dots="true" indicator-color="rgba(0,0,0,0.15)" indicator-active-color="#111" circular="true">
-    <swiper-item wx:if="{{product.videoUrl}}">
-      <video class="swiper-video"
-             src="{{product.videoUrl}}"
-             poster="{{product.image}}"
-             object-fit="cover"
-             show-play-btn="{{true}}"
-             controls="{{false}}"
-             autoplay="{{false}}"
-             muted
-             loop>
-      </video>
-    </swiper-item>
-    <swiper-item wx:for="{{bannerImgs}}" wx:key="*this">
-      <image class="swiper-img" src="{{item}}" mode="aspectFill" catchtap="previewBannerImage" data-index="{{index}}"></image>
-    </swiper-item>
-  </swiper>
+  <view class="main-swiper-wrap">
+    <swiper class="main-swiper" indicator-dots="true" indicator-color="rgba(0,0,0,0.15)" indicator-active-color="#111" circular="true">
+      <swiper-item wx:if="{{product.videoUrl}}">
+        <video class="swiper-video"
+               src="{{product.videoUrl}}"
+               poster="{{product.image}}"
+               object-fit="cover"
+               show-play-btn="{{true}}"
+               controls="{{false}}"
+               autoplay="{{false}}"
+               muted
+               loop>
+        </video>
+      </swiper-item>
+      <swiper-item wx:for="{{bannerImgs}}" wx:key="*this">
+        <image class="swiper-img" src="{{item}}" mode="aspectFill" catchtap="previewBannerImage" data-index="{{index}}"></image>
+      </swiper-item>
+    </swiper>
+    <view class="sold-out-overlay main-sold-out-overlay" wx:if="{{product.soldOut}}"><text>售罄</text></view>
+  </view>
 
   <view class="content-wrapper">
     <!-- <view class="shipping-info" wx:if="{{product.shippingInfo}}">{{product.shippingInfo}}</view> 发货时间暂时不写 -->
@@ -112,7 +115,10 @@
 <view class="sku-panel {{showSku ? 'show' : ''}}">
   <view class="sku-close" catchtap="closeSkuPanel">×</view>
   <view class="sku-header">
-    <image class="sku-img" src="{{currentSkuImage || product.image}}" mode="aspectFill" catchtap="previewSkuPanelImage"></image>
+    <view class="sku-img-wrap">
+      <image class="sku-img" src="{{currentSkuImage || product.image}}" mode="aspectFill" catchtap="previewSkuPanelImage"></image>
+      <view class="sold-out-overlay" wx:if="{{currentSkuId ? currentSkuSoldOut : product.soldOut}}"><text>售罄</text></view>
+    </view>
     <view class="sku-main">
       <view class="sku-price" style="color: #d32f2f;">¥ {{currentSkuPrice || product.displayPrice || product.price}}</view>
       <view class="sku-stock" style="color: {{currentSkuStock === 0 && !currentSkuUnlimited ? 'red' : '#999'}};">库存: {{currentSkuStockText || '请选择规格'}}</view>
@@ -123,7 +129,10 @@
   <scroll-view scroll-y style="max-height: 55vh; padding: 0 16rpx; padding-bottom: 40rpx;" wx:if="{{bundleSelections.length > 0}}">
     <view class="bundle-group-card {{sel.isChecked === false ? 'disabled-card' : ''}}" wx:for="{{bundleSelections}}" wx:key="index" wx:for-item="sel" wx:for-index="bgIdx">
       
-      <image class="bundle-card-img" src="{{sel.selectedSku.imageUrl || sel.skus[0].imageUrl || currentProduct.coverUrl}}" mode="aspectFill"></image>
+      <view class="bundle-card-img-wrap">
+        <image class="bundle-card-img" src="{{sel.displayImage || product.coverUrl}}" mode="aspectFill"></image>
+        <view class="sold-out-overlay" wx:if="{{sel.imageSoldOut}}"><text>售罄</text></view>
+      </view>
       
       <view class="bundle-card-right">
         <view class="bundle-card-header">
@@ -149,7 +158,7 @@
         </view>
 
         <view class="bundle-card-footer" wx:if="{{sel.selectedSku}}">
-          <text class="stock-status out" wx:if="{{!sel.selectedSku.unlimitedStock && sel.selectedSku.stock === 0}}">已售罄</text>
+          <text class="stock-status out" wx:if="{{!sel.selectedSku.unlimitedStock && sel.selectedSku.stock <= 0}}">已售罄</text>
           <text class="stock-status danger" wx:elif="{{!sel.selectedSku.unlimitedStock && sel.selectedSku.stock <= 5}}">🔥 仅剩少量</text>
           <text class="stock-status normal" wx:else>已选定</text>
         </view>
@@ -183,7 +192,7 @@
     </view>
   </block>
   <block wx:else>
-    <view class="sku-btn-confirm disabled" wx:if="{{currentSkuStock === 0 && !currentSkuUnlimited}}">已售罄</view>
+    <view class="sku-btn-confirm disabled" wx:if="{{currentSkuStock <= 0 && currentSkuStock !== null && !currentSkuUnlimited}}">已售罄</view>
     <view class="sku-actions" wx:else>
       <view class="sku-btn-cart" bindtap="confirmSkuAction" data-action="cart">加入购物车</view>
       <view class="sku-btn-buy" bindtap="confirmSkuAction" data-action="buy">立即购买</view>

@@ -32,7 +32,10 @@
                 <view class="check-inner" wx:if="{{item.selected && !item.disabled}}"></view>
               </view>
 
-              <image class="item-img" src="{{item.coverUrl || item.image}}" mode="aspectFill"></image>
+              <view class="item-img-wrap">
+                <image class="item-img" src="{{item.coverUrl || item.image}}" mode="aspectFill"></image>
+                <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
+              </view>
 
               <view class="item-info">
                 <view class="item-title">{{item.name || item.title}}</view>

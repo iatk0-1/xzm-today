@@ -1,6 +1,6 @@
 // miniprogram/pages/detail/detail.js
 const api = require('../../utils/api');
-const { formatStock, hasStock } = require('../../utils/stock');
+const { formatStock, hasStock, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
 
 Page({
   data: {
@@ -22,6 +22,9 @@ Page({
     currentSkuPrice: null,
     currentSkuStock: null,
     currentSkuImage: null,
+    currentSkuId: null,
+    currentSkuUnlimited: false,
+    currentSkuSoldOut: false,
     showVideo: false,
     currentAuraTab: '',
     // 套装子项选择
@@ -138,6 +141,7 @@ Page({
           liveSessionId: product.liveSessionId,
           sessionStatus: product.sessionStatus,
           convertedToProductId: product.convertedToProductId,
+          soldOut: isProductSoldOut({ skuMatrix: skuMatrix }),
           bundleGroups: res.bundleGroups || null  // 套装子项（ProductDetailResponse顶层字段）
         },
         bannerImgs: banners,
@@ -249,7 +253,15 @@ Page({
     // 套装商品：初始化子项选择
     if (bundleGroups && bundleGroups.length > 0) {
       var rawSel = bundleGroups.map(function(bg) {
-        var skus = bg.skus || [];
+        var skus = (bg.skus || []).map(function(sku) {
+          return Object.assign({}, sku, {
+            skuId: sku.skuId || sku.id,
+            color: sku.color || sku.spec,
+            price: sku.price != null ? sku.price : sku.retailPrice,
+            stock: sku.stock != null ? sku.stock : sku.stockMain,
+            unlimitedStock: sku.unlimitedStock === true || sku.isUnlimitedStock === true
+          });
+        });
         var colors = [...new Set(skus.map(function(s) { return s.color || s.spec; }))];
         var sizes = [...new Set(skus.map(function(s) { return s.size; }))];
         return {
@@ -272,16 +284,22 @@ Page({
     // 普通商品
     const initialColor = uniqueColors.length === 1 ? uniqueColors[0] : '';
     const initialSize = uniqueSizes.length === 1 ? uniqueSizes[0] : '';
+    const hasNoSku = !product.skuMatrix || product.skuMatrix.length === 0;
     this.setData({
       showSku: true, skuAction: action,
       bundleSelections: [],
       selectedColor: initialColor, selectedSize: initialSize,
-      currentSkuImage: product.coverUrl
+      currentSkuImage: product.coverUrl,
+      currentSkuId: null,
+      currentSkuStock: hasNoSku ? 0 : null,
+      currentSkuUnlimited: false,
+      currentSkuStockText: hasNoSku ? '0' : null,
+      currentSkuSoldOut: hasNoSku
     });
     if (uniqueColors.length === 1 && uniqueSizes.length === 1) {
       this.checkSkuMatch();
     } else {
-      this.setData({ currentSkuPrice: null, currentSkuStock: null });
+      this.setData({ currentSkuPrice: null });
     }
   },
 
@@ -311,6 +329,7 @@ Page({
           currentSkuPrice: match.price,
           currentSkuStock: match.stock,
           currentSkuUnlimited: match.unlimitedStock || false,
+          currentSkuSoldOut: isSkuSoldOut(match),
           currentSkuStockText: formatStock(match.stock, match.unlimitedStock),
           currentSkuId: match.skuId,
           currentSkuImage: match.imageUrl || product.coverUrl
@@ -321,6 +340,7 @@ Page({
           currentSkuPrice: product.retailPrice || product.displayPrice,
           currentSkuStock: 0,
           currentSkuUnlimited: false,
+          currentSkuSoldOut: false,
           currentSkuStockText: '0',
           currentSkuId: null,
           currentSkuImage: product.coverUrl
@@ -360,6 +380,9 @@ Page({
           anyOk = true;
         }
       }
+      var displaySku = ns.selectedSku || (ns.skus && ns.skus.length > 0 ? ns.skus[0] : null);
+      ns.displayImage = displaySku ? displaySku.imageUrl : '';
+      ns.imageSoldOut = isSkuSoldOut(displaySku);
       return ns;
     });
     return { bundleSelections: newSel, bundleAllSelected: anyOk, currentSkuPrice: totalPrice > 0 ? totalPrice : null };
