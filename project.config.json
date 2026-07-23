@@ -76,8 +76,8 @@
   "packOptions": {
     "ignore": [
       {
-        "type": "file",
-        "value": ".DS_Store"
+        "value": ".DS_Store",
+        "type": "file"
       }
     ],
     "include": []

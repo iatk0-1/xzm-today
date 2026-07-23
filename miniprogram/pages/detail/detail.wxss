@@ -687,6 +687,23 @@ page {
   font-weight: bold; /* 按钮文字加粗 */
 }
 
+.sku-btn-confirm,
+.sku-btn-cart,
+.sku-btn-buy {
+  height: 44px;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.sku-actions .sku-btn-confirm {
+  flex: 1;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 /* ================= 悬浮动态视频小窗 ================= */
 .floating-video-btn {
   position: fixed;

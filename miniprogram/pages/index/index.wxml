@@ -159,7 +159,10 @@
   <view class="sku-close" catchtap="closeSkuPanel">×</view>
 
   <view class="sku-header" wx:if="{{currentProduct}}">
-    <image class="sku-img" src="{{currentSkuImage || currentProduct.coverUrl || currentProduct.image}}" mode="aspectFill"></image>
+    <view class="sku-img-wrap">
+      <image class="sku-img" src="{{currentSkuImage || currentProduct.coverUrl || currentProduct.image}}" mode="aspectFill"></image>
+      <view class="sold-out-overlay sku-sold-out-overlay" wx:if="{{currentSkuId ? currentSkuSoldOut : currentProduct.soldOut}}"><text>售罄</text></view>
+    </view>
     <view class="sku-main">
       <view class="sku-price" wx:if="{{bundleSelections.length === 0}}">
         ¥{{currentSkuPrice || currentProduct.retailPrice || currentProduct.displayPrice || '0.00'}}
@@ -247,7 +250,9 @@
   </block>
 
   <block wx:else>
-    <view class="sku-btn-confirm disabled" wx:if="{{currentSkuStock === 0 && !currentSkuUnlimited}}">已售罄</view>
+    <view class="sku-actions-new" wx:if="{{currentSkuStock <= 0 && currentSkuStock !== null && !currentSkuUnlimited}}">
+      <view class="sku-btn-item sold-out">已售罄</view>
+    </view>
     <view class="sku-actions-new" wx:else>
       <view class="sku-btn-item cart" bindtap="confirmAddToCart" data-action="cart">加入购物车</view>
       <view class="sku-btn-item buy" bindtap="confirmAddToCart" data-action="buy">立即购买</view>

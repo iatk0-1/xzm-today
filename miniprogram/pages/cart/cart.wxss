@@ -18,20 +18,23 @@ page { background-color: #ffffff; }
   position: relative;
   margin-bottom: 1px;
   overflow: hidden;
+  background-color: #ffffff;
+  box-sizing: border-box;
 }
 
 /* 删除按钮（固定在右侧） */
 .delete-btn-wrapper {
   position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 80px;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: 79px;
   background-color: #ff4d4f;
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1;
+  box-sizing: border-box;
 }
 .delete-btn { color: #ffffff; font-size: 14px; font-weight: bold; }
 
@@ -44,6 +47,7 @@ page { background-color: #ffffff; }
   z-index: 2;
   transition: transform 0.3s ease;
   user-select: none;
+  box-sizing: border-box;
 }
 .cart-item-wrapper.sliding { transition: none; }
 .cart-item { display: flex; align-items: center; padding: 30px 0; border-bottom: 1px solid #f5f5f5; background-color: #ffffff; width: 100%; box-sizing: border-box; }
