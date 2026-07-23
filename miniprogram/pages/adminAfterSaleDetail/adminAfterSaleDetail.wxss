@@ -418,6 +418,12 @@
   color: #f57c00;
 }
 
+.action-processing-tip {
+  text-align: center;
+  font-size: 24rpx;
+  color: #667085;
+}
+
 /* 弹窗 */
 .modal-mask {
   position: fixed;

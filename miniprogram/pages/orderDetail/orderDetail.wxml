@@ -175,7 +175,7 @@
     <button class="btn-ghost" open-type="contact">联系主理人</button>
 
     <view class="btn-solid" wx:if="{{order.status === 'pending'}}" bindtap="payOrder">立即支付</view>
-    <view class="btn-ghost" wx:if="{{order.status === 'pending'}}" bindtap="cancelOrder">取消订单</view>
+    <view id="cancel-order-btn" class="btn-ghost" wx:if="{{order.status === 'pending'}}" bindtap="cancelOrder">取消订单</view>
 
     <view class="btn-solid" wx:if="{{order.canConfirmReceipt}}" bindtap="confirmReceipt">确认收货</view>
     <view class="btn-ghost" wx:if="{{order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped' || order.status === 'shipped' || order.status === 'completed'}}" bindtap="requestRefund">申请售后</view>

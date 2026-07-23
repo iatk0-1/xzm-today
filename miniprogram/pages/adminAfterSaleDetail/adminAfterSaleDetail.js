@@ -63,10 +63,18 @@ Page({
       statusDisplay: this.getStatusDisplay(item.status)
     }));
     const orderDetail = res.orderDetail ? this.formatOrderDetail(res.orderDetail) : null;
+    const hasApprovedRefundItems = items.some(item =>
+      item.afterSaleType === 'refund' && item.status === 'approved'
+    ) || (items.length === 0 && res.status === 'approved' && res.type === 'refund');
+    const hasApprovedReturnRefundItems = items.some(item =>
+      item.afterSaleType === 'return_refund' && item.status === 'approved'
+    ) || (items.length === 0 && res.status === 'approved' && res.type === 'return_refund');
     return {
       ...res,
       items,
       orderDetail,
+      hasApprovedRefundItems,
+      hasApprovedReturnRefundItems,
       statusDisplay: this.getStatusDisplay(res.status),
       typeDisplay: this.getAfterSaleTypeDisplay(res.type),
       createdAtDisplay: this.formatDateTime(res.createdAt),
@@ -376,17 +384,30 @@ Page({
 
   // 执行退款
   submitRefund: async function() {
+    const isRetry = this.data.afterSale && this.data.afterSale.refundStatus === 'failed';
     wx.showModal({
-      title: '确认退款',
-      content: '确认要执行退款操作吗？此操作不可撤销。',
+      title: isRetry ? '重试退款' : '确认退款',
+      content: isRetry
+        ? '确认重新查询或发起这笔退款吗？'
+        : '确认要执行退款操作吗？此操作不可撤销。',
       success: async (res) => {
         if (res.confirm) {
           wx.showLoading({ title: '处理中...' });
 
           try {
-            await api.post(`/after-sales/${this.data.afterSaleId}/refund`);
+            const result = await api.post(`/after-sales/${this.data.afterSaleId}/refund`);
 
             wx.hideLoading();
+            if (result.refundStatus === 'failed') {
+              wx.showToast({ title: result.refundError || '退款失败，可重试', icon: 'none' });
+              this.loadAfterSaleDetail();
+              return;
+            }
+            if (result.refundStatus === 'processing') {
+              wx.showToast({ title: '退款处理中，请稍后查看', icon: 'none' });
+              this.loadAfterSaleDetail();
+              return;
+            }
             wx.showToast({ title: '退款成功', icon: 'success' });
             this.loadAfterSaleDetail();
           } catch (err) {

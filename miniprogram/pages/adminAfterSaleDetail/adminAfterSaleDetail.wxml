@@ -165,9 +165,30 @@
       <view class="btn-primary" bindtap="showReviewModal">审核通过</view>
     </view>
 
-    <!-- 已同意状态 -->
-    <view class="action-btn-group" wx:if="{{afterSale.status === 'approved'}}">
-      <view class="btn-primary" bindtap="showReceiveModal">仓库收货</view>
+    <!-- 已同意状态：退货项走仓库验收，仅退款失败可直接重试 -->
+    <view wx:if="{{afterSale.status === 'approved'}}">
+      <view
+        class="action-fail-tip"
+        wx:if="{{afterSale.hasApprovedRefundItems && afterSale.refundStatus === 'failed'}}">
+        退款失败：{{afterSale.refundError || '请重试退款'}}
+      </view>
+      <view
+        class="action-processing-tip"
+        wx:if="{{afterSale.hasApprovedRefundItems && afterSale.refundStatus === 'processing'}}">
+        微信退款处理中，系统会自动查询结果
+      </view>
+      <view
+        class="action-btn-group"
+        wx:if="{{afterSale.hasApprovedReturnRefundItems || (afterSale.hasApprovedRefundItems && afterSale.refundStatus === 'failed')}}">
+        <view
+          class="btn-ghost"
+          wx:if="{{afterSale.hasApprovedReturnRefundItems}}"
+          bindtap="showReceiveModal">仓库收货</view>
+        <view
+          class="btn-primary"
+          wx:if="{{afterSale.hasApprovedRefundItems && afterSale.refundStatus === 'failed'}}"
+          bindtap="submitRefund">重试退款</view>
+      </view>
     </view>
 
     <!-- 已收货状态 -->

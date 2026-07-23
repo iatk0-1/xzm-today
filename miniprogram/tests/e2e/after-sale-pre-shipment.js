@@ -261,7 +261,7 @@ async function cancelOrderViaUi(miniProgram, accessToken, orderId) {
   if (current.status === 'cancelled') return current;
   const page = await miniProgram.reLaunch(`/pages/orderDetail/orderDetail?id=${orderId}`);
   await waitForPageData(page, (data) => !data.isLoading && data.order, 15000, 'pending order detail');
-  const cancelButton = await page.$('.btn-ghost');
+  const cancelButton = await page.$('#cancel-order-btn');
   assert.ok(cancelButton, 'pending order cancel button must exist');
   await cancelButton.tap();
   await delay(2000);
