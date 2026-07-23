@@ -184,6 +184,7 @@ Page({
 
       const orders = (res || []).map(order => ({
         ...order,
+        outTradeNo: order.outTradeNo || order.id,
         createdAtDisplay: this.formatTime(order.createdAt),
         items: (order.items || []).map(item => ({
           ...item,

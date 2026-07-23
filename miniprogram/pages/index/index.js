@@ -1,7 +1,7 @@
 // miniprogram/pages/index/index.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
-const { formatStock, hasStock, isProductSoldOut } = require('../../utils/stock');
+const { formatStock, hasStock, isProductSoldOut, isSkuSoldOut } = require('../../utils/stock');
 const app = getApp();
 
 Page({
@@ -38,6 +38,9 @@ Page({
     currentSkuPrice: null,
     currentSkuStock: null,
     currentSkuImage: null,
+    currentSkuId: null,
+    currentSkuUnlimited: false,
+    currentSkuSoldOut: false,
 
     // 套装子项选择
     bundleSelections: [],
@@ -463,6 +466,9 @@ if (bundleGroups && bundleGroups.length > 0) {
   this.setData({ 
     currentProduct: product, 
     currentSkuImage: product.coverUrl || product.image, 
+    currentSkuId: null,
+    currentSkuUnlimited: false,
+    currentSkuSoldOut: false,
     showSku: true, 
     bundleSelections: result.bundleSelections, 
     bundleAllSelected: result.bundleAllSelected,
@@ -493,6 +499,9 @@ if (bundleGroups && bundleGroups.length > 0) {
       currentSkuPrice: null,
       currentSkuStock: null,
       currentSkuImage: product.coverUrl || product.image,
+      currentSkuId: null,
+      currentSkuUnlimited: false,
+      currentSkuSoldOut: false,
       bundleSelections: [],
       bundleAllSelected: false,
       showSku: true
@@ -526,6 +535,7 @@ if (bundleGroups && bundleGroups.length > 0) {
           currentSkuPrice: match.price,
           currentSkuStock: match.stock,
           currentSkuUnlimited: match.unlimitedStock || false,
+          currentSkuSoldOut: isSkuSoldOut(match),
           currentSkuStockText: formatStock(match.stock, match.unlimitedStock),
           currentSkuId: match.skuId,
           currentSkuImage: match.imageUrl || (currentProduct.coverUrl || currentProduct.image)
@@ -536,6 +546,7 @@ if (bundleGroups && bundleGroups.length > 0) {
           currentSkuPrice: null,
           currentSkuStock: 0,
           currentSkuUnlimited: false,
+          currentSkuSoldOut: false,
           currentSkuStockText: '0',
           currentSkuId: null,
           currentSkuImage: currentProduct.coverUrl || currentProduct.image

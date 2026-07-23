@@ -8,5 +8,6 @@
 
 ## 参考文档
 
+- [后端 API 对接说明](./docs/backend-api-integration.md)
 - [云开发文档](https://developers.weixin.qq.com/miniprogram/dev/wxcloud/basis/getting-started.html)
 
