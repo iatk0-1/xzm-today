@@ -1,10 +1,28 @@
 <view class="publish-wrapper">
-  
-  <view class="upload-section" bindtap="chooseImage">
-    <image wx:if="{{tempImagePath}}" src="{{tempImagePath}}" mode="aspectFill" class="preview-img"></image>
-    <view wx:else class="upload-placeholder">
+
+  <view class="image-header">
+    <view>
+      <view class="section-title">心愿图片</view>
+      <view class="section-tip">第一张作为市集封面，单次最多选择20张</view>
+    </view>
+    <text class="image-count">{{imageList.length}} / {{maxImages}}</text>
+  </view>
+
+  <view class="image-grid">
+    <view class="image-item" wx:for="{{imageList}}" wx:key="*this">
+      <image src="{{item}}" mode="aspectFill" class="preview-img" bindtap="previewImage" data-index="{{index}}"></image>
+      <view class="cover-tag" wx:if="{{index === 0}}">封面</view>
+      <view class="delete-btn" catchtap="removeImage" data-index="{{index}}">×</view>
+      <view class="sort-actions">
+        <view class="sort-btn {{index === 0 ? 'disabled' : ''}}" catchtap="moveImageLeft" data-index="{{index}}">‹</view>
+        <text class="image-index">{{index + 1}}</text>
+        <view class="sort-btn {{index === imageList.length - 1 ? 'disabled' : ''}}" catchtap="moveImageRight" data-index="{{index}}">›</view>
+      </view>
+    </view>
+
+    <view class="add-image-btn" wx:if="{{imageList.length < maxImages}}" bindtap="chooseImage">
       <view class="upload-icon">+</view>
-      <text class="upload-text">上传你想求购的商品图</text>
+      <text class="upload-text">添加图片</text>
     </view>
   </view>
 
@@ -21,10 +39,20 @@
       <text class="price-label">期望预算 ¥</text>
       <input type="digit" class="input-price" placeholder="0.00 (选填)" placeholder-class="ph-style" bindinput="inputPrice" value="{{expectedPrice}}" />
     </view>
+
+    <view class="split-setting">
+      <view class="split-copy">
+        <view class="split-title">按图片分别创建心愿</view>
+        <view class="split-desc" wx:if="{{!splitByImage}}">关闭时，全部图片归入同一条心愿</view>
+        <view class="split-desc active" wx:else>开启后，将创建 {{imageList.length}} 条心愿</view>
+      </view>
+      <switch checked="{{splitByImage}}" bindchange="toggleSplitByImage" color="#111111" />
+    </view>
   </view>
 
   <view class="bottom-action">
-    <view class="btn-publish {{tempImagePath && title ? '' : 'disabled'}}" bindtap="submitWish">发 布 求 购</view>
+    <view class="btn-publish {{imageList.length && title && content && !submitting ? '' : 'disabled'}}" bindtap="submitWish">
+      {{submitting ? '发 布 中...' : (splitByImage ? '分 别 发 布' : '发 布 求 购')}}
+    </view>
   </view>
-
 </view>

@@ -1,13 +1,18 @@
 <view class="page-wrapper">
 
   <!-- 心愿图片 -->
-  <view class="image-section">
-    <image class="wish-image" src="{{wish.image}}" mode="widthFix" catchtap="previewImage"></image>
-  </view>
+  <swiper class="wish-swiper" indicator-dots="{{wish.images.length > 1}}" circular="{{wish.images.length > 1}}" wx:if="{{wish.images.length}}">
+    <swiper-item wx:for="{{wish.images}}" wx:key="*this">
+      <image class="wish-image" src="{{item}}" mode="aspectFit" catchtap="previewImage" data-index="{{index}}"></image>
+    </swiper-item>
+  </swiper>
+  <view class="image-count" wx:if="{{wish.images.length > 1}}">共 {{wish.images.length}} 张</view>
 
   <!-- 内容区 -->
   <view class="content-section">
-    <view class="wish-content">{{wish.content}}</view>
+    <view class="wish-title">{{wish.title || wish.content}}</view>
+    <view class="wish-content" wx:if="{{wish.content && wish.content !== wish.title}}">{{wish.content}}</view>
+    <view class="expected-price" wx:if="{{wish.expectedPrice !== null && wish.expectedPrice !== undefined}}">期望预算 ¥{{wish.expectedPrice}}</view>
 
     <!-- 点赞区域 -->
     <view class="like-section">

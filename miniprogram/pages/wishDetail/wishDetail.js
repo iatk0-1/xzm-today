@@ -4,7 +4,7 @@ const auth = require('../../utils/auth');
 
 Page({
   data: {
-    wish: {},
+    wish: { images: [] },
     wishId: null,
     canDelete: false,
     createdAtDisplay: ''
@@ -38,13 +38,22 @@ Page({
         createdAtDisplay = this.formatTime(res.createdAt);
       }
 
+      var images = Array.isArray(res.images) && res.images.length > 0
+        ? res.images
+        : (res.image ? [res.image] : []);
+      var wish = Object.assign({}, res, {
+        images: images,
+        image: res.image || images[0] || '',
+        title: res.title || res.content || ''
+      });
+
       this.setData({
-        wish: res,
+        wish: wish,
         createdAtDisplay: createdAtDisplay
       });
 
       // 检查删除权限：管理员 或 心愿创建者
-      this.checkDeletePermission(res);
+      this.checkDeletePermission(wish);
     } catch (err) {
       wx.hideLoading();
       console.error('加载心愿详情失败:', err);
@@ -134,10 +143,11 @@ Page({
   },
 
   // 图片全屏预览
-  previewImage: function() {
-    var image = this.data.wish.image;
-    if (image) {
-      wx.previewImage({ urls: [image], current: image });
+  previewImage: function(e) {
+    var images = this.data.wish.images || [];
+    var index = e && e.currentTarget ? Number(e.currentTarget.dataset.index || 0) : 0;
+    if (images.length > 0) {
+      wx.previewImage({ urls: images, current: images[index] || images[0] });
     }
   },
 

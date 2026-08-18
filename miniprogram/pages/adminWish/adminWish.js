@@ -36,6 +36,12 @@ Page({
         success: res => {
           wx.hideLoading();
           let list = res.data.map(item => {
+            const images = Array.isArray(item.images) && item.images.length > 0
+              ? item.images
+              : (item.image ? [item.image] : []);
+            item.images = images;
+            item.image = item.image || images[0] || '';
+            item.title = item.title || item.content || '';
             if (item.createTime) {
               const date = new Date(item.createTime);
               item.createTimeStr = `${date.getMonth()+1}-${date.getDate()}`;
@@ -49,6 +55,16 @@ Page({
           console.error(err);
         }
       });
+  },
+
+  previewWishImages: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const wish = this.data.wishes[index];
+    if (!wish) return;
+    const images = wish.images && wish.images.length ? wish.images : (wish.image ? [wish.image] : []);
+    if (images.length) {
+      wx.previewImage({ current: images[0], urls: images });
+    }
   },
 
   // 2. 🚀 神级交互：智能绑定商品

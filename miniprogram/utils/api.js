@@ -375,7 +375,13 @@ async function uploadFile(url, filePath, formData = {}, options = {}) {
     }
   }
 
-  return uploadToBackend(url, filePath, formData, false, 'upload_' + Date.now());
+  return uploadToBackend(
+    url,
+    filePath,
+    formData,
+    false,
+    'upload_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10)
+  );
 }
 
 module.exports = {

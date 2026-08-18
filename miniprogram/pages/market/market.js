@@ -61,7 +61,16 @@ Page({
       }
 
       // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
-      const newWishes = res.content || [];
+      const newWishes = (res.content || []).map(function(wish) {
+        var images = Array.isArray(wish.images) && wish.images.length > 0
+          ? wish.images
+          : (wish.image ? [wish.image] : []);
+        return Object.assign({}, wish, {
+          images: images,
+          image: wish.image || images[0] || '',
+          title: wish.title || wish.content || ''
+        });
+      });
       const hasMore = res.hasNext !== undefined ? res.hasNext : newWishes.length === pageSize;
 
       // 将心愿分配到左右两列（奇数位置放左列，偶数位置放右列）

@@ -24,7 +24,7 @@
   </view>
 
   <view class="form-group">
-    <view class="label"><text class="required">*</text>商品图片 (首图自动设为封面，长按可拖拽排序)</view>
+    <view class="label"><text class="required">*</text>商品图片（最多99张，首图自动设为封面，长按可拖拽排序）</view>
 
     <movable-area class="drag-area" style="height: {{dragAreaHeight}}px;">
       <movable-view
@@ -49,7 +49,7 @@
         </view>
       </movable-view>
 
-      <view class="drag-item upload-btn-box" style="transform: translate({{uploadBtnX}}px, {{uploadBtnY}}px);" wx:if="{{mediaList.length < 9}}" bindtap="chooseMedia">
+      <view class="drag-item upload-btn-box" style="transform: translate({{uploadBtnX}}px, {{uploadBtnY}}px);" wx:if="{{mediaList.length < maxProductImages}}" bindtap="chooseMedia">
         <view class="upload-placeholder">+</view>
       </view>
     </movable-area>

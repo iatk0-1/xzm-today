@@ -8,6 +8,8 @@ const draft = require('../../utils/draft');
 // 拖拽网格配置
 const ITEM_SIZE = 105;
 const COLUMNS = 3;
+const MAX_PRODUCT_IMAGES = 99;
+const MAX_MEDIA_PICK_COUNT = 20;
 
 Page({
   data: {
@@ -15,6 +17,7 @@ Page({
     videoThumbPath: '',
     useVideoCover: false,
     mediaList: [],
+    maxProductImages: MAX_PRODUCT_IMAGES,
     dragIndex: -1,
     dragAreaHeight: ITEM_SIZE,
     uploadBtnX: 0,
@@ -623,7 +626,8 @@ Page({
     let btnIndex = list.length;
     let btnX = (btnIndex % COLUMNS) * ITEM_SIZE;
     let btnY = Math.floor(btnIndex / COLUMNS) * ITEM_SIZE;
-    let rows = Math.ceil((btnIndex + 1) / COLUMNS);
+    let rows = Math.ceil((btnIndex + (list.length < MAX_PRODUCT_IMAGES ? 1 : 0)) / COLUMNS);
+    rows = Math.max(rows, 1);
 
     this.setData({
       mediaList: positionedList,
@@ -635,8 +639,12 @@ Page({
 
   chooseMedia() {
     this._markDirty();
+    const remaining = MAX_PRODUCT_IMAGES - this.data.mediaList.length;
+    if (remaining <= 0) {
+      return wx.showToast({ title: '商品图片最多99张', icon: 'none' });
+    }
     wx.chooseMedia({
-      count: 9 - this.data.mediaList.length,
+      count: Math.min(MAX_MEDIA_PICK_COUNT, remaining),
       mediaType: ['image'],
       sourceType: ['camera', 'album'],
       sizeType: ['compressed'],

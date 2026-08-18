@@ -13,7 +13,8 @@
         <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
 
         <view class="card-content">
-          <view class="card-desc">{{item.content}}</view>
+          <view class="card-desc">{{item.title || item.content}}</view>
+          <view class="card-price" wx:if="{{item.expectedPrice !== null && item.expectedPrice !== undefined}}">预算 ¥{{item.expectedPrice}}</view>
 
           <view class="progress-section" wx:if="{{!item.linkedProductId}}">
             <view class="progress-bar">
@@ -41,7 +42,8 @@
         <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
 
         <view class="card-content">
-          <view class="card-desc">{{item.content}}</view>
+          <view class="card-desc">{{item.title || item.content}}</view>
+          <view class="card-price" wx:if="{{item.expectedPrice !== null && item.expectedPrice !== undefined}}">预算 ¥{{item.expectedPrice}}</view>
 
           <view class="progress-section" wx:if="{{!item.linkedProductId}}">
             <view class="progress-bar">
