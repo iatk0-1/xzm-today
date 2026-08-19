@@ -27,7 +27,6 @@
         <image class="wish-img" src="{{item.image}}" mode="aspectFill" bindtap="previewWishImages" data-index="{{index}}"></image>
         <view class="wish-info">
           <view class="wish-content">{{item.title || item.content}}</view>
-          <view class="wish-price" wx:if="{{item.expectedPrice !== null && item.expectedPrice !== undefined}}">期望预算 ¥{{item.expectedPrice}}</view>
           
           <view class="wish-data">
             <text class="fire-icon">🔥</text>

@@ -21,7 +21,6 @@
 .wish-img { width: 140rpx; height: 180rpx; border-radius: 8rpx; background-color: #f5f5f5; margin-right: 20rpx; flex-shrink: 0; }
 .wish-info { flex: 1; display: flex; flex-direction: column; }
 .wish-content { font-size: 26rpx; color: #333; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin-bottom: 20rpx; }
-.wish-price { font-size: 22rpx; color: #777; margin-bottom: 12rpx; }
 
 .wish-data { display: flex; align-items: center; margin-top: auto; }
 .fire-icon { font-size: 32rpx; margin-right: 8rpx; }

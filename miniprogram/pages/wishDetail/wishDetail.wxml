@@ -12,7 +12,6 @@
   <view class="content-section">
     <view class="wish-title">{{wish.title || wish.content}}</view>
     <view class="wish-content" wx:if="{{wish.content && wish.content !== wish.title}}">{{wish.content}}</view>
-    <view class="expected-price" wx:if="{{wish.expectedPrice !== null && wish.expectedPrice !== undefined}}">期望预算 ¥{{wish.expectedPrice}}</view>
 
     <!-- 点赞区域 -->
     <view class="like-section">

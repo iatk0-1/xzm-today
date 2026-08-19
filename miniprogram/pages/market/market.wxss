@@ -124,4 +124,3 @@ page { background-color: #ffffff; }
   transform: translateY(-16rpx);
   box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.2);
 }
-.card-price { margin-top: -4px; margin-bottom: 10px; color: #777; font-size: 10px; font-family: "Times New Roman", Times, serif; }

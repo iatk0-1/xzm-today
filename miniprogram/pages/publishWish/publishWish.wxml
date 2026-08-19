@@ -35,11 +35,6 @@
       <textarea class="input-desc" placeholder="描述你的具体需求：如尺码、颜色、新旧程度要求等..." placeholder-class="ph-style" bindinput="inputDesc" value="{{content}}" maxlength="200" auto-height></textarea>
     </view>
 
-    <view class="input-group price-group">
-      <text class="price-label">期望预算 ¥</text>
-      <input type="digit" class="input-price" placeholder="0.00 (选填)" placeholder-class="ph-style" bindinput="inputPrice" value="{{expectedPrice}}" />
-    </view>
-
     <view class="split-setting">
       <view class="split-copy">
         <view class="split-title">按图片分别创建心愿</view>

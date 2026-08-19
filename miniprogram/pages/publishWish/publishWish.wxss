@@ -29,10 +29,6 @@ page { background-color: #ffffff; }
 .input-title { font-size: 36rpx; font-weight: bold; color: #111; height: 60rpx; }
 .input-desc { width: 100%; min-height: 120rpx; font-size: 28rpx; color: #333; line-height: 1.5; padding-top: 10rpx; }
 
-.price-group { display: flex; align-items: center; justify-content: space-between; border-bottom: none; background: #f8f9fa; padding: 30rpx; border-radius: 16rpx; }
-.price-label { font-size: 28rpx; color: #666; font-weight: bold; }
-.input-price { flex: 1; text-align: right; font-size: 36rpx; font-weight: bold; font-family: "Times New Roman", Times, serif; color: #111; }
-
 .split-setting { display: flex; align-items: center; justify-content: space-between; padding: 30rpx; background: #f8f9fa; border-radius: 16rpx; }
 .split-copy { flex: 1; padding-right: 24rpx; }
 .split-title { color: #111; font-size: 28rpx; font-weight: 700; }

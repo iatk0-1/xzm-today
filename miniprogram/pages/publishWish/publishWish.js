@@ -12,7 +12,6 @@ Page({
     splitByImage: false,
     title: '',
     content: '',
-    expectedPrice: '',
     submitting: false
   },
 
@@ -76,7 +75,6 @@ Page({
 
   inputTitle: function(e) { this.setData({ title: e.detail.value }); },
   inputDesc: function(e) { this.setData({ content: e.detail.value }); },
-  inputPrice: function(e) { this.setData({ expectedPrice: e.detail.value }); },
 
   submitWish: async function() {
     if (this.data.submitting) return;
@@ -84,7 +82,6 @@ Page({
     var imageList = this.data.imageList;
     var title = (this.data.title || '').trim();
     var content = (this.data.content || '').trim();
-    var expectedPriceText = String(this.data.expectedPrice || '').trim();
 
     if (imageList.length === 0) {
       return wx.showToast({ title: '请上传商品图片', icon: 'none' });
@@ -95,10 +92,6 @@ Page({
     if (!content) {
       return wx.showToast({ title: '请输入心愿正文', icon: 'none' });
     }
-    if (expectedPriceText && (isNaN(Number(expectedPriceText)) || Number(expectedPriceText) < 0)) {
-      return wx.showToast({ title: '请输入正确的期望预算', icon: 'none' });
-    }
-
     if (this.data.splitByImage && imageList.length > 1) {
       var confirmed = await this.confirmSplitCreation(imageList.length);
       if (!confirmed) return;
@@ -112,8 +105,7 @@ Page({
       var payload = {
         images: imageUrls,
         title: title,
-        content: content,
-        expectedPrice: expectedPriceText ? Number(expectedPriceText) : null
+        content: content
       };
 
       wx.showLoading({ title: '创建心愿...', mask: true });
