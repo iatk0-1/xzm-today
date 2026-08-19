@@ -57,24 +57,3 @@ page { background-color: #f9f9f9; }
 .pay-label { font-family: "Times New Roman", Times, serif; font-size: 12px; color: #888888; margin-right: 10px; }
 .pay-price { font-family: "Times New Roman", Times, serif; font-size: 18px; color: #111111; font-weight: bold; }
 .btn-pay { background-color: #111111; color: #ffffff; font-family: -apple-system, sans-serif; font-size: 13px; height: 44px; line-height: 44px; padding: 0 35px; border-radius: 2px; letter-spacing: 1px; }
-
-/* 手机号授权按钮（与 PAY NOW 样式一致） */
-button.btn-auth {
-  background-color: #111111;
-  color: #ffffff;
-  font-family: -apple-system, sans-serif;
-  font-size: 13px;
-  height: 44px;
-  padding: 0 35px;
-  border-radius: 2px;
-  letter-spacing: 1px;
-  border: none;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-button.btn-auth::after {
-  border: none;
-}

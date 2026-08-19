@@ -48,15 +48,9 @@ Page({
     } catch (err) {
       wx.hideLoading();
 
-      // 错误处理
-      let errMsg = '绑定失败，请重试';
-      if (err && err.message) {
-        errMsg = err.message;
-      }
-
       wx.showModal({
         title: '提示',
-        content: errMsg,
+        content: auth.getPhoneBindErrorMessage(err),
         showCancel: false
       });
     }

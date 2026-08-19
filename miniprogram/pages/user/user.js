@@ -189,7 +189,7 @@ Page({
       // 后端返回的错误（如手机号已被绑定等）
       wx.showModal({
         title: '绑定失败',
-        content: err?.message || '手机号绑定失败，请稍后重试',
+        content: auth.getPhoneBindErrorMessage(err),
         showCancel: false,
         confirmText: '知道了'
       });

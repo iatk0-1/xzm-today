@@ -71,12 +71,7 @@
       <text class="pay-label">合计</text>
       <text class="pay-price">¥ {{totalPrice}}</text>
     </view>
-    <!-- 未绑定手机号时显示授权按钮（覆盖在 PAY NOW 上方） -->
-    <button wx:if="{{!isPhoneBound}}" class="btn-pay btn-auth" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">
-      授权手机号支付
-    </button>
-    <!-- 已绑定手机号时显示普通支付按钮 -->
-    <view wx:else class="btn-pay" bindtap="submitOrder">立即支付</view>
+    <view class="btn-pay" bindtap="submitOrder">立即支付</view>
   </view>
 
 </view>
