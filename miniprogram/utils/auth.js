@@ -254,7 +254,9 @@ function getMerchantMembership(merchantId) {
 
 function hasMerchantPermission(merchantId, permission) {
   const membership = getMerchantMembership(merchantId);
-  if (!membership || String(membership.memberStatus || membership.status || 'active').toLowerCase() !== 'active') {
+  if (!membership
+      || String(membership.merchantStatus || 'active').toLowerCase() !== 'active'
+      || String(membership.memberStatus || membership.status || '').toLowerCase() !== 'active') {
     return false;
   }
   return Array.isArray(membership.permissions)

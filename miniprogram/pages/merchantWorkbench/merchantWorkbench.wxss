@@ -1,0 +1,12 @@
+page { background: #f6f6f6; }
+.page { padding: 24rpx; }
+.merchant-header { background: #111; color: #fff; padding: 34rpx; border-radius: 8rpx; display: flex; align-items: center; justify-content: space-between; }
+.merchant-name { font-size: 34rpx; font-weight: 700; }
+.merchant-id { margin-top: 10rpx; font-size: 22rpx; color: #bbb; }
+.switch-button { margin: 0; padding: 0 24rpx; min-width: 112rpx; height: 60rpx; line-height: 60rpx; border-radius: 6rpx; font-size: 24rpx; background: #fff; color: #111; }
+.switch-button::after { border: 0; }
+.menu-list { margin-top: 24rpx; background: #fff; padding: 0 28rpx; border-radius: 8rpx; }
+.menu-row { min-height: 104rpx; display: flex; align-items: center; justify-content: space-between; border-bottom: 1rpx solid #eee; font-size: 28rpx; color: #222; }
+.menu-row:last-child { border-bottom: 0; }
+.arrow { color: #aaa; }
+.empty { text-align: center; color: #888; padding: 80rpx 0; font-size: 25rpx; }

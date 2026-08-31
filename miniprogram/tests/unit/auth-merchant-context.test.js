@@ -17,8 +17,8 @@ test.beforeEach(() => {
     userId: 10,
     platformRoles: ['USER'],
     memberships: [
-      { merchantId: 100, merchantName: '甲商户', memberStatus: 'active', permissions: ['PRODUCT_UPDATE'] },
-      { merchantId: 200, merchantName: '乙商户', memberStatus: 'disabled', permissions: ['PRODUCT_UPDATE'] }
+      { merchantId: 100, merchantName: '甲商户', merchantStatus: 'active', memberStatus: 'active', permissions: ['PRODUCT_UPDATE'] },
+      { merchantId: 200, merchantName: '乙商户', merchantStatus: 'active', memberStatus: 'disabled', permissions: ['PRODUCT_UPDATE'] }
     ],
     sellerProfile: { sellerId: 20, status: 'active' },
     sellerPartnerships: [{ merchantId: 100, status: 'active' }]
@@ -43,4 +43,24 @@ test('merchant context only accepts active memberships', () => {
   assert.throws(() => merchantContext.setCurrentMerchant(200), /成员关系已失效/);
   merchantContext.clearCurrentMerchant();
   assert.equal(merchantContext.getCurrentMerchant(), null);
+});
+
+test('merchant context is cleared when membership becomes disabled', () => {
+  merchantContext.setCurrentMerchant(100);
+  const userInfo = wx.getStorageSync('userInfo');
+  userInfo.memberships[0].memberStatus = 'disabled';
+  wx.setStorageSync('userInfo', userInfo);
+
+  assert.throws(() => merchantContext.requireCurrentMerchant(), /有效的商户经营身份/);
+  assert.equal(merchantContext.getCurrentMerchant(), null);
+});
+
+test('disabled merchant cannot expose permissions or retain context', () => {
+  merchantContext.setCurrentMerchant(100);
+  const userInfo = wx.getStorageSync('userInfo');
+  userInfo.memberships[0].merchantStatus = 'disabled';
+  wx.setStorageSync('userInfo', userInfo);
+
+  assert.equal(auth.hasMerchantPermission(100, 'PRODUCT_UPDATE'), false);
+  assert.throws(() => merchantContext.requireCurrentMerchant(), /有效的商户经营身份/);
 });

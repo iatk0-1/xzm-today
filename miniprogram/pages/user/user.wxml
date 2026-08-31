@@ -50,6 +50,10 @@
   </view>
 
   <view class="menu-list">
+    <view class="menu-item merchant-entry" wx:if="{{hasMerchantMembership}}" bindtap="goToMerchantWorkbench">
+      <text>商户工作台</text>
+      <text class="arrow">></text>
+    </view>
     <view class="menu-item" bindtap="goToAddress">
       <text>收货地址</text>
       <text class="arrow">></text>

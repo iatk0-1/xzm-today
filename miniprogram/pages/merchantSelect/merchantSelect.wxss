@@ -1,0 +1,10 @@
+page { background: #f6f6f6; }
+.page { padding: 32rpx 24rpx; }
+.title { font-size: 34rpx; font-weight: 700; margin-bottom: 28rpx; color: #111; }
+.merchant-list { background: #fff; border-radius: 8rpx; padding: 0 28rpx; }
+.merchant-row { min-height: 128rpx; display: flex; align-items: center; justify-content: space-between; border-bottom: 1rpx solid #eee; }
+.merchant-row:last-child { border-bottom: 0; }
+.merchant-name { font-size: 30rpx; color: #111; font-weight: 600; }
+.merchant-role { font-size: 23rpx; color: #777; margin-top: 8rpx; }
+.arrow { color: #aaa; }
+.empty { text-align: center; color: #888; padding-top: 180rpx; font-size: 26rpx; }

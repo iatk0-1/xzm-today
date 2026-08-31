@@ -1,0 +1,14 @@
+<view class="page">
+  <view class="title">选择经营商户</view>
+  <view class="merchant-list" wx:if="{{memberships.length}}">
+    <view class="merchant-row" wx:for="{{memberships}}" wx:key="merchantId"
+      data-id="{{item.merchantId}}" bindtap="selectMerchant">
+      <view>
+        <view class="merchant-name">{{item.merchantName}}</view>
+        <view class="merchant-role">{{item.roleLabel}}</view>
+      </view>
+      <text class="arrow">></text>
+    </view>
+  </view>
+  <view class="empty" wx:else>暂无有效商户身份</view>
+</view>

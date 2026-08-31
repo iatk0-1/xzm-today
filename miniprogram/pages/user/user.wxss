@@ -320,3 +320,8 @@ page {
   transform: translateY(-16rpx); 
   box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.2);
 }
+
+.menu-item.merchant-entry {
+  font-weight: 600;
+  color: #111111;
+}

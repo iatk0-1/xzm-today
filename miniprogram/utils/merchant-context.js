@@ -15,8 +15,9 @@ function setCurrentMerchant(merchantId) {
   if (!membership) {
     throw new Error('当前用户不是该商户成员');
   }
-  const status = String(membership.memberStatus || membership.status || 'active').toLowerCase();
-  if (status !== 'active') {
+  const memberStatus = String(membership.memberStatus || membership.status || '').toLowerCase();
+  const merchantStatus = String(membership.merchantStatus || 'active').toLowerCase();
+  if (memberStatus !== 'active' || merchantStatus !== 'active') {
     throw new Error('当前商户成员关系已失效');
   }
   const context = {
@@ -34,7 +35,10 @@ function clearCurrentMerchant() {
 
 function requireCurrentMerchant() {
   const context = getCurrentMerchant();
-  if (!context || !auth.getMerchantMembership(context.merchantId)) {
+  const membership = context ? auth.getMerchantMembership(context.merchantId) : null;
+  const memberStatus = String(membership?.memberStatus || membership?.status || '').toLowerCase();
+  const merchantStatus = String(membership?.merchantStatus || 'active').toLowerCase();
+  if (!context || !membership || memberStatus !== 'active' || merchantStatus !== 'active') {
     clearCurrentMerchant();
     throw new Error('请先选择有效的商户经营身份');
   }

@@ -12,6 +12,7 @@ Page({
     avatarUrl: null,
     phone: null,
     isPhoneBound: false,
+    hasMerchantMembership: false,
     phoneBinding: false // 手机号绑定中状态，防止重复点击
   },
 
@@ -73,11 +74,30 @@ Page({
 
   // 检查是否为主理人
   checkAdmin: function() {
+    const memberships = auth.getMerchantMemberships().filter(item =>
+      String(item.memberStatus || '').toLowerCase() === 'active'
+      && String(item.merchantStatus || 'active').toLowerCase() === 'active');
+    this.setData({ hasMerchantMembership: memberships.length > 0 });
     if (auth.isAdmin()) {
       this.setData({ isAdmin: true });
     } else {
       this.setData({ isAdmin: false });
     }
+  },
+
+  goToMerchantWorkbench: function() {
+    const memberships = auth.getMerchantMemberships().filter(item =>
+      String(item.memberStatus || '').toLowerCase() === 'active'
+      && String(item.merchantStatus || 'active').toLowerCase() === 'active');
+    if (!memberships.length) {
+      wx.showToast({ title: '暂无商户经营身份', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({
+      url: memberships.length === 1
+        ? '/pages/merchantWorkbench/merchantWorkbench?merchantId=' + memberships[0].merchantId
+        : '/pages/merchantSelect/merchantSelect'
+    });
   },
 
   // 跳转到编辑资料页面

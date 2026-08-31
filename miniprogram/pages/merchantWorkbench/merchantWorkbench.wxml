@@ -1,0 +1,17 @@
+<view class="page" wx:if="{{merchant}}">
+  <view class="merchant-header">
+    <view>
+      <view class="merchant-name">{{merchant.merchantName}}</view>
+      <view class="merchant-id">商户 ID：{{merchant.merchantId}}</view>
+    </view>
+    <button wx:if="{{canSwitch}}" class="switch-button" bindtap="switchMerchant">切换</button>
+  </view>
+
+  <view class="menu-list">
+    <view class="menu-row" wx:for="{{menus}}" wx:key="key"
+      data-key="{{item.key}}" bindtap="openMenu">
+      <text>{{item.label}}</text><text class="arrow">></text>
+    </view>
+    <view class="empty" wx:if="{{!menus.length}}">当前岗位暂无可用经营功能</view>
+  </view>
+</view>

@@ -8,6 +8,8 @@
     "pages/checkout/checkout",
     "pages/search/search",
     "pages/user/user",
+    "pages/merchantSelect/merchantSelect",
+    "pages/merchantWorkbench/merchantWorkbench",
     "pages/editProfile/editProfile",
     "pages/orderList/orderList",
     "pages/orderDetail/orderDetail",
