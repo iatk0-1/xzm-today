@@ -53,9 +53,13 @@ async function login(nickname = '', avatarUrl = '') {
       isPhoneBound: res.isPhoneBound,
       nickname: res.nickname,
       avatarUrl: res.avatarUrl,
-      role: res.role
+      role: res.role,
+      platformRoles: Array.isArray(res.platformRoles) ? res.platformRoles : [],
+      memberships: Array.isArray(res.memberships) ? res.memberships : [],
+      sellerProfile: res.sellerProfile || null,
+      sellerPartnerships: Array.isArray(res.sellerPartnerships) ? res.sellerPartnerships : []
     };
-    wx.setStorageSync(config.USER_INFO_KEY, userInfo);
+    saveUserInfo(userInfo);
 
     return res;
   } catch (err) {
@@ -100,6 +104,15 @@ async function refreshToken() {
 
     const res = await api.refreshSession();
 
+    if (res && res.userId) {
+      saveUserInfo(Object.assign({}, getUserInfo() || {}, {
+        userId: res.userId,
+        platformRoles: Array.isArray(res.platformRoles) ? res.platformRoles : (getUserInfo()?.platformRoles || []),
+        memberships: Array.isArray(res.memberships) ? res.memberships : (getUserInfo()?.memberships || []),
+        sellerProfile: res.sellerProfile !== undefined ? res.sellerProfile : (getUserInfo()?.sellerProfile || null),
+        sellerPartnerships: Array.isArray(res.sellerPartnerships) ? res.sellerPartnerships : (getUserInfo()?.sellerPartnerships || [])
+      }));
+    }
     console.log('Token 刷新成功');
     return res;
   } catch (err) {
@@ -217,6 +230,54 @@ function isPhoneBound() {
   return userInfo && userInfo.isPhoneBound === true;
 }
 
+function saveUserInfo(userInfo) {
+  if (userInfo) wx.setStorageSync(config.USER_INFO_KEY, userInfo);
+}
+
+function getPlatformRoles() {
+  const userInfo = getUserInfo();
+  return Array.isArray(userInfo?.platformRoles) ? userInfo.platformRoles : [];
+}
+
+function hasPlatformRole(role) {
+  return getPlatformRoles().some(item => String(item).toUpperCase() === String(role).toUpperCase());
+}
+
+function getMerchantMemberships() {
+  const userInfo = getUserInfo();
+  return Array.isArray(userInfo?.memberships) ? userInfo.memberships : [];
+}
+
+function getMerchantMembership(merchantId) {
+  return getMerchantMemberships().find(item => String(item.merchantId) === String(merchantId)) || null;
+}
+
+function hasMerchantPermission(merchantId, permission) {
+  const membership = getMerchantMembership(merchantId);
+  if (!membership || String(membership.memberStatus || membership.status || 'active').toLowerCase() !== 'active') {
+    return false;
+  }
+  return Array.isArray(membership.permissions)
+    && membership.permissions.some(item => String(item).toUpperCase() === String(permission).toUpperCase());
+}
+
+function getSellerProfile() {
+  return getUserInfo()?.sellerProfile || null;
+}
+
+function getSellerPartnership(merchantId) {
+  const userInfo = getUserInfo();
+  return (Array.isArray(userInfo?.sellerPartnerships) ? userInfo.sellerPartnerships : [])
+    .find(item => String(item.merchantId) === String(merchantId)) || null;
+}
+
+function canUseSellerWorkbench(merchantId) {
+  const profile = getSellerProfile();
+  const partnership = getSellerPartnership(merchantId);
+  return String(profile?.status || '').toLowerCase() === 'active'
+    && String(partnership?.status || '').toLowerCase() === 'active';
+}
+
 /**
  * 将手机号绑定错误转换成适合用户阅读的中文提示。
  */
@@ -275,5 +336,13 @@ module.exports = {
   logout,
   ensureLogin,
   getAccessToken,
-  getRefreshToken
+  getRefreshToken,
+  getPlatformRoles,
+  hasPlatformRole,
+  getMerchantMemberships,
+  getMerchantMembership,
+  hasMerchantPermission,
+  getSellerProfile,
+  getSellerPartnership,
+  canUseSellerWorkbench
 };
