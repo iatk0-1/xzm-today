@@ -51,10 +51,13 @@ Page({
     if (this.data.assistingId || e.currentTarget.dataset.assisted) return;
     this.setData({ assistingId: sourceProductId });
     try {
-      await api.post('/seller/merchants/' + this.data.merchantId
+      const result = await api.post('/seller/merchants/' + this.data.merchantId
         + '/distribution/products/' + sourceProductId + '/assist-sell');
       wx.showToast({ title: '已加入帮卖', icon: 'success' });
-      await this.loadProducts(true);
+      setTimeout(() => wx.navigateTo({
+        url: '/pages/sellerProductEdit/sellerProductEdit?merchantId=' + this.data.merchantId
+          + '&productId=' + result.distributionProductId
+      }), 500);
     } catch (err) {
       wx.showToast({ title: err.message || '帮卖失败', icon: 'none' });
     } finally {

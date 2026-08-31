@@ -13,6 +13,8 @@
     "pages/sellerApply/sellerApply",
     "pages/sellerWorkbench/sellerWorkbench",
     "pages/distributionCatalog/distributionCatalog",
+    "pages/sellerProductList/sellerProductList",
+    "pages/sellerProductEdit/sellerProductEdit",
     "pages/editProfile/editProfile",
     "pages/orderList/orderList",
     "pages/orderDetail/orderDetail",

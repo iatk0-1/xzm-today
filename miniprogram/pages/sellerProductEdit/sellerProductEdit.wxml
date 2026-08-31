@@ -1,0 +1,35 @@
+<view class="page" wx:if="{{detail}}">
+  <view class="section">
+    <view class="section-title">商品信息</view>
+    <view class="label">商品名称</view>
+    <input class="input" value="{{detail.marketing.name}}" data-field="name" bindinput="updateMarketingField" />
+    <view class="label">封面图片 URL</view>
+    <input class="input" value="{{detail.marketing.coverUrl}}" data-field="coverUrl" bindinput="updateMarketingField" />
+    <view class="label">价格展示文案</view>
+    <input class="input" value="{{detail.marketing.displayPrice}}" data-field="displayPrice" bindinput="updateMarketingField" />
+    <view class="label">商品描述</view>
+    <textarea class="textarea" value="{{detail.marketing.description}}" data-field="description" bindinput="updateMarketingField" />
+    <view class="label">发货说明</view>
+    <textarea class="textarea" value="{{detail.marketing.shippingInfo}}" data-field="shippingInfo" bindinput="updateMarketingField" />
+    <button class="button" loading="{{saving}}" disabled="{{saving}}" bindtap="saveMarketing">保存商品信息</button>
+  </view>
+
+  <view class="section">
+    <view class="section-title">SKU 售价</view>
+    <view class="sku" wx:for="{{detail.skus}}" wx:key="sourceSkuId">
+      <image class="sku-image" src="{{item.imageUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
+      <view class="sku-content">
+        <view class="sku-name">{{item.spec}} {{item.size}}</view>
+        <view class="readonly">源价 ¥{{item.sourcePrice}} · 固定佣金 ¥{{item.fixedCommission}}</view>
+        <view class="readonly">可售库存 {{item.availableStock}}</view>
+        <input class="price-input {{item.priceValid ? '' : 'invalid'}}" type="digit"
+          value="{{item.salePriceInput}}" data-index="{{index}}" bindinput="updateSkuPrice" />
+      </view>
+    </view>
+    <button class="button" loading="{{saving}}" disabled="{{saving}}" bindtap="saveSkuPrices">保存 SKU 售价</button>
+  </view>
+
+  <button class="status-button" loading="{{saving}}" disabled="{{saving}}" bindtap="toggleStatus">
+    {{detail.status == 'on' ? '下架商品' : '上架商品'}}
+  </button>
+</view>

@@ -9,4 +9,8 @@ page { background: #f6f6f6; }
 .status.active { color: #17854b; }
 .status.rejected, .status.disabled { color: #b13a33; }
 .action { color: #111; font-size: 24rpx; font-weight: 600; }
+.actions { display: flex; gap: 10rpx; }
+.small-button { margin: 0; padding: 0 16rpx; height: 58rpx; line-height: 58rpx; border-radius: 6rpx; font-size: 22rpx; background: #eee; color: #222; }
+.small-button.primary { background: #111; color: #fff; }
+.small-button::after { border: 0; }
 .empty { text-align: center; color: #888; padding-top: 180rpx; font-size: 26rpx; }

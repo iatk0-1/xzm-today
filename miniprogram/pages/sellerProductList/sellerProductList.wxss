@@ -1,0 +1,13 @@
+page { background: #f6f6f6; }
+.page { padding: 24rpx; }
+.merchant-name { font-size: 32rpx; font-weight: 700; color: #111; margin: 8rpx 0 24rpx; }
+.product { background: #fff; border-radius: 8rpx; padding: 18rpx; margin-bottom: 16rpx; display: flex; align-items: center; }
+.cover { width: 142rpx; height: 164rpx; background: #eee; flex-shrink: 0; }
+.content { flex: 1; min-width: 0; margin-left: 20rpx; }
+.name { font-size: 28rpx; font-weight: 600; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.price { font-size: 25rpx; color: #333; margin-top: 16rpx; }
+.footer { display: flex; gap: 14rpx; margin-top: 18rpx; font-size: 22rpx; }
+.status { color: #666; }
+.invalid { color: #b13a33; }
+.arrow { color: #aaa; margin-left: 12rpx; }
+.empty, .loading { text-align: center; color: #888; padding: 120rpx 0; font-size: 25rpx; }

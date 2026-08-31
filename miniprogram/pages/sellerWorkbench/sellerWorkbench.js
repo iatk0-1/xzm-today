@@ -45,5 +45,25 @@ Page({
       return;
     }
     wx.showToast({ title: merchant.statusLabel, icon: 'none' });
+  },
+
+  openCatalog(e) {
+    const merchant = this.findMerchant(e.currentTarget.dataset.id);
+    if (merchant) wx.navigateTo({
+      url: '/pages/distributionCatalog/distributionCatalog?merchantId=' + merchant.merchantId
+        + '&merchantName=' + encodeURIComponent(merchant.merchantName)
+    });
+  },
+
+  openProducts(e) {
+    const merchant = this.findMerchant(e.currentTarget.dataset.id);
+    if (merchant) wx.navigateTo({
+      url: '/pages/sellerProductList/sellerProductList?merchantId=' + merchant.merchantId
+        + '&merchantName=' + encodeURIComponent(merchant.merchantName)
+    });
+  },
+
+  findMerchant(merchantId) {
+    return this.data.merchants.find(item => String(item.merchantId) === String(merchantId));
   }
 });

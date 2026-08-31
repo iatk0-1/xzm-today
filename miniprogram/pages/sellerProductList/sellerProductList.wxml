@@ -1,0 +1,17 @@
+<view class="page">
+  <view class="merchant-name">{{merchantName}}</view>
+  <view class="product" wx:for="{{products}}" wx:key="productId" data-id="{{item.productId}}" bindtap="editProduct">
+    <image class="cover" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
+    <view class="content">
+      <view class="name">{{item.name}}</view>
+      <view class="price">售价 ¥{{item.priceText}}</view>
+      <view class="footer">
+        <text class="status">{{item.statusLabel}}</text>
+        <text class="invalid" wx:if="{{!item.pricesValid}}">售价待调整</text>
+      </view>
+    </view>
+    <text class="arrow">></text>
+  </view>
+  <view class="empty" wx:if="{{!products.length && !loading}}">暂无分销商品</view>
+  <view class="loading" wx:if="{{loading}}">加载中</view>
+</view>
