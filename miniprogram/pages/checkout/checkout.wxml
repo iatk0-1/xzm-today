@@ -19,9 +19,17 @@
   </view>
 
   <view class="order-items-section">
-    <view class="section-label">商品清单</view>
-    
-    <view class="item-card" wx:for="{{checkoutItems}}" wx:key="id">
+    <view class="section-label">商品清单 · {{orderCount}} 笔订单</view>
+
+    <view class="checkout-group" wx:for="{{checkoutGroups}}" wx:key="key" wx:for-item="group" wx:for-index="groupIndex">
+      <view class="checkout-group-header">
+        <view>
+          <view class="checkout-group-title">订单 {{groupIndex + 1}} · {{group.title}}</view>
+          <view class="checkout-group-shop" wx:if="{{group.shopCode}}">店铺 {{group.shopCode}}</view>
+        </view>
+        <view class="checkout-group-total">¥ {{group.totalPrice}}</view>
+      </view>
+    <view class="item-card" wx:for="{{group.items}}" wx:key="sourceIndex" wx:for-item="item" wx:for-index="itemIndex">
       <image class="item-img" src="{{item.coverUrl || item.image}}" mode="aspectFill"></image>
       <view class="item-info">
         <view class="item-title">{{item.name || item.title}}</view>
@@ -45,9 +53,11 @@
           <view class="item-count">x {{item.count}}</view>
         </view>
         <view class="item-remark">
-          <input class="remark-input" placeholder="给这件商品加个备注..." value="{{item.remark}}" bindinput="onRemarkInput" data-index="{{index}}" maxlength="200" />
+          <input class="remark-input" placeholder="给这件商品加个备注..." value="{{item.remark}}" bindinput="onRemarkInput"
+            data-source-index="{{item.sourceIndex}}" data-group-index="{{groupIndex}}" data-item-index="{{itemIndex}}" maxlength="200" />
         </view>
       </view>
+    </view>
     </view>
   </view>
 
@@ -71,7 +81,7 @@
       <text class="pay-label">合计</text>
       <text class="pay-price">¥ {{totalPrice}}</text>
     </view>
-    <view class="btn-pay" bindtap="submitOrder">立即支付</view>
+    <view class="btn-pay {{submitting ? 'disabled' : ''}}" bindtap="submitOrder">{{submitting ? '处理中...' : (orderCount > 1 ? '分单支付' : '立即支付')}}</view>
   </view>
 
 </view>

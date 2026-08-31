@@ -1,3 +1,47 @@
+function getContextKey(item) {
+  const merchantId = item.merchantId == null ? 'UNKNOWN' : String(item.merchantId);
+  const sellerId = item.distributionSellerId == null
+    ? 'DIRECT'
+    : String(item.distributionSellerId);
+  const shopCode = sellerId === 'DIRECT' ? 'DIRECT' : String(item.shopCode || 'INVALID');
+  return [merchantId, sellerId, shopCode].join(':');
+}
+
+function groupCheckoutItems(checkoutItems) {
+  if (!Array.isArray(checkoutItems) || checkoutItems.length === 0) {
+    return [];
+  }
+
+  const groupMap = new Map();
+  checkoutItems.forEach(function(item, sourceIndex) {
+    const key = getContextKey(item);
+    let group = groupMap.get(key);
+    if (!group) {
+      const isDistribution = item.distributionSellerId != null;
+      group = {
+        key: key,
+        merchantId: item.merchantId,
+        distributionSellerId: item.distributionSellerId,
+        shopCode: isDistribution ? (item.shopCode || '') : '',
+        isDistribution: isDistribution,
+        title: isDistribution ? '分销店铺订单' : '商户自营订单',
+        items: [],
+        itemCount: 0,
+        totalPrice: '0.00'
+      };
+      groupMap.set(key, group);
+    }
+
+    const groupedItem = Object.assign({}, item, { sourceIndex: sourceIndex });
+    group.items.push(groupedItem);
+    group.itemCount += Number(item.count || 0);
+    const linePrice = Number(item.finalPrice || item.price || 0) * Number(item.count || 0);
+    group.totalPrice = (Number(group.totalPrice) + linePrice).toFixed(2);
+  });
+
+  return Array.from(groupMap.values());
+}
+
 function buildOrderData(checkoutItems, address) {
   if (!Array.isArray(checkoutItems) || checkoutItems.length === 0) {
     throw new Error('购物车为空');
@@ -55,4 +99,12 @@ function buildOrderData(checkoutItems, address) {
   return data;
 }
 
-module.exports = { buildOrderData };
+function buildSplitOrderData(checkoutItems, address) {
+  return groupCheckoutItems(checkoutItems).map(function(group) {
+    return Object.assign({}, group, {
+      orderData: buildOrderData(group.items, address)
+    });
+  });
+}
+
+module.exports = { buildOrderData, buildSplitOrderData, groupCheckoutItems };

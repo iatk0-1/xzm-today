@@ -8,17 +8,25 @@
 
   <block wx:else>
     <view class="cart-list">
-      <view class="cart-item-container" wx:for="{{cartList}}" wx:key="id" wx:for-item="item" wx:for-index="index">
+      <view class="cart-group" wx:for="{{cartGroups}}" wx:key="key" wx:for-item="group">
+        <view class="cart-group-header">
+          <view>
+            <text class="cart-group-title">{{group.title}}</text>
+            <text class="cart-group-shop" wx:if="{{group.shopCode}}">{{group.shopCode}}</text>
+          </view>
+          <text class="cart-group-count">{{group.itemCount}} 件</text>
+        </view>
+      <view class="cart-item-container" wx:for="{{group.items}}" wx:key="id" wx:for-item="item">
         <!-- 删除按钮（固定在右侧） -->
-        <view class="delete-btn-wrapper" catchtap="deleteItem" data-index="{{index}}">
+        <view class="delete-btn-wrapper" catchtap="deleteItem" data-index="{{item.sourceIndex}}">
           <view class="delete-btn">删除</view>
         </view>
 
         <!-- 商品内容 -->
-        <view class="cart-item-wrapper {{item.disabled ? 'disabled' : ''}} {{index === currentSlideIndex ? 'sliding' : ''}}"
-              style="transform: translateX({{index === currentSlideIndex ? slideOut : 0}}px);"
+        <view class="cart-item-wrapper {{item.disabled ? 'disabled' : ''}} {{item.sourceIndex === currentSlideIndex ? 'sliding' : ''}}"
+              style="transform: translateX({{item.sourceIndex === currentSlideIndex ? slideOut : 0}}px);"
               bindtouchstart="onTouchStart" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd"
-              catchtap="onItemTap" data-index="{{index}}">
+              catchtap="onItemTap" data-index="{{item.sourceIndex}}">
           <view class="cart-item">
               <!-- 状态标签 -->
               <view class="status-tag sold-out" wx:if="{{item.stockStatus === 'out_of_stock' && item.validityStatus === 'valid'}}">已售罄</view>
@@ -28,7 +36,7 @@
 
               <!-- 复选框：禁用商品显示为禁用状态 -->
               <view class="checkbox {{item.selected && !item.disabled ? 'checked' : ''}} {{item.disabled ? 'disabled' : ''}}"
-                    catchtap="toggleSelect" data-index="{{index}}">
+                    catchtap="toggleSelect" data-index="{{item.sourceIndex}}">
                 <view class="check-inner" wx:if="{{item.selected && !item.disabled}}"></view>
               </view>
 
@@ -61,9 +69,9 @@
 
                   <!-- 数量选择器：禁用商品隐藏 -->
                   <view class="stepper" wx:if="{{!item.disabled}}">
-                    <view class="step-btn" catchtap="changeCount" data-index="{{index}}" data-type="minus">-</view>
+                    <view class="step-btn" catchtap="changeCount" data-index="{{item.sourceIndex}}" data-type="minus">-</view>
                     <view class="step-num">{{item.count}}</view>
-                    <view class="step-btn" catchtap="changeCount" data-index="{{index}}" data-type="add">+</view>
+                    <view class="step-btn" catchtap="changeCount" data-index="{{item.sourceIndex}}" data-type="add">+</view>
                   </view>
 
                   <!-- 禁用商品提示 -->
@@ -79,6 +87,7 @@
             </view>
           </view>
         </view>
+      </view>
       </view>
 
       <view class="bottom-bar">

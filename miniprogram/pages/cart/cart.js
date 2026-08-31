@@ -1,9 +1,11 @@
 // miniprogram/pages/cart/cart.js
 const api = require('../../utils/api');
+const { groupCheckoutItems } = require('../../utils/order-checkout');
 
 Page({
   data: {
     cartList: [],
+    cartGroups: [],
     isAllSelected: true,
     totalPrice: 0,
     totalCount: 0,
@@ -71,7 +73,7 @@ Page({
         };
       });
 
-      this.setData({ cartList });
+      this.setCartList(cartList);
       this.calculateTotal();
     } catch (err) {
       wx.hideLoading();
@@ -84,6 +86,13 @@ Page({
         wx.showToast({ title: '加载失败', icon: 'none' });
       }
     }
+  },
+
+  setCartList: function(cartList) {
+    this.setData({
+      cartList: cartList,
+      cartGroups: groupCheckoutItems(cartList)
+    });
   },
 
   // 计算总价和总件数
@@ -134,7 +143,7 @@ Page({
     try {
       await api.patch(`/cart/items/${item.id}/selected?selected=${newSelected}`);
       item.selected = newSelected;
-      this.setData({ cartList: cart });
+      this.setCartList(cart);
       this.calculateTotal();
     } catch (err) {
       console.error('更新商品选中状态失败:', err);
@@ -150,9 +159,9 @@ Page({
       await api.patch(`/cart/toggle-all`);
       let cart = this.data.cartList;
       cart.forEach(item => {
-        item.selected = allSelected;
+        if (!item.disabled) item.selected = allSelected;
       });
-      this.setData({ cartList: cart, isAllSelected: allSelected });
+      this.setCartList(cart);
       this.calculateTotal();
     } catch (err) {
       console.error('全选操作失败:', err);
@@ -184,7 +193,7 @@ Page({
       try {
         await api.put(`/cart/items/${item.id}`, { count: newCount });
         item.count = newCount;
-        this.setData({ cartList: cart });
+        this.setCartList(cart);
         this.calculateTotal();
       } catch (err) {
         console.error('更新数量失败:', err);
@@ -196,7 +205,7 @@ Page({
         try {
           await api.put(`/cart/items/${item.id}`, { count: newCount });
           item.count = newCount;
-          this.setData({ cartList: cart });
+          this.setCartList(cart);
           this.calculateTotal();
         } catch (err) {
           console.error('更新数量失败:', err);
@@ -215,7 +224,9 @@ Page({
       wx.showToast({ title: '请先选择商品', icon: 'none' });
       return;
     }
-    let selectedItems = this.data.cartList.filter(item => item.selected);
+    let selectedItems = this.data.cartList
+      .filter(item => item.selected)
+      .map(item => Object.assign({}, item, { fromCart: true }));
     wx.setStorageSync('checkoutItems', selectedItems);
 
     wx.navigateTo({
@@ -324,8 +335,8 @@ Page({
       await api.delete(`/cart/items/${item.id}`);
       let cartList = this.data.cartList;
       cartList.splice(index, 1);
+      this.setCartList(cartList);
       this.setData({
-        cartList: cartList,
         currentSlideIndex: -1,
         slideOut: 0
       });

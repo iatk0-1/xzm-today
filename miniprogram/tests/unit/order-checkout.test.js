@@ -1,6 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildOrderData } = require('../../utils/order-checkout');
+const {
+  buildOrderData,
+  buildSplitOrderData,
+  groupCheckoutItems
+} = require('../../utils/order-checkout');
 
 const address = {
   recipient: '测试用户',
@@ -48,4 +52,35 @@ test('跨卖家商品不能混入同一订单', function() {
       { productId: '2', skuId: '12', count: 1, merchantId: '8', distributionSellerId: '10', shopCode: 'b' }
     ], address);
   }, /请分开结算/);
+});
+
+test('购物车按商户和卖家来源分组并保留原始索引', function() {
+  const groups = groupCheckoutItems([
+    { productId: '1', count: 1, price: 10, merchantId: '8' },
+    { productId: '2', count: 2, price: 12, merchantId: '8', distributionSellerId: '9', shopCode: 'a' },
+    { productId: '3', count: 1, price: 15, merchantId: '8', distributionSellerId: '9', shopCode: 'a' },
+    { productId: '4', count: 1, price: 20, merchantId: '8', distributionSellerId: '10', shopCode: 'b' }
+  ]);
+
+  assert.equal(groups.length, 3);
+  assert.deepEqual(groups.map(group => group.itemCount), [1, 3, 1]);
+  assert.deepEqual(groups.map(group => group.totalPrice), ['10.00', '39.00', '20.00']);
+  assert.deepEqual(groups[1].items.map(item => item.sourceIndex), [1, 2]);
+});
+
+test('跨来源购物车自动拆成独立的服务端定价请求', function() {
+  const orders = buildSplitOrderData([
+    { productId: '1', skuId: '11', count: 1, merchantId: '8', finalPrice: 0.01 },
+    { productId: '2', skuId: '12', count: 2, merchantId: '8', distributionSellerId: '9', shopCode: 'a', finalPrice: 0.01 }
+  ], address);
+
+  assert.equal(orders.length, 2);
+  assert.deepEqual(orders[0].orderData.items, [
+    { productId: '1', skuId: '11', qty: 1, pool: 'main' }
+  ]);
+  assert.equal(orders[0].orderData.shopCode, undefined);
+  assert.deepEqual(orders[1].orderData.items, [
+    { productId: '2', skuId: '12', qty: 2, pool: 'main' }
+  ]);
+  assert.equal(orders[1].orderData.shopCode, 'a');
 });
