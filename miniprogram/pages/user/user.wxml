@@ -54,6 +54,10 @@
       <text>商户工作台</text>
       <text class="arrow">></text>
     </view>
+    <view class="menu-item" bindtap="goToSellerWorkbench">
+      <text>分销卖家工作台</text>
+      <text class="arrow">></text>
+    </view>
     <view class="menu-item" bindtap="goToAddress">
       <text>收货地址</text>
       <text class="arrow">></text>

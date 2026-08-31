@@ -1,0 +1,14 @@
+<view class="page">
+  <view class="header">合作商户</view>
+  <view class="merchant-list" wx:if="{{merchants.length}}">
+    <view class="merchant-row" wx:for="{{merchants}}" wx:key="merchantId"
+      data-id="{{item.merchantId}}" bindtap="handleMerchant">
+      <view>
+        <view class="merchant-name">{{item.merchantName}}</view>
+        <view class="status {{item.partnershipStatus}}">{{item.statusLabel}}</view>
+      </view>
+      <text class="action">{{item.canEnter ? '进入选品' : (item.canApply ? '申请合作' : '查看状态')}}</text>
+    </view>
+  </view>
+  <view class="empty" wx:else>{{loading ? '加载中' : '暂无可合作商户'}}</view>
+</view>

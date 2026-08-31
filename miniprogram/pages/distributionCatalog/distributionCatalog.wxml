@@ -1,0 +1,19 @@
+<view class="page">
+  <view class="merchant-name">{{merchantName}}</view>
+  <view class="product" wx:for="{{products}}" wx:key="sourceProductId">
+    <image class="cover" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
+    <view class="content">
+      <view class="name">{{item.name}}</view>
+      <view class="meta">源价 ¥{{item.sourcePriceText}}</view>
+      <view class="meta">固定佣金 ¥{{item.commissionText}}</view>
+      <view class="meta">{{item.skuCount}} 个 SKU · {{item.commissionMode == 'SKU' ? '逐 SKU 佣金' : '商品统一佣金'}}</view>
+      <button class="assist" disabled="{{item.assisted || assistingId == item.sourceProductId}}"
+        loading="{{assistingId == item.sourceProductId}}" data-id="{{item.sourceProductId}}"
+        data-assisted="{{item.assisted}}" bindtap="assistSell">
+        {{item.assisted ? '已帮卖' : '帮卖'}}
+      </button>
+    </view>
+  </view>
+  <view class="empty" wx:if="{{!products.length && !loading}}">暂无可帮卖商品</view>
+  <view class="loading" wx:if="{{loading}}">加载中</view>
+</view>

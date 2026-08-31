@@ -1,0 +1,12 @@
+page { background: #f6f6f6; }
+.page { padding: 28rpx 24rpx; }
+.header { font-size: 34rpx; font-weight: 700; color: #111; margin-bottom: 24rpx; }
+.merchant-list { background: #fff; border-radius: 8rpx; padding: 0 28rpx; }
+.merchant-row { min-height: 126rpx; display: flex; align-items: center; justify-content: space-between; border-bottom: 1rpx solid #eee; }
+.merchant-row:last-child { border-bottom: 0; }
+.merchant-name { font-size: 29rpx; color: #111; font-weight: 600; }
+.status { font-size: 23rpx; color: #777; margin-top: 8rpx; }
+.status.active { color: #17854b; }
+.status.rejected, .status.disabled { color: #b13a33; }
+.action { color: #111; font-size: 24rpx; font-weight: 600; }
+.empty { text-align: center; color: #888; padding-top: 180rpx; font-size: 26rpx; }

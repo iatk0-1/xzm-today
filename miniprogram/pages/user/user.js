@@ -100,6 +100,10 @@ Page({
     });
   },
 
+  goToSellerWorkbench: function() {
+    wx.navigateTo({ url: '/pages/sellerWorkbench/sellerWorkbench' });
+  },
+
   // 跳转到编辑资料页面
   goToEditProfile: function() {
     wx.navigateTo({
