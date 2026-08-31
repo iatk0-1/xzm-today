@@ -48,6 +48,9 @@ Page({
         return {
           id: item.id,
           productId: item.productId,
+          merchantId: item.merchantId,
+          distributionSellerId: item.distributionSellerId,
+          shopCode: item.shopCode,
           skuId: item.skuId,
           name: item.productName,
           image: item.productImage,

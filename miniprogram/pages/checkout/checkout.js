@@ -1,5 +1,6 @@
 // miniprogram/pages/checkout/checkout.js
 const api = require('../../utils/api');
+const { buildOrderData } = require('../../utils/order-checkout');
 
 Page({
   data: {
@@ -48,6 +49,9 @@ Page({
       const checkoutItems = cartItems.map(item => ({
         id: item.id,
         productId: item.productId,
+        merchantId: item.merchantId,
+        distributionSellerId: item.distributionSellerId,
+        shopCode: item.shopCode,
         skuId: item.skuId,
         name: item.productName,
         image: item.productImage,
@@ -130,40 +134,7 @@ Page({
     wx.showLoading({ title: '创建订单...' });
 
     try {
-      // 构造后端要求的订单格式（包含 SKU 快照数据）
-      const orderItems = checkoutItems.map(item => {
-        var orderItem = {
-          skuId: item.skuId || 0,
-          qty: item.count,
-          salePrice: Number(item.finalPrice || item.price),
-          pool: 'main',
-          // SKU 快照数据（下单时保存，后续不会随商品修改而变化）
-          skuSpec: item.selectedColor || '默认',
-          skuSize: item.selectedSize || '均码',
-          productName: item.name,
-          productImage: item.image || item.coverUrl
-        };
-        // 套装商品：传递 bundleConfig
-        if (item.bundleConfig && item.bundleConfig.length > 0) {
-          orderItem.bundleConfig = item.bundleConfig;
-        }
-        // 商品备注
-        if (item.remark && item.remark.trim()) {
-          orderItem.remark = item.remark.trim();
-        }
-        return orderItem;
-      });
-
-      // 构造收货地址
-      const orderData = {
-        items: orderItems,
-        recipientName: address.recipient,
-        recipientPhone: address.phone,
-        recipientProvince: address.province,
-        recipientCity: address.city,
-        recipientDistrict: address.district,
-        recipientDetail: address.detail
-      };
+      const orderData = buildOrderData(checkoutItems, address);
 
       // 1. 创建订单
       const orderRes = await api.post('/orders', orderData);
