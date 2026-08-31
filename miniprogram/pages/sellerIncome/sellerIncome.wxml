@@ -1,0 +1,37 @@
+<view class="page">
+  <view class="merchant-name">{{merchantName}}</view>
+  <view class="filters">
+    <picker mode="date" value="{{startDate}}" bindchange="chooseStartDate">
+      <view class="date-field">{{startDate || '开始日期'}}</view>
+    </picker>
+    <text class="date-separator">至</text>
+    <picker mode="date" value="{{endDate}}" bindchange="chooseEndDate">
+      <view class="date-field">{{endDate || '结束日期'}}</view>
+    </picker>
+    <text class="clear" bindtap="clearDates">清除</text>
+  </view>
+
+  <view class="overview" wx:if="{{overview}}">
+    <view class="net-label">净收益</view>
+    <view class="net-amount">¥{{overview.netText}}</view>
+    <view class="metrics">
+      <view class="metric"><text>固定佣金</text><text>¥{{overview.fixedText}}</text></view>
+      <view class="metric"><text>加价收益</text><text>¥{{overview.markupText}}</text></view>
+      <view class="metric"><text>已冲回</text><text>¥{{overview.reversedText}}</text></view>
+    </view>
+  </view>
+
+  <view class="section-title">收益明细</view>
+  <view class="entry" wx:for="{{entries}}" wx:key="ledgerId">
+    <view class="entry-head">
+      <text>订单 {{item.orderOutTradeNo || item.orderId}}</text>
+      <text class="status">{{item.statusLabel}}</text>
+    </view>
+    <view class="entry-row"><text>固定佣金</text><text>¥{{item.fixedText}}</text></view>
+    <view class="entry-row"><text>加价收益</text><text>¥{{item.markupText}}</text></view>
+    <view class="entry-row muted" wx:if="{{item.reversedText != '0.00'}}"><text>收益冲回</text><text>-¥{{item.reversedText}}</text></view>
+    <view class="entry-total"><text>本笔净收益</text><text>¥{{item.netText}}</text></view>
+  </view>
+  <view class="empty" wx:if="{{!entries.length && !loading}}">暂无收益记录</view>
+  <view class="loading" wx:if="{{loading}}">加载中</view>
+</view>

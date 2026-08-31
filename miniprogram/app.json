@@ -15,6 +15,7 @@
     "pages/distributionCatalog/distributionCatalog",
     "pages/sellerProductList/sellerProductList",
     "pages/sellerProductEdit/sellerProductEdit",
+    "pages/sellerIncome/sellerIncome",
     "pages/editProfile/editProfile",
     "pages/orderList/orderList",
     "pages/orderDetail/orderDetail",

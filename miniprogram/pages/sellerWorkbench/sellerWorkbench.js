@@ -63,6 +63,14 @@ Page({
     });
   },
 
+  openIncome(e) {
+    const merchant = this.findMerchant(e.currentTarget.dataset.id);
+    if (merchant) wx.navigateTo({
+      url: '/pages/sellerIncome/sellerIncome?merchantId=' + merchant.merchantId
+        + '&merchantName=' + encodeURIComponent(merchant.merchantName)
+    });
+  },
+
   findMerchant(merchantId) {
     return this.data.merchants.find(item => String(item.merchantId) === String(merchantId));
   }

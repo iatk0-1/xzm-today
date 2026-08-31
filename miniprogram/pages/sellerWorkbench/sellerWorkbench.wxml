@@ -10,6 +10,7 @@
       <view class="actions" wx:if="{{item.canEnter}}">
         <button class="small-button" data-id="{{item.merchantId}}" catchtap="openCatalog">选品</button>
         <button class="small-button primary" data-id="{{item.merchantId}}" catchtap="openProducts">我的商品</button>
+        <button class="small-button" data-id="{{item.merchantId}}" catchtap="openIncome">收益</button>
       </view>
       <text class="action" wx:else>{{item.canApply ? '申请合作' : '查看状态'}}</text>
     </view>

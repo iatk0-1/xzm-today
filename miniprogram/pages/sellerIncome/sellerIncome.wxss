@@ -1,0 +1,22 @@
+page { background: #f6f6f6; }
+.page { padding: 24rpx; }
+.merchant-name { font-size: 32rpx; font-weight: 700; color: #111; margin: 8rpx 0 20rpx; }
+.filters { display: flex; align-items: center; margin-bottom: 18rpx; }
+.date-field { background: #fff; border: 1rpx solid #e5e5e5; border-radius: 6rpx; padding: 12rpx 16rpx; color: #555; font-size: 23rpx; }
+.date-separator { margin: 0 10rpx; color: #888; }
+.clear { margin-left: auto; color: #555; font-size: 23rpx; }
+.overview { background: #111; color: #fff; border-radius: 8rpx; padding: 28rpx; }
+.net-label { color: #bbb; font-size: 24rpx; }
+.net-amount { font-size: 52rpx; font-weight: 700; margin: 8rpx 0 26rpx; }
+.metrics { display: flex; border-top: 1rpx solid #444; padding-top: 20rpx; }
+.metric { flex: 1; display: flex; flex-direction: column; gap: 8rpx; color: #bbb; font-size: 22rpx; }
+.metric text:last-child { color: #fff; font-size: 25rpx; }
+.section-title { font-size: 29rpx; font-weight: 700; color: #111; margin: 28rpx 0 14rpx; }
+.entry { background: #fff; border-radius: 8rpx; padding: 22rpx; margin-bottom: 14rpx; }
+.entry-head, .entry-row, .entry-total { display: flex; justify-content: space-between; align-items: center; }
+.entry-head { font-size: 24rpx; color: #333; padding-bottom: 14rpx; border-bottom: 1rpx solid #eee; }
+.entry-row { font-size: 24rpx; color: #555; padding-top: 12rpx; }
+.entry-total { border-top: 1rpx solid #eee; margin-top: 14rpx; padding-top: 14rpx; font-size: 25rpx; font-weight: 600; color: #111; }
+.status { color: #17854b; }
+.muted { color: #b13a33; }
+.empty, .loading { text-align: center; color: #888; padding: 120rpx 0; font-size: 25rpx; }
