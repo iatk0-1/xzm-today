@@ -4,6 +4,7 @@ const merchantContext = require('../../utils/merchant-context');
 const MENU_DEFINITIONS = [
   { key: 'create', label: '发布原始商品', permission: 'PRODUCT_CREATE', url: '/pages/admin/admin' },
   { key: 'products', label: '商品管理', permission: 'PRODUCT_UPDATE', url: '/pages/adminProduct/adminProduct' },
+  { key: 'distribution', label: '分销管理', permission: 'DISTRIBUTION_CONFIGURE', url: '/pages/merchantDistribution/merchantDistribution' },
   { key: 'stock', label: '库存管理', permission: 'STOCK_MANAGE', url: '/pages/skuInventory/skuInventory' },
   { key: 'orders', label: '订单管理', permission: 'ORDER_MANAGE', url: '/pages/adminOrderManage/adminOrderManage' },
   { key: 'shipment', label: '发货管理', permission: 'SHIPMENT_MANAGE', url: '/pages/adminOrder/adminOrder' },

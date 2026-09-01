@@ -1,0 +1,35 @@
+page { background: #f6f6f6; }
+.page { padding: 24rpx; }
+.merchant-name { font-size: 32rpx; font-weight: 700; color: #111; margin: 8rpx 0 20rpx; }
+.tabs { display: flex; border-bottom: 1rpx solid #ddd; margin-bottom: 20rpx; }
+.tab { flex: 1; text-align: center; padding: 20rpx 0; color: #777; font-size: 26rpx; border-bottom: 4rpx solid transparent; }
+.tab.active { color: #111; font-weight: 700; border-bottom-color: #111; }
+.seller, .product { background: #fff; border-radius: 8rpx; margin-bottom: 14rpx; }
+.seller { min-height: 126rpx; padding: 22rpx; display: flex; align-items: center; justify-content: space-between; }
+.seller-main, .product-main, .sku-main { flex: 1; min-width: 0; }
+.seller-name, .product-name { font-size: 28rpx; font-weight: 600; color: #111; }
+.seller-meta, .product-meta { font-size: 22rpx; color: #777; margin-top: 8rpx; }
+.seller-status, .setting-state { font-size: 22rpx; color: #777; margin-top: 8rpx; }
+.seller-status.active, .setting-state.enabled { color: #17854b; }
+.seller-status.rejected, .seller-status.disabled { color: #b13a33; }
+.actions, .editor-actions { display: flex; gap: 10rpx; }
+.button { margin: 0; padding: 0 18rpx; height: 58rpx; line-height: 58rpx; border-radius: 6rpx; font-size: 22rpx; background: #eee; color: #222; }
+.button::after { border: 0; }
+.button.primary { background: #111; color: #fff; }
+.button.danger { background: #fbe9e7; color: #a62e28; }
+.product-summary { padding: 18rpx; display: flex; align-items: center; }
+.cover { width: 118rpx; height: 136rpx; background: #eee; flex-shrink: 0; }
+.product-main { margin-left: 18rpx; }
+.arrow { color: #aaa; margin-left: 10rpx; }
+.editor { border-top: 1rpx solid #eee; padding: 22rpx; }
+.field { min-height: 74rpx; display: flex; align-items: center; justify-content: space-between; font-size: 25rpx; color: #333; }
+.field input, .sku-input { width: 190rpx; border: 1rpx solid #ddd; border-radius: 6rpx; padding: 10rpx 12rpx; text-align: right; box-sizing: border-box; }
+.mode-control { display: flex; gap: 38rpx; padding: 16rpx 0; font-size: 25rpx; }
+.mode-control radio { transform: scale(.8); }
+.sku { display: flex; align-items: center; min-height: 104rpx; border-top: 1rpx solid #eee; }
+.sku-image { width: 70rpx; height: 70rpx; background: #eee; margin-right: 14rpx; }
+.sku-name { font-size: 24rpx; color: #222; }
+.sku-price { font-size: 21rpx; color: #888; margin-top: 5rpx; }
+.sku-input { width: 150rpx; font-size: 23rpx; }
+.editor-actions { justify-content: flex-end; margin-top: 20rpx; }
+.empty, .loading { text-align: center; color: #888; padding: 120rpx 0; font-size: 25rpx; }

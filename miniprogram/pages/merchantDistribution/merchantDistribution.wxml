@@ -1,0 +1,74 @@
+<view class="page" wx:if="{{merchant}}">
+  <view class="merchant-name">{{merchant.merchantName}}</view>
+  <view class="tabs">
+    <view class="tab {{tab === 'sellers' ? 'active' : ''}}" data-tab="sellers" bindtap="switchTab">卖家审核</view>
+    <view class="tab {{tab === 'products' ? 'active' : ''}}" data-tab="products" bindtap="switchTab">商品帮卖</view>
+  </view>
+
+  <block wx:if="{{tab === 'sellers'}}">
+    <view class="seller" wx:for="{{sellers}}" wx:key="sellerId">
+      <view class="seller-main">
+        <view class="seller-name">{{item.shopName}}</view>
+        <view class="seller-meta">{{item.contactPhone || '未填写联系电话'}} · {{item.shopCode}}</view>
+        <view class="seller-status {{item.partnershipStatus}}">{{item.statusLabel}}</view>
+      </view>
+      <view class="actions" wx:if="{{item.partnershipStatus === 'pending'}}">
+        <button class="button primary" data-id="{{item.sellerId}}" data-action="approve" bindtap="reviewSeller">通过</button>
+        <button class="button" data-id="{{item.sellerId}}" data-action="reject" bindtap="reviewSeller">驳回</button>
+      </view>
+      <view class="actions" wx:elif="{{item.partnershipStatus === 'active'}}">
+        <button class="button danger" data-id="{{item.sellerId}}" data-action="disable" bindtap="reviewSeller">停用</button>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{!sellers.length && !loading}}">暂无卖家申请</view>
+  </block>
+
+  <block wx:else>
+    <view class="product" wx:for="{{products}}" wx:key="productId">
+      <view class="product-summary" data-id="{{item.productId}}" bindtap="editProduct">
+        <image class="cover" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
+        <view class="product-main">
+          <view class="product-name">{{item.name}}</view>
+          <view class="product-meta">{{item.status === 'on' ? '销售中' : '已下架'}} · {{item.skus.length}} 个 SKU</view>
+          <view class="setting-state {{item.distributionEnabled ? 'enabled' : ''}}">
+            {{item.distributionEnabled ? '已开启帮卖' : '未开启帮卖'}} · {{item.commissionMode === 'SKU' ? '逐 SKU 佣金' : '统一佣金'}}
+          </view>
+        </view>
+        <text class="arrow">></text>
+      </view>
+
+      <view class="editor" wx:if="{{editingProductId == item.productId}}">
+        <view class="field switch-field">
+          <text>开启帮卖</text>
+          <switch checked="{{item.distributionEnabled}}" color="#111111" data-id="{{item.productId}}" bindchange="toggleEnabled" />
+        </view>
+        <radio-group class="mode-control" data-id="{{item.productId}}" bindchange="changeMode">
+          <label><radio value="PRODUCT" checked="{{item.commissionMode === 'PRODUCT'}}" color="#111111" />统一佣金</label>
+          <label><radio value="SKU" checked="{{item.commissionMode === 'SKU'}}" color="#111111" />逐 SKU 佣金</label>
+        </radio-group>
+
+        <view class="field" wx:if="{{item.commissionMode === 'PRODUCT'}}">
+          <text>每件固定佣金</text>
+          <input type="digit" value="{{item.productCommissionAmount}}" data-id="{{item.productId}}" bindinput="changeProductCommission" />
+        </view>
+
+        <view class="sku" wx:for="{{item.skus}}" wx:for-item="sku" wx:key="skuId" wx:if="{{item.commissionMode === 'SKU'}}">
+          <image class="sku-image" src="{{sku.imageUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
+          <view class="sku-main">
+            <view class="sku-name">{{sku.spec || '默认规格'}} {{sku.size || ''}}</view>
+            <view class="sku-price">原价 ¥{{sku.sourcePrice}}</view>
+          </view>
+          <input class="sku-input" type="digit" value="{{sku.fixedCommissionAmount}}"
+            data-product-id="{{item.productId}}" data-sku-id="{{sku.skuId}}" bindinput="changeSkuCommission" />
+        </view>
+
+        <view class="editor-actions">
+          <button class="button" bindtap="cancelEdit">取消</button>
+          <button class="button primary" loading="{{saving}}" data-id="{{item.productId}}" bindtap="saveProduct">保存配置</button>
+        </view>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{!products.length && !loading}}">暂无原始商品</view>
+  </block>
+  <view class="loading" wx:if="{{loading}}">加载中</view>
+</view>
