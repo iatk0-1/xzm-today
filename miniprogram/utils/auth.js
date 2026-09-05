@@ -2,6 +2,9 @@
 const api = require('./api');
 const config = require('./config');
 
+const REFRESH_BUFFER_MS = 5 * 60 * 1000;
+let authRecoveryPromise = null;
+
 /**
  * 获取存储的 Token
  */
@@ -21,6 +24,102 @@ function getRefreshToken() {
     return wx.getStorageSync(config.REFRESH_TOKEN_KEY) || '';
   } catch (e) {
     return '';
+  }
+}
+
+function getStoredExpireTime(key) {
+  try {
+    return Number(wx.getStorageSync(key) || 0);
+  } catch (e) {
+    return 0;
+  }
+}
+
+function hasUsableAccessToken() {
+  const token = getAccessToken();
+  if (!token) return false;
+
+  const expiresAt = getStoredExpireTime(config.TOKEN_EXPIRES_AT_KEY);
+  return !expiresAt || expiresAt - Date.now() > REFRESH_BUFFER_MS;
+}
+
+function isNetworkError(err) {
+  if (!err) return false;
+  if (err.statusCode >= 500) return false;
+  if (err.statusCode) return false;
+  if (err.errMsg) return true;
+
+  const message = String(err.errMsg || err.message || err.error || '').toLowerCase();
+  return /timeout|network|连接|超时|断网|请求失败/.test(message);
+}
+
+function mergeUserInfo(session) {
+  if (!session) return getUserInfo();
+
+  const oldUserInfo = getUserInfo() || {};
+  const userInfo = Object.assign({}, oldUserInfo, {
+    userId: session.userId || session.id || oldUserInfo.userId,
+    openid: session.openid || oldUserInfo.openid || '',
+    phone: session.phone != null ? session.phone : oldUserInfo.phone,
+    isPhoneBound: session.isPhoneBound != null
+      ? session.isPhoneBound
+      : oldUserInfo.isPhoneBound,
+    nickname: session.nickname || oldUserInfo.nickname,
+    avatarUrl: session.avatarUrl || oldUserInfo.avatarUrl,
+    role: session.role || oldUserInfo.role
+  });
+
+  try {
+    wx.setStorageSync(config.USER_INFO_KEY, userInfo);
+  } catch (e) {
+    console.error('保存用户信息失败:', e);
+  }
+  return userInfo;
+}
+
+function shouldSyncUserInfo(session) {
+  const cached = getUserInfo();
+  if (!cached || !cached.userId || !cached.role) return true;
+  if (session && session.openid) return false;
+  return !cached.openid;
+}
+
+async function syncUserInfoIfNeeded(session) {
+  const merged = mergeUserInfo(session);
+  if (!shouldSyncUserInfo(session) || !getAccessToken()) {
+    return merged;
+  }
+
+  // 认证恢复期间不能再走默认认证入口，否则会等待当前 Promise 自身。
+  const profile = await api.request({
+    url: '/users/me',
+    method: 'GET',
+    skipAuthRefresh: true
+  });
+  return mergeUserInfo({
+    id: profile.id,
+    openid: profile.openid,
+    phone: profile.phone,
+    isPhoneBound: profile.phone != null && profile.phone !== '',
+    nickname: profile.nickname,
+    avatarUrl: profile.avatarUrl
+  });
+}
+
+function buildSessionResult(source, session) {
+  return {
+    source: source,
+    session: session || null,
+    userInfo: mergeUserInfo(session)
+  };
+}
+
+function clearSession() {
+  api.clearToken();
+  try {
+    wx.removeStorageSync(config.USER_INFO_KEY);
+  } catch (e) {
+    console.error('清理用户信息失败:', e);
   }
 }
 
@@ -104,59 +203,73 @@ async function refreshToken() {
     return res;
   } catch (err) {
     console.error('Token 刷新失败:', err);
-    // 刷新失败，清除所有 token
-    api.clearToken();
     throw err;
   }
 }
 
 /**
- * 确保 Token 有效（核心方法）
- * 流程：
- * 1. 如果有 accessToken，尝试刷新
- * 2. 如果没有 accessToken 但有 refresh_token，尝试刷新
- * 3. 如果都没有，执行登录
+ * 执行一次会话恢复。
+ * 网络异常和服务端异常直接抛出，保留本地会话；明确的 Refresh Token
+ * 认证失败才清理旧会话，然后走微信自动登录。
  */
-async function ensureTokenValid() {
-  const accessToken = getAccessToken();
-  const refresh_token = getRefreshToken();
+async function recoverSession(options = {}) {
+  const force = options.force === true;
 
-  try {
-    // 情况 1: 有 accessToken，尝试刷新
-    if (accessToken) {
-      console.log('检测到 accessToken，尝试刷新...');
-      try {
-        await refreshToken();
-        console.log('Token 刷新成功');
-        return true;
-      } catch (err) {
-        console.log('Token 刷新失败，尝试重新登录');
-        // 刷新失败，继续执行登录
+  if (!force && hasUsableAccessToken() && getUserInfo() && getUserInfo().role) {
+    try {
+      await syncUserInfoIfNeeded();
+      return buildSessionResult('access_token');
+    } catch (err) {
+      if (err && err.statusCode === 401) {
+        clearSession();
+      } else {
+        throw err;
       }
     }
-
-    // 情况 2: 有 refresh_token 但没有 accessToken
-    if (refresh_token) {
-      console.log('检测到 refresh_token，尝试刷新...');
-      try {
-        await refreshToken();
-        console.log('Token 刷新成功');
-        return true;
-      } catch (err) {
-        console.log('Token 刷新失败，尝试重新登录');
-      }
-    }
-
-    // 情况 3: 没有有效 token，执行登录
-    console.log('执行自动登录...');
-    await login();
-    console.log('登录成功');
-    return true;
-
-  } catch (err) {
-    console.error('获取有效 Token 失败:', err);
-    throw err;
   }
+
+  if (getRefreshToken()) {
+    try {
+      const session = await refreshToken();
+      await syncUserInfoIfNeeded(session);
+      return buildSessionResult('refresh_token', session);
+    } catch (err) {
+      if (isNetworkError(err) || (err && err.statusCode >= 500)) {
+        throw err;
+      }
+      // 403 表示身份有效但权限不足，不能把会话误判成失效。
+      if (err && err.statusCode === 403) {
+        throw err;
+      }
+      clearSession();
+    }
+  }
+
+  const session = await login();
+  await syncUserInfoIfNeeded(session);
+  return buildSessionResult('wx_login', session);
+}
+
+/**
+ * 统一的认证恢复入口。所有页面、API 请求和热启动都共享同一个 Promise，
+ * 避免 Refresh Token 轮换期间并发刷新或重复调用 wx.login。
+ */
+function ensureAuthenticated(options = {}) {
+  if (authRecoveryPromise) {
+    return authRecoveryPromise;
+  }
+
+  authRecoveryPromise = recoverSession(options)
+    .finally(() => {
+      authRecoveryPromise = null;
+    });
+
+  return authRecoveryPromise;
+}
+
+// 兼容旧调用方，统一转到新的认证恢复入口。
+function ensureTokenValid(options = {}) {
+  return ensureAuthenticated(options);
 }
 
 /**
@@ -176,9 +289,7 @@ function wxLogin() {
  * 检查登录状态
  */
 function checkLogin() {
-  const token = wx.getStorageSync(config.TOKEN_KEY);
-  const userInfo = wx.getStorageSync(config.USER_INFO_KEY);
-  return !!(token && userInfo);
+  return hasUsableAccessToken() || !!getRefreshToken();
 }
 
 /**
@@ -239,8 +350,7 @@ function getPhoneBindErrorMessage(err) {
  * 退出登录
  */
 function logout() {
-  api.clearToken();
-  wx.removeStorageSync(config.USER_INFO_KEY);
+  clearSession();
 }
 
 /**
@@ -265,8 +375,10 @@ module.exports = {
   login,
   bindPhone,
   refreshToken,
+  ensureAuthenticated,
   ensureTokenValid,
   checkLogin,
+  isNetworkError,
   getUserInfo,
   getOpenid,
   isAdmin,

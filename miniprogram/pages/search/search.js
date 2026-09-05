@@ -1,5 +1,6 @@
 // miniprogram/pages/search/search.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const { isProductSoldOut } = require('../../utils/stock');
 
 Page({
@@ -29,6 +30,7 @@ Page({
   // 加载最近搜索记录
   loadRecentSearches: async function() {
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const res = await api.get('/users/me/usage/searches?limit=10');
       this.setData({ recentSearches: res || [] });
     } catch (err) {
@@ -48,6 +50,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const { page, pageSize } = this.data;
       const res = await api.get('/products/search', {
         page: page,

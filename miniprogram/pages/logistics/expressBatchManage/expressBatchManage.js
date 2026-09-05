@@ -1,5 +1,6 @@
 // miniprogram/pages/logistics/expressBatchManage/expressBatchManage.js
 const api = require('../../../utils/api');
+const auth = require('../../../utils/auth');
 const clipboard = require('../../../utils/clipboard');
 
 Page({
@@ -29,7 +30,8 @@ Page({
     canceling: false
   },
 
-  onLoad: function() {
+  onLoad: async function() {
+    await auth.ensureAuthenticated({ silent: true });
     this.loadDeliveryCompanies();
     this.loadWaybills();
   },

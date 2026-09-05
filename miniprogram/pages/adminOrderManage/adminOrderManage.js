@@ -1,5 +1,6 @@
 // miniprogram/pages/adminOrderManage/adminOrderManage.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 // 状态映射（前端中文 -> 后端英文）
@@ -169,6 +170,7 @@ Page({
     wx.showLoading({ title: '加载订单中...' });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const backendStatus = STATUS_MAP[this.data.currentTab];
       
       // 构建参数对象，过滤掉 undefined 值

@@ -1,5 +1,6 @@
 // adminOrder.js - 完整版
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 Page({
@@ -25,7 +26,13 @@ Page({
     blockedAfterSaleCount: 0
   },
 
-  onLoad: function() {
+  onLoad: async function() {
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+    } catch (err) {
+      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      return;
+    }
     this.loadLogisticsAccounts();
     // 空搜索时，自动加载所有未发货商品明细
     this.loadAllPendingItems();

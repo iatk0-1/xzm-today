@@ -85,6 +85,13 @@ Page({
     var wishId = this.data.wishId;
     if (!wishId) return;
 
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+    } catch (err) {
+      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      return;
+    }
+
     var originalLiked = wish.isLiked;
     var originalLikes = wish.likes || 0;
 
@@ -119,6 +126,7 @@ Page({
         if (res.confirm) {
           wx.showLoading({ title: '删除中...' });
           try {
+            await auth.ensureAuthenticated({ silent: true });
             await api.delete('/wishes/' + self.data.wishId);
             wx.hideLoading();
             wx.showToast({ title: '已删除', icon: 'success' });

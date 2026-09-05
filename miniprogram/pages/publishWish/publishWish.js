@@ -1,5 +1,6 @@
 // miniprogram/pages/publishWish/publishWish.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 
 const MAX_WISH_IMAGES = 99;
 const MAX_PICK_COUNT = 20;
@@ -101,6 +102,7 @@ Page({
     wx.showLoading({ title: '准备上传...', mask: true });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       var imageUrls = await this.uploadImages(imageList);
       var payload = {
         images: imageUrls,

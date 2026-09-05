@@ -1,5 +1,6 @@
 // pages/adminSales/adminSales.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 
 Page({
   data: {
@@ -21,7 +22,12 @@ Page({
     const m = String(today.getMonth() + 1).padStart(2, '0');
     const d = String(today.getDate()).padStart(2, '0');
     this.setData({ today: y + '-' + m + '-' + d });
-    this.loadProducts();
+    auth.ensureAuthenticated({ silent: true })
+      .then(() => this.loadProducts())
+      .catch(err => {
+        console.error('销售统计页认证恢复失败:', err);
+        wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      });
   },
 
   loadProducts() {

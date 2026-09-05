@@ -1,5 +1,6 @@
 // miniprogram/pages/purchaseOrders/purchaseOrders.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 
 Page({
   data: {
@@ -52,6 +53,7 @@ Page({
 
     this.setData({ loading: true });
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const { page, pageSize, status } = this.data;
       const res = await api.get(`/picking-list/orders?status=${status}&page=${page}&size=${pageSize}`);
       

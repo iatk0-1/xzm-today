@@ -55,6 +55,7 @@ Page({
     this.setData({ isLoading: true });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       // 1. 先获取正在直播的场次（只在首次加载时获取）
       if (reset) {
         const activeSession = await api.get('/live-sessions/active');

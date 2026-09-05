@@ -1,5 +1,6 @@
 // miniprogram/pages/orderDetail/orderDetail.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 // 支付超时时间（30 分钟）
@@ -54,6 +55,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const res = await api.get(`/orders/${orderId}`);
       wx.hideLoading();
       // 附加格式化字段
@@ -293,6 +295,7 @@ Page({
   // 各种按钮的操作逻辑
   payOrder: async function() {
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const payRes = await api.post(`/orders/${this.data.order.id}/pay/wechat`);
       // 后端返回字段是 package，不是 packageValue
       const packageValue = payRes.package || payRes.packageValue;
@@ -322,6 +325,13 @@ Page({
   confirmReceipt: async function() {
     var order = this.data.order;
     var self = this;
+
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+    } catch (err) {
+      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      return;
+    }
 
     // 保存当前订单 ID，供 App.onShow 回调使用
     var app = getApp();

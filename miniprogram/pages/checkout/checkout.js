@@ -1,5 +1,6 @@
 // miniprogram/pages/checkout/checkout.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 
 Page({
   data: {
@@ -9,6 +10,14 @@ Page({
   },
 
   onLoad: async function() {
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+    } catch (err) {
+      console.error('结算页认证恢复失败:', err);
+      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      return;
+    }
+
     // 优先从本地存储获取（立即购买模式），如果没有则从后端获取（购物车结算模式）
     let localItems = wx.getStorageSync('checkoutItems') || [];
 
@@ -130,6 +139,8 @@ Page({
     wx.showLoading({ title: '创建订单...' });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
+
       // 构造后端要求的订单格式（包含 SKU 快照数据）
       const orderItems = checkoutItems.map(item => {
         var orderItem = {

@@ -47,6 +47,7 @@ Page({
     wx.showLoading({ title: '上传中...' });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const uploadRes = await api.uploadFile('/files/upload-avatar', filePath);
 
       if (uploadRes.url) {
@@ -77,6 +78,7 @@ Page({
     this.setData({ saving: true });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       await api.put('/users/me/profile', {
         nickname: nickname.trim(),
         avatarUrl: avatarUrl !== DEFAULT_AVATAR_URL ? avatarUrl : undefined

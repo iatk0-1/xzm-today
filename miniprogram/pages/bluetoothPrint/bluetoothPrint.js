@@ -1,5 +1,6 @@
 // miniprogram/pages/bluetoothPrint/bluetoothPrint.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const { printer } = require('../../utils/bluetooth-printer');
 
@@ -32,6 +33,7 @@ Page({
   },
 
   onLoad: async function(options) {
+    await auth.ensureAuthenticated({ silent: true });
     const shipmentId = options.shipmentId || null;
     const shipmentIds = options.shipmentIds ? options.shipmentIds.split(',') : [];
     const mergeGroupId = options.mergeGroupId || null;

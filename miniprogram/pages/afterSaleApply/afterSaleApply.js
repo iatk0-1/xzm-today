@@ -1,5 +1,6 @@
 // miniprogram/pages/afterSaleApply/afterSaleApply.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 const DEFAULT_AFTER_SALE_REASON = '不想要了';
@@ -55,6 +56,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const res = await api.get(`/orders/${orderId}?flat=true`);
       wx.hideLoading();
 
@@ -287,6 +289,7 @@ Page({
     wx.showLoading({ title: '提交中...', mask: true });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const requestData = {
         orderId: this.data.orderId,
         reason: reason,

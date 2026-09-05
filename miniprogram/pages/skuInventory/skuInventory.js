@@ -1,5 +1,6 @@
 // miniprogram/pages/skuInventory/skuInventory.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const { formatStock } = require('../../utils/stock');
 
 Page({
@@ -44,6 +45,7 @@ Page({
 
     this.setData({ loading: true });
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const { page, pageSize } = this.data;
       // 获取所有商品（分页获取）
       const productsRes = await api.get('/products', {

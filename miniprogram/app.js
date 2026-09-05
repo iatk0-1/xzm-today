@@ -59,6 +59,11 @@ App({
         console.log('[确认收货] 用户取消或失败, status=' + data.status);
       }
     }
+
+    // 热启动也要校验会话；静默恢复，避免每次回前台重复弹加载框。
+    this.ensureAuthenticated({ silent: true }).catch((err) => {
+      console.warn('热启动认证恢复失败:', err);
+    });
   },
 
   // 处理确认收货成功
@@ -78,34 +83,66 @@ App({
       });
   },
 
-  // 初始化认证流程
-  initAuth: async function() {
-    wx.showLoading({ title: '初始化中...', mask: true });
-
-    try {
-      await auth.ensureTokenValid();
-      console.log('认证初始化完成');
-      this.globalData.isAuthReady = true;
-
-      const userInfo = auth.getUserInfo();
-      this.globalData.userInfo = userInfo;
-      this.globalData.avatarUrl = userInfo?.avatarUrl;
-
-      if (this.onAuthReady) {
-        this.onAuthReady();
-      }
-    } catch (err) {
-      console.error('认证初始化失败:', err);
-      this.globalData.isAuthReady = false;
-      this.globalData.avatarUrl = null;
-    } finally {
-      wx.hideLoading();
+  // 冷启动和热启动共用的认证恢复入口。
+  ensureAuthenticated: function(options = {}) {
+    if (this._authPromise) {
+      return this._authPromise;
     }
+
+    const silent = options.silent === true;
+    this.globalData.authStatus = 'restoring';
+    if (!silent) {
+      wx.showLoading({ title: '初始化中...', mask: true });
+    }
+
+    this._authPromise = auth.ensureAuthenticated(options)
+      .then((session) => {
+        const userInfo = auth.getUserInfo();
+        this.globalData.isAuthReady = true;
+        this.globalData.authStatus = 'authenticated';
+        this.globalData.userInfo = userInfo;
+        this.globalData.avatarUrl = userInfo && userInfo.avatarUrl;
+
+        if (this.onAuthReady) {
+          this.onAuthReady();
+        }
+        return session;
+      })
+      .catch((err) => {
+        this.globalData.isAuthReady = false;
+        this.globalData.authStatus = auth.isNetworkError(err)
+          ? 'offline'
+          : 'unauthenticated';
+        this.globalData.avatarUrl = null;
+        throw err;
+      })
+      .finally(() => {
+        if (!silent) {
+          wx.hideLoading();
+        }
+        this._authPromise = null;
+      });
+
+    return this._authPromise;
+  },
+
+  // 兼容旧页面调用。
+  initAuth: function() {
+    return this.ensureAuthenticated({ silent: false })
+      .then(() => {
+        console.log('认证初始化完成');
+        return true;
+      })
+      .catch((err) => {
+        console.error('认证初始化失败:', err);
+        return false;
+      });
   },
 
   globalData: {
     userInfo: null,
     isAuthReady: false,
+    authStatus: 'unknown',
     avatarUrl: null
   },
 

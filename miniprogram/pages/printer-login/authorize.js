@@ -1,5 +1,6 @@
 // pages/printer-login/authorize.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 
 Page({
   data: {
@@ -26,7 +27,7 @@ Page({
   /**
    * 确认授权
    */
-  handleAuthorize() {
+  async handleAuthorize() {
     if (!this.data.ticket) {
       wx.showToast({
         title: '参数错误',
@@ -37,11 +38,11 @@ Page({
 
     this.setData({ loading: true });
 
-    // 调用后端授权接口
-    api.post('/printer-accounts/qrcode/authorize', {
-      ticket: this.data.ticket
-    })
-      .then(() => {
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      await api.post('/printer-accounts/qrcode/authorize', {
+        ticket: this.data.ticket
+      });
         this.setData({
           authorized: true,
           loading: false
@@ -56,24 +57,23 @@ Page({
         setTimeout(() => {
           wx.navigateBack();
         }, 2000);
-      })
-      .catch((err) => {
-        this.setData({ loading: false });
+    } catch (err) {
+      this.setData({ loading: false });
 
-        let errorMsg = '授权失败';
-        if (err && err.data && err.data.message) {
-          errorMsg = err.data.message;
-        } else if (err && err.message) {
-          errorMsg = err.message;
-        }
+      let errorMsg = '授权失败';
+      if (err && err.data && err.data.message) {
+        errorMsg = err.data.message;
+      } else if (err && err.message) {
+        errorMsg = err.message;
+      }
 
-        wx.showToast({
-          title: errorMsg,
-          icon: 'none',
-          duration: 3000
-        });
-        console.error('授权失败', err);
+      wx.showToast({
+        title: errorMsg,
+        icon: 'none',
+        duration: 3000
       });
+      console.error('授权失败', err);
+    }
   },
 
   /**

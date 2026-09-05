@@ -1,4 +1,5 @@
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 Page({
@@ -31,6 +32,7 @@ Page({
   async loadOrderDetail() {
     wx.showLoading({ title: '加载中...' });
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const order = await api.get(`/orders/${this.data.orderId}`);
       order.statusDisplay = this.getOrderStatusDisplay(order.status);
       order.createdAtDisplay = this.formatTime(order.createdAt);

@@ -1,5 +1,6 @@
 // miniprogram/pages/adminProduct/adminProduct.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 
 Page({
   data: {
@@ -53,6 +54,7 @@ Page({
     }
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const { page, pageSize } = this.data;
 
       const res = await api.get('/products', {

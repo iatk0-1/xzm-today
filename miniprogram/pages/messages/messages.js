@@ -31,6 +31,7 @@ Page({
   async loadConversations() {
     this.setData({ loading: true });
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const res = await api.get('/conversations');
       const list = (res || []).map(c => ({
         ...c,

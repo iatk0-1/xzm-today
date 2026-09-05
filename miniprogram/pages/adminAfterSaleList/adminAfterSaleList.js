@@ -1,5 +1,6 @@
 // miniprogram/pages/adminAfterSaleList/adminAfterSaleList.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 // 状态映射
@@ -161,7 +162,8 @@ Page({
       params.type = this.data.currentType;
     }
 
-    api.get('/after-sales/admin', params)
+    auth.ensureAuthenticated({ silent: true })
+      .then(() => api.get('/after-sales/admin', params))
       .then(res => {
         const items = res.items || [];
         const newList = isRefresh ? items : [...this.data.afterSales, ...items];

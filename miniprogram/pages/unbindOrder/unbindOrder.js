@@ -1,5 +1,6 @@
 // miniprogram/pages/unbindOrder/unbindOrder.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 Page({
@@ -33,6 +34,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       // 获取发货单详情
       const shipment = await api.get(`/shipments/${this.data.shipmentId}`);
       this.setData({

@@ -6,10 +6,16 @@ Page({
   data: {
   },
 
-  onLoad: function(options) {
-    // 检查是否已绑定手机号，如果已绑定则跳转回首页
-    if (auth.isPhoneBound()) {
-      wx.reLaunch({ url: '/pages/index/index' });
+  onLoad: async function() {
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      // 检查是否已绑定手机号，如果已绑定则跳转回首页
+      if (auth.isPhoneBound()) {
+        wx.reLaunch({ url: '/pages/index/index' });
+      }
+    } catch (err) {
+      console.error('绑定手机号页认证恢复失败:', err);
+      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
     }
   },
 

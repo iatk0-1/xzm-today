@@ -1,5 +1,6 @@
 // miniprogram/pages/liveRoomPublish/publish.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const config = require('../../utils/config');
 const { compressImage, compressVideo } = require('../../utils/media');
 const { saveDraft, loadDraft, removeDraft, hasDraft, persistMediaFiles, cleanupDraftFiles, validatePersistedUrls } = require('../../utils/draft');
@@ -68,7 +69,8 @@ Page({
     activeGroupIndex: -1
   },
 
-  onLoad(options) {
+  async onLoad(options) {
+    await auth.ensureAuthenticated({ silent: true });
     if (options.sessionId) {
       this.setData({ sessionId: options.sessionId });
     } else {

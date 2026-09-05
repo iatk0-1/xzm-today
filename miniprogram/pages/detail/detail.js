@@ -1,5 +1,6 @@
 // miniprogram/pages/detail/detail.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const { formatStock, hasStock, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
 
 Page({
@@ -61,17 +62,16 @@ Page({
   // 等待认证初始化完成（分享链接冷启动时 auth 可能尚未完成）
   waitForAuth: function(timeout) {
     var app = getApp();
-    var self = this;
-    return new Promise(function(resolve) {
-      if (app.globalData && app.globalData.isAuthReady) return resolve();
-      var start = Date.now();
-      var timer = setInterval(function() {
-        if ((app.globalData && app.globalData.isAuthReady) || (Date.now() - start > timeout)) {
-          clearInterval(timer);
-          resolve();
-        }
-      }, 200);
+    if (app && typeof app.ensureAuthenticated === 'function') {
+      return app.ensureAuthenticated({ silent: true }).catch(function(err) {
+        console.warn('[detail] 认证恢复失败，继续加载公共商品信息:', err);
+      });
+    }
+
+    return auth.ensureAuthenticated({ silent: true }).catch(function(err) {
+      console.warn('[detail] 认证恢复失败，继续加载公共商品信息:', err);
     });
+
   },
 
   // 带重试的加载

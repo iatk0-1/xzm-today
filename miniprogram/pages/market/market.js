@@ -118,6 +118,13 @@ Page({
       return;
     }
 
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+    } catch (err) {
+      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      return;
+    }
+
     let currentWishes = this.data.wishes;
     console.log('当前 wishes 数量:', currentWishes.length);
 

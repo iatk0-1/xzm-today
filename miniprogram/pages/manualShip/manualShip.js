@@ -1,5 +1,6 @@
 // miniprogram/pages/manualShip/manualShip.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 // 快递单号正则模式库 — 按匹配优先级排序
@@ -50,9 +51,13 @@ Page({
       setTimeout(() => wx.navigateBack(), 1500);
       return;
     }
-    this.setData({ orderId: orderId });
-    this.loadDeliveryCompanies();
-    this.loadOrderDetail(orderId);
+    auth.ensureAuthenticated({ silent: true }).then(() => {
+      this.setData({ orderId: orderId });
+      this.loadDeliveryCompanies();
+      this.loadOrderDetail(orderId);
+    }).catch(() => {
+      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+    });
   },
 
   copyOrderNo: function() {

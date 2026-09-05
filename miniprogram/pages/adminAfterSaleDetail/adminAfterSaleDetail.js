@@ -1,5 +1,6 @@
 // miniprogram/pages/adminAfterSaleDetail/adminAfterSaleDetail.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 Page({
@@ -39,6 +40,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const res = await api.get(`/after-sales/${this.data.afterSaleId}`);
       wx.hideLoading();
       const formatted = this.formatAfterSaleDetail(res);

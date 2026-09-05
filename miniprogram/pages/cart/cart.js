@@ -1,5 +1,6 @@
 // miniprogram/pages/cart/cart.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 
 Page({
   data: {
@@ -21,6 +22,7 @@ Page({
   loadCartData: async function() {
     wx.showLoading({ title: '加载中...' });
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const res = await api.get('/cart');
       wx.hideLoading();
 

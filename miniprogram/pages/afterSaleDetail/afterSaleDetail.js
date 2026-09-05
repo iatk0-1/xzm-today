@@ -1,5 +1,6 @@
 // miniprogram/pages/afterSaleDetail/afterSaleDetail.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 Page({
@@ -26,6 +27,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const res = await api.get(`/after-sales/${this.data.afterSaleId}`);
       wx.hideLoading();
       const formatted = this.formatAfterSaleDetail(res);
@@ -235,11 +237,11 @@ Page({
               const expressNames = ['中通', '圆通', '申通', '韵达', '顺丰', '邮政 EMS', '其他'];
               
               wx.showLoading({ title: '提交中...' });
-              
-              api.post(`/after-sales/${this.data.afterSaleId}/return-ship`, {
+
+              auth.ensureAuthenticated({ silent: true }).then(() => api.post(`/after-sales/${this.data.afterSaleId}/return-ship`, {
                 expressCode: expressCodes[sheetRes.tapIndex],
                 expressNo: res.content
-              }).then(() => {
+              })).then(() => {
                 wx.hideLoading();
                 wx.showToast({ title: '提交成功', icon: 'success' });
                 this.loadAfterSaleDetail();
@@ -282,6 +284,7 @@ Page({
         if (res.confirm) {
           wx.showLoading({ title: '处理中...' });
           try {
+            await auth.ensureAuthenticated({ silent: true });
             await api.post(`/after-sales/${this.data.afterSaleId}/cancel`);
             wx.hideLoading();
             wx.showToast({ title: '已撤销', icon: 'success' });

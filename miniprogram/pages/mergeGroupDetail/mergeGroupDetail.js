@@ -1,5 +1,6 @@
 // miniprogram/pages/mergeGroupDetail/mergeGroupDetail.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 Page({
@@ -41,6 +42,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const res = await api.get(`/merge-groups/${this.data.mergeGroupId}`);
 
       // 检查是否可以完成

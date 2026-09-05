@@ -12,11 +12,19 @@ Page({
     printerAccount: null       // 打单软件账号信息 { username, password }
   },
 
-  onLoad: function() {
-    this.loadPrinters();
-    this.loadBoundAccounts();
-    this.loadCurrentPrinterInfo();
-    this.loadPrinterAccount();
+  onLoad: async function() {
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      await Promise.all([
+        this.loadPrinters(),
+        this.loadBoundAccounts(),
+        this.loadCurrentPrinterInfo(),
+        this.loadPrinterAccount()
+      ]);
+    } catch (err) {
+      console.error('打印员页面认证恢复失败:', err);
+      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+    }
   },
 
   // 加载打单软件账号

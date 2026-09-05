@@ -67,7 +67,7 @@ Page({
     this._connectingWs = true;
 
     try {
-      await api.ensureAccessToken();
+      await auth.ensureAuthenticated();
     } catch (e) {
       this._connectingWs = false;
       return;
@@ -110,7 +110,7 @@ Page({
       if (shouldReconnect && !this._wsRetriedAfterAuthClose) {
         this._wsRetriedAfterAuthClose = true;
         try {
-          await api.refreshSession();
+          await auth.ensureAuthenticated({ force: true });
           this.connectWs();
         } catch (e) {}
       }

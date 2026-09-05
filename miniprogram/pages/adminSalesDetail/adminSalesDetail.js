@@ -1,5 +1,6 @@
 // pages/adminSalesDetail/adminSalesDetail.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 
 Page({
   data: {
@@ -36,7 +37,12 @@ Page({
 
     wx.setNavigationBarTitle({ title: productName || '商品销售详情' });
 
-    this.loadAll();
+    auth.ensureAuthenticated({ silent: true })
+      .then(() => this.loadAll())
+      .catch(err => {
+        console.error('销售详情页认证恢复失败:', err);
+        wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      });
   },
 
   loadAll() {

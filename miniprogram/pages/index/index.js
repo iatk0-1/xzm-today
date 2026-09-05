@@ -55,8 +55,6 @@ Page({
 
   onLoad: function() {
     this._isInitializingHome = false;
-    this._authCheckTimer = null;
-    this._authTimeoutTimer = null;
 
     this.checkAdmin();
 
@@ -82,86 +80,43 @@ Page({
   },
 
   onUnload: function() {
-    this.clearHomeInitTimers();
+    this._isInitializingHome = false;
   },
 
   hasLoadedHomeData: function() {
     return this.data.page > 0 || this.data.loading;
   },
 
-  clearHomeInitTimers: function() {
-    if (this._authCheckTimer) {
-      clearTimeout(this._authCheckTimer);
-      this._authCheckTimer = null;
-    }
-    if (this._authTimeoutTimer) {
-      clearTimeout(this._authTimeoutTimer);
-      this._authTimeoutTimer = null;
-    }
-  },
-
-  // 等待认证完成并加载数据
+  // 首页也复用全局认证 Promise，避免定时轮询和业务请求并发启动。
   waitForAuthAndLoad: function() {
     if (this._isInitializingHome || this.hasLoadedHomeData()) {
       return;
     }
 
-    // 检查是否已经认证完成
-    if (app.globalData.isAuthReady) {
-      this.checkAdmin();
-      this._isInitializingHome = true;
-      this.loadAllData().then(() => {
-        this._isInitializingHome = false;
-      });
-      return;
-    }
-
     this._isInitializingHome = true;
-
-    // 显示加载提示
     wx.showLoading({ title: '加载中...' });
 
-    const startLoad = () => {
-      this.clearHomeInitTimers();
-      wx.hideLoading();
-      this.checkAdmin();
-      this.loadAllData().then(() => {
+    const ensureAuth = app && typeof app.ensureAuthenticated === 'function'
+      ? app.ensureAuthenticated({ silent: true })
+      : auth.ensureAuthenticated({ silent: true });
+
+    ensureAuth
+      .catch((err) => {
+        // 首页公共内容仍允许尝试加载，受保护请求会由 api.js 再次处理认证。
+        console.warn('首页认证恢复失败，继续加载公共内容:', err);
+      })
+      .then(() => {
+        if (!this._isInitializingHome) return;
+        this.checkAdmin();
+        return this.loadAllData();
+      })
+      .catch((err) => {
+        console.error('首页数据加载失败:', err);
+      })
+      .finally(() => {
+        wx.hideLoading();
         this._isInitializingHome = false;
       });
-    };
-
-    // 等待认证完成
-    const checkAuth = () => {
-      if (this.hasLoadedHomeData()) {
-        this.clearHomeInitTimers();
-        wx.hideLoading();
-        this._isInitializingHome = false;
-        return;
-      }
-
-      if (app.globalData.isAuthReady) {
-        startLoad();
-      } else {
-        // 最多等待 5 秒
-        this._authCheckTimer = setTimeout(checkAuth, 500);
-      }
-    };
-
-    checkAuth();
-
-    // 超时处理
-    this._authTimeoutTimer = setTimeout(() => {
-      if (this.hasLoadedHomeData()) {
-        this.clearHomeInitTimers();
-        wx.hideLoading();
-        this._isInitializingHome = false;
-        return;
-      }
-
-      if (!app.globalData.isAuthReady) {
-        startLoad();
-      }
-    }, 5000);
   },
 
   // 加载所有数据（商品、档口、标签）

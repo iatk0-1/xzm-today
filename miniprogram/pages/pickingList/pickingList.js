@@ -1,5 +1,6 @@
 // miniprogram/pages/pickingList/pickingList.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 
 Page({
   data: {
@@ -52,6 +53,7 @@ Page({
     
     this.setData({ loading: true });
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const { page, size, filterStatus, skuKeyword } = this.data;
       
       // 调用分页搜索接口

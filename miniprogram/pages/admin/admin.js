@@ -1,5 +1,6 @@
 // miniprogram/pages/admin/admin.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const config = require('../../utils/config');
 const { compressImage, compressVideo } = require('../../utils/media');
 const draft = require('../../utils/draft');
@@ -103,7 +104,15 @@ Page({
     bundleGroupNameFocus: false
   },
 
-  onLoad(options) {
+  async onLoad(options) {
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+    } catch (err) {
+      console.error('管理员页面认证恢复失败:', err);
+      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      return;
+    }
+
     let history = wx.getStorageSync('historyTags');
     if (history) this.setData({ historyTags: history });
     this.refreshGrid();

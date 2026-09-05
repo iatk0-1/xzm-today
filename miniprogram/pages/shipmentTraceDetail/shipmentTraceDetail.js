@@ -1,4 +1,5 @@
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 Page({
@@ -27,6 +28,7 @@ Page({
   loadTrace: async function(shipmentId) {
     wx.showLoading({ title: '加载中...' });
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const trace = await api.get(`/shipments/${shipmentId}/trace`);
       const nodes = (trace.nodes || []).map((node, index) => ({
         ...node,

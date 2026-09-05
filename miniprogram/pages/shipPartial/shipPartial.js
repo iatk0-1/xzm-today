@@ -1,5 +1,6 @@
 // miniprogram/pages/shipPartial/shipPartial.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
 Page({
@@ -25,6 +26,7 @@ Page({
   },
 
   onLoad: async function(options) {
+    await auth.ensureAuthenticated({ silent: true });
     // 从库存发货模式
     const fromInventory = options.fromInventory === 'true';
     const fromSkuId = options.skuId || null;

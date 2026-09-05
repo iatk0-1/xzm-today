@@ -1,5 +1,6 @@
 // miniprogram/pages/adminProductRecycleBin/adminProductRecycleBin.js
 const api = require('../../utils/api');
+const auth = require('../../utils/auth');
 
 Page({
   data: {
@@ -93,6 +94,7 @@ Page({
     const { offset, limit, searchKeyword, selectedStall, selectedTag } = this.data;
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const params = {
         limit: limit,
         offset: offset

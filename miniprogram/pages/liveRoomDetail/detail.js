@@ -71,6 +71,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
 
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const detail = await api.get(`/live-sessions/${sessionId}`);
       console.log('session detail:', detail, 'status:', detail?.status);
 

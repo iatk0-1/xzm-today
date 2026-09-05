@@ -51,6 +51,7 @@ Page({
   // 从后端刷新用户信息
   refreshUserInfoFromServer: async function() {
     try {
+      await auth.ensureAuthenticated({ silent: true });
       const res = await api.get('/users/me');
       const userInfo = auth.getUserInfo();
       if (userInfo) {

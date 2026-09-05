@@ -2,7 +2,6 @@
 const config = require('./config');
 const { compressImage } = require('./media');
 
-const REFRESH_BUFFER_MS = 5 * 60 * 1000;
 let refreshPromise = null;
 
 function getStorage(key) {
@@ -93,28 +92,8 @@ function isAuthEndpoint(url) {
     || url === '/auth/miniapp/phone-login';
 }
 
-function isTokenExpiredOrExpiringSoon() {
-  var refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
-
-  var token = getToken();
-  if (!token) return true;
-
-  var expiresAt = Number(getStorage(config.TOKEN_EXPIRES_AT_KEY) || 0);
-  if (!expiresAt) return false;
-
-  return expiresAt - Date.now() <= REFRESH_BUFFER_MS;
-}
-
-function isStoredAccessTokenStillUsable() {
-  var token = getToken();
-  if (!token) return false;
-  var expiresAt = Number(getStorage(config.TOKEN_EXPIRES_AT_KEY) || 0);
-  return !expiresAt || expiresAt > Date.now();
-}
-
 function shouldClearToken(statusCode) {
-  return statusCode === 400 || statusCode === 401 || statusCode === 403;
+  return statusCode === 400 || statusCode === 401;
 }
 
 function normalizeHttpError(res, fallbackMessage) {
@@ -184,22 +163,9 @@ function refreshSession() {
 }
 
 async function ensureAccessToken() {
-  if (!isTokenExpiredOrExpiringSoon()) {
-    return true;
-  }
-
-  try {
-    await refreshSession();
-    return true;
-  } catch (err) {
-    // If the current access token is still valid, keep the request moving.
-    // A 401 response will still trigger refresh-and-retry below.
-    if (isStoredAccessTokenStillUsable()) {
-      console.warn('Token 预刷新失败，继续使用当前未过期 token:', err);
-      return true;
-    }
-    throw err;
-  }
+  // 延迟加载，避免 api.js 与 auth.js 顶层互相依赖。
+  const auth = require('./auth');
+  return auth.ensureAuthenticated();
 }
 
 function generateIdempotencyKey(url, data) {
@@ -244,7 +210,7 @@ function buildHeaders(options) {
   return headers;
 }
 
-async function requestWithRetry(options, hasRetried) {
+async function requestWithRetry(options, retryState = {}) {
   const authEndpoint = isAuthEndpoint(options.url);
   if (!authEndpoint && !options.skipAuthRefresh) {
     await ensureAccessToken();
@@ -263,12 +229,12 @@ async function requestWithRetry(options, hasRetried) {
   }
 
   if (res.statusCode === 401
-      && !hasRetried
+      && !retryState.authRecovered
       && !authEndpoint
-      && !options.skipAuthRefresh
-      && getRefreshToken()) {
-    await refreshSession();
-    return requestWithRetry(options, true);
+      && !options.skipAuthRefresh) {
+    const auth = require('./auth');
+    await auth.ensureAuthenticated({ force: true });
+    return requestWithRetry(options, { authRecovered: true });
   }
 
   if (res.statusCode === 401) {
@@ -280,7 +246,7 @@ async function requestWithRetry(options, hasRetried) {
 }
 
 function request(options) {
-  return requestWithRetry(buildRequestOptions(options), false);
+  return requestWithRetry(buildRequestOptions(options));
 }
 
 function mapUrlToCosDir(url) {
@@ -325,8 +291,9 @@ async function uploadToBackend(url, filePath, formData, hasRetried, idempotencyK
     return parseUploadResponse(res);
   }
 
-  if (res.statusCode === 401 && !hasRetried && getRefreshToken()) {
-    await refreshSession();
+  if (res.statusCode === 401 && !hasRetried) {
+    const auth = require('./auth');
+    await auth.ensureAuthenticated({ force: true });
     return uploadToBackend(url, filePath, formData, true, idempotencyKey);
   }
 
@@ -385,6 +352,7 @@ async function uploadFile(url, filePath, formData = {}, options = {}) {
 }
 
 module.exports = {
+  request,
   get: (url, data) => request({ url, method: 'GET', data }),
   post: (url, data) => request({ url, method: 'POST', data }),
   put: (url, data) => request({ url, method: 'PUT', data }),
