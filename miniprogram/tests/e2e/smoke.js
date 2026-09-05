@@ -4,6 +4,9 @@ const path = require('node:path');
 const automator = require('miniprogram-automator');
 const config = require('../../utils/config');
 
+// Keep the full install path for cwd resolution; the command itself only runs
+// cli.bat from that directory, so spaces and Chinese characters are not parsed
+// as part of the cmd.exe command string.
 const DEFAULT_CLI_PATH = 'D:\\Program Files (x86)\\Tencent\\微信web开发者工具\\cli.bat';
 const cliPath = process.env.WECHAT_DEVTOOLS_CLI || DEFAULT_CLI_PATH;
 const projectPath = path.resolve(__dirname, '../../..');
@@ -36,23 +39,29 @@ async function connectDeveloperTools() {
   }
 
   const cliDirectory = path.dirname(cliPath);
-  const cliExecutable = path.join(cliDirectory, 'node.exe');
-  const cliScript = path.join(cliDirectory, 'cli.js');
-  const cli = spawn(cliExecutable, [
-    cliScript,
-    'auto',
-    '--project', projectPath,
-    '--auto-port', String(port),
-    '--trust-project'
-  ], {
-    shell: false,
-    windowsHide: true,
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
+  const cliCommand = `cli.bat auto --project "${projectPath}" --auto-port ${port} --trust-project`;
+  const cli = process.platform === 'win32'
+    ? spawn('cmd.exe', ['/d', '/s', '/c', cliCommand], {
+      cwd: cliDirectory,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    : spawn(cliPath, [
+      'auto',
+      '--project', projectPath,
+      '--auto-port', String(port),
+      '--trust-project'
+    ], {
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
 
   let cliOutput = '';
   cli.stdout.on('data', (chunk) => { cliOutput += chunk.toString(); });
   cli.stderr.on('data', (chunk) => { cliOutput += chunk.toString(); });
+  cli.on('error', (error) => {
+    cliOutput += error.name + ': ' + error.message + '\n';
+  });
 
   const deadline = Date.now() + 120000;
   let lastError;
