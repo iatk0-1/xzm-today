@@ -173,7 +173,7 @@ Page({
         wx.hideLoading();
       }
 
-      const allProducts = reset ? newProducts : [...this.data.productList, ...newProducts];
+      const allProducts = reset ? newProducts : this.data.productList.concat(newProducts);
       
       // 将商品分配到左右两列（奇数位置放左列，偶数位置放右列）
       const leftColumn = [];
@@ -405,15 +405,15 @@ if (bundleGroups && bundleGroups.length > 0) {
     }
   });
   // 算最高和最低价
-  var minP = allPrices.length > 0 ? Math.min(...allPrices) : 0;
-  var maxP = allPrices.length > 0 ? Math.max(...allPrices) : 0;
+  var minP = allPrices.length > 0 ? Math.min.apply(null, allPrices) : 0;
+  var maxP = allPrices.length > 0 ? Math.max.apply(null, allPrices) : 0;
   var rangeStr = (minP === maxP) ? '¥' + minP : '¥' + minP + ' - ¥' + maxP;
   var joinedNames = bundleNames.join('，'); // 拼接文案，如：上衣，裤子，牛仔裤
 
   var rawSel = bundleGroups.map(function(bg) {
     var skus = bg.skus || [];
-    var colors = [...new Set(skus.map(function(s) { return s.color || s.spec; }))];
-    var sizes = [...new Set(skus.map(function(s) { return s.size; }))];
+    var colors = Array.from(new Set(skus.map(function(s) { return s.color || s.spec; })));
+    var sizes = Array.from(new Set(skus.map(function(s) { return s.size; })));
     var hasStock = skus.some(function(s) { return s.unlimitedStock || s.stock > 0; });
     return { bundleGroupName: bg.name, skus: skus, uniqueColors: colors, uniqueSizes: sizes, selectedColor: '', selectedSize: '', selectedSku: null, quantity: 1, isOutOfStock: !hasStock };
   });
@@ -438,8 +438,8 @@ if (bundleGroups && bundleGroups.length > 0) {
 
     if (product.skuMatrix && product.skuMatrix.length > 0) {
       // 后端返回：color (颜色), size (尺码)
-      colors = [...new Set(product.skuMatrix.map(s => s.color || ''))];
-      sizes = [...new Set(product.skuMatrix.map(s => s.size || ''))];
+      colors = Array.from(new Set(product.skuMatrix.map(s => s.color || '')));
+      sizes = Array.from(new Set(product.skuMatrix.map(s => s.size || '')));
       // 过滤空值
       colors = colors.filter(c => c);
       sizes = sizes.filter(s => s);
