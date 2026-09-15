@@ -191,15 +191,20 @@ Page({
       const product = res.product || res;
       const skusFromApi = res.skus || [];
 
-      // 从 skus 数组中提取 SKU 数据，保留 skuId 和 sizeId
-      // 后台管理需要显示总库存，所以 stock = stockMain(可用) + lockedMain(锁定)
-      // 无限库存时 stock 留空
+      // 商品编辑使用全部库存；售出、锁定和可用库存只作数据库统计展示。
       const skuMatrix = skusFromApi.map(sku => ({
         skuId: sku.id,
         color: sku.spec || '默认',
         size: sku.size || '均码',
         price: sku.retailPrice,
-        stock: sku.unlimitedStock ? '' : (sku.stockMain + sku.lockedMain),
+        stock: sku.unlimitedStock ? '' : sku.stockMain,
+        soldMain: Number(sku.soldMain || 0),
+        lockedMain: Number(sku.lockedMain || 0),
+        availableMain: sku.unlimitedStock
+          ? sku.stockMain
+          : Number(sku.availableMain != null
+            ? sku.availableMain
+            : Math.max(0, Number(sku.stockMain || 0) - Number(sku.soldMain || 0) - Number(sku.lockedMain || 0))),
         image: sku.imageUrl || '',
         sizeId: sku.sizeId || null
       }));
@@ -351,6 +356,9 @@ Page({
           size: sku.size,
           price: String(sku.price),
           stock: String(sku.stock),
+          soldMain: sku.soldMain,
+          lockedMain: sku.lockedMain,
+          availableMain: sku.availableMain,
           image: sku.image || '',
           sizeId: sku.sizeId || null
         }));
@@ -386,6 +394,13 @@ Page({
                 size: sku.size || '均码',
                 price: String(sku.retailPrice || ''),
                 stock: sku.unlimitedStock ? '' : String(sku.stockMain || ''),
+                soldMain: Number(sku.soldMain || 0),
+                lockedMain: Number(sku.lockedMain || 0),
+                availableMain: sku.unlimitedStock
+                  ? sku.stockMain
+                  : Number(sku.availableMain != null
+                    ? sku.availableMain
+                    : Math.max(0, Number(sku.stockMain || 0) - Number(sku.soldMain || 0) - Number(sku.lockedMain || 0))),
                 image: sku.imageUrl || ''
               };
             })
@@ -1308,6 +1323,9 @@ Page({
           size: s,
           price: existItem ? existItem.price : '',
           stock: existItem ? existItem.stock : '',
+          soldMain: existItem ? Number(existItem.soldMain || 0) : 0,
+          lockedMain: existItem ? Number(existItem.lockedMain || 0) : 0,
+          availableMain: existItem ? Number(existItem.availableMain || 0) : 0,
           image: existItem ? (existItem.image || '') : ''
         });
       });
@@ -1328,6 +1346,9 @@ Page({
           size: oldItem.size,
           price: oldItem.price,
           stock: oldItem.stock,
+          soldMain: Number(oldItem.soldMain || 0),
+          lockedMain: Number(oldItem.lockedMain || 0),
+          availableMain: Number(oldItem.availableMain || 0),
           image: oldItem.image || '',
           _toBeRemoved: true  // 标记：前端隐藏，提交后端时会被标记为 disabled
         });
@@ -2341,7 +2362,11 @@ Page({
       skuList: data.skuList.map(function(sku) {
         return {
           skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size,
-          price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved
+          price: sku.price, stock: sku.stock,
+          soldMain: Number(sku.soldMain || 0),
+          lockedMain: Number(sku.lockedMain || 0),
+          availableMain: Number(sku.availableMain || 0),
+          image: sku.image || '', _toBeRemoved: sku._toBeRemoved
         };
       }),
       manualRelated: data.manualRelated,
@@ -2357,7 +2382,14 @@ Page({
           sizeCategoryId: bg.sizeCategoryId,
           sizeCategoryName: bg.sizeCategoryName,
           skuList: (bg.skuList || []).map(function(sku) {
-            return { skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size, price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved };
+            return {
+              skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size,
+              price: sku.price, stock: sku.stock,
+              soldMain: Number(sku.soldMain || 0),
+              lockedMain: Number(sku.lockedMain || 0),
+              availableMain: Number(sku.availableMain || 0),
+              image: sku.image || '', _toBeRemoved: sku._toBeRemoved
+            };
           })
         };
       })

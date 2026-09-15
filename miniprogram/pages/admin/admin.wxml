@@ -133,7 +133,7 @@
 
     <view class="sku-console-row">
       <input class="console-input" type="digit" placeholder="价格" model:value="{{quickPrice}}" />
-      <input class="console-input" type="number" placeholder="库存" model:value="{{quickStock}}" />
+      <input class="console-input" type="number" placeholder="全部库存" model:value="{{quickStock}}" />
       
       <view class="console-img-btn" bindtap="chooseQuickImage">
         <image wx:if="{{quickImage}}" src="{{quickImage}}" mode="aspectFill" catchtap="previewQuickImage"></image>
@@ -147,22 +147,35 @@
 
     <view class="minimal-sku-list">
       <view class="minimal-sku-row" wx:for="{{skuList}}" wx:if="{{!item._toBeRemoved}}" wx:key="index">
-        <view class="sku-left">
-          <view class="sku-del" catchtap="removeSku" data-index="{{index}}">×</view>
-          <text class="sku-name-text">{{item.color}} / {{item.size}}</text>
-        </view>
-
-        <view class="sku-right">
-          <input class="mini-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onSkuInput" data-index="{{index}}" data-field="price" />
-          <input class="mini-input" type="number" placeholder="无限" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" maxlength="9" />
-
-          <view class="mini-img-upload" bindtap="uploadSkuImage" data-index="{{index}}">
-            <image wx:if="{{item.image && item.image !== ''}}" src="{{item.image}}" mode="aspectFill" catchtap="previewSkuImage" data-index="{{index}}"></image>
-            <text wx:elif="{{item.image === ''}}" class="img-lost-text">丢失</text>
-            <text class="icon-plus" wx:else>+</text>
-            <view wx:if="{{item.image && item.image !== ''}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
-            <view wx:elif="{{item.image === ''}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
+        <view class="sku-main-line">
+          <view class="sku-left">
+            <view class="sku-del" catchtap="removeSku" data-index="{{index}}">×</view>
+            <text class="sku-name-text">{{item.color}} / {{item.size}}</text>
           </view>
+
+          <view class="sku-right">
+            <view class="mini-field">
+              <text class="mini-field-label">价格</text>
+              <input class="mini-input" type="digit" placeholder="0.00" value="{{item.price}}" bindinput="onSkuInput" data-index="{{index}}" data-field="price" />
+            </view>
+            <view class="mini-field stock-field">
+              <text class="mini-field-label">全部库存</text>
+              <input class="mini-input stock-input" type="number" placeholder="无限" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" maxlength="9" />
+            </view>
+
+            <view class="mini-img-upload" bindtap="uploadSkuImage" data-index="{{index}}">
+              <image wx:if="{{item.image && item.image !== ''}}" src="{{item.image}}" mode="aspectFill" catchtap="previewSkuImage" data-index="{{index}}"></image>
+              <text wx:elif="{{item.image === ''}}" class="img-lost-text">丢失</text>
+              <text class="icon-plus" wx:else>+</text>
+              <view wx:if="{{item.image && item.image !== ''}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
+              <view wx:elif="{{item.image === ''}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
+            </view>
+          </view>
+        </view>
+        <view class="sku-inventory-stats">
+          <text>售出库存 {{item.soldMain || 0}}</text>
+          <text>锁定库存 {{item.lockedMain || 0}}</text>
+          <text>可用库存 {{item.stock === '' ? '无限' : (item.availableMain || 0)}}</text>
         </view>
       </view>
     </view>
@@ -376,7 +389,7 @@
       
       <view class="batch-inputs-row">
         <input class="batch-input-wide" type="digit" placeholder="价格 (可选)" value="{{batchPrice}}" bindinput="onInput" data-field="batchPrice" />
-        <input class="batch-input-wide" type="number" placeholder="库存 (可选)" value="{{batchStock}}" bindinput="onInput" data-field="batchStock" />
+        <input class="batch-input-wide" type="number" placeholder="全部库存 (可选)" value="{{batchStock}}" bindinput="onInput" data-field="batchStock" />
       </view>
       
       <view class="batch-image-section">

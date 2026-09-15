@@ -157,10 +157,11 @@ page { background-color: #f2f2f2; padding-bottom: 160rpx; /* 将原本的60rpx�
 /* ================= 极简 SKU 列表 ================= */
 .minimal-sku-list { display: flex; flex-direction: column; gap: 8px; }
 .minimal-sku-row { 
-  display: flex; justify-content: space-between; align-items: center; 
+  display: flex; flex-direction: column;
   padding: 8px 0; border-bottom: 1px solid #f9f9f9; 
 }
 .minimal-sku-row:last-child { border-bottom: none; }
+.sku-main-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 
 .sku-left { display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; }
 .sku-del { 
@@ -174,9 +175,18 @@ page { background-color: #f2f2f2; padding-bottom: 160rpx; /* 将原本的60rpx�
 }
 
 .sku-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.mini-field { display: flex; flex-direction: column; align-items: stretch; gap: 3px; }
+.mini-field-label { font-size: 9px; line-height: 1; color: #888888; text-align: center; white-space: nowrap; }
 .mini-input { 
   width: 50px; height: 32px; background: #f5f5f5; border-radius: 4px; 
   text-align: center; font-size: 12px; 
+}
+.stock-input { width: 64px; }
+.sku-inventory-stats {
+  display: flex; flex-wrap: wrap; gap: 6px 14px;
+  margin: 7px 0 0 26px; padding: 7px 9px;
+  background: #f5f7f9; border-radius: 4px;
+  color: #59636e; font-size: 10px; line-height: 1.4;
 }
 .mini-img-upload { 
   width: 32px; height: 32px; background: #f5f5f5; border-radius: 4px; 
