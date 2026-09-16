@@ -1,13 +1,15 @@
-page { height: 100%; background: #f4f6f8; }
-.page { height: 100%; display: flex; flex-direction: column; }
-.group-header { padding: 22rpx 24rpx; background: #fff; border-bottom: 1rpx solid #edf0f2; }
+/* 页面高度写死成视口高度：顶部信息/tab/筛选和底部批量操作固定，只有商品列表滚动 */
+page { height: 100vh; background: #f4f6f8; }
+.page { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.group-header { padding: 22rpx 24rpx; background: #fff; border-bottom: 1rpx solid #edf0f2; flex-shrink: 0; }
 .group-label { color: #89929b; font-size: 22rpx; }
 .group-name { margin-top: 6rpx; color: #1f2933; font-size: 34rpx; font-weight: 700; }
-.scope-tabs { display: flex; height: 84rpx; background: #fff; border-bottom: 1rpx solid #e8ecef; }
+/* flex-shrink: 0：tab 高度锁死，列表再长也不会被压扁 */
+.scope-tabs { display: flex; height: 84rpx; background: #fff; border-bottom: 1rpx solid #e8ecef; flex-shrink: 0; }
 .scope-tab { flex: 1; display: flex; align-items: center; justify-content: center; color: #707b85; font-size: 27rpx; position: relative; }
 .scope-tab.active { color: #1f2933; font-weight: 700; }
 .scope-tab.active::after { content: ''; position: absolute; left: 25%; right: 25%; bottom: 0; height: 5rpx; background: #1f2933; }
-.filter-panel { padding: 18rpx 24rpx; background: #fff; }
+.filter-panel { padding: 18rpx 24rpx; background: #fff; border-bottom: 1rpx solid #edf0f2; flex-shrink: 0; }
 .search-row { display: flex; align-items: center; gap: 12rpx; }
 .search-input { flex: 1; height: 68rpx; padding: 0 18rpx; background: #f2f4f6; border-radius: 8rpx; font-size: 25rpx; box-sizing: border-box; }
 .search-btn, .clear-btn { height: 68rpx; line-height: 68rpx; font-size: 24rpx; white-space: nowrap; }
@@ -16,7 +18,8 @@ page { height: 100%; background: #f4f6f8; }
 .status-tabs { display: flex; width: 360rpx; margin-top: 16rpx; padding: 4rpx; background: #eef1f4; border-radius: 8rpx; box-sizing: border-box; }
 .status-tab { flex: 1; height: 48rpx; line-height: 48rpx; text-align: center; color: #707b85; font-size: 22rpx; border-radius: 6rpx; }
 .status-tab.active { color: #fff; background: #59636d; }
-.product-scroll { flex: 1; padding: 16rpx 20rpx; box-sizing: border-box; }
+/* min-height: 0 是让滚动区老老实实占满剩余高度、不再被内容撑开的关键 */
+.product-scroll { flex: 1; min-height: 0; padding: 16rpx 20rpx; box-sizing: border-box; }
 .product-row { display: flex; align-items: center; min-height: 132rpx; padding: 18rpx; margin-bottom: 12rpx; background: #fff; border: 2rpx solid transparent; border-radius: 8rpx; box-sizing: border-box; }
 .product-row.selected { border-color: #748392; background: #f8fafb; }
 .checkbox { width: 36rpx; height: 36rpx; margin-right: 16rpx; border: 2rpx solid #c8cfd5; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22rpx; flex-shrink: 0; box-sizing: border-box; }
@@ -30,7 +33,7 @@ page { height: 100%; background: #f4f6f8; }
 .status.off { color: #985044; background: #f8eae7; }
 .empty { padding: 180rpx 0; text-align: center; color: #919aa3; font-size: 26rpx; }
 .loading-more { padding: 24rpx; text-align: center; color: #929ba4; font-size: 22rpx; }
-.batch-bar { padding: 14rpx 22rpx calc(18rpx + env(safe-area-inset-bottom)); background: #fff; border-top: 1rpx solid #e3e7ea; }
+.batch-bar { padding: 14rpx 22rpx calc(18rpx + env(safe-area-inset-bottom)); background: #fff; border-top: 1rpx solid #e3e7ea; flex-shrink: 0; }
 .selection-line { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; color: #4e5963; font-size: 23rpx; }
 .selection-actions { display: flex; gap: 26rpx; color: #1f2933; }
 .batch-btn { height: 76rpx; line-height: 76rpx; text-align: center; color: #fff; background: #1f2933; border-radius: 8rpx; font-size: 27rpx; font-weight: 600; }
