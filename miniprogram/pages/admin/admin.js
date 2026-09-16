@@ -266,14 +266,14 @@ Page({
       const relateTagIds = product.relateTagIds || [];
 
       if (stallIds.length > 0) {
-        const stallsRes = await api.get('/stalls');
+        const stallsRes = await api.get('/stalls/all');
         formData.selectedStalls = stallsRes
           .filter(s => stallIds.includes(s.id))
           .map(s => ({ id: s.id, name: s.name }));
       }
 
       if (relateTagIds.length > 0) {
-        const tagsRes = await api.get('/tags');
+        const tagsRes = await api.get('/tags/all');
         formData.selectedTags = tagsRes
           .filter(t => relateTagIds.includes(t.id))
           .map(t => ({ id: t.id, name: t.name }));
@@ -486,14 +486,14 @@ Page({
       const relateTagIds = product.relateTagIds || [];
 
       if (stallIds.length > 0) {
-        const stallsRes = await api.get('/stalls');
+        const stallsRes = await api.get('/stalls/all');
         formData.selectedStalls = stallsRes
           .filter(s => stallIds.includes(s.id))
           .map(s => ({ id: s.id, name: s.name }));
       }
 
       if (relateTagIds.length > 0) {
-        const tagsRes = await api.get('/tags');
+        const tagsRes = await api.get('/tags/all');
         formData.selectedTags = tagsRes
           .filter(t => relateTagIds.includes(t.id))
           .map(t => ({ id: t.id, name: t.name }));

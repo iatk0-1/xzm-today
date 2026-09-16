@@ -246,7 +246,12 @@ Page({
         if (a === '#') return 1;
         if (b === '#') return -1;
         return a.localeCompare(b);
-      }).map(key => ({ letter: key, list: groupedObj[key] }));
+      }).map(key => ({
+        letter: key,
+        list: groupedObj[key].slice().sort((a, b) =>
+          String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hans-CN')
+        )
+      }));
 
       this.setData({
         stallList: stalls, // 纯净的列表供滑动区使用，不加"全部"

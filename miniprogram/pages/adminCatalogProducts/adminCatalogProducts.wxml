@@ -1,0 +1,56 @@
+<view class="page">
+  <view class="group-header">
+    <view class="group-label">{{type === 'stall' ? '档口' : '标签'}}</view>
+    <view class="group-name">{{groupName}}</view>
+  </view>
+
+  <view class="scope-tabs">
+    <view class="scope-tab {{scope === 'included' ? 'active' : ''}}" bindtap="switchScope" data-scope="included">已添加商品</view>
+    <view class="scope-tab {{scope === 'excluded' ? 'active' : ''}}" bindtap="switchScope" data-scope="excluded">添加商品</view>
+  </view>
+
+  <view class="filter-panel">
+    <view class="search-row">
+      <input class="search-input" value="{{keyword}}" placeholder="搜索商品名称" bindinput="onKeywordInput" bindconfirm="search" />
+      <view class="clear-btn" wx:if="{{keyword}}" bindtap="clearSearch">清除</view>
+      <view class="search-btn" bindtap="search">搜索</view>
+    </view>
+    <view class="status-tabs">
+      <view class="status-tab {{status === 'all' ? 'active' : ''}}" bindtap="switchStatus" data-status="all">全部</view>
+      <view class="status-tab {{status === 'on' ? 'active' : ''}}" bindtap="switchStatus" data-status="on">上架</view>
+      <view class="status-tab {{status === 'off' ? 'active' : ''}}" bindtap="switchStatus" data-status="off">下架</view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="product-scroll" bindscrolltolower="loadMore">
+    <view class="empty" wx:if="{{products.length === 0 && !loading}}">
+      {{scope === 'included' ? '暂无已添加商品' : '暂无可添加商品'}}
+    </view>
+    <view class="product-row {{item.selected ? 'selected' : ''}}" wx:for="{{products}}" wx:key="id" bindtap="toggleProduct" data-id="{{item.id}}">
+      <view class="checkbox {{item.selected ? 'checked' : ''}}"><text wx:if="{{item.selected}}">✓</text></view>
+      <image class="product-image" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill"></image>
+      <view class="product-info">
+        <view class="product-name">{{item.name}}</view>
+        <view class="product-meta">
+          <text>¥ {{item.displayPrice || item.retailPrice}}</text>
+          <text class="status {{item.status === 'on' ? 'on' : 'off'}}">{{item.status === 'on' ? '上架' : '下架'}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="loading-more" wx:if="{{loading}}">加载中...</view>
+    <view class="loading-more" wx:elif="{{products.length > 0 && !hasMore}}">没有更多了</view>
+  </scroll-view>
+
+  <view class="batch-bar">
+    <view class="selection-line">
+      <text>已选 {{selectedCount}} 个</text>
+      <view class="selection-actions">
+        <text bindtap="clearSelection">清空</text>
+        <text bindtap="toggleSelectAllLoaded">{{allLoadedSelected ? '取消全选' : '全选已加载'}}</text>
+      </view>
+    </view>
+    <view class="batch-btn {{selectedCount === 0 ? 'disabled' : ''}} {{scope === 'included' ? 'remove' : ''}}" bindtap="submitBatch">
+      {{operating ? '处理中...' : (scope === 'included' ? '批量移除' : '批量添加')}}
+    </view>
+  </view>
+</view>

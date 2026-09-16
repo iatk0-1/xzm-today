@@ -70,6 +70,10 @@
       <text>销售数据</text>
       <text class="arrow">></text>
     </view>
+    <view class="menu-item catalog-manage-entry" wx:if="{{isAdmin}}" bindtap="goToCatalogManage">
+      <text>档口与标签管理</text>
+      <text class="arrow">></text>
+    </view>
   </view>
 
   <view class="bottom-tab-bar">

@@ -19,6 +19,8 @@
     "pages/adminOrder/adminOrder",
     "pages/adminOrderDetail/adminOrderDetail",
     "pages/adminProduct/adminProduct",
+    "pages/adminCatalogManage/adminCatalogManage",
+    "pages/adminCatalogProducts/adminCatalogProducts",
     "pages/adminProductRecycleBin/adminProductRecycleBin",
     "pages/adminWish/adminWish",
     "pages/publishWish/publishWish",

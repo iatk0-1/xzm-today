@@ -203,6 +203,11 @@ page {
   border-bottom: none;
 }
 
+.menu-item.catalog-manage-entry {
+  color: #1f2933;
+  font-weight: 600;
+}
+
 .menu-item .arrow {
   color: #cccccc;
   font-family: "Times New Roman", Times, serif;

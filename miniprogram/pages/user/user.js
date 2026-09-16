@@ -277,5 +277,11 @@ Page({
     wx.navigateTo({
       url: '/pages/adminSales/adminSales'
     });
+  },
+
+  goToCatalogManage: function() {
+    wx.navigateTo({
+      url: '/pages/adminCatalogManage/adminCatalogManage'
+    });
   }
 });

@@ -1,0 +1,52 @@
+<view class="page">
+  <view class="top-bar">
+    <view class="type-tabs">
+      <view class="type-tab {{currentType === 'stall' ? 'active' : ''}}" bindtap="switchType" data-type="stall">档口</view>
+      <view class="type-tab {{currentType === 'tag' ? 'active' : ''}}" bindtap="switchType" data-type="tag">标签</view>
+    </view>
+    <view class="sort-state {{orderDirty ? 'dirty' : ''}}">{{orderDirty ? '排序待保存' : '长按拖动排序'}}</view>
+  </view>
+
+  <view class="add-row">
+    <input class="name-input" value="{{newName}}" placeholder="新增{{typeLabel}}名称" bindinput="onNameInput" bindconfirm="createGroup" />
+    <view class="add-btn" bindtap="createGroup">新增</view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">加载中...</view>
+  <view class="empty" wx:elif="{{groups.length === 0}}">暂无{{typeLabel}}</view>
+
+  <scroll-view scroll-y class="list-scroll" wx:else>
+    <movable-area class="group-area" style="height: {{listHeight}}px;">
+      <movable-view
+        wx:for="{{groups}}"
+        wx:key="id"
+        class="group-row {{dragIndex === index ? 'dragging' : ''}}"
+        y="{{item.y}}"
+        direction="vertical"
+        out-of-bounds="false"
+        disabled="{{dragIndex !== index}}"
+        animation="{{dragIndex !== index}}"
+        bindlongpress="onDragStart"
+        bindchange="onDragMove"
+        bindtouchend="onDragEnd"
+        data-index="{{index}}">
+        <view class="drag-handle">⋮⋮</view>
+        <view class="group-main" catchtap="openProducts" data-item="{{item}}">
+          <view class="group-name">{{item.name}}</view>
+          <view class="group-meta">
+            上架 {{item.onSaleProductCount}} / 全部 {{item.totalProductCount}}
+            <text wx:if="{{item.hiddenReason === 'NO_ON_SALE_PRODUCT'}}" class="auto-hidden">无上架商品，已隐藏</text>
+          </view>
+        </view>
+        <switch class="visibility-switch" checked="{{item.visible}}" color="#1f2933" bindchange="toggleVisibility" data-index="{{index}}" />
+        <view class="product-entry" catchtap="openProducts" data-item="{{item}}">商品 ></view>
+      </movable-view>
+    </movable-area>
+  </scroll-view>
+
+  <view class="footer" wx:if="{{groups.length > 0}}">
+    <view class="save-btn {{orderDirty ? '' : 'disabled'}}" bindtap="saveOrder">
+      {{saving ? '保存中...' : (orderDirty ? '保存排序' : '排序已保存')}}
+    </view>
+  </view>
+</view>
