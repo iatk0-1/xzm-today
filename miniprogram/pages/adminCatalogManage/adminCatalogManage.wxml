@@ -4,7 +4,7 @@
       <view class="type-tab {{currentType === 'stall' ? 'active' : ''}}" bindtap="switchType" data-type="stall">档口</view>
       <view class="type-tab {{currentType === 'tag' ? 'active' : ''}}" bindtap="switchType" data-type="tag">标签</view>
     </view>
-    <view class="sort-state {{orderDirty ? 'dirty' : ''}}">{{orderDirty ? '排序待保存' : '长按拖动排序'}}</view>
+    <view class="sort-state {{saving ? 'dirty' : ''}}">{{saving ? '排序保存中...' : '长按左侧图标拖动排序'}}</view>
   </view>
 
   <view class="add-row">
@@ -26,29 +26,49 @@
         out-of-bounds="false"
         disabled="{{dragIndex !== index}}"
         animation="{{dragIndex !== index}}"
-        bindlongpress="onDragStart"
         bindchange="onDragMove"
         bindtouchend="onDragEnd"
         data-index="{{index}}">
-        <view class="drag-handle">⋮⋮</view>
-        <view class="group-main" catchtap="openProducts" data-item="{{item}}">
-          <view class="group-name">{{item.name}}</view>
-          <view class="group-meta">
-            上架 {{item.onSaleProductCount}} / 全部 {{item.totalProductCount}}
-            <text wx:if="{{item.hiddenReason === 'NO_ON_SALE_PRODUCT'}}" class="auto-hidden">无上架商品，暂不展示</text>
-            <text wx:elif="{{item.hiddenReason === 'MANUAL'}}" class="manual-hidden">已手动隐藏</text>
+
+        <view class="row-delete" catchtap="deleteGroup" data-index="{{index}}">删除</view>
+
+        <view
+          class="row-content {{snap ? 'snapping' : ''}}"
+          style="transform: translateX({{item.offsetX || 0}}px);"
+          bindtouchstart="onRowTouchStart"
+          bindtouchmove="onRowTouchMove"
+          bindtouchend="onRowTouchEnd"
+          bindtap="openProducts"
+          data-index="{{index}}">
+
+          <view class="drag-handle" catchlongpress="onDragStart" catchtap="noop" data-index="{{index}}">⋮⋮</view>
+
+          <view class="group-main">
+            <view class="group-name">{{item.name}}</view>
+            <view class="group-meta">
+              上架 {{item.onSaleProductCount}} / 全部 {{item.totalProductCount}}
+              <text wx:if="{{item.hiddenReason === 'NO_ON_SALE_PRODUCT'}}" class="auto-hidden">无上架商品，暂不展示</text>
+              <text wx:elif="{{item.hiddenReason === 'MANUAL'}}" class="manual-hidden">已手动隐藏</text>
+            </view>
+            <view class="preview-row">
+              <block wx:if="{{item.previewImages && item.previewImages.length}}">
+                <image
+                  wx:for="{{item.previewImages}}"
+                  wx:for-item="image"
+                  wx:key="*this"
+                  class="preview-thumb"
+                  src="{{image}}"
+                  mode="aspectFill" />
+              </block>
+              <view wx:else class="preview-empty">暂无商品</view>
+            </view>
+          </view>
+
+          <view class="switch-cell" catchtap="noop">
+            <switch class="visibility-switch" checked="{{item.visible}}" color="#1f2933" bindchange="toggleVisibility" data-index="{{index}}" />
           </view>
         </view>
-        <switch class="visibility-switch" checked="{{item.visible}}" color="#1f2933" bindchange="toggleVisibility" data-index="{{index}}" />
-        <view class="product-entry" catchtap="openProducts" data-item="{{item}}">商品 ></view>
-        <view class="delete-entry" catchtap="deleteGroup" data-index="{{index}}">删除</view>
       </movable-view>
     </movable-area>
   </scroll-view>
-
-  <view class="footer" wx:if="{{groups.length > 0}}">
-    <view class="save-btn {{orderDirty ? '' : 'disabled'}}" bindtap="saveOrder">
-      {{saving ? '保存中...' : (orderDirty ? '保存排序' : '排序已保存')}}
-    </view>
-  </view>
 </view>
