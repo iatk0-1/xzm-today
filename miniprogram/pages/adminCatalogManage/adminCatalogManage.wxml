@@ -15,7 +15,15 @@
   <view class="loading" wx:if="{{loading}}">加载中...</view>
   <view class="empty" wx:elif="{{groups.length === 0}}">暂无{{typeLabel}}</view>
 
-  <scroll-view scroll-y class="list-scroll" wx:else>
+  <scroll-view
+    scroll-y
+    class="list-scroll"
+    wx:else
+    scroll-top="{{scrollTop}}"
+    scroll-with-animation="{{false}}"
+    bindscroll="onListScroll">
+    <!-- 拖动排序：行摆哪儿由页面按手指算（写到 item.y），movable-view 只当定位容器用，
+         手势在 drag-handle 上 catch 住，不让它自己再写一份位置 -->
     <movable-area class="group-area" style="height: {{listHeight}}px;">
       <movable-view
         wx:for="{{groups}}"
@@ -24,10 +32,11 @@
         y="{{item.y}}"
         direction="vertical"
         out-of-bounds="false"
-        disabled="{{dragIndex !== index}}"
+        disabled="{{true}}"
         animation="{{dragIndex !== index}}"
-        bindchange="onDragMove"
+        bindtouchmove="onDragTouchMove"
         bindtouchend="onDragEnd"
+        bindtouchcancel="onDragEnd"
         data-index="{{index}}">
 
         <view class="row-delete" catchtap="deleteGroup" data-index="{{index}}">删除</view>
@@ -41,7 +50,14 @@
           bindtap="openProducts"
           data-index="{{index}}">
 
-          <view class="drag-handle" catchlongpress="onDragStart" catchtap="noop" data-index="{{index}}">⋮⋮</view>
+          <view
+            class="drag-handle"
+            catchlongpress="onDragStart"
+            catchtouchmove="onDragTouchMove"
+            bindtouchend="onDragEnd"
+            bindtouchcancel="onDragEnd"
+            catchtap="noop"
+            data-index="{{index}}">⋮⋮</view>
 
           <view class="group-main">
             <view class="group-name">{{item.name}}</view>
