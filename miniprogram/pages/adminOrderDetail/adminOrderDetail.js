@@ -364,6 +364,12 @@ Page({
       });
       if (res.status === 'success') {
         wx.showToast({ title: '退款成功', icon: 'success' });
+      } else if (res.status === 'processing') {
+        wx.showModal({
+          title: '退款处理中',
+          content: '微信正在处理这笔退款，系统会自动同步结果，无需重复提交。',
+          showCancel: false
+        });
       } else {
         wx.showModal({
           title: '退款未成功',
