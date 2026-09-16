@@ -12,6 +12,7 @@ Page({
     newName: '',
     loading: false,
     saving: false,
+    deleting: false,
     orderDirty: false,
     dragIndex: -1,
     dragY: 0,
@@ -172,6 +173,50 @@ Page({
     } catch (err) {
       this.setData({ [`groups[${index}].visible`]: item.visible });
       wx.showToast({ title: err.message || '设置失败', icon: 'none' });
+    }
+  },
+
+  deleteGroup(e) {
+    if (this.data.deleting) return;
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.groups[index];
+    if (!item) return;
+    const label = this.data.typeLabel;
+    const total = item.totalProductCount || 0;
+    const productTip = total > 0
+      ? '该' + label + '下有 ' + total + ' 个商品，删除后这些商品不再归属此' + label + '。'
+      : '';
+    wx.showModal({
+      title: '删除' + label,
+      content: productTip + '删除后可再次新增同名' + label + '恢复。',
+      confirmText: '删除',
+      confirmColor: '#c83e35',
+      success: (res) => {
+        if (res.confirm) this.performDelete(item.id);
+      }
+    });
+  },
+
+  async performDelete(id) {
+    this.setData({ deleting: true });
+    wx.showLoading({ title: '删除中...', mask: true });
+    try {
+      // 删除会改变列表下标，先把未保存的排序落库，避免拖动结果被静默丢弃。
+      const orderSaved = await this.saveOrder(false);
+      if (!orderSaved) {
+        wx.hideLoading();
+        this.setData({ deleting: false });
+        return;
+      }
+      await api.delete(this.resourcePath() + '/' + id);
+      wx.hideLoading();
+      this.setData({ deleting: false });
+      wx.showToast({ title: '已删除', icon: 'success' });
+      await this.loadGroups();
+    } catch (err) {
+      wx.hideLoading();
+      this.setData({ deleting: false });
+      wx.showToast({ title: err.message || '删除失败', icon: 'none' });
     }
   },
 

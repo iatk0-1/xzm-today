@@ -41,6 +41,7 @@
         </view>
         <switch class="visibility-switch" checked="{{item.visible}}" color="#1f2933" bindchange="toggleVisibility" data-index="{{index}}" />
         <view class="product-entry" catchtap="openProducts" data-item="{{item}}">商品 ></view>
+        <view class="delete-entry" catchtap="deleteGroup" data-index="{{index}}">删除</view>
       </movable-view>
     </movable-area>
   </scroll-view>
