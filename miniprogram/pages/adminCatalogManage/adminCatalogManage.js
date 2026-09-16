@@ -157,11 +157,6 @@ Page({
     const index = Number(e.currentTarget.dataset.index);
     const item = this.data.groups[index];
     const visible = e.detail.value;
-    if (visible && item.onSaleProductCount === 0) {
-      wx.showToast({ title: '没有上架商品，无法显示', icon: 'none' });
-      this.setData({ [`groups[${index}].visible`]: false });
-      return;
-    }
     try {
       const updated = await api.patch(
         this.resourcePath() + '/' + item.id + '/visibility',
@@ -171,6 +166,9 @@ Page({
         [`groups[${index}].visible`]: updated.visible,
         [`groups[${index}].hiddenReason`]: updated.hiddenReason
       });
+      if (updated.visible && updated.onSaleProductCount === 0) {
+        wx.showToast({ title: '已开启，无上架商品暂不展示', icon: 'none' });
+      }
     } catch (err) {
       this.setData({ [`groups[${index}].visible`]: item.visible });
       wx.showToast({ title: err.message || '设置失败', icon: 'none' });

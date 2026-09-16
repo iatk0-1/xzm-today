@@ -19,6 +19,7 @@ page { height: 100%; background: #f4f6f8; }
 .group-name { color: #1f2933; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .group-meta { margin-top: 5px; color: #7b858f; font-size: 11px; white-space: nowrap; }
 .auto-hidden { margin-left: 8px; color: #b44b3e; }
+.manual-hidden { margin-left: 8px; color: #7b858f; }
 .visibility-switch { transform: scale(0.78); flex-shrink: 0; }
 .product-entry { width: 54px; color: #4f5b67; font-size: 12px; text-align: right; flex-shrink: 0; }
 .loading, .empty { padding: 180rpx 0; color: #929ba4; font-size: 26rpx; text-align: center; }

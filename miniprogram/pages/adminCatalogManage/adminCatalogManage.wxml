@@ -35,7 +35,8 @@
           <view class="group-name">{{item.name}}</view>
           <view class="group-meta">
             上架 {{item.onSaleProductCount}} / 全部 {{item.totalProductCount}}
-            <text wx:if="{{item.hiddenReason === 'NO_ON_SALE_PRODUCT'}}" class="auto-hidden">无上架商品，已隐藏</text>
+            <text wx:if="{{item.hiddenReason === 'NO_ON_SALE_PRODUCT'}}" class="auto-hidden">无上架商品，暂不展示</text>
+            <text wx:elif="{{item.hiddenReason === 'MANUAL'}}" class="manual-hidden">已手动隐藏</text>
           </view>
         </view>
         <switch class="visibility-switch" checked="{{item.visible}}" color="#1f2933" bindchange="toggleVisibility" data-index="{{index}}" />
