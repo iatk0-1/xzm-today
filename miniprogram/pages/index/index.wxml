@@ -100,46 +100,59 @@
     </block>
   </view>
 
-  <!-- 动态增加瀑布流的上边距，防止被上面的导航挡住 -->
-  <view class="waterfall-container {{currentMainTab === '档口' || currentMainTab === '分类' ? 'has-sub-nav' : ''}}">
-    <!-- 左列 -->
-    <view class="waterfall-column">
-      <view class="product-item" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
-        <view class="product-image-wrap">
-          <image class="product-img" src="{{item.coverUrl || item.image}}" mode="widthFix" lazy-load="true"></image>
-          <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
-        </view>
-        <view class="product-info">
-          <view class="product-title">{{item.name || item.title}}</view>
-          <view class="product-bottom">
-            <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
-            <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
-              <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
+  <!-- 商品瀑布流：整块作为滚动容器，释放时触发下拉刷新（指示器落在导航栏下沿，不会被顶栏盖住） -->
+  <scroll-view
+    class="list-scroll"
+    scroll-y
+    style="height: {{listHeight}}px; margin-top: {{listTop}}px;"
+    refresher-enabled="{{true}}"
+    refresher-triggered="{{refreshing}}"
+    refresher-threshold="60"
+    refresher-background="#f6f6f6"
+    bindrefresherrefresh="onRefresh"
+    bindscrolltolower="onReachBottom"
+    lower-threshold="50"
+  >
+    <view class="waterfall-container">
+      <!-- 左列 -->
+      <view class="waterfall-column">
+        <view class="product-item" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+          <view class="product-image-wrap">
+            <image class="product-img" src="{{item.coverUrl || item.image}}" mode="widthFix" lazy-load="true"></image>
+            <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
+          </view>
+          <view class="product-info">
+            <view class="product-title">{{item.name || item.title}}</view>
+            <view class="product-bottom">
+              <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
+              <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
+                <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
+              </view>
             </view>
           </view>
         </view>
       </view>
-    </view>
 
-    <!-- 右列 -->
-    <view class="waterfall-column">
-      <view class="product-item" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
-        <view class="product-image-wrap">
-          <image class="product-img" src="{{item.coverUrl || item.image}}" mode="widthFix" lazy-load="true"></image>
-          <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
-        </view>
-        <view class="product-info">
-          <view class="product-title">{{item.name || item.title}}</view>
-          <view class="product-bottom">
-            <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
-            <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
-              <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
+      <!-- 右列 -->
+      <view class="waterfall-column">
+        <view class="product-item" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+          <view class="product-image-wrap">
+            <image class="product-img" src="{{item.coverUrl || item.image}}" mode="widthFix" lazy-load="true"></image>
+            <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
+          </view>
+          <view class="product-info">
+            <view class="product-title">{{item.name || item.title}}</view>
+            <view class="product-bottom">
+              <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
+              <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
+                <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
+              </view>
             </view>
           </view>
         </view>
       </view>
     </view>
-  </view>
+  </scroll-view>
 
   <!-- 自定义底部导航栏 -->
   <view class="bottom-tab-bar">

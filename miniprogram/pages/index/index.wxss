@@ -5,7 +5,6 @@ page {
   color: #1a1a1a;
   font-size: 28rpx;
   line-height: 1.5;
-  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
@@ -305,18 +304,20 @@ page {
   font-weight: bold;
 }
 
-/* 当有子导航时，给瀑布流增加顶部间距，避免商品被挡住 */
-.waterfall-container.has-sub-nav {
-  padding-top: 100rpx; 
-}
-
 /* ==================
    瀑布流商品卡片 - 使用 Flexbox 实现正确的分页加载
 ================== */
+/* 列表滚动区：高度由 js 按窗口尺寸算，档口/分类时上边距让开吸顶子导航 */
+.list-scroll {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .waterfall-container {
   display: flex;
   flex-wrap: wrap;
-  padding: 20rpx 20rpx 0 20rpx;
+  /* 底部留出固定底栏的高度，商品才不会被挡住 */
+  padding: 20rpx 20rpx calc(120rpx + env(safe-area-inset-bottom)) 20rpx;
   box-sizing: border-box;
   width: 100%;
 }

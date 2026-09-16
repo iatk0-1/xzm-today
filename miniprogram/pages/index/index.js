@@ -50,11 +50,18 @@ Page({
     page: 0,
     pageSize: 20,
     hasMore: true,
-    loading: false
+    loading: false,
+
+    // 6. 下拉刷新与滚动区尺寸
+    // 自定义导航栏会盖住页面级下拉刷新的转圈动画，所以列表用 scroll-view 自带刷新
+    refreshing: false,
+    listHeight: 0,
+    listTop: 0
   },
 
   onLoad: function() {
     this._isInitializingHome = false;
+    this._isRefreshingHome = false;
 
     this.checkAdmin();
 
@@ -64,6 +71,7 @@ Page({
       navHeight: menuButtonInfo.height,
       totalNavHeight: menuButtonInfo.bottom + 40
     });
+    this.updateListMetrics();
 
     // 等待认证完成后加载所有数据
     this.waitForAuthAndLoad();
@@ -81,10 +89,38 @@ Page({
 
   onUnload: function() {
     this._isInitializingHome = false;
+    this._isRefreshingHome = false;
   },
 
   hasLoadedHomeData: function() {
     return this.data.page > 0 || this.data.loading;
+  },
+
+  // 取窗口尺寸：新老基础库都兜住
+  getWindowSize: function() {
+    if (typeof wx.getWindowInfo === 'function') {
+      const info = wx.getWindowInfo();
+      if (info && info.windowHeight && info.windowWidth) {
+        return { height: info.windowHeight, width: info.windowWidth };
+      }
+    }
+    const legacy = typeof wx.getSystemInfoSync === 'function' ? wx.getSystemInfoSync() : null;
+    return {
+      height: (legacy && legacy.windowHeight) || 667,
+      width: (legacy && legacy.windowWidth) || 375
+    };
+  },
+
+  // 列表滚动区尺寸：窗口高度减去顶部导航；档口/分类还要给吸顶子导航让位
+  updateListMetrics: function() {
+    const win = this.getWindowSize();
+    const subNavVisible = this.data.currentMainTab === '档口' || this.data.currentMainTab === '分类';
+    // 子导航留白 100rpx，按屏宽换算成 px
+    const listTop = subNavVisible ? Math.round(100 * win.width / 750) : 0;
+    const listHeight = Math.max(200, win.height - (this.data.totalNavHeight || 0) - listTop);
+
+    if (listTop === this.data.listTop && listHeight === this.data.listHeight) return;
+    this.setData({ listTop: listTop, listHeight: listHeight });
   },
 
   // 首页也复用全局认证 Promise，避免定时轮询和业务请求并发启动。
@@ -129,16 +165,32 @@ Page({
   },
 
   // 从后端 API 获取商品列表（支持分页）
-  getProductsList: async function(reset = true) {
+  // options.silent: 静默加载，不弹全局 loading 遮罩（下拉刷新时用原生刷新动画）
+  getProductsList: function(reset = true, options = {}) {
+    const silent = options.silent === true;
+
+    // 已有请求在飞行中：直接复用它，避免两次响应回来把列表搅乱
+    if (this.data.loading) {
+      return this._productsTask || Promise.resolve();
+    }
+
     if (reset) {
       this.setData({ page: 0, productList: [], hasMore: true });
     }
 
-    if (!this.data.hasMore || this.data.loading) return;
+    if (!this.data.hasMore) {
+      return Promise.resolve();
+    }
 
+    const task = this.fetchProducts(reset, silent);
+    this._productsTask = task;
+    return task;
+  },
+
+  fetchProducts: async function(reset, silent) {
     this.setData({ loading: true });
 
-    if (reset) {
+    if (reset && !silent) {
       wx.showLoading({ title: '加载中...' });
     }
 
@@ -169,7 +221,7 @@ Page({
       });
       const hasMore = res.hasNext !== undefined ? res.hasNext : newProducts.length === pageSize;
 
-      if (reset) {
+      if (reset && !silent) {
         wx.hideLoading();
       }
 
@@ -195,13 +247,15 @@ Page({
         loading: false
       });
     } catch (err) {
-      if (reset) {
+      if (reset && !silent) {
         wx.hideLoading();
       }
       console.error('拉取商品失败:', err);
       this.setData({ loading: false });
       // 不弹窗，允许空列表显示
       this.setData({ productList: reset ? [] : this.data.productList });
+    } finally {
+      this._productsTask = null;
     }
   },
 
@@ -210,6 +264,53 @@ Page({
     if (this.data.hasMore && !this.data.loading) {
       this.getProductsList(false);
     }
+  },
+
+  // 刷新首页数据：重新拉商品首屏、档口和标签（下拉刷新与页面级刷新共用同一套）
+  refreshHomeData: function() {
+    if (this._isRefreshingHome) {
+      return this._refreshingTask || Promise.resolve();
+    }
+
+    this._isRefreshingHome = true;
+    this.checkAdmin();
+
+    // 有分页请求在飞行中时先等它落地，再重新拉首屏
+    const waitIdle = this.data.loading && this._productsTask
+      ? this._productsTask.catch(() => {})
+      : Promise.resolve();
+
+    const task = waitIdle
+      .then(() => Promise.all([
+        this.getProductsList(true, { silent: true }),
+        this.loadStallList(),
+        this.loadTagList()
+      ]))
+      .catch((err) => {
+        console.error('首页刷新失败:', err);
+      })
+      .finally(() => {
+        this._isRefreshingHome = false;
+        this._refreshingTask = null;
+        this.setData({ refreshing: false });
+      });
+
+    this._refreshingTask = task;
+    return task;
+  },
+
+  // scroll-view 内置下拉刷新：手指释放时触发
+  onRefresh: function() {
+    this.setData({ refreshing: true });
+    return this.refreshHomeData();
+  },
+
+  // 兜底：页面级下拉刷新（自定义导航栏会盖住它的转圈动画，正常走不上这条路）
+  onPullDownRefresh: function() {
+    if (this._isRefreshingHome) return Promise.resolve();
+    return this.refreshHomeData().then(() => {
+      wx.stopPullDownRefresh();
+    });
   },
 
   // 从后端 API 获取档口列表（纯前端 A-Z 拼音分组架构）
@@ -293,6 +394,8 @@ Page({
       });
       this.getProductsList();
     }
+
+    this.updateListMetrics();
   },
 
   closeStallPanel() {
@@ -323,6 +426,7 @@ Page({
       currentMainTab: '档口'
     });
 
+    this.updateListMetrics();
     this.getProductsList();
     wx.showToast({ title: stallId === 'all' ? '已显示全部' : '已切换至：' + stallName, icon: 'none' });
   },
@@ -339,6 +443,7 @@ Page({
       currentMainTab: '分类'
     });
 
+    this.updateListMetrics();
     this.getProductsList();
     wx.showToast({ title: tagId === 'all' ? '已显示全部' : '已切换至：' + tagName, icon: 'none' });
   },
