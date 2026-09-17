@@ -1,5 +1,15 @@
-page { background-color: #f2f2f2; }
-.page-wrapper { display: flex; flex-direction: column; min-height: 100vh; }
+page {
+  height: 100vh;
+  background-color: #f2f2f2;
+  overflow: hidden;
+}
+
+.page-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
 
 /* 搜索栏 */
 .search-bar {
@@ -167,7 +177,13 @@ page { background-color: #f2f2f2; }
   border-radius: 2rpx;
 }
 
-.order-scroll-area { flex: 1; padding: 16rpx; box-sizing: border-box; }
+.order-scroll-area {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 16rpx;
+  box-sizing: border-box;
+}
 
 .empty-state { padding: 180rpx 0; text-align: center; }
 .empty-icon { font-size: 80rpx; margin-bottom: 24rpx; opacity: .35; }
@@ -334,6 +350,7 @@ page { background-color: #f2f2f2; }
 .modal-confirm { background: #1a1a1a; color: #fff; }
 
 .sticky-header {
+  flex-shrink: 0;
   position: sticky; top: 0; z-index: 100; background: #fff;
 }
 
