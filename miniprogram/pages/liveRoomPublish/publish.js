@@ -3,7 +3,22 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const config = require('../../utils/config');
 const { compressImage, compressVideo } = require('../../utils/media');
-const { saveDraft, loadDraft, removeDraft, hasDraft, persistMediaFiles, cleanupDraftFiles, validatePersistedUrls } = require('../../utils/draft');
+const draft = require('../../utils/draft');
+
+// 统一把请求异常转成能看懂的文案，避免 TypeError 被 JSON.stringify 成 "{}"
+function formatRequestError(err) {
+  if (!err) return '未知错误';
+  if (typeof err === 'string') return err;
+  if (err.message) return err.message;
+  if (typeof err.error === 'string' && err.error) return err.error;
+  if (err.errMsg) return err.errMsg;
+  try {
+    var text = JSON.stringify(err);
+    return (text && text !== '{}') ? text : '请求失败，请查看控制台日志';
+  } catch (e) {
+    return '请求失败，请查看控制台日志';
+  }
+}
 
 
 // 拖拽网格配置
@@ -91,8 +106,15 @@ Page({
   },
 
   onUnload() {
-    if (this.hasFormContent()) {
+    // 已提交成功 → 不再补存草稿，避免把刚清掉的草稿又写回后端
+    if (this._submitted) return;
+    var currentSnapshot = JSON.stringify(this.collectDraftData());
+    if (this.hasFormContent() && currentSnapshot !== this._lastSavedSnapshot) {
       this.saveDraft();
+    }
+    if (this._alertEnabled) {
+      wx.disableAlertBeforeUnload();
+      this._alertEnabled = false;
     }
   },
 
@@ -989,23 +1011,32 @@ Page({
         wx.hideLoading();
         wx.showToast({ title: '上架成功!', icon: 'success' });
       }
-
-      // 成功后清除草稿并关闭退出确认
-      this.clearDraft();
-      wx.disableAlertBeforeUnload();
-
-      setTimeout(() => {
-        wx.navigateBack();
-      }, 1500);
-
     } catch (err) {
       wx.hideLoading();
+      console.error('保存直播商品失败:', err);
       wx.showModal({
-        title: '创建失败',
-        content: typeof err === 'object' ? JSON.stringify(err) : String(err),
+        title: this.data.editMode && this.data.productId ? '更新失败' : '创建失败',
+        content: formatRequestError(err),
         showCancel: false
       });
+      return;
     }
+
+    // 商品已经保存成功：后面的收尾动作再出岔子，也不能提示“创建失败”
+    this._submitted = true;
+    if (this._alertEnabled) {
+      wx.disableAlertBeforeUnload();
+      this._alertEnabled = false;
+    }
+    try {
+      await this.clearDraft();
+    } catch (e) {
+      console.warn('草稿清理失败，商品已保存成功:', e);
+    }
+
+    setTimeout(() => {
+      wx.navigateBack();
+    }, 1500);
   },
 
   uploadMediaList: async function(mediaList) {
@@ -1137,10 +1168,15 @@ Page({
 
   // ================= 草稿功能 =================
 
-  getDraftKey() {
-    var data = this.data;
-    if (data.editMode && data.productId) return 'publish_edit_' + data.productId;
-    return 'publish_create_' + (data.sessionId || '0');
+  // 草稿类型/关联 ID：后端一个账号只存一份草稿，靠这两个字段区分场景
+  getDraftType() {
+    return (this.data.editMode && this.data.productId) ? 'live_edit' : 'live_create';
+  },
+
+  getDraftRelatedId() {
+    return (this.data.editMode && this.data.productId)
+      ? String(this.data.productId)
+      : String(this.data.sessionId || '');
   },
 
   collectDraftData() {
@@ -1171,47 +1207,51 @@ Page({
     };
   },
 
-  saveDraft() {
-    var key = this.getDraftKey();
-    cleanupDraftFiles(key);
+  // 保存草稿到后端：临时图片先上传 CDN，整份 JSON 存库（由 draft.js 统一处理）
+  saveDraft: async function() {
+    if (this.data.isBundleMode && this.data.activeGroupIndex >= 0) {
+      this.saveActiveGroupState();
+    }
     var draftData = this.collectDraftData();
-    var mediaLists = {
-      mediaList: draftData.mediaList,
-      skuImages: draftData.skuList.map(function(s) { return s.image; })
-    };
-    if (draftData.isBundleMode && draftData.bundleGroups) {
-      for (var gi = 0; gi < draftData.bundleGroups.length; gi++) {
-        mediaLists['bg_sku_' + gi] = (draftData.bundleGroups[gi].skuList || []).map(function(s) { return s.image; });
+
+    wx.showLoading({ title: '保存草稿...', mask: true });
+    try {
+      await draft.saveDraft(draftData, this.uploadFile.bind(this), {
+        draftType: this.getDraftType(),
+        relatedId: this.getDraftRelatedId()
+      });
+      this._lastSavedSnapshot = JSON.stringify(this.collectDraftData());
+      if (this._alertEnabled) {
+        wx.disableAlertBeforeUnload();
+        this._alertEnabled = false;
       }
+      wx.hideLoading();
+      wx.showToast({ title: '草稿已保存', icon: 'success' });
+    } catch (e) {
+      wx.hideLoading();
+      console.error('草稿保存失败:', e);
+      wx.showToast({ title: '草稿保存失败', icon: 'none' });
     }
-    var persisted = persistMediaFiles(key, mediaLists);
-    draftData.mediaList = persisted.mediaList;
-    var skuImages = persisted.skuImages || [];
-    draftData.skuList = draftData.skuList.map(function(sku, i) { sku.image = skuImages[i] || ''; return sku; });
-    if (draftData.isBundleMode && draftData.bundleGroups) {
-      for (var gi2 = 0; gi2 < draftData.bundleGroups.length; gi2++) {
-        var bgImgs = persisted['bg_sku_' + gi2] || [];
-        draftData.bundleGroups[gi2].skuList = draftData.bundleGroups[gi2].skuList.map(function(sku, i) { sku.image = bgImgs[i] || ''; return sku; });
-      }
-    }
-    var ok = saveDraft(key, draftData);
-    if (ok) { wx.showToast({ title: '草稿已保存', icon: 'success' }); }
-    else { wx.showToast({ title: '保存失败', icon: 'none' }); }
   },
 
-  clearDraft() {
-    var key = this.getDraftKey();
-    removeDraft(key);
-    cleanupDraftFiles(key);
+  clearDraft: async function() {
+    try {
+      await draft.removeDraft();
+    } catch (e) {
+      console.warn('清除草稿失败:', e);
+    }
   },
 
-  checkDraft() {
+  checkDraft: async function() {
     var self = this;
-    var key = this.getDraftKey();
-    if (!hasDraft(key)) return;
+    var record = await draft.loadDraft();
+    if (!record || !record.draftData) return;
 
-    var draft = loadDraft(key);
-    var savedAt = draft._savedAt ? new Date(draft._savedAt).toLocaleString() : '未知时间';
+    // 一个账号只存一份草稿：只恢复本页面对应场景的草稿，别把普通商品草稿恢复成直播商品
+    if (record.draftType !== this.getDraftType()) return;
+    if (String(record.relatedId || '') !== this.getDraftRelatedId()) return;
+
+    var savedAt = record.savedAt ? new Date(record.savedAt).toLocaleString() : '未知时间';
 
     wx.showModal({
       title: '发现草稿',
@@ -1220,58 +1260,70 @@ Page({
       cancelText: '忽略',
       success: function(res) {
         if (res.confirm) {
-          self.restoreDraft(draft);
+          self.restoreDraft(record.draftData);
         } else {
-          removeDraft(key);
-          cleanupDraftFiles(key);
+          self.clearDraft();
         }
         self.enableExitConfirm();
       }
     });
   },
 
-  restoreDraft(draft) {
+  // 恢复草稿：草稿里的图片已是 CDN URL，缺失字段一律用默认值兜底
+  restoreDraft(draftData) {
     var data = this.data;
-    var mediaLists = {
-      mediaList: draft.mediaList || [],
-      skuImages: (draft.skuList || []).map(function(s) { return s.image || ''; })
-    };
-    if (draft.isBundleMode && draft.bundleGroups) {
-      for (var gi = 0; gi < draft.bundleGroups.length; gi++) {
-        mediaLists['bg_sku_' + gi] = (draft.bundleGroups[gi].skuList || []).map(function(s) { return s.image || ''; });
+    var d = draftData || {};
+    var mediaList = (d.mediaList || []).map(function(m, i) {
+      if (typeof m === 'string') {
+        return { id: 'legacy_' + Date.now() + i, url: m, x: 0, y: 0 };
       }
-    }
-    var validated = validatePersistedUrls(mediaLists);
-    var skuImages = validated.skuImages || [];
+      return { id: m.id || ('legacy_' + Date.now() + i), url: m.url || '', x: m.x || 0, y: m.y || 0 };
+    });
 
     var restored = {
-      title: draft.title || '',
-      mediaList: validated.mediaList,
-      selectedStalls: draft.selectedStalls || [],
-      selectedTags: draft.selectedTags || [],
-      currentSizeCategoryId: draft.currentSizeCategoryId || data.currentSizeCategoryId,
-      currentSizeCategoryName: draft.currentSizeCategoryName || data.currentSizeCategoryName,
-      sizeOptions: draft.sizeOptions || data.sizeOptions,
-      colors: draft.colors || [],
-      skuList: (draft.skuList || []).map(function(sku, i) { sku.image = skuImages[i] || ''; return sku; }),
-      displayPrice: draft.displayPrice || '',
-      isBundleMode: draft.isBundleMode || false,
-      activeGroupIndex: draft.activeGroupIndex != null ? draft.activeGroupIndex : -1
+      title: d.title || '',
+      mediaList: mediaList,
+      selectedStalls: d.selectedStalls || [],
+      selectedTags: d.selectedTags || [],
+      currentSizeCategoryId: d.currentSizeCategoryId || data.currentSizeCategoryId,
+      currentSizeCategoryName: d.currentSizeCategoryName || data.currentSizeCategoryName,
+      sizeOptions: d.sizeOptions || data.sizeOptions,
+      colors: d.colors || [],
+      skuList: (d.skuList || []).map(function(sku) {
+        return Object.assign({}, sku, { image: sku.image || '' });
+      }),
+      displayPrice: d.displayPrice || '',
+      isBundleMode: !!d.isBundleMode,
+      activeGroupIndex: d.activeGroupIndex != null ? d.activeGroupIndex : -1,
+      bundleGroups: []
     };
-    if (draft.isBundleMode && draft.bundleGroups) {
-      restored.bundleGroups = draft.bundleGroups.map(function(bg, gi) {
-        var bgImgs = validated['bg_sku_' + gi] || [];
-        return { name: bg.name, colors: bg.colors || [], sizeOptions: bg.sizeOptions || [], skuList: (bg.skuList || []).map(function(sku, i) { sku.image = bgImgs[i] || ''; return sku; }) };
+    if (restored.isBundleMode && d.bundleGroups) {
+      restored.bundleGroups = d.bundleGroups.map(function(bg) {
+        return {
+          name: bg.name || '',
+          colors: bg.colors || [],
+          sizeOptions: bg.sizeOptions || [],
+          skuList: (bg.skuList || []).map(function(sku) {
+            return Object.assign({}, sku, { image: sku.image || '' });
+          })
+        };
       });
       if (restored.activeGroupIndex >= 0 && restored.activeGroupIndex < restored.bundleGroups.length) {
         var ag = restored.bundleGroups[restored.activeGroupIndex];
         restored.colors = ag.colors || [];
         restored.skuList = ag.skuList || [];
+        restored.sizeOptions = ag.sizeOptions || [];
       }
     }
 
     this.setData(restored);
     this.refreshGrid(restored.mediaList);
+
+    this._lastSavedSnapshot = JSON.stringify(this.collectDraftData());
+    if (this._alertEnabled) {
+      wx.disableAlertBeforeUnload();
+      this._alertEnabled = false;
+    }
 
     var hasImages = restored.mediaList.some(function(m) { return m.url; });
     if (!hasImages) {

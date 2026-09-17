@@ -2439,6 +2439,9 @@ Page({
     var draftRes = await draft.loadDraft();
     if (!draftRes) return;
 
+    // 一个账号只存一份草稿：忽略直播商品发布页存的草稿，避免两边互相恢复错数据
+    if (draftRes.draftType && draftRes.draftType.indexOf('live_') === 0) return;
+
     var savedAt = draftRes.savedAt ? new Date(draftRes.savedAt).toLocaleString() : '未知时间';
 
     wx.showModal({
