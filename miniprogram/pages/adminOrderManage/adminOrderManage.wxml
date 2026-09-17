@@ -42,7 +42,7 @@
     </view>
   </view>
 
-  <scroll-view scroll-y class="order-scroll-area" style="height: 100%;">
+  <scroll-view scroll-y class="order-scroll-area" style="height: 100%;" bindscrolltolower="onScrollToLower" lower-threshold="120">
 
     <view class="empty-state" wx:if="{{orders.length === 0 && !isLoading}}">
       <view class="empty-icon">📝</view>
@@ -165,6 +165,17 @@
         </view>
       </view>
 
+    </view>
+
+    <!-- 加载更多 -->
+    <view class="loading-more" wx:if="{{isLoadingMore}}">
+      <view class="loading-spinner"></view>
+      <text>加载中...</text>
+    </view>
+
+    <!-- 没有更多 -->
+    <view class="no-more" wx:if="{{!hasMore && orders.length > 0}}">
+      <text>— 没有更多了 —</text>
     </view>
   </scroll-view>
 

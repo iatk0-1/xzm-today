@@ -32,6 +32,11 @@ Page({
     currentTab: '全部',
     orders: [],
     isLoading: true,
+    isLoadingMore: false,
+    page: 1,
+    size: 20,
+    total: 0,
+    hasMore: true,
     
     // 搜索
     searchKeyword: '',
@@ -164,10 +169,19 @@ Page({
     this.loadOrders();
   },
 
-  // 加载订单
-  loadOrders: async function() {
-    this.setData({ isLoading: true, orders: [] });
-    wx.showLoading({ title: '加载订单中...' });
+  // 加载订单（isRefresh 为 true 时回到第一页重新加载，否则追加下一页）
+  loadOrders: async function(isRefresh) {
+    if (isRefresh === undefined) isRefresh = true;
+    if (!isRefresh && (this.data.isLoading || this.data.isLoadingMore || !this.data.hasMore)) return;
+
+    const targetPage = isRefresh ? 1 : this.data.page + 1;
+
+    if (isRefresh) {
+      this.setData({ isLoading: true, orders: [], page: 1, total: 0, hasMore: true });
+      wx.showLoading({ title: '加载订单中...' });
+    } else {
+      this.setData({ isLoadingMore: true });
+    }
 
     try {
       await auth.ensureAuthenticated({ silent: true });
@@ -179,12 +193,18 @@ Page({
       if (this.data.searchKeyword) params.keyword = this.data.searchKeyword;
       if (this.data.dateRange.startDate) params.startDate = this.data.dateRange.startDate;
       if (this.data.dateRange.endDate) params.endDate = this.data.dateRange.endDate;
-      params.page = 1;
-      params.size = 20;
+      params.page = targetPage;
+      params.size = this.data.size;
 
-      const res = await api.get('/admin/orders-manage/orders', params);
+      const res = await api.get('/admin/orders-manage/orders/page', params);
 
-      const orders = (res || []).map(order => ({
+      const items = (res && res.items) || [];
+      const list = isRefresh ? items : this.data.orders.concat(items);
+      // 后端把所有 long 都序列化成字符串，这里统一转成数字再比较
+      const rawTotal = res && res.total !== undefined && res.total !== null ? Number(res.total) : NaN;
+      const total = Number.isNaN(rawTotal) ? list.length : rawTotal;
+
+      const orders = list.map(order => ({
         ...order,
         outTradeNo: order.outTradeNo || order.id,
         createdAtDisplay: this.formatTime(order.createdAt),
@@ -195,12 +215,25 @@ Page({
       }));
 
       wx.hideLoading();
-      this.setData({ orders, isLoading: false });
+      this.setData({
+        orders,
+        page: targetPage,
+        total,
+        hasMore: orders.length < total,
+        isLoading: false,
+        isLoadingMore: false
+      });
     } catch (err) {
       wx.hideLoading();
       console.error('获取订单失败:', err);
       wx.showToast({ title: '获取订单失败', icon: 'none' });
+      this.setData({ isLoading: false, isLoadingMore: false });
     }
+  },
+
+  // 滚动到底部加载下一页
+  onScrollToLower: function() {
+    this.loadOrders(false);
   },
 
   // 格式化地址
