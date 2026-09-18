@@ -102,6 +102,9 @@ Page({
             status: 'shipped',
             displayStatus: '已发货',
             maxRefundAmount: parseFloat((item.salePrice * shippedQty).toFixed(2)),
+            itemKey: `${item.id || item.orderItemId}-return`,
+            selectedQty: '',
+            inputAmount: '',
             selected: false
           });
         }
@@ -126,6 +129,9 @@ Page({
             status: 'unshipped',
             displayStatus: '未发货',
             maxRefundAmount: parseFloat((item.salePrice * unshippedQty).toFixed(2)),
+            itemKey: `${item.id || item.orderItemId}-refund`,
+            selectedQty: '',
+            inputAmount: '',
             selected: false
           });
         }
@@ -172,12 +178,19 @@ Page({
     const item = splitItems[index];
 
     item.selected = !item.selected;
+    if (item.selected) {
+      item.selectedQty = String(item.qty);
+      item.inputAmount = item.maxRefundAmount.toFixed(2);
+    } else {
+      item.selectedQty = '';
+      item.inputAmount = '';
+    }
 
     // 更新选中列表
     const selectedItems = splitItems.filter(i => i.selected);
     
     // 计算总金额
-    const totalAmount = selectedItems.reduce((sum, item) => sum + item.maxRefundAmount, 0).toFixed(2);
+    const totalAmount = selectedItems.reduce((sum, item) => sum + (Number(item.inputAmount) || 0), 0).toFixed(2);
 
     this.setData({
       splitItems,
@@ -193,19 +206,50 @@ Page({
 
     const splitItems = this.data.splitItems.map(item => ({
       ...item,
-      selected: !allSelected
+      selected: !allSelected,
+      selectedQty: !allSelected ? String(item.qty) : '',
+      inputAmount: !allSelected ? item.maxRefundAmount.toFixed(2) : ''
     }));
 
     const selectedItems = allSelected ? [] : splitItems;
     
     // 计算总金额
-    const totalAmount = selectedItems.reduce((sum, item) => sum + item.maxRefundAmount, 0).toFixed(2);
+    const totalAmount = selectedItems.reduce((sum, item) => sum + (Number(item.inputAmount) || 0), 0).toFixed(2);
 
     this.setData({
       splitItems,
       selectedItems,
       totalAmount
     });
+  },
+
+  noop: function() {},
+
+  onRefundQtyInput: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.splitItems[index];
+    const raw = String(e.detail.value || '').replace(/\D/g, '');
+    const qty = raw ? Math.min(item.qty, Math.max(1, Number(raw))) : '';
+    const amount = qty === '' ? '' : Math.min(
+      item.maxRefundAmount,
+      Number(item.salePrice) * qty
+    ).toFixed(2);
+    const splitItems = [...this.data.splitItems];
+    splitItems[index] = { ...item, selected: true, selectedQty: qty === '' ? '' : String(qty), inputAmount: amount };
+    this.refreshSelection(splitItems);
+  },
+
+  onRefundAmountInput: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const splitItems = [...this.data.splitItems];
+    splitItems[index] = { ...splitItems[index], selected: true, inputAmount: e.detail.value };
+    this.refreshSelection(splitItems);
+  },
+
+  refreshSelection: function(splitItems) {
+    const selectedItems = splitItems.filter(item => item.selected);
+    const totalAmount = selectedItems.reduce((sum, item) => sum + (Number(item.inputAmount) || 0), 0).toFixed(2);
+    this.setData({ splitItems, selectedItems, totalAmount });
   },
 
   // 选择原因
@@ -297,13 +341,23 @@ Page({
         items: this.data.selectedItems.map(item => ({
           orderItemId: item.orderItemId,
           productId: item.productId,
-          qty: item.qty,
-          shippedQty: item.shippedQty,
-          unshippedQty: item.unshippedQty,
-          refundAmount: item.maxRefundAmount,
+          qty: Number(item.selectedQty),
+          // 发货数量由后端按订单记录重算，这两个字段只为兼容旧客户端保留。
+          shippedQty: item.type === 'return_refund' ? Number(item.selectedQty) : 0,
+          unshippedQty: item.type === 'refund' ? Number(item.selectedQty) : 0,
+          refundAmount: Number(item.inputAmount),
           afterSaleType: item.type
         }))
       };
+
+      const invalidItem = requestData.items.find(item =>
+        !Number.isInteger(item.qty) || item.qty < 1 || !Number.isFinite(item.refundAmount) || item.refundAmount <= 0
+      );
+      if (invalidItem) {
+        wx.hideLoading();
+        wx.showToast({ title: '请填写正确的数量和退款金额', icon: 'none' });
+        return;
+      }
 
       console.log('提交售后申请:', requestData);
       await api.post('/after-sales', requestData);

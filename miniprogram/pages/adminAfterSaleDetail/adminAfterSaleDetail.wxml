@@ -161,8 +161,8 @@
   <view class="action-bar">
     <!-- 待审核状态 -->
     <view class="action-btn-group" wx:if="{{afterSale.status === 'pending'}}">
-      <view class="btn-ghost" bindtap="showReviewModal">拒绝</view>
-      <view class="btn-primary" bindtap="showReviewModal">审核通过</view>
+      <view class="btn-ghost" bindtap="showReviewModal" data-decision="reject">拒绝</view>
+      <view class="btn-primary" bindtap="showReviewModal" data-decision="approve">审核通过</view>
     </view>
 
     <!-- 已同意状态：退货项走仓库验收，仅退款失败可直接重试 -->
@@ -212,7 +212,7 @@
 
   <!-- 审核弹窗 -->
   <view class="modal-mask" wx:if="{{showReviewModal}}" bindtap="hideReviewModal">
-    <view class="modal-content" catchtap="true">
+    <view class="modal-content" catchtap="noop">
       <view class="modal-title">审核售后</view>
       <view class="modal-options">
         <view
@@ -230,6 +230,56 @@
           <view class="option-text">拒绝</view>
         </view>
       </view>
+      <scroll-view class="review-items" scroll-y wx:if="{{reviewDecision === 'approve'}}">
+        <view class="review-item" wx:for="{{reviewItems}}" wx:key="id">
+          <view class="review-item-header">
+            <view
+              class="review-check {{item.selected ? 'selected' : ''}}"
+              data-index="{{index}}"
+              bindtap="toggleReviewItem">{{item.selected ? '✓' : ''}}</view>
+            <view class="review-item-info">
+              <text class="review-item-name">{{item.productName}}</text>
+              <text class="review-item-spec">{{item.skuSpec}} / {{item.skuSize}}</text>
+              <text class="review-item-limit">用户申请 {{item.requestedQty || item.qty}} 件，¥ {{item.requestedRefundAmount || item.refundAmount}}</text>
+            </view>
+          </view>
+          <view class="review-edit-row" wx:if="{{item.selected}}">
+            <view class="review-edit-field">
+              <text>数量</text>
+              <input
+                class="review-edit-input"
+                type="number"
+                value="{{item.reviewQty}}"
+                data-index="{{index}}"
+                bindinput="onReviewQtyInput"
+                catchtap="noop" />
+            </view>
+            <view class="review-edit-field">
+              <text>金额</text>
+              <input
+                class="review-edit-input amount"
+                type="digit"
+                value="{{item.reviewAmount}}"
+                data-index="{{index}}"
+                bindinput="onReviewAmountInput"
+                catchtap="noop" />
+            </view>
+          </view>
+          <view class="review-type-row" wx:if="{{item.selected}}">
+            <text class="review-type-label">退款方式</text>
+            <view
+              class="review-type-option {{item.reviewType === 'refund' ? 'selected' : ''}}"
+              data-index="{{index}}"
+              data-type="refund"
+              bindtap="chooseReviewType">仅退款</view>
+            <view
+              class="review-type-option {{item.reviewType === 'return_refund' ? 'selected' : ''}}"
+              data-index="{{index}}"
+              data-type="return_refund"
+              bindtap="chooseReviewType">退货退款</view>
+          </view>
+        </view>
+      </scroll-view>
       <view class="modal-input-group" wx:if="{{reviewDecision === 'reject'}}">
         <view class="input-label">拒绝原因</view>
         <textarea
@@ -248,7 +298,7 @@
 
   <!-- 仓库收货弹窗 -->
   <view class="modal-mask" wx:if="{{showReceiveModal}}" bindtap="hideReceiveModal">
-    <view class="modal-content" catchtap="true">
+    <view class="modal-content" catchtap="noop">
       <view class="modal-title">{{isReinspection ? '重新验收' : '退货验收'}}</view>
       <view class="modal-options">
         <view
@@ -275,7 +325,7 @@
 
   <!-- 协商退款弹窗 -->
   <view class="modal-mask" wx:if="{{showNegotiatedRefundModal}}" bindtap="hideNegotiatedRefundModal">
-    <view class="modal-content negotiated-modal" catchtap="true">
+    <view class="modal-content negotiated-modal" catchtap="noop">
       <view class="modal-title">协商退款</view>
       <view class="negotiated-tip">必须记录协商原因；退款成功后，所选明细将按实际金额结案。</view>
       <scroll-view class="negotiated-list" scroll-y>

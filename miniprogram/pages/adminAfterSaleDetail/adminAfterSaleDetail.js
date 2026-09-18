@@ -11,6 +11,7 @@ Page({
     // 审核操作
     showReviewModal: false,
     reviewDecision: 'approve',
+    reviewItems: [],
     rejectReason: '',
     // 仓库收货
     showReceiveModal: false,
@@ -198,11 +199,25 @@ Page({
     return amount.toFixed(2);
   },
 
+  noop: function() {},
+
   // 显示审核弹窗
-  showReviewModal: function() {
+  showReviewModal: function(e) {
+    const decision = e && e.currentTarget && e.currentTarget.dataset.decision
+      ? e.currentTarget.dataset.decision : 'approve';
+    const reviewItems = ((this.data.afterSale && this.data.afterSale.items) || [])
+      .filter(item => item.status === 'pending')
+      .map(item => ({
+        ...item,
+        selected: true,
+        reviewQty: String(item.requestedQty || item.qty),
+        reviewAmount: Number(item.requestedRefundAmount || item.refundAmount || 0).toFixed(2),
+        reviewType: item.afterSaleType
+      }));
     this.setData({
       showReviewModal: true,
-      reviewDecision: 'approve',
+      reviewDecision: decision,
+      reviewItems,
       rejectReason: ''
     });
   },
@@ -211,6 +226,7 @@ Page({
   hideReviewModal: function() {
     this.setData({
       showReviewModal: false,
+      reviewItems: [],
       rejectReason: ''
     });
   },
@@ -225,6 +241,29 @@ Page({
     this.setData({ rejectReason: e.detail.value });
   },
 
+  toggleReviewItem: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    this.setData({ [`reviewItems[${index}].selected`]: !this.data.reviewItems[index].selected });
+  },
+
+  onReviewQtyInput: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.reviewItems[index];
+    const raw = String(e.detail.value || '').replace(/\D/g, '');
+    const qty = raw ? Math.min(item.qty, Math.max(1, Number(raw))) : '';
+    this.setData({ [`reviewItems[${index}].reviewQty`]: qty === '' ? '' : String(qty) });
+  },
+
+  onReviewAmountInput: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    this.setData({ [`reviewItems[${index}].reviewAmount`]: e.detail.value });
+  },
+
+  chooseReviewType: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    this.setData({ [`reviewItems[${index}].reviewType`]: e.currentTarget.dataset.type });
+  },
+
   // 提交审核
   submitReview: async function() {
     if (this.data.reviewDecision === 'reject' && !this.data.rejectReason) {
@@ -235,10 +274,41 @@ Page({
     wx.showLoading({ title: '处理中...' });
 
     try {
-      await api.post(`/after-sales/${this.data.afterSaleId}/review`, {
+      const payload = {
         decision: this.data.reviewDecision,
         rejectReason: this.data.reviewDecision === 'reject' ? this.data.rejectReason : null
-      });
+      };
+      if (this.data.reviewDecision === 'approve') {
+        const invalid = this.data.reviewItems.find(item => {
+          const qty = Number(item.reviewQty);
+          const amount = Number(item.reviewAmount);
+          return !item.selected
+            ? false
+            : !Number.isInteger(qty) || qty < 1 || qty > Number(item.requestedQty || item.qty)
+              || !Number.isFinite(amount) || amount <= 0
+              || amount > Number(item.requestedRefundAmount || item.refundAmount);
+        });
+        if (invalid) {
+          wx.hideLoading();
+          wx.showToast({ title: '请填写正确的审核数量和金额', icon: 'none' });
+          return;
+        }
+        if (!this.data.reviewItems.some(item => item.selected)) {
+          wx.hideLoading();
+          wx.showToast({ title: '请至少选择一个商品', icon: 'none' });
+          return;
+        }
+        payload.itemResults = this.data.reviewItems.map(item => ({
+          afterSaleItemId: item.id,
+          orderItemId: item.orderItemId,
+          decision: item.selected ? 'approve' : 'reject',
+          rejectReason: item.selected ? null : '本次不予退款',
+          qty: item.selected ? Number(item.reviewQty) : null,
+          refundAmount: item.selected ? Number(item.reviewAmount).toFixed(2) : null,
+          afterSaleType: item.selected ? item.reviewType : null
+        }));
+      }
+      await api.post(`/after-sales/${this.data.afterSaleId}/review`, payload);
 
       wx.hideLoading();
       wx.showToast({ title: '审核成功', icon: 'success' });

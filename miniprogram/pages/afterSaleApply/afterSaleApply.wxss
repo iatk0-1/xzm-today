@@ -366,6 +366,48 @@
   background-color: #ff3333;
 }
 
+.refund-edit-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.refund-edit-field {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  min-width: 0;
+}
+
+.refund-edit-label {
+  font-size: 22rpx;
+  color: #666;
+  white-space: nowrap;
+}
+
+.refund-edit-input {
+  width: 76rpx;
+  height: 52rpx;
+  padding: 0 10rpx;
+  border: 1rpx solid #d8d8d8;
+  border-radius: 6rpx;
+  background: #fff;
+  text-align: center;
+  font-size: 24rpx;
+  color: #111;
+}
+
+.refund-edit-input.amount {
+  width: 112rpx;
+}
+
+.refund-edit-unit {
+  font-size: 22rpx;
+  color: #999;
+}
+
 /* 加载状态 */
 .loading-state {
   position: fixed;

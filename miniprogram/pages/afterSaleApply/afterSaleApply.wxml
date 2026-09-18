@@ -25,7 +25,7 @@
       <view
         class="split-item {{item.selected ? 'selected' : ''}}"
         wx:for="{{splitItems}}"
-        wx:key="orderItemId"
+        wx:key="itemKey"
         bindtap="toggleSelectItem"
         data-index="{{index}}">
         
@@ -57,6 +57,30 @@
           <view class="goods-price-row">
             <text class="price">¥ {{item.salePrice}}</text>
             <text class="max-refund">最多可退 ¥ {{item.maxRefundAmount}}</text>
+          </view>
+          <view class="refund-edit-row" wx:if="{{item.selected}}" catchtap="noop">
+            <view class="refund-edit-field">
+              <text class="refund-edit-label">申请数量</text>
+              <input
+                class="refund-edit-input"
+                type="number"
+                value="{{item.selectedQty}}"
+                data-index="{{index}}"
+                bindinput="onRefundQtyInput"
+                catchtap="noop" />
+              <text class="refund-edit-unit">件</text>
+            </view>
+            <view class="refund-edit-field">
+              <text class="refund-edit-label">退款金额</text>
+              <input
+                class="refund-edit-input amount"
+                type="digit"
+                value="{{item.inputAmount}}"
+                data-index="{{index}}"
+                bindinput="onRefundAmountInput"
+                catchtap="noop" />
+              <text class="refund-edit-unit">元</text>
+            </view>
           </view>
         </view>
         
