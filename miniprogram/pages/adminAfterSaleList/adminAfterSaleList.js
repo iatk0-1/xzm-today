@@ -14,6 +14,17 @@ const STATUS_MAP = {
   'cancelled': 'cancelled'
 };
 
+// Tab 文案到后端状态参数的映射
+const TAB_STATUS_KEY_MAP = {
+  '全部': 'all',
+  '待审核': 'pending',
+  '已同意': 'approved',
+  '已拒绝': 'rejected',
+  '已收货': 'received',
+  '已退款': 'refunded',
+  '已取消': 'cancelled'
+};
+
 // 类型映射
 const TYPE_MAP = {
   'all': null,
@@ -96,7 +107,8 @@ Page({
   // 切换 Tab
   switchTab: function(e) {
     const tab = e.currentTarget.dataset.tab;
-    const status = STATUS_MAP[tab === '全部' ? 'all' : tab];
+    const statusKey = TAB_STATUS_KEY_MAP[tab] || 'all';
+    const status = STATUS_MAP[statusKey];
     
     this.setData({
       currentTab: tab,
@@ -135,7 +147,9 @@ Page({
 
   // 执行搜索
   doSearch: function() {
+    const searchKeyword = this.data.searchKeyword.trim();
     this.setData({
+      searchKeyword,
       page: 1,
       hasMore: true
     }, () => {
@@ -147,10 +161,13 @@ Page({
   loadAfterSales: function(isRefresh, callback) {
     if (this.data.isLoading && !isRefresh) return;
 
+    // 刷新从第一页开始，触底加载请求下一页，不能重复使用当前页码。
+    const requestPage = isRefresh ? 1 : this.data.page + 1;
+
     this.setData({ isLoading: true });
 
     const params = {
-      page: this.data.page,
+      page: requestPage,
       size: this.data.size
     };
 
@@ -162,11 +179,19 @@ Page({
       params.type = this.data.currentType;
     }
 
-    auth.ensureAuthenticated({ silent: true })
+    if (this.data.searchKeyword) {
+      params.keyword = this.data.searchKeyword;
+    }
+
+    return auth.ensureAuthenticated({ silent: true })
       .then(() => api.get('/after-sales/admin', params))
       .then(res => {
         const items = res.items || [];
         const newList = isRefresh ? items : [...this.data.afterSales, ...items];
+        const responsePage = Number(res.page);
+        const currentPage = Number.isFinite(responsePage) && responsePage >= 1
+          ? responsePage
+          : requestPage;
 
         this.setData({
           afterSales: newList.map(item => ({
@@ -178,7 +203,7 @@ Page({
               : `${item.totalQty || 0} 件商品`
           })),
           total: res.total,
-          page: res.page,
+          page: currentPage,
           hasMore: newList.length < res.total,
           isLoading: false
         });
