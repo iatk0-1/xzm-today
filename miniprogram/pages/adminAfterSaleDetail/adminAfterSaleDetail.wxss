@@ -489,6 +489,42 @@
   font-size: 22rpx;
 }
 
+.review-qty-stepper {
+  display: flex;
+  align-items: center;
+  height: 48rpx;
+  overflow: hidden;
+  border: 1rpx solid #d8d8d8;
+  border-radius: 6rpx;
+  background: #fff;
+}
+
+.review-qty-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42rpx;
+  height: 100%;
+  background: #f5f5f5;
+  color: #333;
+  font-size: 28rpx;
+  line-height: 1;
+}
+
+.review-qty-btn.disabled {
+  color: #ccc;
+}
+
+.review-qty-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44rpx;
+  height: 100%;
+  color: #111;
+  font-size: 24rpx;
+}
+
 .review-edit-input {
   width: 76rpx;
   height: 48rpx;

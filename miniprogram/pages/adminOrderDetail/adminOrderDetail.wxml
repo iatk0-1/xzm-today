@@ -184,7 +184,17 @@
         <text class="refund-limit">可退 {{refundItem.availableQty}} 件，¥ {{refundItem.availableRefundAmount}}</text>
       </view>
       <view class="refund-inputs">
-        <input class="panel-input" type="number" disabled="{{refundItem.disabled}}" placeholder="数量" value="{{refundItem.selectedQty}}" data-index="{{refundIndex}}" bindinput="onRefundQtyInput" />
+        <view class="refund-qty-stepper {{refundItem.disabled ? 'disabled' : ''}}">
+          <view
+            class="refund-qty-btn {{refundItem.selectedQty <= 0 ? 'disabled' : ''}}"
+            data-index="{{refundIndex}}"
+            catchtap="decreaseRefundQty">-</view>
+          <view class="refund-qty-value">{{refundItem.selectedQty}}</view>
+          <view
+            class="refund-qty-btn {{refundItem.selectedQty >= refundItem.availableQty ? 'disabled' : ''}}"
+            data-index="{{refundIndex}}"
+            catchtap="increaseRefundQty">+</view>
+        </view>
         <input class="panel-input" type="digit" disabled="{{refundItem.disabled}}" placeholder="金额" value="{{refundItem.inputAmount}}" data-index="{{refundIndex}}" bindinput="onRefundAmountInput" />
       </view>
     </view>

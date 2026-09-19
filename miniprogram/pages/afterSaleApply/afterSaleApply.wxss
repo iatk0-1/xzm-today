@@ -162,6 +162,12 @@
   color: #999;
 }
 
+.after-sale-limit {
+  font-size: 22rpx;
+  color: #d97706;
+  line-height: 1.4;
+}
+
 .goods-price-row {
   display: flex;
   justify-content: space-between;
@@ -385,6 +391,42 @@
   font-size: 22rpx;
   color: #666;
   white-space: nowrap;
+}
+
+.refund-qty-stepper {
+  display: flex;
+  align-items: center;
+  height: 52rpx;
+  overflow: hidden;
+  border: 1rpx solid #d8d8d8;
+  border-radius: 6rpx;
+  background: #fff;
+}
+
+.refund-qty-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46rpx;
+  height: 100%;
+  background: #f5f5f5;
+  color: #333;
+  font-size: 30rpx;
+  line-height: 1;
+}
+
+.refund-qty-btn.disabled {
+  color: #ccc;
+}
+
+.refund-qty-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 100%;
+  color: #111;
+  font-size: 24rpx;
 }
 
 .refund-edit-input {

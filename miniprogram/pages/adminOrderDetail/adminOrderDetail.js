@@ -277,7 +277,7 @@ Page({
       const preview = await api.get(`/admin/orders-manage/orders/${this.data.orderId}/refund-preview`);
       const refundItems = (preview.items || []).map(item => ({
         ...item,
-        selectedQty: '',
+        selectedQty: '0',
         inputAmount: '',
         disabled: !item.availableQty || Number(item.availableQty) <= 0 || Number(item.availableRefundAmount) <= 0
       }));
@@ -305,18 +305,38 @@ Page({
     });
   },
 
-  onRefundQtyInput(e) {
-    const index = e.currentTarget.dataset.index;
-    const value = parseInt(e.detail.value, 10) || 0;
+  updateRefundQty(index, nextQty) {
     const item = this.data.refundItems[index];
-    const cappedQty = Math.min(value, item.availableQty || 0);
-    const suggestedAmount = cappedQty > 0
-      ? Math.min(Number(item.salePrice) * cappedQty, Number(item.availableRefundAmount)).toFixed(2)
-      : '';
+    if (!item || item.disabled) return;
+
+    const maxQty = Math.max(0, Number(item.availableQty) || 0);
+    const cappedQty = Math.min(maxQty, Math.max(0, Number(nextQty) || 0));
+    const amountLimit = Math.min(
+      Number(item.salePrice) * cappedQty,
+      Number(item.availableRefundAmount) || 0
+    );
+    const currentAmount = Number(item.inputAmount);
+    const nextAmount = cappedQty <= 0
+      ? ''
+      : (Number.isFinite(currentAmount) && currentAmount > 0
+        ? Math.min(currentAmount, amountLimit).toFixed(2)
+        : amountLimit.toFixed(2));
     this.setData({
-      [`refundItems[${index}].selectedQty`]: cappedQty ? String(cappedQty) : '',
-      [`refundItems[${index}].inputAmount`]: suggestedAmount
+      [`refundItems[${index}].selectedQty`]: String(cappedQty),
+      [`refundItems[${index}].inputAmount`]: nextAmount
     });
+  },
+
+  decreaseRefundQty(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.refundItems[index];
+    this.updateRefundQty(index, Number(item && item.selectedQty) - 1);
+  },
+
+  increaseRefundQty(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.refundItems[index];
+    this.updateRefundQty(index, Number(item && item.selectedQty) + 1);
   },
 
   onRefundAmountInput(e) {
@@ -338,6 +358,7 @@ Page({
         orderItemId: item.orderItemId,
         qty: parseInt(item.selectedQty, 10) || 0,
         refundAmount: Number(item.inputAmount || 0),
+        salePrice: Number(item.salePrice || 0),
         availableQty: item.availableQty,
         availableRefundAmount: Number(item.availableRefundAmount)
       }))
@@ -346,7 +367,12 @@ Page({
       wx.showToast({ title: '请输入退款数量和金额', icon: 'none' });
       return;
     }
-    const invalid = items.find(item => item.qty > item.availableQty || item.refundAmount > item.availableRefundAmount);
+    const invalid = items.find(item => {
+      const amountByQty = Number(item.salePrice || 0) * item.qty;
+      return item.qty > item.availableQty
+        || item.refundAmount > item.availableRefundAmount
+        || item.refundAmount > amountByQty;
+    });
     if (invalid) {
       wx.showToast({ title: '退款数量或金额超出上限', icon: 'none' });
       return;

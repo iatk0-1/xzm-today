@@ -74,43 +74,85 @@ Page({
         return;
       }
 
-      // 拆分商品：按发货状态拆分成独立行
+      let afterSaleRes;
+      try {
+        afterSaleRes = await api.get('/after-sales', {
+          orderId: orderId,
+          page: 1,
+          size: 100
+        });
+      } catch (err) {
+        console.error('加载售后记录失败:', err);
+        wx.showToast({ title: '售后记录加载失败，请稍后重试', icon: 'none' });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+
+      const afterSaleLimits = this.buildAfterSaleLimits(afterSaleRes && afterSaleRes.items);
+
+      // 拆分商品：按发货状态拆分成独立行，并扣除处理中售后占用的数量和金额。
       const splitItems = [];
 
       res.items.forEach(item => {
         const shippedQty = item.shippedQty || 0;
         const totalQty = item.qty;
         const unshippedQty = totalQty - shippedQty;
+        const limits = afterSaleLimits[String(item.id)] || {};
 
         // 已发货部分 → 只能选退货退款
         if (shippedQty > 0) {
-          splitItems.push({
-            orderItemId: item.id,
-            productId: item.productId,
-            productName: item.productName,
-            productImage: item.productImage || item.skuImageUrl,
-            skuSpec: item.productSpec || '默认颜色',
-            skuSize: item.productSize || '均码',
-            bundleConfig: item.bundleConfig || null,
-            bundleProductName: item.bundleProductName || null,
-            bundleGroupName: item.bundleGroupName || null,
-            salePrice: item.salePrice,
-            qty: shippedQty,
-            shippedQty: shippedQty,
-            unshippedQty: 0,
-            type: 'return_refund',  // 已发货只能退货退款
-            status: 'shipped',
-            displayStatus: '已发货',
-            maxRefundAmount: parseFloat((item.salePrice * shippedQty).toFixed(2)),
-            itemKey: `${item.id || item.orderItemId}-return`,
-            selectedQty: '',
-            inputAmount: '',
-            selected: false
-          });
+          const reservedQty = Math.min(shippedQty, Number(limits.shippedQty) || 0);
+          const availableQty = Math.max(0, shippedQty - reservedQty);
+          const reservedAmount = Number(limits.shippedAmount) || 0;
+          const maxRefundAmount = Math.max(0, Math.min(
+            Number(item.salePrice) * availableQty,
+            Number((Number(item.salePrice) * shippedQty - reservedAmount).toFixed(2))
+          ));
+
+          if (availableQty > 0 && maxRefundAmount > 0) {
+            splitItems.push({
+              orderItemId: item.id,
+              productId: item.productId,
+              productName: item.productName,
+              productImage: item.productImage || item.skuImageUrl,
+              skuSpec: item.productSpec || '默认颜色',
+              skuSize: item.productSize || '均码',
+              bundleConfig: item.bundleConfig || null,
+              bundleProductName: item.bundleProductName || null,
+              bundleGroupName: item.bundleGroupName || null,
+              salePrice: item.salePrice,
+              qty: availableQty,
+              shippedQty: availableQty,
+              unshippedQty: 0,
+              type: 'return_refund',  // 已发货只能退货退款
+              status: 'shipped',
+              displayStatus: '已发货',
+              originalQty: shippedQty,
+              reservedQty,
+              reservedAmount: parseFloat(reservedAmount.toFixed(2)),
+              maxRefundAmount: maxRefundAmount,
+              itemKey: `${item.id || item.orderItemId}-return`,
+              selectedQty: '',
+              inputAmount: '',
+              selected: false
+            });
+          }
         }
 
         // 未发货部分 → 只能选仅退款
         if (unshippedQty > 0) {
+          const reservedQty = Math.min(unshippedQty, Number(limits.unshippedQty) || 0);
+          const availableQty = Math.max(0, unshippedQty - reservedQty);
+          const reservedAmount = Number(limits.unshippedAmount) || 0;
+          const maxRefundAmount = Math.max(0, Math.min(
+            Number(item.salePrice) * availableQty,
+            Number((Number(item.salePrice) * unshippedQty - reservedAmount).toFixed(2))
+          ));
+
+          if (availableQty <= 0 || maxRefundAmount <= 0) {
+            return;
+          }
+
           splitItems.push({
             orderItemId: item.id,
             productId: item.productId,
@@ -122,13 +164,16 @@ Page({
             bundleProductName: item.bundleProductName || null,
             bundleGroupName: item.bundleGroupName || null,
             salePrice: item.salePrice,
-            qty: unshippedQty,
+            qty: availableQty,
             shippedQty: 0,
-            unshippedQty: unshippedQty,
+            unshippedQty: availableQty,
             type: 'refund',  // 未发货只能仅退款
             status: 'unshipped',
             displayStatus: '未发货',
-            maxRefundAmount: parseFloat((item.salePrice * unshippedQty).toFixed(2)),
+            originalQty: unshippedQty,
+            reservedQty,
+            reservedAmount: parseFloat(reservedAmount.toFixed(2)),
+            maxRefundAmount: maxRefundAmount,
             itemKey: `${item.id || item.orderItemId}-refund`,
             selectedQty: '',
             inputAmount: '',
@@ -138,7 +183,7 @@ Page({
       });
 
       if (splitItems.length === 0) {
-        wx.showToast({ title: '没有可申请售后的商品', icon: 'none' });
+        wx.showToast({ title: '商品均在售后处理中，暂无可申请数量', icon: 'none' });
         setTimeout(() => wx.navigateBack(), 1500);
         return;
       }
@@ -156,6 +201,51 @@ Page({
       console.error('加载订单失败:', err);
       wx.showToast({ title: '加载订单失败', icon: 'none' });
     }
+  },
+
+  // 统计仍会占用退款额度的售后明细，和后端剩余数量/金额校验保持一致。
+  buildAfterSaleLimits: function(records) {
+    const activeStatuses = ['pending', 'approved', 'received', 'refunded'];
+    const limits = {};
+
+    (records || []).forEach(record => {
+      (record.items || []).forEach(item => {
+        if (!activeStatuses.includes(item.status || record.status)) {
+          return;
+        }
+
+        const key = String(item.orderItemId);
+        const current = limits[key] || {
+          shippedQty: 0,
+          unshippedQty: 0,
+          shippedAmount: 0,
+          unshippedAmount: 0
+        };
+        const shippedQty = Number(item.shippedQty) || 0;
+        const unshippedQty = Number(item.unshippedQty) || 0;
+        const refundAmount = Number(item.refundAmount) || 0;
+
+        current.shippedQty += shippedQty;
+        current.unshippedQty += unshippedQty;
+        if (shippedQty > 0 && unshippedQty > 0) {
+          const totalQty = shippedQty + unshippedQty;
+          current.shippedAmount += refundAmount * shippedQty / totalQty;
+          current.unshippedAmount += refundAmount * unshippedQty / totalQty;
+        } else if (shippedQty > 0) {
+          current.shippedAmount += refundAmount;
+        } else {
+          current.unshippedAmount += refundAmount;
+        }
+
+        limits[key] = current;
+      });
+    });
+
+    Object.keys(limits).forEach(key => {
+      limits[key].shippedAmount = Number(limits[key].shippedAmount.toFixed(2));
+      limits[key].unshippedAmount = Number(limits[key].unshippedAmount.toFixed(2));
+    });
+    return limits;
   },
 
   getStatusDisplay: function(status) {
@@ -225,24 +315,52 @@ Page({
 
   noop: function() {},
 
-  onRefundQtyInput: function(e) {
-    const index = Number(e.currentTarget.dataset.index);
+  updateRefundQty: function(index, nextQty) {
     const item = this.data.splitItems[index];
-    const raw = String(e.detail.value || '').replace(/\D/g, '');
-    const qty = raw ? Math.min(item.qty, Math.max(1, Number(raw))) : '';
-    const amount = qty === '' ? '' : Math.min(
+    if (!item) return;
+
+    const maxQty = Math.max(1, Number(item.qty) || 1);
+    const qty = Math.min(maxQty, Math.max(1, Number(nextQty) || 1));
+    const amountLimit = Math.min(
       item.maxRefundAmount,
       Number(item.salePrice) * qty
-    ).toFixed(2);
+    );
+    const currentAmount = Number(item.inputAmount);
+    const amount = Number.isFinite(currentAmount) && currentAmount > 0
+      ? Math.min(currentAmount, amountLimit).toFixed(2)
+      : amountLimit.toFixed(2);
     const splitItems = [...this.data.splitItems];
-    splitItems[index] = { ...item, selected: true, selectedQty: qty === '' ? '' : String(qty), inputAmount: amount };
+    splitItems[index] = { ...item, selected: true, selectedQty: String(qty), inputAmount: amount };
     this.refreshSelection(splitItems);
+  },
+
+  decreaseRefundQty: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.splitItems[index];
+    this.updateRefundQty(index, Number(item && item.selectedQty) - 1);
+  },
+
+  increaseRefundQty: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.splitItems[index];
+    this.updateRefundQty(index, Number(item && item.selectedQty) + 1);
   },
 
   onRefundAmountInput: function(e) {
     const index = Number(e.currentTarget.dataset.index);
     const splitItems = [...this.data.splitItems];
-    splitItems[index] = { ...splitItems[index], selected: true, inputAmount: e.detail.value };
+    const item = splitItems[index];
+    const selectedQty = Math.max(1, Number(item && item.selectedQty) || 1);
+    const amountLimit = Math.min(
+      Number(item && item.maxRefundAmount) || 0,
+      (Number(item && item.salePrice) || 0) * selectedQty
+    );
+    const rawValue = e.detail.value;
+    const numericValue = Number(rawValue);
+    const inputAmount = rawValue !== '' && Number.isFinite(numericValue) && numericValue > amountLimit
+      ? amountLimit.toFixed(2)
+      : rawValue;
+    splitItems[index] = { ...item, selected: true, inputAmount };
     this.refreshSelection(splitItems);
   },
 
@@ -350,9 +468,18 @@ Page({
         }))
       };
 
-      const invalidItem = requestData.items.find(item =>
-        !Number.isInteger(item.qty) || item.qty < 1 || !Number.isFinite(item.refundAmount) || item.refundAmount <= 0
-      );
+      const invalidItem = requestData.items.find(item => {
+        const sourceItem = this.data.splitItems.find(splitItem =>
+          splitItem.orderItemId === item.orderItemId && splitItem.type === item.afterSaleType
+        );
+        const maxQty = Number(sourceItem && sourceItem.qty) || 0;
+        const maxAmount = Number(sourceItem && sourceItem.maxRefundAmount) || 0;
+        const maxAmountByQty = Number(sourceItem && sourceItem.salePrice) * item.qty;
+        return !Number.isInteger(item.qty) || item.qty < 1 || item.qty > maxQty
+          || !Number.isFinite(item.refundAmount) || item.refundAmount <= 0
+          || item.refundAmount > maxAmount
+          || item.refundAmount > maxAmountByQty;
+      });
       if (invalidItem) {
         wx.hideLoading();
         wx.showToast({ title: '请填写正确的数量和退款金额', icon: 'none' });

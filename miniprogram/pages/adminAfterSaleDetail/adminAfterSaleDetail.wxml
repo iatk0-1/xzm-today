@@ -246,13 +246,17 @@
           <view class="review-edit-row" wx:if="{{item.selected}}">
             <view class="review-edit-field">
               <text>数量</text>
-              <input
-                class="review-edit-input"
-                type="number"
-                value="{{item.reviewQty}}"
-                data-index="{{index}}"
-                bindinput="onReviewQtyInput"
-                catchtap="noop" />
+              <view class="review-qty-stepper">
+                <view
+                  class="review-qty-btn {{item.reviewQty <= 1 ? 'disabled' : ''}}"
+                  data-index="{{index}}"
+                  catchtap="decreaseReviewQty">-</view>
+                <view class="review-qty-value">{{item.reviewQty}}</view>
+                <view
+                  class="review-qty-btn {{item.reviewQty >= item.reviewQtyLimit ? 'disabled' : ''}}"
+                  data-index="{{index}}"
+                  catchtap="increaseReviewQty">+</view>
+              </view>
             </view>
             <view class="review-edit-field">
               <text>金额</text>

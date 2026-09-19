@@ -206,12 +206,43 @@ page { background-color: #f2f2f2; }
   line-height: 1.35;
 }
 .refund-inputs {
-  width: 220rpx;
+  width: 260rpx;
   display: flex;
   gap: 10rpx;
   align-items: center;
 }
 .refund-inputs.single { width: 150rpx; }
+.refund-qty-stepper {
+  display: flex;
+  align-items: center;
+  width: 138rpx;
+  height: 64rpx;
+  overflow: hidden;
+  border: 1rpx solid #dedede;
+  border-radius: 8rpx;
+  background: #f7f7f7;
+}
+.refund-qty-stepper.disabled { opacity: 0.55; }
+.refund-qty-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42rpx;
+  height: 100%;
+  color: #333;
+  font-size: 30rpx;
+  line-height: 1;
+}
+.refund-qty-btn.disabled { color: #c8c8c8; }
+.refund-qty-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  color: #1a1a1a;
+  font-size: 24rpx;
+}
 .panel-input {
   width: 100rpx;
   height: 64rpx;

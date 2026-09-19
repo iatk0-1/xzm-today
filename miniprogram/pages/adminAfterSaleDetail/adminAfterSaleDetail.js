@@ -207,13 +207,17 @@ Page({
       ? e.currentTarget.dataset.decision : 'approve';
     const reviewItems = ((this.data.afterSale && this.data.afterSale.items) || [])
       .filter(item => item.status === 'pending')
-      .map(item => ({
-        ...item,
-        selected: true,
-        reviewQty: String(item.requestedQty || item.qty),
-        reviewAmount: Number(item.requestedRefundAmount || item.refundAmount || 0).toFixed(2),
-        reviewType: item.afterSaleType
-      }));
+      .map(item => {
+        const reviewQtyLimit = Math.max(1, Number(item.requestedQty || item.qty || 1));
+        return {
+          ...item,
+          selected: true,
+          reviewQty: String(reviewQtyLimit),
+          reviewQtyLimit,
+          reviewAmount: Number(item.requestedRefundAmount || item.refundAmount || 0).toFixed(2),
+          reviewType: item.afterSaleType
+        };
+      });
     this.setData({
       showReviewModal: true,
       reviewDecision: decision,
@@ -246,12 +250,34 @@ Page({
     this.setData({ [`reviewItems[${index}].selected`]: !this.data.reviewItems[index].selected });
   },
 
-  onReviewQtyInput: function(e) {
+  updateReviewQty: function(index, nextQty) {
+    const item = this.data.reviewItems[index];
+    if (!item) return;
+
+    const maxQty = Math.max(1, Number(item.reviewQtyLimit || item.requestedQty || item.qty || 1));
+    const qty = Math.min(maxQty, Math.max(1, Number(nextQty) || 1));
+    const requestedAmount = Number(item.requestedRefundAmount || item.refundAmount || 0);
+    const amountLimit = Math.min(requestedAmount, Number(item.salePrice || 0) * qty);
+    const currentAmount = Number(item.reviewAmount);
+    const reviewAmount = Number.isFinite(currentAmount) && currentAmount > 0
+      ? Math.min(currentAmount, amountLimit).toFixed(2)
+      : amountLimit.toFixed(2);
+    this.setData({
+      [`reviewItems[${index}].reviewQty`]: String(qty),
+      [`reviewItems[${index}].reviewAmount`]: reviewAmount
+    });
+  },
+
+  decreaseReviewQty: function(e) {
     const index = Number(e.currentTarget.dataset.index);
     const item = this.data.reviewItems[index];
-    const raw = String(e.detail.value || '').replace(/\D/g, '');
-    const qty = raw ? Math.min(item.qty, Math.max(1, Number(raw))) : '';
-    this.setData({ [`reviewItems[${index}].reviewQty`]: qty === '' ? '' : String(qty) });
+    this.updateReviewQty(index, Number(item && item.reviewQty) - 1);
+  },
+
+  increaseReviewQty: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.reviewItems[index];
+    this.updateReviewQty(index, Number(item && item.reviewQty) + 1);
   },
 
   onReviewAmountInput: function(e) {
@@ -282,11 +308,13 @@ Page({
         const invalid = this.data.reviewItems.find(item => {
           const qty = Number(item.reviewQty);
           const amount = Number(item.reviewAmount);
+          const amountByQty = Number(item.salePrice || 0) * qty;
           return !item.selected
             ? false
-            : !Number.isInteger(qty) || qty < 1 || qty > Number(item.requestedQty || item.qty)
+            : !Number.isInteger(qty) || qty < 1 || qty > Number(item.reviewQtyLimit || item.requestedQty || item.qty)
               || !Number.isFinite(amount) || amount <= 0
-              || amount > Number(item.requestedRefundAmount || item.refundAmount);
+              || amount > Number(item.requestedRefundAmount || item.refundAmount)
+              || amount > amountByQty;
         });
         if (invalid) {
           wx.hideLoading();

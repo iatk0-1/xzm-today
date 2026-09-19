@@ -52,7 +52,10 @@
           </view>
           <view class="goods-status">
             <text class="status-tag {{item.status}}">{{item.displayStatus}}</text>
-            <text class="qty-info">数量：{{item.qty}}件</text>
+            <text class="qty-info">可申请：{{item.qty}}件</text>
+          </view>
+          <view class="after-sale-limit" wx:if="{{item.reservedQty > 0}}">
+            已售后占用 {{item.reservedQty}}件 / ¥{{item.reservedAmount}}
           </view>
           <view class="goods-price-row">
             <text class="price">¥ {{item.salePrice}}</text>
@@ -61,13 +64,17 @@
           <view class="refund-edit-row" wx:if="{{item.selected}}" catchtap="noop">
             <view class="refund-edit-field">
               <text class="refund-edit-label">申请数量</text>
-              <input
-                class="refund-edit-input"
-                type="number"
-                value="{{item.selectedQty}}"
-                data-index="{{index}}"
-                bindinput="onRefundQtyInput"
-                catchtap="noop" />
+              <view class="refund-qty-stepper">
+                <view
+                  class="refund-qty-btn {{item.selectedQty <= 1 ? 'disabled' : ''}}"
+                  data-index="{{index}}"
+                  catchtap="decreaseRefundQty">-</view>
+                <view class="refund-qty-value">{{item.selectedQty}}</view>
+                <view
+                  class="refund-qty-btn {{item.selectedQty >= item.qty ? 'disabled' : ''}}"
+                  data-index="{{index}}"
+                  catchtap="increaseRefundQty">+</view>
+              </view>
               <text class="refund-edit-unit">件</text>
             </view>
             <view class="refund-edit-field">
