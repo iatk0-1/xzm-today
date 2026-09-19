@@ -325,14 +325,16 @@ page {
 .waterfall-column {
   display: flex;
   flex-direction: column;
-  width: calc(50% - 10rpx);  /* 两列，减去间隙 */
-  padding-right: 10rpx;
+  /* 由 flex 平分可用宽度，避免列宽和内边距叠加后右侧留白 */
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  padding-right: 0;
   box-sizing: border-box;
 }
 
 .waterfall-column:last-child {
-  padding-right: 0;
-  padding-left: 10rpx;
+  margin-left: 20rpx;
 }
 
 .product-item {
