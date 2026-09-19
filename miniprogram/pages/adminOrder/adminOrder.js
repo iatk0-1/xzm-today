@@ -15,6 +15,12 @@ Page({
     orderGroups: [],       // 订单分组列表
     allSelected: false,
     selectedItems: [],     // 已选发货项
+    pendingShipItems: [],  // 跨筛选条件累计的待发货项
+    pendingOrderGroups: [],
+    pendingOrderCount: 0,
+    pendingItemCount: 0,
+    pendingTotalQty: 0,
+    showPendingShipList: false,
     loading: false,
     showSkuModal: false,
     showPreviewModal: false,
@@ -69,6 +75,10 @@ Page({
     this.setData({ logisticsIndex: parseInt(e.detail.value) });
   },
 
+  getPendingItemKey: function(item) {
+    return item.uniqueKey || [item.orderId || '', item.orderItemId || '', item.skuId || ''].join('_');
+  },
+
   // ==================== 商品搜索 ====================
 
   // 加载所有未发货商品明细（进入页面时调用）
@@ -86,6 +96,8 @@ Page({
       
       this.setData({
         orderGroups: grouped.groups,
+        selectedItems: this.collectSelectedItems(grouped.groups),
+        allSelected: this.isAllGroupsSelected(grouped.groups),
         blockedAfterSaleCount: grouped.blockedAfterSaleCount,
         hasMore: false,
         page: 1
@@ -382,6 +394,8 @@ Page({
       
       this.setData({
         orderGroups: grouped.groups,
+        selectedItems: this.collectSelectedItems(grouped.groups),
+        allSelected: this.isAllGroupsSelected(grouped.groups),
         blockedAfterSaleCount: grouped.blockedAfterSaleCount,
         hasMore: false,
         page: 1
@@ -397,6 +411,10 @@ Page({
   // 按订单分组
   groupByOrder: function(items) {
     const groupsMap = {};
+    const pendingMap = {};
+    (this.data.pendingShipItems || []).forEach(pendingItem => {
+      pendingMap[this.getPendingItemKey(pendingItem)] = pendingItem;
+    });
 
     items.forEach(item => {
       const key = item.orderId;
@@ -414,8 +432,12 @@ Page({
         };
       }
 
+      const uniqueKey = [item.orderId, item.orderItemId, item.skuId].join('_');
+      const pendingItem = pendingMap[uniqueKey];
+      const unshippedQty = Math.max(0, item.unshippedQty || 0);
       groupsMap[key].items.push({
         orderItemId: item.orderItemId,
+        uniqueKey,
         productId: item.productId,
         productName: item.productName,
         productImage: item.productImage,
@@ -430,9 +452,9 @@ Page({
         afterSaleStatusText: item.afterSaleStatusText || (item.afterSaleStatus ? '售后' : ''),
         afterSaleSummary: item.afterSaleSummary || null,
         afterSaleStatus: item.afterSaleStatus,
-        canShip: (item.unshippedQty || 0) > 0,
-        shipQty: Math.max(0, item.unshippedQty || 0),
-        selected: false
+        canShip: unshippedQty > 0,
+        shipQty: pendingItem ? Math.min(Number(pendingItem.shipQty) || 0, unshippedQty) : unshippedQty,
+        selected: Boolean(pendingItem)
       });
     });
 
@@ -452,10 +474,40 @@ Page({
         return timeB - timeA;
       });
 
+    groups.forEach(group => {
+      const selectableItems = group.items.filter(item => item.canShip);
+      group.selected = selectableItems.length > 0 && selectableItems.every(item => item.selected);
+    });
+
     return { groups, blockedAfterSaleCount };
   },
 
   // ==================== 选择逻辑 ====================
+
+  collectSelectedItems: function(orderGroups) {
+    const selectedItems = [];
+    orderGroups.forEach(group => {
+      group.items.forEach(item => {
+        if (!item.canShip || !item.selected) return;
+        selectedItems.push({
+          ...item,
+          orderId: group.orderId,
+          adminSeqNo: group.adminSeqNo,
+          orderNo: group.orderNo,
+          createdAt: group.createdAt,
+          recipientName: group.recipientName,
+          recipientPhone: group.recipientPhone,
+          recipientAddress: group.recipientAddress
+        });
+      });
+    });
+    return selectedItems;
+  },
+
+  isAllGroupsSelected: function(orderGroups) {
+    const selectableGroups = orderGroups.filter(group => group.items.some(item => item.canShip));
+    return selectableGroups.length > 0 && selectableGroups.every(group => group.selected);
+  },
 
   toggleSelectAll: function() {
     const allSelected = !this.data.allSelected;
@@ -504,43 +556,35 @@ Page({
   },
 
   updateSelectedItems: function(orderGroups) {
-    const selectedItems = [];
+    const selectedItems = this.collectSelectedItems(orderGroups);
+    const pendingMap = {};
+    (this.data.pendingShipItems || []).forEach(item => {
+      pendingMap[this.getPendingItemKey(item)] = item;
+    });
 
+    // 只同步当前筛选结果，其他筛选条件下的待发货项继续保留。
     orderGroups.forEach(group => {
       group.items.forEach(item => {
+        const key = this.getPendingItemKey(item);
         if (item.canShip && item.selected) {
-          selectedItems.push({
-            orderItemId: item.orderItemId,
-            productId: item.productId,
-            productName: item.productName,
-            productImage: item.productImage,
-            skuId: item.skuId,
-            skuSpec: item.skuSpec,
-            skuSize: item.skuSize,
-            skuImage: item.skuImage,
-            totalQty: item.totalQty,
-            shippedQty: item.shippedQty,
-            unshippedQty: item.unshippedQty,
-            shipQty: item.shipQty || 0,  // 确保包含最新的发货数量
-            orderId: group.orderId,
-            orderNo: group.orderNo,
-            recipientName: group.recipientName,
-            recipientPhone: group.recipientPhone,
-            recipientAddress: group.recipientAddress
-          });
+          const selectedItem = selectedItems.find(item => this.getPendingItemKey(item) === key);
+          pendingMap[key] = selectedItem;
+        } else {
+          delete pendingMap[key];
         }
       });
     });
 
-    // 检查是否全选
-    const selectableGroups = orderGroups.filter(g => g.items.some(item => item.canShip));
-    const allSelected = selectableGroups.length > 0 && selectableGroups.every(g => g.selected);
-
+    const pendingShipItems = Object.values(pendingMap).filter(Boolean);
     this.setData({
       orderGroups,
       selectedItems,
-      allSelected
+      allSelected: this.isAllGroupsSelected(orderGroups)
     });
+    this.updatePendingShipSummary(pendingShipItems);
+    if (pendingShipItems.length === 0) {
+      this.closePendingShipList();
+    }
   },
 
   onShipQtyInput: function(e) {
@@ -551,7 +595,7 @@ Page({
     const item = this.data.orderGroups[groupIndex].items[itemIndex];
 
     // 限制最大值为未发货数量
-    item.shipQty = Math.min(value, item.unshippedQty);
+    item.shipQty = Math.max(0, Math.min(value, item.unshippedQty));
 
     const orderGroups = [...this.data.orderGroups];
     orderGroups[groupIndex].items[itemIndex] = item;
@@ -616,14 +660,182 @@ Page({
         selectedItems[selectedItemIndex].shipQty = newShipQty;
         this.setData({ selectedItems });
       }
+
+      const pendingShipItems = this.data.pendingShipItems.map(pendingItem => {
+        return this.getPendingItemKey(pendingItem) === this.getPendingItemKey(item)
+          ? { ...pendingItem, shipQty: newShipQty }
+          : pendingItem;
+      });
+      this.updatePendingShipSummary(pendingShipItems);
     }
+  },
+
+  // ==================== 待发货列表 ====================
+
+  updatePendingShipSummary: function(pendingShipItems) {
+    const orderIds = {};
+    const groupsMap = {};
+    pendingShipItems.forEach((item, index) => {
+      orderIds[item.orderId] = true;
+      if (!groupsMap[item.orderId]) {
+        groupsMap[item.orderId] = {
+          orderId: item.orderId,
+          adminSeqNo: item.adminSeqNo || '',
+          orderNo: item.orderNo || item.orderId,
+          createdAt: item.createdAt || '',
+          recipientName: item.recipientName || '',
+          recipientPhone: item.recipientPhone || '',
+          recipientAddress: item.recipientAddress || '',
+          items: []
+        };
+      }
+      groupsMap[item.orderId].items.push({ ...item, pendingIndex: index });
+    });
+    this.setData({
+      pendingShipItems,
+      pendingOrderGroups: Object.values(groupsMap),
+      pendingOrderCount: Object.keys(orderIds).length,
+      pendingItemCount: pendingShipItems.length,
+      pendingTotalQty: pendingShipItems.reduce((sum, item) => sum + (Number(item.shipQty) || 0), 0)
+    });
+  },
+
+  openPendingShipList: function() {
+    if (this.data.pendingShipItems.length === 0) {
+      wx.showToast({ title: '请先选择待发货订单', icon: 'none' });
+      return;
+    }
+    this.setData({ showPendingShipList: true });
+  },
+
+  closePendingShipList: function() {
+    this.setData({ showPendingShipList: false });
+  },
+
+  stopPendingShipEvent: function() {},
+
+  removePendingShipItem: function(e) {
+    const index = Number(e.currentTarget.dataset.pendingIndex);
+    if (!Number.isInteger(index) || index < 0 || index >= this.data.pendingShipItems.length) return;
+    const pendingShipItems = this.data.pendingShipItems.filter((item, itemIndex) => itemIndex !== index);
+    const removedKey = this.getPendingItemKey(this.data.pendingShipItems[index]);
+    const orderGroups = this.data.orderGroups.map(group => ({
+      ...group,
+      items: group.items.map(item => item.uniqueKey === removedKey ? { ...item, selected: false } : item)
+    }));
+    orderGroups.forEach(group => {
+      const selectableItems = group.items.filter(item => item.canShip);
+      group.selected = selectableItems.length > 0 && selectableItems.every(item => item.selected);
+    });
+    this.setData({
+      orderGroups,
+      selectedItems: this.collectSelectedItems(orderGroups),
+      allSelected: this.isAllGroupsSelected(orderGroups)
+    });
+    this.updatePendingShipSummary(pendingShipItems);
+    if (pendingShipItems.length === 0) {
+      this.closePendingShipList();
+    }
+  },
+
+  clearPendingShipItems: function() {
+    if (this.data.pendingShipItems.length === 0) return;
+    wx.showModal({
+      title: '清空待发货列表',
+      content: '清空后需要重新选择订单，确定继续吗？',
+      success: res => {
+        if (res.confirm) {
+          const orderGroups = this.data.orderGroups.map(group => ({
+            ...group,
+            selected: false,
+            items: group.items.map(item => ({ ...item, selected: false }))
+          }));
+          this.updatePendingShipSummary([]);
+          this.setData({ orderGroups, selectedItems: [], allSelected: false });
+          this.closePendingShipList();
+        }
+      }
+    });
+  },
+
+  onPendingShipQtyInput: function(e) {
+    const index = Number(e.currentTarget.dataset.pendingIndex);
+    const pendingShipItems = [...this.data.pendingShipItems];
+    const item = pendingShipItems[index];
+    if (!item) return;
+    const value = parseInt(e.detail.value, 10);
+    item.shipQty = Math.max(0, Math.min(Number.isNaN(value) ? 0 : value, item.unshippedQty || 0));
+    this.updatePendingShipSummary(pendingShipItems);
+  },
+
+  onPendingShipDecrease: function(e) {
+    const index = Number(e.currentTarget.dataset.pendingIndex);
+    const pendingShipItems = [...this.data.pendingShipItems];
+    const item = pendingShipItems[index];
+    if (!item) return;
+    item.shipQty = Math.max(0, item.shipQty - 1);
+    this.updatePendingShipSummary(pendingShipItems);
+  },
+
+  onPendingShipIncrease: function(e) {
+    const index = Number(e.currentTarget.dataset.pendingIndex);
+    const pendingShipItems = [...this.data.pendingShipItems];
+    const item = pendingShipItems[index];
+    if (!item) return;
+    item.shipQty = Math.min(item.unshippedQty || 0, item.shipQty + 1);
+    this.updatePendingShipSummary(pendingShipItems);
+  },
+
+  validatePendingShipItems: function() {
+    const invalidItem = this.data.pendingShipItems.find(item =>
+      !item.orderId || !item.orderItemId || !item.skuId ||
+      !item.canShip ||
+      !Number.isInteger(Number(item.shipQty)) || Number(item.shipQty) <= 0 ||
+      Number(item.shipQty) > Number(item.unshippedQty || 0)
+    );
+    if (invalidItem) {
+      wx.showToast({ title: `${invalidItem.productName || '商品'}发货数量或状态无效`, icon: 'none' });
+      return false;
+    }
+    return this.data.pendingShipItems.length > 0;
+  },
+
+  // 提交前刷新待发数量，防止列表停留期间订单或售后状态发生变化。
+  refreshPendingShipItems: async function() {
+    const skuIds = [...new Set(this.data.pendingShipItems.map(item => item.skuId).filter(Boolean))];
+    if (skuIds.length === 0) return;
+
+    const res = await api.get('/shipments/pending-items?skuIds=' + encodeURIComponent(skuIds.join(',')));
+    const latestItems = Array.isArray(res) ? res : [];
+    const latestMap = {};
+    latestItems.forEach(item => {
+      latestMap[item.orderId + '_' + item.orderItemId + '_' + item.skuId] = item;
+    });
+
+    const refreshedItems = this.data.pendingShipItems.map(item => {
+      const latest = latestMap[item.uniqueKey || (item.orderId + '_' + item.orderItemId + '_' + item.skuId)];
+      if (!latest) {
+        return { ...item, canShip: false, unshippedQty: 0, shipQty: 0 };
+      }
+      const unshippedQty = Math.max(0, Number(latest.unshippedQty) || 0);
+      return {
+        ...item,
+        unshippedQty,
+        shippedQty: latest.shippedQty,
+        afterSaleQty: latest.afterSaleQty || 0,
+        afterSaleStatus: latest.afterSaleStatus,
+        afterSaleStatusText: latest.afterSaleStatusText || item.afterSaleStatusText,
+        canShip: unshippedQty > 0,
+        shipQty: Math.min(Number(item.shipQty) || 0, unshippedQty)
+      };
+    });
+    this.updatePendingShipSummary(refreshedItems);
   },
 
   // ==================== 批量发货 ====================
 
-  batchShip: function() {
-    if (this.data.selectedItems.length === 0) {
-      wx.showToast({ title: '请选择要发货的商品', icon: 'none' });
+  batchShip: async function() {
+    if (!this.data.pendingShipItems.length || !this.validatePendingShipItems()) {
       return;
     }
 
@@ -632,10 +844,25 @@ Page({
       return;
     }
 
+    wx.showLoading({ title: '校验中...' });
+    try {
+      await this.refreshPendingShipItems();
+    } catch (err) {
+      console.error('刷新待发货状态失败:', err);
+      wx.hideLoading();
+      wx.showToast({ title: '校验待发货状态失败，请重试', icon: 'none' });
+      return;
+    }
+    wx.hideLoading();
+
+    if (!this.validatePendingShipItems()) {
+      return;
+    }
+
     // 检查剩余单号：按收件人分组后需要的面单数 vs 剩余余额
     const account = this.data.logisticsAccounts[this.data.logisticsIndex];
     const groupsMap = {};
-    this.data.selectedItems.forEach(item => {
+    this.data.pendingShipItems.forEach(item => {
       const key = `${item.recipientName}|${item.recipientPhone}|${item.recipientAddress}`;
       groupsMap[key] = true;
     });
@@ -648,6 +875,7 @@ Page({
       return;
     }
 
+    this.setData({ showPendingShipList: false });
     // 生成发货预览
     this.generatePreview();
   },
@@ -656,7 +884,7 @@ Page({
     // 按收件人信息分组
     const groupsMap = {};
 
-    this.data.selectedItems.forEach(item => {
+    this.data.pendingShipItems.forEach(item => {
       const key = `${item.recipientName}|${item.recipientPhone}|${item.recipientAddress}`;
 
       if (!groupsMap[key]) {
@@ -689,6 +917,9 @@ Page({
   },
 
   confirmBatchShip: async function() {
+    if (!this.validatePendingShipItems()) {
+      return;
+    }
     wx.showLoading({ title: '发货中...' });
 
     try {
@@ -700,7 +931,7 @@ Page({
       await api.post('/shipments/batch-create', {
         accountId: accountId,
         expressCode: expressCode,  // 传递快递公司编码
-        items: this.data.selectedItems.map(item => ({
+        items: this.data.pendingShipItems.map(item => ({
           orderId: item.orderId,
           orderItemId: item.orderItemId,
           skuId: item.skuId,
@@ -714,8 +945,14 @@ Page({
       // 清除选中状态并重新加载
       this.setData({
         selectedItems: [],
+        pendingShipItems: [],
+        pendingOrderGroups: [],
+        pendingOrderCount: 0,
+        pendingItemCount: 0,
+        pendingTotalQty: 0,
         allSelected: false,
-        showPreviewModal: false
+        showPreviewModal: false,
+        showPendingShipList: false
       });
 
       // 自动重新加载未发货数据

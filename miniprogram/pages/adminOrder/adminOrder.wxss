@@ -3,6 +3,15 @@ page { background-color: #f2f2f2; }
 .refund-tag { color: #e74c3c; font-size: 22rpx; margin-left: 8rpx; }
 .item-checkbox.disabled { background: #ddd; }
 .container { padding: 16rpx; padding-bottom: 120rpx; box-sizing: border-box; }
+.admin-order-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 800;
+  width: 100%;
+  margin-top: -16rpx;
+  padding-top: 16rpx;
+  background: #f2f2f2;
+}
 
 .search-section { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; width: 100%; max-width: 100%; box-sizing: border-box; }
 .search-box { position: relative; }
@@ -37,6 +46,72 @@ page { background-color: #f2f2f2; }
 .tag-count { color: #999; font-size: 20rpx; }
 .remove-btn { color: #d32f2f; font-size: 28rpx; margin-left: 6rpx; }
 .clear-all { margin-top: 12rpx; font-size: 24rpx; color: #999; background: none; border: none; padding: 0; height: auto; line-height: normal; }
+
+.pending-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000; overflow: hidden; }
+.pending-modal-mask { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, .48); }
+.pending-modal-content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 88vh;
+  max-height: 88vh;
+  background: #fff;
+  border-radius: 20rpx 20rpx 0 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+.pending-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 24rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  flex-shrink: 0;
+}
+.pending-modal-title { display: flex; align-items: baseline; gap: 12rpx; min-width: 0; font-size: 30rpx; font-weight: 600; color: #333; }
+.pending-modal-count { font-size: 22rpx; font-weight: 400; color: #999; }
+.pending-modal-close { flex-shrink: 0; color: #576b95; font-size: 24rpx; }
+.pending-modal-list {
+  flex: 1;
+  width: 100%;
+  height: 0;
+  min-height: 0;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+}
+.pending-order-group { border-bottom: 1rpx solid #f0f0f0; }
+.pending-order-group:last-child { border-bottom: none; }
+.pending-order-header { padding: 20rpx 0; background: #fafafa; }
+.pending-order-items { padding: 8rpx 0 16rpx; }
+.pending-order-item { padding: 16rpx 0; }
+.pending-item { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 0; border-bottom: 1rpx solid #f5f5f5; }
+.pending-item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
+.pending-order-no, .pending-product-name { font-size: 24rpx; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pending-product-name { font-weight: 600; }
+.pending-item-sku, .pending-recipient { font-size: 20rpx; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pending-item-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 10rpx; flex-shrink: 0; }
+.pending-remove, .pending-clear { color: #d32f2f; font-size: 22rpx; }
+.pending-actions { display: flex; justify-content: flex-end; padding: 16rpx 0; }
+.pending-clear { color: #999; }
+.pending-modal-footer {
+  padding: 16rpx 24rpx 24rpx;
+  padding-bottom: calc(16rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid #f0f0f0;
+  background: #fff;
+  flex-shrink: 0;
+}
+.pending-logistics-row { display: flex; align-items: center; gap: 16rpx; margin-bottom: 14rpx; }
+.pending-logistics-picker { flex: 1; min-width: 0; height: 68rpx; background: #f5f5f5; border-radius: 8rpx; display: flex; align-items: center; padding: 0 20rpx; box-sizing: border-box; }
+.pending-picker-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 26rpx; color: #333; }
+.pending-quota { flex-shrink: 0; font-size: 22rpx; color: #777; }
+.pending-footer-actions { display: flex; align-items: center; gap: 16rpx; }
+.pending-footer-actions .pending-clear { flex-shrink: 0; font-size: 24rpx; }
+.pending-batch-ship-btn { flex: 1; }
 
 /* 工具栏：物流 + 全选 + 批量发货 一行排列 */
 .toolbar {
