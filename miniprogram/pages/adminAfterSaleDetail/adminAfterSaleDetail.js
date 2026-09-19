@@ -23,7 +23,9 @@ Page({
     negotiatedReason: '',
     negotiatedNote: '',
     // 售后日志
-    logs: []
+    logs: [],
+    // 原订单发货单
+    shipments: []
   },
 
   onLoad: function(options) {
@@ -53,6 +55,8 @@ Page({
 
       // 加载售后日志
       this.loadLogs();
+      // 加载原订单发货单，管理员审核退货退款时需要核对关联物流。
+      this.loadShipmentInfo(res.orderId);
     } catch (err) {
       wx.hideLoading();
       console.error('加载售后详情失败:', err);
@@ -61,11 +65,19 @@ Page({
   },
 
   formatAfterSaleDetail: function(res) {
-    const items = (res.items || []).map(item => ({
-      ...item,
-      statusDisplay: this.getStatusDisplay(item.status)
-    }));
     const orderDetail = res.orderDetail ? this.formatOrderDetail(res.orderDetail) : null;
+    const orderItemsById = (orderDetail && orderDetail.items || []).reduce((map, item) => {
+      map[String(item.id)] = item;
+      return map;
+    }, {});
+    const items = (res.items || []).map(item => {
+      const orderItem = orderItemsById[String(item.orderItemId)] || {};
+      return {
+        ...item,
+        displayImage: item.productImage || item.skuImageUrl || orderItem.skuImageUrl || orderItem.productImage || '',
+        statusDisplay: this.getStatusDisplay(item.status)
+      };
+    });
     const hasApprovedRefundItems = items.some(item =>
       item.afterSaleType === 'refund' && item.status === 'approved'
     ) || (items.length === 0 && res.status === 'approved' && res.type === 'refund');
@@ -82,8 +94,72 @@ Page({
       typeDisplay: this.getAfterSaleTypeDisplay(res.type),
       createdAtDisplay: this.formatDateTime(res.createdAt),
       updatedAtDisplay: this.formatDateTime(res.updatedAt),
-      returnShippedAtDisplay: this.formatDateTime(res.returnShippedAt)
+      returnShippedAtDisplay: this.formatDateTime(res.returnShippedAt),
+      evidenceImages: this.parseEvidenceUrls(res.evidenceUrls),
+      hasReturnLogistics: res.type === 'return_refund',
+      hasReturnShipment: Boolean(res.returnExpressNo)
     };
+  },
+
+  parseEvidenceUrls: function(raw) {
+    if (Array.isArray(raw)) {
+      return raw.filter(Boolean).map(url => String(url).trim()).filter(Boolean);
+    }
+    if (!raw || typeof raw !== 'string') return [];
+
+    const value = raw.trim();
+    if (!value) return [];
+
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(Boolean).map(url => String(url).trim()).filter(Boolean);
+      }
+    } catch (err) {
+      // 兼容历史数据：凭证可能是逗号字符串或带中括号的伪数组字符串。
+    }
+
+    const normalized = value
+      .replace(/^\s*\[\s*/, '')
+      .replace(/\s*\]\s*$/, '');
+    return normalized
+      .split(',')
+      .map(url => url.trim().replace(/^['"]|['"]$/g, ''))
+      .filter(Boolean);
+  },
+
+  // 加载原订单发货单，支持分批发货。
+  loadShipmentInfo: async function(orderId) {
+    if (!orderId) return;
+    try {
+      const shipments = await api.get(`/orders/${orderId}/shipments/detail`);
+      const formatted = (shipments || []).map(shipment => ({
+        ...shipment,
+        shippedAtDisplay: this.formatDateTime(shipment.shippedAt),
+        expressName: this.getExpressName(shipment.expressCode),
+        items: (shipment.items || []).map(item => ({
+          ...item,
+          specDisplay: [item.spec || item.productSpec, item.size].filter(Boolean).join(' / '),
+          displayImage: item.skuImageUrl || item.productImage || ''
+        }))
+      }));
+      this.setData({ shipments: formatted });
+    } catch (err) {
+      console.error('加载关联物流失败:', err);
+      this.setData({ shipments: [] });
+    }
+  },
+
+  getExpressName: function(code) {
+    const names = {
+      ZTO: '中通快递',
+      YTO: '圆通速递',
+      STO: '申通快递',
+      YD: '韵达快递',
+      SF: '顺丰速运',
+      EMS: '邮政 EMS'
+    };
+    return names[code] || code || '未知物流';
   },
 
   formatOrderDetail: function(orderDetail) {
@@ -257,11 +333,10 @@ Page({
     const maxQty = Math.max(1, Number(item.reviewQtyLimit || item.requestedQty || item.qty || 1));
     const qty = Math.min(maxQty, Math.max(1, Number(nextQty) || 1));
     const requestedAmount = Number(item.requestedRefundAmount || item.refundAmount || 0);
-    const amountLimit = Math.min(requestedAmount, Number(item.salePrice || 0) * qty);
-    const currentAmount = Number(item.reviewAmount);
-    const reviewAmount = Number.isFinite(currentAmount) && currentAmount > 0
-      ? Math.min(currentAmount, amountLimit).toFixed(2)
-      : amountLimit.toFixed(2);
+    const unitSalePrice = Number(item.salePrice || 0);
+    // 数量变化时按商品单价重新计算，不沿用管理员之前手动调整的退款比例。
+    const amountBySalePrice = unitSalePrice * qty;
+    const reviewAmount = Math.min(requestedAmount, amountBySalePrice).toFixed(2);
     this.setData({
       [`reviewItems[${index}].reviewQty`]: String(qty),
       [`reviewItems[${index}].reviewAmount`]: reviewAmount
@@ -525,6 +600,10 @@ Page({
     clipboard.copyText(afterSale && afterSale.returnExpressNo, '快递单号');
   },
 
+  copyShipmentExpressNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.expressNo, '快递单号');
+  },
+
   copyOrderNo: function() {
     const afterSale = this.data.afterSale || {};
     clipboard.copyText(afterSale.outTradeNo, '订单号');
@@ -535,10 +614,24 @@ Page({
     clipboard.copyRecipient(orderDetail || {});
   },
 
+  // 预览页面中的商品图片
+  previewPageImage: function(e) {
+    const url = e.currentTarget.dataset.imageUrl;
+    if (!url) {
+      wx.showToast({ title: '没有图片', icon: 'none' });
+      return;
+    }
+
+    wx.previewImage({
+      current: url,
+      urls: [url]
+    });
+  },
+
   // 预览凭证图片
   previewImage: function(e) {
     const index = e.currentTarget.dataset.index;
-    const urls = this.data.afterSale.evidenceUrls ? this.data.afterSale.evidenceUrls.split(',') : [];
+    const urls = (this.data.afterSale && this.data.afterSale.evidenceImages) || [];
     
     if (urls.length === 0) {
       wx.showToast({ title: '没有图片', icon: 'none' });

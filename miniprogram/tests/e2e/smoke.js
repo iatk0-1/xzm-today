@@ -1,13 +1,6 @@
 const assert = require('node:assert/strict');
-const { spawn } = require('node:child_process');
-const path = require('node:path');
-const automator = require('miniprogram-automator');
 const config = require('../../utils/config');
-
-const DEFAULT_CLI_PATH = 'D:\\Program Files (x86)\\Tencent\\微信web开发者工具\\cli.bat';
-const cliPath = process.env.WECHAT_DEVTOOLS_CLI || DEFAULT_CLI_PATH;
-const projectPath = path.resolve(__dirname, '../../..');
-const port = Number(process.env.WECHAT_DEVTOOLS_PORT || 9420);
+const { connectDeveloperTools, disconnectDeveloperTools } = require('./devtools');
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const withTimeout = (promise, milliseconds, label) => Promise.race([
@@ -19,65 +12,6 @@ const withTimeout = (promise, milliseconds, label) => Promise.race([
 
 function step(message) {
   process.stdout.write(`[e2e] ${message}\n`);
-}
-
-async function connectDeveloperTools() {
-  const wsEndpoint = `ws://127.0.0.1:${port}`;
-  try {
-    step(`reusing automation endpoint ${wsEndpoint}`);
-    const miniProgram = await withTimeout(
-      automator.connect({ wsEndpoint }),
-      5000,
-      'reuse automation endpoint'
-    );
-    return { miniProgram, cli: null };
-  } catch (error) {
-    // No reusable automation session; start one below.
-  }
-
-  const cliDirectory = path.dirname(cliPath);
-  const cliExecutable = path.join(cliDirectory, 'node.exe');
-  const cliScript = path.join(cliDirectory, 'cli.js');
-  const cli = spawn(cliExecutable, [
-    cliScript,
-    'auto',
-    '--project', projectPath,
-    '--auto-port', String(port),
-    '--trust-project'
-  ], {
-    shell: false,
-    windowsHide: true,
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
-
-  let cliOutput = '';
-  cli.stdout.on('data', (chunk) => { cliOutput += chunk.toString(); });
-  cli.stderr.on('data', (chunk) => { cliOutput += chunk.toString(); });
-
-  const deadline = Date.now() + 120000;
-  let lastError;
-  step('starting WeChat Developer Tools automation');
-  while (Date.now() < deadline) {
-    try {
-      const miniProgram = await withTimeout(
-        automator.connect({ wsEndpoint }),
-        5000,
-        'connect automation endpoint'
-      );
-      return { miniProgram, cli };
-    } catch (error) {
-      lastError = error;
-      await delay(1000);
-    }
-  }
-
-  if (cli.exitCode === null) {
-    cli.kill();
-  }
-  throw new Error(
-    `Unable to connect to WeChat Developer Tools automation port ${port}: `
-      + `${lastError ? lastError.message : 'timeout'}\n${cliOutput}`
-  );
 }
 
 async function verifyBackend() {
@@ -141,12 +75,7 @@ async function run() {
       cartItemCount: cartItems.length
     }) + '\n');
   } finally {
-    if (miniProgram) {
-      miniProgram.disconnect();
-    }
-    if (cli && cli.exitCode === null) {
-      cli.kill();
-    }
+    disconnectDeveloperTools(miniProgram, cli);
   }
 }
 

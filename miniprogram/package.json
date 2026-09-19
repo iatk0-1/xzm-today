@@ -15,8 +15,5 @@
   },
   "dependencies": {
     "cos-wx-sdk-v5": "^1.7.0"
-  },
-  "devDependencies": {
-    "miniprogram-automator": "^0.12.1"
   }
 }

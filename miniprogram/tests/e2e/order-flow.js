@@ -2,11 +2,10 @@ const assert = require('node:assert/strict');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const path = require('node:path');
-const automator = require('miniprogram-automator');
 const config = require('../../utils/config');
+const { connectDeveloperTools, disconnectDeveloperTools } = require('./devtools');
 
 const execFileAsync = promisify(execFile);
-const wsEndpoint = `ws://127.0.0.1:${Number(process.env.WECHAT_DEVTOOLS_PORT || 9420)}`;
 const productId = process.env.E2E_PRODUCT_ID || '329866983975686144';
 const sshKey = process.env.XZM_DEV_SSH_KEY || path.join(process.env.USERPROFILE, '.ssh', 'xzm_dev.pem');
 const sshTarget = process.env.XZM_DEV_SSH_TARGET || 'root@101.34.57.84';
@@ -70,13 +69,10 @@ async function run() {
   );
 
   let miniProgram;
+  let cli;
   try {
     step('connecting to WeChat Developer Tools');
-    miniProgram = await withTimeout(
-      automator.connect({ wsEndpoint }),
-      10000,
-      'connect automation endpoint'
-    );
+    ({ miniProgram, cli } = await connectDeveloperTools());
 
     const userInfo = await miniProgram.callWxMethod('getStorageSync', config.USER_INFO_KEY);
     const accessToken = await miniProgram.callWxMethod('getStorageSync', config.TOKEN_KEY);
@@ -195,7 +191,7 @@ async function run() {
     if (miniProgram) {
       try { await miniProgram.restoreWxMethod('chooseAddress'); } catch (error) {}
       try { await miniProgram.restoreWxMethod('requestPayment'); } catch (error) {}
-      miniProgram.disconnect();
+      disconnectDeveloperTools(miniProgram, cli);
     }
   }
 }

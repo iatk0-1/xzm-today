@@ -54,7 +54,12 @@
     </view>
     <view class="order-items-list">
       <view class="order-item-row" wx:for="{{afterSale.orderDetail.items}}" wx:key="id">
-        <image class="item-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
+        <image
+          class="item-img"
+          src="{{item.skuImageUrl || item.productImage}}"
+          mode="aspectFill"
+          bindtap="previewPageImage"
+          data-image-url="{{item.skuImageUrl || item.productImage}}"></image>
         <view class="item-info">
           <view class="item-name">{{item.productName}}</view>
           <view class="item-sku">{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}</view>
@@ -83,7 +88,12 @@
     <view class="section-title">商品清单</view>
     <view class="items-list">
       <view class="item-row" wx:for="{{afterSale.items}}" wx:key="id">
-        <image class="item-img" src="{{item.productImage}}" mode="aspectFill"></image>
+        <image
+          class="item-img"
+          src="{{item.displayImage}}"
+          mode="aspectFill"
+          bindtap="previewPageImage"
+          data-image-url="{{item.displayImage}}"></image>
         <view class="item-info">
           <view class="item-name">{{item.productName}}</view>
           <view class="item-sku">{{item.skuSpec}} / {{item.skuSize}}</view>
@@ -105,12 +115,12 @@
   </view>
 
   <!-- 凭证图片 -->
-  <view class="section" wx:if="{{afterSale.evidenceUrls && afterSale.evidenceUrls.length > 0}}">
+  <view class="section" wx:if="{{afterSale.evidenceImages.length > 0}}">
     <view class="section-title">凭证图片</view>
     <view class="evidence-images">
       <image
         class="evidence-img"
-        wx:for="{{afterSale.evidenceUrls.split(',') }}"
+        wx:for="{{afterSale.evidenceImages}}"
         wx:key="*this"
         src="{{item}}"
         mode="aspectFill"
@@ -120,9 +130,9 @@
   </view>
 
   <!-- 退货物流 -->
-  <view class="section" wx:if="{{afterSale.type === 'return_refund' && afterSale.returnExpressNo}}">
+  <view class="section" wx:if="{{afterSale.hasReturnLogistics}}">
     <view class="section-title">退货物流</view>
-    <view class="logistics-info">
+    <view class="logistics-info" wx:if="{{afterSale.hasReturnShipment}}">
       <view class="logistics-row">
         <text class="logistics-label">快递公司</text>
         <text class="logistics-value">{{afterSale.returnExpressCode}}</text>
@@ -137,6 +147,7 @@
         <text class="logistics-value">{{afterSale.returnShippedAtDisplay}}</text>
       </view>
     </view>
+    <view class="no-logistics" wx:else>用户暂未填写退货物流信息</view>
   </view>
 
   <!-- 售后日志 -->
@@ -237,6 +248,12 @@
               class="review-check {{item.selected ? 'selected' : ''}}"
               data-index="{{index}}"
               bindtap="toggleReviewItem">{{item.selected ? '✓' : ''}}</view>
+            <image
+              class="review-item-img"
+              src="{{item.displayImage}}"
+              mode="aspectFill"
+              bindtap="previewPageImage"
+              data-image-url="{{item.displayImage}}"></image>
             <view class="review-item-info">
               <text class="review-item-name">{{item.productName}}</text>
               <text class="review-item-spec">{{item.skuSpec}} / {{item.skuSize}}</text>
@@ -374,6 +391,43 @@
       <view class="modal-actions">
         <view class="modal-btn cancel" bindtap="hideNegotiatedRefundModal">取消</view>
         <view class="modal-btn confirm" bindtap="submitNegotiatedRefund">确认退款</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 原订单发货物流 -->
+  <view class="section" wx:if="{{shipments.length > 0}}">
+    <view class="section-title">关联发货物流</view>
+    <view class="shipment-list">
+      <view class="shipment-card" wx:for="{{shipments}}" wx:key="id">
+        <view class="shipment-header">
+          <text class="shipment-title">发货单 {{index + 1}}</text>
+          <text class="shipment-time" wx:if="{{item.shippedAt}}">{{item.shippedAtDisplay}}</text>
+        </view>
+        <view class="logistics-row">
+          <text class="logistics-label">快递公司</text>
+          <text class="logistics-value">{{item.expressName}}</text>
+        </view>
+        <view class="logistics-row">
+          <text class="logistics-label">快递单号</text>
+          <text class="logistics-value">{{item.expressNo || '暂无单号'}}</text>
+          <text class="copy-btn" wx:if="{{item.expressNo}}" bindtap="copyShipmentExpressNo" data-express-no="{{item.expressNo}}">复制</text>
+        </view>
+        <view class="shipment-goods-list" wx:if="{{item.items.length > 0}}">
+          <view class="shipment-goods" wx:for="{{item.items}}" wx:for-item="goodsItem" wx:key="id">
+            <image
+              class="shipment-goods-img"
+              src="{{goodsItem.displayImage}}"
+              mode="aspectFill"
+              bindtap="previewPageImage"
+              data-image-url="{{goodsItem.displayImage}}"></image>
+            <view class="shipment-goods-info">
+              <text class="shipment-goods-name">{{goodsItem.productName || '商品'}}</text>
+              <text class="shipment-goods-spec">{{goodsItem.specDisplay}}</text>
+              <text class="shipment-goods-qty">×{{goodsItem.shipQty}}</text>
+            </view>
+          </view>
+        </view>
       </view>
     </view>
   </view>

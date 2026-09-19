@@ -2,11 +2,10 @@ const assert = require('node:assert/strict');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const path = require('node:path');
-const automator = require('miniprogram-automator');
 const config = require('../../utils/config');
+const { connectDeveloperTools, disconnectDeveloperTools } = require('./devtools');
 
 const execFileAsync = promisify(execFile);
-const wsEndpoint = `ws://127.0.0.1:${Number(process.env.WECHAT_DEVTOOLS_PORT || 9420)}`;
 const productId = process.env.E2E_PRODUCT_ID || '329866983975686144';
 const skuId = process.env.E2E_SKU_ID || '329866983992463360';
 const existingShippedOrderId = process.env.E2E_SHIPPED_ORDER_ID || '337515865090035712';
@@ -408,8 +407,9 @@ async function prepareOrdersViaUi(miniProgram, accessToken, orderIds) {
 async function run() {
   assert.equal(process.env.E2E_ALLOW_MUTATION, 'true', 'set E2E_ALLOW_MUTATION=true');
   let miniProgram;
+  let cli;
   try {
-    miniProgram = await withTimeout(automator.connect({ wsEndpoint }), 10000, 'connect automation endpoint');
+    ({ miniProgram, cli } = await connectDeveloperTools());
     const indexPage = await miniProgram.reLaunch('/pages/index/index');
     await indexPage.waitFor(2000);
     const userInfo = await miniProgram.callWxMethod('getStorageSync', config.USER_INFO_KEY);
@@ -631,7 +631,7 @@ async function run() {
     if (miniProgram) {
       try { await miniProgram.restoreWxMethod('showModal'); } catch (error) {}
       try { await miniProgram.restoreWxMethod('showActionSheet'); } catch (error) {}
-      miniProgram.disconnect();
+      disconnectDeveloperTools(miniProgram, cli);
     }
   }
 }

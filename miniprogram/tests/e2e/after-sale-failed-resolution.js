@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
-const automator = require('miniprogram-automator');
 const config = require('../../utils/config');
+const { connectDeveloperTools, disconnectDeveloperTools } = require('./devtools');
 const {
   delay,
   withTimeout,
@@ -21,7 +21,6 @@ const {
   refundAfterSaleViaUi
 } = require('./after-sale-pre-shipment');
 
-const wsEndpoint = `ws://127.0.0.1:${Number(process.env.WECHAT_DEVTOOLS_PORT || 9420)}`;
 
 function step(message) {
   process.stdout.write(`[e2e-failed-resolution] ${message}\n`);
@@ -225,8 +224,9 @@ async function resolveByNegotiation(miniProgram, accessToken, afterSale) {
 async function run() {
   assert.equal(process.env.E2E_ALLOW_REAL_SHIPMENT, 'true', 'set E2E_ALLOW_REAL_SHIPMENT=true');
   let miniProgram;
+  let cli;
   try {
-    miniProgram = await withTimeout(automator.connect({ wsEndpoint }), 10000, 'connect automation endpoint');
+    ({ miniProgram, cli } = await connectDeveloperTools());
     const indexPage = await miniProgram.reLaunch('/pages/index/index');
     await indexPage.waitFor(2000);
     const userInfo = await miniProgram.callWxMethod('getStorageSync', config.USER_INFO_KEY);
@@ -311,7 +311,7 @@ async function run() {
       for (const method of ['showModal', 'showActionSheet', 'openBusinessView']) {
         try { await miniProgram.restoreWxMethod(method); } catch (error) {}
       }
-      miniProgram.disconnect();
+      disconnectDeveloperTools(miniProgram, cli);
     }
   }
 }

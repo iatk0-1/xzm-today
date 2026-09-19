@@ -315,12 +315,9 @@ Page({
       Number(item.salePrice) * cappedQty,
       Number(item.availableRefundAmount) || 0
     );
-    const currentAmount = Number(item.inputAmount);
     const nextAmount = cappedQty <= 0
       ? ''
-      : (Number.isFinite(currentAmount) && currentAmount > 0
-        ? Math.min(currentAmount, amountLimit).toFixed(2)
-        : amountLimit.toFixed(2));
+      : amountLimit.toFixed(2);
     this.setData({
       [`refundItems[${index}].selectedQty`]: String(cappedQty),
       [`refundItems[${index}].inputAmount`]: nextAmount

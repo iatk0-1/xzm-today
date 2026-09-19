@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
-const automator = require('miniprogram-automator');
 const config = require('../../utils/config');
+const { connectDeveloperTools, disconnectDeveloperTools } = require('./devtools');
 const {
   delay,
   withTimeout,
@@ -20,7 +20,6 @@ const {
   refundAfterSaleViaUi
 } = require('./after-sale-pre-shipment');
 
-const wsEndpoint = `ws://127.0.0.1:${Number(process.env.WECHAT_DEVTOOLS_PORT || 9420)}`;
 const completedOrderId = process.env.E2E_COMPLETED_ORDER_ID || '337776021967212544';
 const partialOrderId = process.env.E2E_PARTIAL_ORDER_ID || '337776022122401792';
 
@@ -224,8 +223,9 @@ async function run() {
     'set E2E_ALLOW_REAL_SHIPMENT=true to consume one real waybill'
   );
   let miniProgram;
+  let cli;
   try {
-    miniProgram = await withTimeout(automator.connect({ wsEndpoint }), 10000, 'connect automation endpoint');
+    ({ miniProgram, cli } = await connectDeveloperTools());
     const indexPage = await miniProgram.reLaunch('/pages/index/index');
     await indexPage.waitFor(2000);
     const userInfo = await miniProgram.callWxMethod('getStorageSync', config.USER_INFO_KEY);
@@ -424,7 +424,7 @@ async function run() {
       for (const method of ['showModal', 'showActionSheet', 'openBusinessView']) {
         try { await miniProgram.restoreWxMethod(method); } catch (error) {}
       }
-      miniProgram.disconnect();
+      disconnectDeveloperTools(miniProgram, cli);
     }
   }
 }

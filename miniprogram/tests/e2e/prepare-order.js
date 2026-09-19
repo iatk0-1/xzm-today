@@ -1,8 +1,7 @@
 const assert = require('node:assert/strict');
-const automator = require('miniprogram-automator');
 const config = require('../../utils/config');
+const { connectDeveloperTools, disconnectDeveloperTools } = require('./devtools');
 
-const wsEndpoint = `ws://127.0.0.1:${Number(process.env.WECHAT_DEVTOOLS_PORT || 9420)}`;
 const orderId = process.env.E2E_ORDER_ID;
 const skuId = process.env.E2E_SKU_ID;
 
@@ -57,13 +56,10 @@ async function run() {
   assert.ok(skuId, 'E2E_SKU_ID is required');
 
   let miniProgram;
+  let cli;
   try {
     step('connecting to WeChat Developer Tools');
-    miniProgram = await withTimeout(
-      automator.connect({ wsEndpoint }),
-      10000,
-      'connect automation endpoint'
-    );
+    ({ miniProgram, cli } = await connectDeveloperTools());
 
     step('waiting for the freshly opened project to compile');
     const indexPage = await withTimeout(
@@ -208,7 +204,7 @@ async function run() {
       purchaseQty: purchaseRecord.qty
     }) + '\n');
   } finally {
-    if (miniProgram) miniProgram.disconnect();
+    disconnectDeveloperTools(miniProgram, cli);
   }
 }
 

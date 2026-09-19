@@ -291,7 +291,7 @@ Page({
 
   // 全选/取消全选
   toggleSelectAll: function() {
-    const allSelected = !this.data.selectedItems.length ||
+    const allSelected = this.data.splitItems.length > 0 &&
                         this.data.selectedItems.length === this.data.splitItems.length;
 
     const splitItems = this.data.splitItems.map(item => ({
@@ -325,10 +325,8 @@ Page({
       item.maxRefundAmount,
       Number(item.salePrice) * qty
     );
-    const currentAmount = Number(item.inputAmount);
-    const amount = Number.isFinite(currentAmount) && currentAmount > 0
-      ? Math.min(currentAmount, amountLimit).toFixed(2)
-      : amountLimit.toFixed(2);
+    // 数量变化时按商品单价重新计算，不沿用之前手动输入的金额比例。
+    const amount = amountLimit.toFixed(2);
     const splitItems = [...this.data.splitItems];
     splitItems[index] = { ...item, selected: true, selectedQty: String(qty), inputAmount: amount };
     this.refreshSelection(splitItems);
