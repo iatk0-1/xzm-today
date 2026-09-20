@@ -228,8 +228,8 @@ page {
   color: #999;
 }
 
-/* 筛选面板（与首页保持一致） */
-.stall-mask {
+/* 筛选弹层 */
+.filter-mask {
   position: fixed;
   top: 0;
   left: 0;
@@ -237,15 +237,11 @@ page {
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 100;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.3s ease;
 }
 
-.stall-mask.fade-in {
-  opacity: 1;
-}
-
-.stall-panel {
+.filter-panel {
   position: fixed;
   left: 0;
   right: 0;
@@ -254,12 +250,15 @@ page {
   padding: 24rpx 20rpx;
   max-height: 60vh;
   overflow-y: auto;
-  transform: translateY(-100%);
-  transition: transform 0.3s ease;
+  box-sizing: border-box;
+  box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.12);
 }
 
-.stall-panel.slide-down {
-  transform: translateY(0);
+.filter-panel-title {
+  font-size: 26rpx;
+  color: #333;
+  font-weight: 600;
+  margin-bottom: 20rpx;
 }
 
 .stall-grid {
@@ -275,6 +274,14 @@ page {
   font-size: 26rpx;
   color: #666;
   transition: all 0.2s ease;
+}
+
+.filter-empty {
+  width: 100%;
+  padding: 24rpx 0;
+  text-align: center;
+  color: #999;
+  font-size: 24rpx;
 }
 
 .stall-tag.active {

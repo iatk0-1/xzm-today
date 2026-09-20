@@ -12,7 +12,7 @@ Page({
     searchKeyword: '',
 
     // 筛选相关
-    filterBarHeight: 100, // 筛选栏高度（用于面板定位）
+    filterPanelTop: 0,
     showStallPanel: false,
     showTagPanel: false,
     selectedStall: '',
@@ -25,16 +25,28 @@ Page({
   },
 
   onShow: function() {
+    this.updateFilterPanelPosition();
     this.resetAndLoad();
   },
 
   onLoad: function() {
-    // 获取系统信息，计算筛选栏高度
-    const systemInfo = wx.getSystemInfoSync();
-    const windowWidth = systemInfo.windowWidth;
-    // 筛选栏高度约为 80rpx，转换为 px
-    this.setData({
-      filterBarHeight: Math.floor(80 * windowWidth / 750)
+    // 弹层位置在页面布局完成后通过 filter-bar 的真实位置计算。
+  },
+
+  onReady: function() {
+    this.updateFilterPanelPosition();
+  },
+
+  updateFilterPanelPosition: function() {
+    wx.nextTick(() => {
+      wx.createSelectorQuery()
+        .select('.filter-bar')
+        .boundingClientRect(rect => {
+          if (rect) {
+            this.setData({ filterPanelTop: Math.round(rect.bottom) });
+          }
+        })
+        .exec();
     });
   },
 
@@ -55,8 +67,12 @@ Page({
   loadStallList: async function() {
     try {
       const stalls = await api.get('/stalls');
+      const stallList = Array.isArray(stalls) ? stalls : [];
       // 在档口列表前添加"全部"选项
-      const stallListWithAll = [{ id: 'all', name: '全部' }, ...stalls];
+      const stallListWithAll = [
+        { id: 'all', name: '全部' },
+        ...stallList.map(item => ({ ...item, id: String(item.id) }))
+      ];
       this.setData({ stallList: stallListWithAll });
     } catch (err) {
       console.error('加载档口列表失败:', err);
@@ -70,8 +86,12 @@ Page({
   loadTagList: async function() {
     try {
       const tags = await api.get('/tags');
+      const tagList = Array.isArray(tags) ? tags : [];
       // 在标签列表前添加"全部"选项
-      const tagListWithAll = [{ id: 'all', name: '全部' }, ...tags];
+      const tagListWithAll = [
+        { id: 'all', name: '全部' },
+        ...tagList.map(item => ({ ...item, id: String(item.id) }))
+      ];
       this.setData({ tagList: tagListWithAll });
     } catch (err) {
       console.error('加载标签列表失败:', err);
@@ -167,55 +187,46 @@ Page({
 
     if (tab === 'stall') {
       this.setData({
-        showStallPanel: true,
+        showStallPanel: !this.data.showStallPanel,
         showTagPanel: false
       });
     } else if (tab === 'tag') {
       this.setData({
-        showTagPanel: true,
+        showTagPanel: !this.data.showTagPanel,
         showStallPanel: false
       });
     }
   },
 
-  // 关闭档口面板
-  closeStallPanel: function() {
-    if (this.data.selectedStall) {
-      this.setData({ showStallPanel: false });
-    } else {
-      this.setData({
-        showStallPanel: false,
-        currentMainTab: '上新'
-      });
-    }
+  // 关闭筛选弹层
+  closeFilterPanel: function() {
+    this.setData({
+      showStallPanel: false,
+      showTagPanel: false
+    });
   },
 
-  // 关闭标签面板
-  closeTagPanel: function() {
-    if (this.data.selectedTag) {
-      this.setData({ showTagPanel: false });
-    } else {
-      this.setData({
-        showTagPanel: false,
-        currentMainTab: '上新'
-      });
-    }
+  // 阻止点击弹层内容时触发遮罩关闭
+  stopFilterPanelTap: function() {},
+
+  normalizeFilterId: function(id) {
+    return id === undefined || id === null ? '' : String(id);
   },
 
   // 选择档口
   selectStall: function(e) {
-    const stallId = e.currentTarget.dataset.stall;
+    const stallId = this.normalizeFilterId(e.currentTarget.dataset.stall);
     const stallName = e.currentTarget.dataset.name;
 
     this.setData({
       selectedStall: stallId === 'all' ? '' : stallId,
       selectedStallName: stallId === 'all' ? '' : stallName,
       showStallPanel: false,
-      hasFilter: (stallId !== 'all' && stallId !== '') || this.data.selectedTag
+      hasFilter: (stallId !== 'all' && stallId !== '') || !!this.data.selectedTag
+    }, () => {
+      // 等筛选条件写入 data 后再重新请求，避免请求读到旧条件。
+      this.resetAndLoad();
     });
-
-    // 切换档口后重新加载商品
-    this.resetAndLoad();
 
     if (stallId === 'all') {
       wx.showToast({ title: '已显示全部', icon: 'none' });
@@ -226,18 +237,18 @@ Page({
 
   // 选择标签
   selectTag: function(e) {
-    const tagId = e.currentTarget.dataset.tag;
+    const tagId = this.normalizeFilterId(e.currentTarget.dataset.tag);
     const tagName = e.currentTarget.dataset.name;
 
     this.setData({
       selectedTag: tagId === 'all' ? '' : tagId,
       selectedTagName: tagId === 'all' ? '' : tagName,
       showTagPanel: false,
-      hasFilter: (tagId !== 'all' && tagId !== '') || this.data.selectedStall
+      hasFilter: (tagId !== 'all' && tagId !== '') || !!this.data.selectedStall
+    }, () => {
+      // 等筛选条件写入 data 后再重新请求，避免请求读到旧条件。
+      this.resetAndLoad();
     });
-
-    // 切换标签后重新加载商品
-    this.resetAndLoad();
 
     if (tagId === 'all') {
       wx.showToast({ title: '已显示全部', icon: 'none' });

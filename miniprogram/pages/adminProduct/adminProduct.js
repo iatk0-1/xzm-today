@@ -211,6 +211,69 @@ Page({
     this.refreshSelectionState(this.data.products, selectedProductIds);
   },
 
+  batchDelete: function() {
+    const selectedCount = this.data.selectedCount;
+    if (selectedCount === 0) {
+      wx.showToast({ title: '请先选择商品', icon: 'none' });
+      return;
+    }
+    if (this.data.batchOperating) return;
+
+    wx.showModal({
+      title: '批量删除',
+      content: `确定将选中的 ${selectedCount} 个商品移入回收站吗？移入后可从回收站恢复。`,
+      confirmText: '删除',
+      confirmColor: '#d32f2f',
+      success: async (res) => {
+        if (!res.confirm) return;
+
+        this.setData({ batchOperating: true });
+        wx.showLoading({ title: '删除中...' });
+
+        try {
+          const productIds = this.data.selectedProductIds.slice();
+          const results = await Promise.all(productIds.map(id =>
+            api.delete(`/products/${id}`)
+              .then(() => ({ id, success: true }))
+              .catch(error => ({ id, success: false, error }))
+          ));
+          const succeededIds = {};
+          const failedIds = [];
+          results.forEach(result => {
+            if (result.success) {
+              succeededIds[this.normalizeId(result.id)] = true;
+            } else {
+              failedIds.push(this.normalizeId(result.id));
+            }
+          });
+
+          const products = this.data.products.filter(item => !succeededIds[this.normalizeId(item.id)]);
+          wx.hideLoading();
+          this.setData({
+            products,
+            selectMode: failedIds.length > 0,
+            selectedProductIds: failedIds,
+            selectedCount: failedIds.length,
+            allSelected: failedIds.length > 0 && products.length > 0 && products.every(item =>
+              failedIds.includes(this.normalizeId(item.id))
+            ),
+            batchOperating: false
+          });
+
+          if (failedIds.length > 0) {
+            wx.showToast({ title: `成功删除${selectedCount - failedIds.length}个，${failedIds.length}个失败`, icon: 'none' });
+          } else {
+            wx.showToast({ title: `已删除${selectedCount}个`, icon: 'success' });
+          }
+        } catch (err) {
+          wx.hideLoading();
+          this.setData({ batchOperating: false });
+          wx.showToast({ title: err?.message || '批量删除失败', icon: 'none' });
+        }
+      }
+    });
+  },
+
   batchSetStatus: function(e) {
     const status = e.currentTarget.dataset.status;
     const selectedCount = this.data.selectedCount;

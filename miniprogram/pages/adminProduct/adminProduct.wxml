@@ -64,6 +64,7 @@
       </view>
       <view class="batch-btn primary {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="batchSetStatus" data-status="on">上架</view>
       <view class="batch-btn danger {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="batchSetStatus" data-status="off">下架</view>
+      <view class="batch-btn delete {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="batchDelete">删除</view>
     </view>
   </view>
 </view>
