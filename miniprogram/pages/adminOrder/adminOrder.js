@@ -8,6 +8,10 @@ Page({
     searchKeyword: '',
     searchDropdown: [],  // 搜索下拉列表
     searchFocus: false,  // 是否聚焦
+    stallList: [],       // 档口列表
+    tagList: [],         // 标签列表
+    selectedStall: '',   // 当前档口筛选
+    selectedTag: '',     // 当前标签筛选
     selectedProducts: [],  // 已选商品列表 (SPU 维度)
     selectedSkuIds: [],    // 已选 SKU ID 列表
     logisticsAccounts: [],
@@ -40,6 +44,8 @@ Page({
       return;
     }
     this.loadLogisticsAccounts();
+    this.loadStallList();
+    this.loadTagList();
     // 空搜索时，自动加载所有未发货商品明细
     this.loadAllPendingItems();
   },
@@ -75,6 +81,71 @@ Page({
     this.setData({ logisticsIndex: parseInt(e.detail.value) });
   },
 
+  // ==================== 档口和标签筛选 ====================
+
+  loadStallList: async function() {
+    try {
+      const stalls = await api.get('/stalls');
+      this.setData({ stallList: Array.isArray(stalls) ? stalls : [] });
+    } catch (err) {
+      console.error('加载档口列表失败:', err);
+      this.setData({ stallList: [] });
+    }
+  },
+
+  loadTagList: async function() {
+    try {
+      const tags = await api.get('/tags');
+      this.setData({ tagList: Array.isArray(tags) ? tags : [] });
+    } catch (err) {
+      console.error('加载标签列表失败:', err);
+      this.setData({ tagList: [] });
+    }
+  },
+
+  getPendingFilterParams: function() {
+    const params = {};
+    if (this.data.selectedStall) {
+      params.stallId = this.data.selectedStall;
+    }
+    if (this.data.selectedTag) {
+      params.tagId = this.data.selectedTag;
+    }
+    return params;
+  },
+
+  selectStall: function(e) {
+    const stallId = e.currentTarget.dataset.stall;
+    this.setData({
+      selectedStall: stallId === 'all' ? '' : stallId,
+      searchDropdown: []
+    }, () => this.reloadPendingItems());
+  },
+
+  selectTag: function(e) {
+    const tagId = e.currentTarget.dataset.tag;
+    this.setData({
+      selectedTag: tagId === 'all' ? '' : tagId,
+      searchDropdown: []
+    }, () => this.reloadPendingItems());
+  },
+
+  reloadPendingItems: function() {
+    if (this.data.selectedProducts.length === 0) {
+      this.loadAllPendingItems();
+      return;
+    }
+
+    const productsWithoutSkus = this.data.selectedProducts.filter(product =>
+      !product.skus || product.skus.length === 0
+    );
+    if (productsWithoutSkus.length > 0) {
+      this.loadProductsSkus(productsWithoutSkus);
+    } else {
+      this.loadPendingItems();
+    }
+  },
+
   getPendingItemKey: function(item) {
     return item.uniqueKey || [item.orderId || '', item.orderItemId || '', item.skuId || ''].join('_');
   },
@@ -86,8 +157,8 @@ Page({
     wx.showLoading({ title: '加载中...' });
 
     try {
-      // 调用后端 API，不传参数表示查询所有未发货商品
-      const res = await api.get('/shipments/pending-items');
+      // 档口和标签会与商品/SKU条件一起传给后端，统一按 AND 过滤
+      const res = await api.get('/shipments/pending-items', this.getPendingFilterParams());
       
       const items = res || [];
       
@@ -142,6 +213,7 @@ Page({
     try {
       const res = await api.get('/products/query', {
         keyword,
+        ...this.getPendingFilterParams(),
         page: 1,
         size: 10
       });
@@ -169,19 +241,7 @@ Page({
 
   // 点击搜索按钮
   onSearchConfirm: function() {
-    this.setData({ searchDropdown: [], searchFocus: false });
-
-    if (this.data.selectedProducts.length === 0) {
-      this.loadAllPendingItems();
-      return;
-    }
-
-    const productsWithoutSkus = this.data.selectedProducts.filter(p => !p.skus || p.skus.length === 0);
-    if (productsWithoutSkus.length > 0) {
-      this.loadProductsSkus(productsWithoutSkus);
-    } else {
-      this.loadPendingItems();
-    }
+    this.setData({ searchDropdown: [], searchFocus: false }, () => this.reloadPendingItems());
   },
 
   // 批量加载商品 SKU
@@ -388,8 +448,11 @@ Page({
 
     try {
       // 调用后端 API 获取未发货商品明细
-      const skuIdsParam = selectedSkuIds.join(',');
-      const res = await api.get(`/shipments/pending-items?skuIds=${skuIdsParam}`);
+      const params = {
+        ...this.getPendingFilterParams(),
+        skuIds: selectedSkuIds.join(',')
+      };
+      const res = await api.get('/shipments/pending-items', params);
       
       const items = res || [];
       

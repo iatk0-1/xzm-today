@@ -25,6 +25,28 @@
         </view>
       </view>
 
+      <!-- 档口和标签筛选：两个条件可同时选择，和商品/SKU按 AND 关系查询 -->
+      <view class="filter-section">
+        <view class="filter-row">
+          <text class="filter-label">档口</text>
+          <view class="filter-fixed-option filter-tag {{selectedStall === '' ? 'active' : ''}}" bindtap="selectStall" data-stall="all">全部</view>
+          <scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+            <view class="filter-options">
+              <view class="filter-tag {{selectedStall === item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}">{{item.name}}</view>
+            </view>
+          </scroll-view>
+        </view>
+        <view class="filter-row">
+          <text class="filter-label">标签</text>
+          <view class="filter-fixed-option filter-tag {{selectedTag === '' ? 'active' : ''}}" bindtap="selectTag" data-tag="all">全部</view>
+          <scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+            <view class="filter-options">
+              <view class="filter-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}">{{item.name}}</view>
+            </view>
+          </scroll-view>
+        </view>
+      </view>
+
       <!-- 已选商品 -->
       <view class="selected-products" wx:if="{{selectedProducts.length > 0}}">
         <view class="selected-title">已选商品</view>
