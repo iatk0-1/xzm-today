@@ -14,7 +14,7 @@ Page({
     showHistory: false,  // 控制搜索历史下拉框显示/隐藏
     focus: true,  // 搜索框获得焦点
     // 分页参数
-    page: 0,
+    page: 1,
     pageSize: 20,
     hasMore: true,
     loading: false,
@@ -41,7 +41,7 @@ Page({
   // 改造：从后端 API 获取全部商品（支持分页）
   fetchAllProducts: async function(reset = true) {
     if (reset) {
-      this.setData({ page: 0, results: [], hasMore: true, searchType: 'all' });
+      this.setData({ page: 1, results: [], hasMore: true, searchType: 'all' });
     }
 
     if (!this.data.hasMore || this.data.loading) return;
@@ -52,7 +52,7 @@ Page({
     try {
       await auth.ensureAuthenticated({ silent: true });
       const { page, pageSize } = this.data;
-      const res = await api.get('/products/search', {
+      const res = await api.get('/products/query', {
         page: page,
         size: pageSize
       });
@@ -137,7 +137,7 @@ Page({
     }
 
     if (reset) {
-      this.setData({ page: 0, results: [], hasMore: true, searchType: 'keyword', searched: true });
+      this.setData({ page: 1, results: [], hasMore: true, searchType: 'keyword', searched: true });
     }
 
     if (!this.data.hasMore || this.data.loading) return;
@@ -148,7 +148,7 @@ Page({
 
     try {
       const { page, pageSize } = this.data;
-      const res = await api.get('/products/search', {
+      const res = await api.get('/products/query', {
         keyword: word,
         page: page,
         size: pageSize

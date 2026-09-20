@@ -9,7 +9,7 @@ Page({
     rightColumn: [],  // 右列心愿
     isAdmin: false,
     // 分页参数
-    page: 0,
+    page: 1,
     pageSize: 20,
     hasMore: true
   },
@@ -40,7 +40,7 @@ Page({
   // 改造：从后端 API 获取心愿列表（支持分页）
   loadWishes: async function(reset = true) {
     if (reset) {
-      this.setData({ page: 0, wishes: [], hasMore: true });
+      this.setData({ page: 1, wishes: [], hasMore: true });
     }
 
     if (!this.data.hasMore || this.data.loading) return;

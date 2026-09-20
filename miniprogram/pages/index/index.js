@@ -47,7 +47,7 @@ Page({
     bundleAllSelected: false,
 
     // 5. 分页参数
-    page: 0,
+    page: 1,
     pageSize: 20,
     hasMore: true,
     loading: false,
@@ -175,7 +175,7 @@ Page({
     }
 
     if (reset) {
-      this.setData({ page: 0, productList: [], hasMore: true });
+      this.setData({ page: 1, productList: [], hasMore: true });
     }
 
     if (!this.data.hasMore) {
@@ -205,15 +205,15 @@ Page({
 
       // 如果选择了档口，按档口筛选（使用 stall 参数）
       if (selectedStall) {
-        params.stall = selectedStall;
+        params.stallId = selectedStall;
       }
 
       // 如果选择了标签，按标签筛选（使用 tag 参数）
       if (selectedTag) {
-        params.tag = selectedTag;
+        params.tagId = selectedTag;
       }
 
-      const res = await api.get('/products/search', params);
+      const res = await api.get('/products/query', params);
 
       // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
       const newProducts = (res.content || []).map(function(product) {

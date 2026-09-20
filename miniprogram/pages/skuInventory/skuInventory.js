@@ -19,7 +19,7 @@ Page({
     inputQty: '',
     note: '',
     // 分页参数
-    page: 0,
+    page: 1,
     pageSize: 20,
     hasMore: true
   },
@@ -38,7 +38,7 @@ Page({
   // 加载商品列表（支持分页）
   loadProducts: async function(reset = true) {
     if (reset) {
-      this.setData({ page: 0, productList: [], hasMore: true });
+      this.setData({ page: 1, productList: [], hasMore: true });
     }
 
     if (!this.data.hasMore || this.data.loading) return;
@@ -46,11 +46,12 @@ Page({
     this.setData({ loading: true });
     try {
       await auth.ensureAuthenticated({ silent: true });
-      const { page, pageSize } = this.data;
-      // 获取所有商品（分页获取）
-      const productsRes = await api.get('/products', {
+      const { page, pageSize, keyword } = this.data;
+      // 商品名称搜索交给服务端，避免只在当前已加载页做本地过滤。
+      const productsRes = await api.get('/products/query', {
         page: page,
-        size: pageSize
+        size: pageSize,
+        keyword: keyword.trim() || undefined
       });
       const products = productsRes.content || [];
       const hasMore = productsRes.hasNext !== undefined ? productsRes.hasNext : products.length === pageSize;
@@ -108,23 +109,7 @@ Page({
   },
 
   search: function() {
-    const keyword = this.data.keyword.trim().toLowerCase();
-    
-    if (!keyword) {
-      this.loadProducts();
-      return;
-    }
-
-    const filtered = this.data.productList.filter(product => {
-      const nameMatch = product.name && product.name.toLowerCase().includes(keyword);
-      const skuMatch = product.skus && product.skus.some(sku => 
-        (sku.spec && sku.spec.toLowerCase().includes(keyword)) ||
-        (sku.size && sku.size.toLowerCase().includes(keyword))
-      );
-      return nameMatch || skuMatch;
-    });
-
-    this.setData({ productList: filtered });
+    this.loadProducts(true);
   },
 
   // 选择商品

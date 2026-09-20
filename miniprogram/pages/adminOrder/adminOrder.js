@@ -27,7 +27,7 @@ Page({
     selectedProduct: null,
     previewGroups: [],
     canShip: false,
-    page: 0,
+    page: 1,
     hasMore: true,
     blockedAfterSaleCount: 0
   },
@@ -140,7 +140,11 @@ Page({
     }
 
     try {
-      const res = await api.get(`/products/search?keyword=${encodeURIComponent(keyword)}&limit=10`);
+      const res = await api.get('/products/query', {
+        keyword,
+        page: 1,
+        size: 10
+      });
       const products = (res && res.content) || (Array.isArray(res) ? res : []);
       
       // 获取已选商品 ID 列表

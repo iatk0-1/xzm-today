@@ -13,7 +13,7 @@ Page({
     showCreateModal: false,
     titleInput: '',
     // 分页参数
-    page: 0,
+    page: 1,
     pageSize: 20,
     hasMore: true
   },
@@ -47,7 +47,7 @@ Page({
   // 加载直播场次列表（支持分页）
   loadLiveSessions: async function(reset = true) {
     if (reset) {
-      this.setData({ page: 0, allSessions: [], hasMore: true });
+      this.setData({ page: 1, allSessions: [], hasMore: true });
     }
 
     if (!this.data.hasMore || this.data.isLoading) return;
@@ -76,12 +76,13 @@ Page({
 
       // 2. 获取已结束场次列表（分页加载）
       const { page, pageSize } = this.data;
-      const endedSessions = await api.get(`/live-sessions?page=${page}&size=${pageSize}`);
+      const endedSessions = await api.get(`/live-sessions/ended/query?page=${page}&size=${pageSize}`);
 
       // 3. 合并数据
-      const newSessions = endedSessions || [];
+      const newSessions = endedSessions.content || endedSessions || [];
+      const responseHasMore = endedSessions.hasNext;
       const allSessions = reset ? newSessions : [...this.data.allSessions, ...newSessions];
-      const hasMore = newSessions.length === pageSize;
+      const hasMore = responseHasMore !== undefined ? responseHasMore : newSessions.length === pageSize;
 
       // 4. 按年月分组
       const grouped = this.groupByMonth(allSessions);

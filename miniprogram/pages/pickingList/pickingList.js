@@ -14,7 +14,7 @@ Page({
     skuKeyword: '',
     filteredList: [],
     // 分页
-    page: 0,
+    page: 1,
     size: 20,
     hasMore: true,
     // 报单详情弹窗
@@ -39,7 +39,7 @@ Page({
 
     if (reset) {
       this.setData({
-        page: 0,
+        page: 1,
         recommendList: [],
         filteredList: [],
         hasMore: true,
@@ -57,7 +57,7 @@ Page({
       const { page, size, filterStatus, skuKeyword } = this.data;
       
       // 调用分页搜索接口
-      const res = await api.get(`/picking-list/recommend/search?status=${filterStatus}&keyword=${encodeURIComponent(skuKeyword)}&page=${page}&size=${size}`);
+      const res = await api.get(`/picking-list/recommend/search/query?status=${filterStatus}&keyword=${encodeURIComponent(skuKeyword)}&page=${page}&size=${size}`);
       
       const newList = (res.content || []).map(item => ({
         ...item,

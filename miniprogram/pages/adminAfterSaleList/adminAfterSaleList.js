@@ -184,9 +184,9 @@ Page({
     }
 
     return auth.ensureAuthenticated({ silent: true })
-      .then(() => api.get('/after-sales/admin', params))
+      .then(() => api.get('/after-sales/query', params))
       .then(res => {
-        const items = res.items || [];
+        const items = res.content || res.items || [];
         const newList = isRefresh ? items : [...this.data.afterSales, ...items];
         const responsePage = Number(res.page);
         const currentPage = Number.isFinite(responsePage) && responsePage >= 1
@@ -202,9 +202,9 @@ Page({
               ? `${item.items.length} 件商品` 
               : `${item.totalQty || 0} 件商品`
           })),
-          total: res.total,
+          total: res.totalElements !== undefined ? res.totalElements : res.total,
           page: currentPage,
-          hasMore: newList.length < res.total,
+          hasMore: newList.length < (res.totalElements !== undefined ? res.totalElements : res.total),
           isLoading: false
         });
 

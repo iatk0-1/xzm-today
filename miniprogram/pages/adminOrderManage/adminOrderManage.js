@@ -196,12 +196,14 @@ Page({
       params.page = targetPage;
       params.size = this.data.size;
 
-      const res = await api.get('/admin/orders-manage/orders/page', params);
+      const res = await api.get('/admin/orders-manage/orders/query', params);
 
-      const items = (res && res.items) || [];
+      const items = (res && (res.content || res.items)) || [];
       const list = isRefresh ? items : this.data.orders.concat(items);
       // 后端把所有 long 都序列化成字符串，这里统一转成数字再比较
-      const rawTotal = res && res.total !== undefined && res.total !== null ? Number(res.total) : NaN;
+      const rawTotal = res && res.totalElements !== undefined
+        ? Number(res.totalElements)
+        : (res && res.total !== undefined ? Number(res.total) : NaN);
       const total = Number.isNaN(rawTotal) ? list.length : rawTotal;
 
       const orders = list.map(order => ({

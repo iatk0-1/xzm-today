@@ -94,10 +94,10 @@ Page({
       params.page = 1;
       params.size = 20;
 
-      const res = await api.get('/orders', params);
+      const res = await api.get('/orders/query', params);
 
       // 后端返回格式：{ items: [...], total: N, page: 1, size: 20 }
-      const orders = (res.items || []).map(order => ({
+      const orders = (res.content || res.items || []).map(order => ({
         ...order,
         statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status
       }));

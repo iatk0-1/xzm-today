@@ -70,8 +70,8 @@ Page({
     const params = { page: 1, size: 100 };
     if (this.data.startDate) params.startDate = this.data.startDate;
     if (this.data.endDate) params.endDate = this.data.endDate;
-    api.get('/admin/sales/products/' + this.data.productId + '/skus', params).then(res => {
-      this.setData({ skus: res.items || [], skuTotal: res.total || 0 });
+    api.get('/admin/sales/query/products/' + this.data.productId + '/skus', params).then(res => {
+      this.setData({ skus: res.content || [], skuTotal: res.totalElements || 0 });
     }).catch(err => console.error('加载SKU列表失败:', err));
   },
 
@@ -82,8 +82,8 @@ Page({
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
 
-    api.get('/admin/sales/products/' + this.data.productId + '/orders', params).then(res => {
-      const items = (res.items || []).map(r => ({
+    api.get('/admin/sales/query/products/' + this.data.productId + '/orders', params).then(res => {
+      const items = (res.content || []).map(r => ({
         ...r,
         createdAtDisplay: this.formatTime(r.createdAt),
         statusDisplay: this.statusDisplay(r.status),
@@ -93,11 +93,11 @@ Page({
         }))
       }));
       if (reset) {
-        this.setData({ orders: items, orderPage: 1, orderTotal: res.total || 0 });
+        this.setData({ orders: items, orderPage: 1, orderTotal: res.totalElements || 0 });
       } else {
         this.setData({
           orders: [...this.data.orders, ...items],
-          orderTotal: res.total || 0
+          orderTotal: res.totalElements || 0
         });
       }
     }).catch(err => console.error('加载订单列表失败:', err));

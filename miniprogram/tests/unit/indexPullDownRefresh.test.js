@@ -1,6 +1,9 @@
-const test = require('node:test');
+const nodeTest = require('node:test');
 const assert = require('node:assert/strict');
 const Module = require('node:module');
+
+// 这些用例共享小程序桩状态，必须串行执行，避免不同用例的请求日志互相污染。
+const test = (name, fn) => nodeTest(name, { concurrency: false }, fn);
 
 // ---- 桩：小程序运行时 ----
 let pageConfig = null;
@@ -69,7 +72,7 @@ function backendStub(options = {}) {
   let round = 0;
 
   return async (url) => {
-    if (url === '/products/search') {
+    if (url === '/products/query') {
       if (options.failProducts) throw new Error('模拟网络异常');
       const content = productPages[Math.min(round, productPages.length - 1)];
       round += 1;
@@ -82,7 +85,7 @@ function backendStub(options = {}) {
 }
 
 function searchCalls() {
-  return requestLog.filter((item) => item.url === '/products/search');
+  return requestLog.filter((item) => item.url === '/products/query');
 }
 
 function flush() {
@@ -109,15 +112,15 @@ test('下拉刷新：释放时重新查询商品首屏，带上当前筛选条�
 
   assert.equal(page.data.refreshing, false);
   assert.equal(searchCalls().length, 1);
-  assert.deepEqual(searchCalls()[0].params, { page: 0, size: 20, stall: 's1', tag: 't1' });
+  assert.deepEqual(searchCalls()[0].params, { page: 1, size: 20, stallId: 's1', tagId: 't1' });
 
   const urls = requestLog.map((item) => item.url).sort();
-  assert.deepEqual(urls, ['/products/search', '/stalls', '/tags']);
+  assert.deepEqual(urls, ['/products/query', '/stalls', '/tags']);
 
   assert.deepEqual(page.data.productList.map((item) => item.id), ['p1', 'p2', 'p3']);
   assert.deepEqual(page.data.leftColumn.map((item) => item.id), ['p1', 'p3']);
   assert.deepEqual(page.data.rightColumn.map((item) => item.id), ['p2']);
-  assert.equal(page.data.page, 1);
+  assert.equal(page.data.page, 2);
   assert.equal(page.data.hasMore, false);
   assert.equal(page.data.stallList.length, 2);
   assert.equal(page.data.tagList.length, 1);
@@ -148,7 +151,7 @@ test('下拉刷新：刷新进行中重复下拉不会叠加请求', async () =>
   const page = createPage();
   let resolveProducts;
   requestHandler = async (url) => {
-    if (url === '/products/search') {
+    if (url === '/products/query') {
       return new Promise((resolve) => { resolveProducts = resolve; });
     }
     if (url === '/stalls' || url === '/tags') return [];
@@ -182,7 +185,7 @@ test('下拉刷新：分页请求还在飞时先等它落地，再重新拉首�
   const page = createPage();
   let resolveLoadMore;
   requestHandler = async (url) => {
-    if (url === '/products/search') {
+    if (url === '/products/query') {
       if (searchCalls().length === 1) {
         return new Promise((resolve) => { resolveLoadMore = resolve; });
       }
@@ -205,7 +208,7 @@ test('下拉刷新：分页请求还在飞时先等它落地，再重新拉首�
 
   assert.equal(searchCalls().length, 2);
   assert.deepEqual(page.data.productList.map((item) => item.id), ['fresh']);
-  assert.equal(page.data.page, 1);
+  assert.equal(page.data.page, 2);
 });
 
 test('列表滚动区尺寸：窗口高度减掉导航栏，档口/分类再多让一条子导航', () => {

@@ -10,7 +10,7 @@ Page({
     status: 'all',
     keyword: '',
     products: [],
-    page: 0,
+    page: 1,
     pageSize: 20,
     hasMore: true,
     loading: false,
@@ -74,7 +74,7 @@ Page({
     if (reset) {
       this.setData({
         products: [],
-        page: 0,
+        page: 1,
         hasMore: true,
         selectedIds: [],
         selectedCount: 0,

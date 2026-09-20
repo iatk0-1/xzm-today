@@ -15,7 +15,7 @@ Page({
     selectedCount: 0,
     selectMode: false,
     // 分页参数（本地分页）
-    page: 0,
+    page: 1,
     pageSize: 20,
     hasMore: true
   },
@@ -46,7 +46,7 @@ Page({
   // 加载报单记录（分页）
   loadOrders: async function(reset = true) {
     if (reset) {
-      this.setData({ page: 0, orderList: [], hasMore: true });
+      this.setData({ page: 1, orderList: [], hasMore: true });
     }
 
     if (!this.data.hasMore || this.data.loading) return;
@@ -54,8 +54,10 @@ Page({
     this.setData({ loading: true });
     try {
       await auth.ensureAuthenticated({ silent: true });
-      const { page, pageSize, status } = this.data;
-      const res = await api.get(`/picking-list/orders?status=${status}&page=${page}&size=${pageSize}`);
+      const { page, pageSize, status, keyword } = this.data;
+      const query = `status=${encodeURIComponent(status)}&page=${page}&size=${pageSize}`
+        + (keyword.trim() ? `&keyword=${encodeURIComponent(keyword.trim())}` : '');
+      const res = await api.get(`/picking-list/orders/query?${query}`);
       
       const orderList = (res.content || []).map(item => ({
         ...item,
@@ -87,20 +89,7 @@ Page({
   },
 
   search: function() {
-    const keyword = this.data.keyword.trim().toLowerCase();
-    
-    if (!keyword) {
-      this.setData({ displayList: this.data.orderList });
-      return;
-    }
-
-    const filtered = this.data.orderList.filter(item => {
-      return (item.productName && item.productName.toLowerCase().includes(keyword)) ||
-             (item.spec && item.spec.toLowerCase().includes(keyword)) ||
-             (item.size && item.size.toLowerCase().includes(keyword));
-    });
-
-    this.setData({ displayList: filtered });
+    this.loadOrders(true);
   },
 
   // 图片加载失败处理

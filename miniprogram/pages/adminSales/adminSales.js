@@ -37,8 +37,8 @@ Page({
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
 
-    api.get('/admin/sales/products', params).then(res => {
-      this.setData({ products: res.items || [], total: res.total || 0 });
+    api.get('/admin/sales/query/products', params).then(res => {
+      this.setData({ products: res.content || [], total: res.totalElements || 0 });
     }).catch(err => console.error('加载商品列表失败:', err));
   },
 
@@ -73,8 +73,8 @@ Page({
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
 
-    api.get('/admin/sales/products', params).then(res => {
-      this.setData({ products: [...this.data.products, ...(res.items || [])] });
+    api.get('/admin/sales/query/products', params).then(res => {
+      this.setData({ products: [...this.data.products, ...(res.content || [])] });
     }).catch(err => console.error('加载更多失败:', err));
   },
 

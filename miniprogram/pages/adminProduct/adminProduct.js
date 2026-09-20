@@ -7,7 +7,7 @@ Page({
     products: [],
     isLoading: false,  // 初始为 false，允许首次加载
     // 分页参数
-    page: 0,
+    page: 1,
     pageSize: 20,
     hasMore: true,
     selectMode: false,
@@ -35,7 +35,7 @@ Page({
   loadProducts: async function(reset = true) {
     if (reset) {
       this.setData({
-        page: 0,
+        page: 1,
         products: [],
         hasMore: true,
         selectMode: false,
@@ -57,7 +57,8 @@ Page({
       await auth.ensureAuthenticated({ silent: true });
       const { page, pageSize } = this.data;
 
-      const res = await api.get('/products', {
+      const res = await api.get('/products/query', {
+        status: 'all',
         page: page,
         size: pageSize
       });
