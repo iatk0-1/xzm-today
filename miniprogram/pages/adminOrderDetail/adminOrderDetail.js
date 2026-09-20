@@ -103,8 +103,8 @@ Page({
 
   async loadAfterSaleRecords(orderId) {
     try {
-      const res = await api.get('/after-sales', { orderId });
-      const records = (res.items || []).map(item => ({
+      const res = await api.get('/after-sales/query', { orderId, page: 1, size: 100 });
+      const records = (res.content || []).map(item => ({
         ...item,
         typeDisplay: item.type === 'refund' ? '仅退款' : '退货退款',
         statusDisplay: this.getAfterSaleStatusDisplay(item.status)

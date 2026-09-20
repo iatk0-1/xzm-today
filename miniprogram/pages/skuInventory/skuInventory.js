@@ -47,48 +47,45 @@ Page({
     try {
       await auth.ensureAuthenticated({ silent: true });
       const { page, pageSize, keyword } = this.data;
-      // 商品名称搜索交给服务端，避免只在当前已加载页做本地过滤。
-      const productsRes = await api.get('/products/query', {
+      const inventoryRes = await api.get('/sku-inventory/query', {
         page: page,
         size: pageSize,
         keyword: keyword.trim() || undefined
       });
-      const products = productsRes.content || [];
-      const hasMore = productsRes.hasNext !== undefined ? productsRes.hasNext : products.length === pageSize;
-
-      // 获取所有 SKU 库存
-      const inventoryRes = await api.get('/sku-inventory');
-      const inventoryMap = {};
-      (inventoryRes || []).forEach(inv => {
-        // inv.skuId 是后端返回的 SKU ID
-        inventoryMap[inv.skuId] = inv.qty || 0;
+      const rows = inventoryRes.content || [];
+      const existing = reset ? [] : this.data.productList;
+      const grouped = {};
+      existing.forEach(product => {
+        grouped[product.id] = { ...product, skus: [...(product.skus || [])] };
       });
-
-      // 合并商品和 SKU 库存信息
-      const productList = products.map(product => {
-        // skuMatrix 是后端返回的 SKU 列表
-        const skuMatrix = product.skuMatrix || [];
-        const skusWithQty = skuMatrix.map(sku => {
-          const skuId = sku.skuId || sku.id;
-          const unlimited = sku.unlimitedStock || false;
-
-          return {
-            id: skuId,
-            spec: sku.color,
-            size: sku.size,
-            price: sku.price,
-            stock: sku.stock,
-            imageUrl: sku.imageUrl,
-            availableQty: unlimited ? '无限' : (inventoryMap[skuId] !== undefined ? inventoryMap[skuId] : 0),
-            unlimitedStock: unlimited
-          };
-        });
-
-        return {
-          ...product,
-          skus: skusWithQty
+      rows.forEach(row => {
+        const product = grouped[row.productId] || {
+          id: row.productId,
+          name: row.productName,
+          coverUrl: row.coverUrl,
+          skus: []
         };
+        const sku = {
+          id: row.skuId,
+          spec: row.spec || '',
+          size: row.size || '',
+          imageUrl: '',
+          availableQty: row.unlimitedStock ? '无限' : (row.qty || 0),
+          unlimitedStock: row.unlimitedStock
+        };
+        if (!product.skus.some(item => String(item.id) === String(sku.id))) {
+          product.skus.push(sku);
+        }
+        grouped[row.productId] = product;
       });
+      const loadedIds = reset ? [] : existing.map(product => String(product.id));
+      const newIds = Object.keys(grouped).filter(id => !loadedIds.includes(String(id)));
+      const productList = reset
+        ? Object.keys(grouped).map(id => grouped[id])
+        : existing.concat(newIds.map(id => grouped[id]));
+      const hasMore = inventoryRes.hasNext !== undefined
+        ? inventoryRes.hasNext
+        : rows.length === pageSize;
 
       this.setData({
         productList: reset ? productList : [...this.data.productList, ...productList],
