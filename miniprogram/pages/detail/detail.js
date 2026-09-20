@@ -142,6 +142,7 @@ Page({
           sessionStatus: product.sessionStatus,
           convertedToProductId: product.convertedToProductId,
           soldOut: isProductSoldOut({ skuMatrix: skuMatrix }),
+          offSale: String(product.status || '').toLowerCase() === 'off',
           bundleGroups: res.bundleGroups || null  // 套装子项（ProductDetailResponse顶层字段）
         },
         bannerImgs: banners,

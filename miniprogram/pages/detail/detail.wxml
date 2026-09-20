@@ -24,7 +24,8 @@
         <image class="swiper-img" src="{{item}}" mode="aspectFill" catchtap="previewBannerImage" data-index="{{index}}"></image>
       </swiper-item>
     </swiper>
-    <view class="sold-out-overlay main-sold-out-overlay" wx:if="{{product.soldOut}}"><text>售罄</text></view>
+    <view class="sold-out-overlay main-sold-out-overlay" wx:if="{{product.offSale}}"><text>已下架</text></view>
+    <view class="sold-out-overlay main-sold-out-overlay" wx:elif="{{product.soldOut}}"><text>售罄</text></view>
   </view>
 
   <view class="content-wrapper">
