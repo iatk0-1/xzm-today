@@ -18,6 +18,10 @@ Page({
     partialUnbindShipment: null,
     partialUnbindItems: [],
     showPartialUnbindPanel: false
+    ,showRecipientPanel: false
+    ,editRecipient: {}
+    ,adminRemarkPanel: null
+    ,adminRemarkValue: ''
   },
 
   onLoad(options) {
@@ -33,7 +37,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
     try {
       await auth.ensureAuthenticated({ silent: true });
-      const order = await api.get(`/orders/${this.data.orderId}`);
+      const order = await api.get(`/admin/orders-manage/orders/${this.data.orderId}`);
       order.statusDisplay = this.getOrderStatusDisplay(order.status);
       order.createdAtDisplay = this.formatTime(order.createdAt);
       if (order.items) {
@@ -322,6 +326,64 @@ Page({
       [`refundItems[${index}].selectedQty`]: String(cappedQty),
       [`refundItems[${index}].inputAmount`]: nextAmount
     });
+  },
+
+  openRecipientEditor() {
+    const order = this.data.order || {};
+    if (!['pending', 'stocking', 'paid'].includes(order.status)) {
+      wx.showToast({ title: '当前状态不允许修改收件信息', icon: 'none' });
+      return;
+    }
+    this.setData({ showRecipientPanel: true, editRecipient: {
+      recipientName: order.recipientName || '', recipientPhone: order.recipientPhone || '',
+      recipientProvince: order.recipientProvince || '', recipientCity: order.recipientCity || '',
+      recipientDistrict: order.recipientDistrict || '', recipientDetail: order.recipientDetail || ''
+    }});
+  },
+
+  closeRecipientEditor() { this.setData({ showRecipientPanel: false }); },
+
+  onRecipientInput(e) {
+    this.setData({ [`editRecipient.${e.currentTarget.dataset.field}`]: e.detail.value });
+  },
+
+  async saveRecipient() {
+    const value = this.data.editRecipient;
+    if (!value.recipientName || !value.recipientPhone || !value.recipientDetail) {
+      wx.showToast({ title: '请填写完整收件信息', icon: 'none' });
+      return;
+    }
+    wx.showLoading({ title: '保存中...' });
+    try {
+      await api.patch(`/admin/orders-manage/orders/${this.data.orderId}/recipient`, value);
+      wx.showToast({ title: '收件信息已保存', icon: 'success' });
+      this.closeRecipientEditor();
+      this.loadOrderDetail();
+    } catch (err) { wx.showToast({ title: err.message || '保存失败', icon: 'none' }); }
+    finally { wx.hideLoading(); }
+  },
+
+  openAdminRemarkEditor(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.order.items[index];
+    this.setData({ adminRemarkPanel: { index, itemId: item.id }, adminRemarkValue: item.adminRemark || '' });
+  },
+
+  closeAdminRemarkEditor() { this.setData({ adminRemarkPanel: null, adminRemarkValue: '' }); },
+
+  onAdminRemarkInput(e) { this.setData({ adminRemarkValue: e.detail.value }); },
+
+  async saveAdminRemark() {
+    const panel = this.data.adminRemarkPanel;
+    if (!panel) return;
+    wx.showLoading({ title: '保存中...' });
+    try {
+      await api.patch(`/admin/orders-manage/orders/${this.data.orderId}/items/${panel.itemId}/admin-remark`, { remark: this.data.adminRemarkValue });
+      wx.showToast({ title: '管理员备注已保存', icon: 'success' });
+      this.closeAdminRemarkEditor();
+      this.loadOrderDetail();
+    } catch (err) { wx.showToast({ title: err.message || '保存失败', icon: 'none' }); }
+    finally { wx.hideLoading(); }
   },
 
   decreaseRefundQty(e) {

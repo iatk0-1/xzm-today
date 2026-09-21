@@ -20,6 +20,8 @@
     </view>
 
     <view class="tabs-bar-wrapper">
+      <view class="fixed-tab" bindtap="openChangeRequests">审批申请</view>
+      <view class="tab-divider"></view>
       <view class="fixed-tab {{currentTab === '全部' ? 'active' : ''}}" bindtap="switchTab" data-tab="全部">
         全部
         <view class="active-line" wx:if="{{currentTab === '全部'}}"></view>
@@ -85,7 +87,8 @@
             <view class="goods-sku" wx:else>
               {{goods.productSpec || '图片色'}} / {{goods.productSize || '均码'}}
             </view>
-            <view class="remark-badge" wx:if="{{goods.remark}}">备注</view>
+            <view class="remark-badge" wx:if="{{goods.remark}}">买家备注</view>
+            <view class="remark-badge admin-remark-badge" bindtap="openAdminRemarkEditor" data-order="{{item.id}}" data-item="{{goods}}">管理员：{{goods.adminRemark || '添加'}}</view>
             <view class="goods-price-row">
               <text class="price">¥ {{goods.salePrice}}</text>
               <text class="count">x {{goods.qty}}</text>
@@ -209,4 +212,23 @@
       </view>
     </view>
   </view>
+</view>
+
+<view class="panel-mask" wx:if="{{adminRemarkPanel}}" catchtap="closeAdminRemarkEditor"></view>
+<view class="bottom-panel" wx:if="{{adminRemarkPanel}}">
+  <view class="panel-header"><text class="panel-title">管理员备注</text><text class="panel-close" bindtap="closeAdminRemarkEditor">关闭</text></view>
+  <view class="panel-body"><textarea class="panel-text-input" maxlength="500" placeholder="仅管理员可见" value="{{adminRemarkValue}}" bindinput="onAdminRemarkInput"></textarea></view>
+  <view class="panel-actions"><button class="panel-btn secondary" bindtap="closeAdminRemarkEditor">取消</button><button class="panel-btn danger" bindtap="saveAdminRemark">保存</button></view>
+</view>
+
+<view class="panel-mask" wx:if="{{showChangeRequestPanel}}" catchtap="closeChangeRequests"></view>
+<view class="bottom-panel" wx:if="{{showChangeRequestPanel}}">
+  <view class="panel-header"><text class="panel-title">待审批的订单修改</text><text class="panel-close" bindtap="closeChangeRequests">关闭</text></view>
+  <scroll-view class="panel-body" scroll-y>
+    <view class="refund-row" wx:for="{{changeRequests}}" wx:key="id">
+      <view class="refund-main"><text class="refund-title">订单 {{item.orderId}}</text><text class="refund-sub">收件人：{{item.recipientName}} {{item.recipientPhone}}</text><text class="refund-limit">申请时间：{{item.createdAt}}</text></view>
+      <view class="panel-actions"><button class="panel-btn secondary" data-id="{{item.id}}" bindtap="rejectChangeRequest">拒绝</button><button class="panel-btn danger" data-id="{{item.id}}" bindtap="approveChangeRequest">通过</button></view>
+    </view>
+    <view wx:if="{{changeRequests.length === 0}}" class="empty-state">暂无待审批申请</view>
+  </scroll-view>
 </view>

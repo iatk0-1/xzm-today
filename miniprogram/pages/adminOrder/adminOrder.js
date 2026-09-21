@@ -81,6 +81,25 @@ Page({
     this.setData({ logisticsIndex: parseInt(e.detail.value) });
   },
 
+  editAdminRemark: async function(e) {
+    const item = e.currentTarget.dataset.item;
+    if (!item || !item.orderId || !item.orderItemId) return;
+    wx.showModal({
+      title: '管理员备注',
+      editable: true,
+      content: item.adminRemark || '',
+      placeholderText: '仅管理员可见，最多500字',
+      success: async (result) => {
+        if (!result.confirm) return;
+        try {
+          await api.patch(`/admin/orders-manage/orders/${item.orderId}/items/${item.orderItemId}/admin-remark`, { remark: result.content || '' });
+          wx.showToast({ title: '已保存', icon: 'success' });
+          this.reloadPendingItems();
+        } catch (err) { wx.showToast({ title: err.message || '保存失败', icon: 'none' }); }
+      }
+    });
+  },
+
   // ==================== 档口和标签筛选 ====================
 
   loadStallList: async function() {
@@ -503,6 +522,7 @@ Page({
       const pendingItem = pendingMap[uniqueKey];
       const unshippedQty = Math.max(0, item.unshippedQty || 0);
       groupsMap[key].items.push({
+        orderId: item.orderId,
         orderItemId: item.orderItemId,
         uniqueKey,
         productId: item.productId,
@@ -519,6 +539,7 @@ Page({
         afterSaleStatusText: item.afterSaleStatusText || (item.afterSaleStatus ? '售后' : ''),
         afterSaleSummary: item.afterSaleSummary || null,
         afterSaleStatus: item.afterSaleStatus,
+        adminRemark: item.adminRemark || '',
         canShip: unshippedQty > 0,
         shipQty: pendingItem ? Math.min(Number(pendingItem.shipQty) || 0, unshippedQty) : unshippedQty,
         selected: Boolean(pendingItem)

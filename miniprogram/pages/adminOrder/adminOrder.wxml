@@ -122,6 +122,7 @@
                 <view class="item-name">{{item.productName}}</view>
                 <view class="item-sku">{{item.skuSpec}} {{item.skuSize}}</view>
                 <view class="item-qty">总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}</view>
+                <view class="item-after-sale admin-remark-line" bindtap="editAdminRemark" data-item="{{item}}">管理员备注：{{item.adminRemark || '点击添加'}}</view>
                 <view class="item-after-sale" wx:if="{{item.afterSaleQty > 0}}">
                   <text>{{item.afterSaleStatusText || '售后'}} {{item.afterSaleQty}} 件</text>
                   <text>可发 {{item.unshippedQty}}</text>
@@ -214,6 +215,7 @@
               <view class="item-qty">
                 总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}
               </view>
+              <view class="item-after-sale admin-remark-line" bindtap="editAdminRemark" data-item="{{item}}">管理员备注：{{item.adminRemark || '点击添加'}}</view>
               <view class="item-after-sale" wx:if="{{item.afterSaleQty > 0}}">
                 <text>{{item.afterSaleStatusText || '售后'}} {{item.afterSaleQty}} 件</text>
                 <text>可发 {{item.unshippedQty}}</text>

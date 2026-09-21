@@ -49,6 +49,10 @@ Page({
     },
     today: new Date().toISOString().split('T')[0],
     showDateModal: false
+    ,adminRemarkPanel: null
+    ,adminRemarkValue: ''
+    ,showChangeRequestPanel: false
+    ,changeRequests: []
   },
 
   onLoad: function(options) {
@@ -299,6 +303,57 @@ Page({
         }
       }
     });
+  },
+
+  openAdminRemarkEditor: function(e) {
+    const order = e.currentTarget.dataset.order;
+    const item = e.currentTarget.dataset.item;
+    this.setData({ adminRemarkPanel: { orderId: order, itemId: item.id }, adminRemarkValue: item.adminRemark || '' });
+  },
+
+  closeAdminRemarkEditor: function() { this.setData({ adminRemarkPanel: null, adminRemarkValue: '' }); },
+
+  onAdminRemarkInput: function(e) { this.setData({ adminRemarkValue: e.detail.value }); },
+
+  saveAdminRemark: async function() {
+    const panel = this.data.adminRemarkPanel;
+    if (!panel) return;
+    wx.showLoading({ title: '保存中...' });
+    try {
+      await api.patch(`/admin/orders-manage/orders/${panel.orderId}/items/${panel.itemId}/admin-remark`, { remark: this.data.adminRemarkValue });
+      wx.showToast({ title: '管理员备注已保存', icon: 'success' });
+      this.closeAdminRemarkEditor();
+      this.loadOrders();
+    } catch (err) { wx.showToast({ title: err.message || '保存失败', icon: 'none' }); }
+    finally { wx.hideLoading(); }
+  },
+
+  openChangeRequests: async function() {
+    wx.showLoading({ title: '加载中...' });
+    try {
+      const changeRequests = await api.get('/admin/orders-manage/change-requests', { status: 'pending', page: 1, size: 100 });
+      this.setData({ changeRequests: changeRequests || [], showChangeRequestPanel: true });
+    } catch (err) { wx.showToast({ title: err.message || '加载失败', icon: 'none' }); }
+    finally { wx.hideLoading(); }
+  },
+
+  closeChangeRequests: function() { this.setData({ showChangeRequestPanel: false }); },
+
+  approveChangeRequest: async function(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.showLoading({ title: '审批中...' });
+    try { await api.post(`/admin/orders-manage/change-requests/${id}/approve`); wx.showToast({ title: '已通过', icon: 'success' }); this.openChangeRequests(); }
+    catch (err) { wx.showToast({ title: err.message || '审批失败', icon: 'none' }); }
+    finally { wx.hideLoading(); }
+  },
+
+  rejectChangeRequest: async function(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.showModal({ title: '拒绝申请', editable: true, placeholderText: '可填写拒绝原因', success: async modal => {
+      if (!modal.confirm) return;
+      try { await api.post(`/admin/orders-manage/change-requests/${id}/reject`, { reason: modal.content || '' }); wx.showToast({ title: '已拒绝', icon: 'success' }); this.openChangeRequests(); }
+      catch (err) { wx.showToast({ title: err.message || '操作失败', icon: 'none' }); }
+    }});
   },
 
   // 查看物流

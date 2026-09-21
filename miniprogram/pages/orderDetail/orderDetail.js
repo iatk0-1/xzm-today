@@ -15,6 +15,9 @@ Page({
     shipments: [],       // 多个发货单（支持分批发货）
     logisticsTraceList: [],  // 多个发货单的物流轨迹
     logisticsTraceMap: {}
+    ,changeRequests: []
+    ,showChangeRequestPanel: false
+    ,changeRequestForm: {}
   },
 
   onLoad: function(options) {
@@ -78,6 +81,7 @@ Page({
 
       // 加载售后记录
       this.loadAfterSaleRecords(orderId);
+      this.loadChangeRequests(orderId);
 
       // 如果是已发货/部分发货/已支付订单，加载物流信息
       if (res.status === 'shipped'
@@ -290,6 +294,63 @@ Page({
   copyRecipientInfo: function() {
     var order = this.data.order || {};
     clipboard.copyRecipient(order);
+  },
+
+  loadChangeRequests: async function(orderId) {
+    try {
+      const changeRequests = await api.get(`/orders/${orderId}/change-requests`);
+      this.setData({ changeRequests: changeRequests || [] });
+    } catch (err) { console.error('加载修改申请失败:', err); }
+  },
+
+  openChangeRequest: function() {
+    const order = this.data.order || {};
+    if (!['pending', 'stocking', 'paid'].includes(order.status)) {
+      wx.showToast({ title: '当前订单状态不允许申请修改', icon: 'none' });
+      return;
+    }
+    const form = {
+      recipientName: '', recipientPhone: '',
+      recipientProvince: '', recipientCity: '', recipientDistrict: '', recipientDetail: '',
+      itemRemarks: (order.items || []).map(item => ({ orderItemId: item.id, remark: item.remark || '' }))
+    };
+    this.setData({ showChangeRequestPanel: true, changeRequestForm: form });
+  },
+
+  closeChangeRequest: function() { this.setData({ showChangeRequestPanel: false }); },
+
+  onChangeRecipientInput: function(e) {
+    this.setData({ [`changeRequestForm.${e.currentTarget.dataset.field}`]: e.detail.value });
+  },
+
+  onChangeRemarkInput: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    this.setData({ [`changeRequestForm.itemRemarks[${index}].remark`]: e.detail.value });
+  },
+
+  submitChangeRequest: async function() {
+    const form = this.data.changeRequestForm || {};
+    const currentRemarks = form.itemRemarks || [];
+    const originalItems = this.data.order.items || [];
+    const itemRemarks = currentRemarks.filter((item, index) => {
+      const original = originalItems[index] && originalItems[index].remark;
+      return (item.remark || '') !== (original || '');
+    });
+    const payload = { ...form, itemRemarks };
+    const hasRecipient = [payload.recipientName, payload.recipientPhone, payload.recipientProvince,
+      payload.recipientCity, payload.recipientDistrict, payload.recipientDetail].some(value => value);
+    if (!hasRecipient && payload.itemRemarks.length === 0) {
+      wx.showToast({ title: '请至少修改一项内容', icon: 'none' });
+      return;
+    }
+    wx.showLoading({ title: '提交中...' });
+    try {
+      await api.post(`/orders/${this.data.order.id}/change-requests`, payload);
+      wx.showToast({ title: '已提交，等待管理员审批', icon: 'success' });
+      this.closeChangeRequest();
+      this.loadChangeRequests(this.data.order.id);
+    } catch (err) { wx.showToast({ title: err.message || '提交失败', icon: 'none' }); }
+    finally { wx.hideLoading(); }
   },
 
   // 各种按钮的操作逻辑
