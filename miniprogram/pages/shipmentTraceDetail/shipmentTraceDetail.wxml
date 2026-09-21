@@ -2,7 +2,20 @@
   <view class="trace-header" wx:if="{{trace}}">
     <view class="header-top">
       <view class="header-title">{{getExpressName(trace.expressCode)}}</view>
-      <view class="header-status">{{trace.statusText || '物流更新中'}}</view>
+    </view>
+    <view class="header-status">
+      <text class="header-status-label">最新状态</text>
+      <text class="header-status-text" wx:if="{{trace.statusTextSegments && trace.statusTextSegments.length > 0}}">
+        <text
+          wx:for="{{trace.statusTextSegments}}"
+          wx:for-item="segment"
+          wx:key="index"
+          class="{{segment.type === 'phone' ? 'trace-phone' : ''}}"
+          catchtap="handleTraceSegmentTap"
+          data-type="{{segment.type}}"
+          data-phone="{{segment.value}}">{{segment.text}}</text>
+      </text>
+      <text class="header-status-text" wx:else>物流更新中</text>
     </view>
     <view class="header-meta">
       <text class="meta-label">快递单号</text>
@@ -22,7 +35,16 @@
           <view class="trace-line" wx:if="{{index !== trace.nodes.length - 1}}"></view>
         </view>
         <view class="trace-content">
-          <view class="trace-desc">{{item.description}}</view>
+          <view class="trace-desc">
+            <text
+              wx:for="{{item.descriptionSegments}}"
+              wx:for-item="segment"
+              wx:key="index"
+              class="{{segment.type === 'phone' ? 'trace-phone' : ''}}"
+              catchtap="handleTraceSegmentTap"
+              data-type="{{segment.type}}"
+              data-phone="{{segment.value}}">{{segment.text}}</text>
+          </view>
           <view class="trace-time">{{item.timeDisplay}}</view>
         </view>
       </view>

@@ -78,6 +78,19 @@ Page({
     clipboard.copyText(e.currentTarget.dataset.orderNo, '订单号');
   },
 
+  // 查看物流轨迹
+  viewLogistics: function(e) {
+    const shipmentId = e.currentTarget.dataset.shipmentId;
+    if (!shipmentId) {
+      wx.showToast({ title: '暂无发货单信息', icon: 'none' });
+      return;
+    }
+
+    wx.navigateTo({
+      url: `/pages/shipmentTraceDetail/shipmentTraceDetail?shipmentId=${shipmentId}`
+    });
+  },
+
   // 改造：从后端 API 获取订单列表
   loadOrders: async function() {
     this.setData({ isLoading: true, orders: [] });

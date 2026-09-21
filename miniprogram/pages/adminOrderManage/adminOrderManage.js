@@ -302,13 +302,31 @@ Page({
   },
 
   // 查看物流
-  viewLogistics: function(e) {
-    const expressCode = e.currentTarget.dataset.expressCode;
-    const expressNo = e.currentTarget.dataset.expressNo;
-    
-    wx.navigateTo({
-      url: `/pages/logistics/logistics?expressCode=${expressCode}&expressNo=${expressNo}`
-    });
+  viewLogistics: async function(e) {
+    const orderId = e.currentTarget.dataset.id;
+    if (!orderId) {
+      wx.showToast({ title: '缺少订单信息', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '加载物流中...' });
+    try {
+      const shipments = await api.get(`/orders/${orderId}/shipments/detail`);
+      const shipmentId = shipments && shipments.length > 0 ? shipments[0].id : null;
+      if (!shipmentId) {
+        wx.showToast({ title: '暂无物流信息', icon: 'none' });
+        return;
+      }
+
+      wx.navigateTo({
+        url: `/pages/shipmentTraceDetail/shipmentTraceDetail?shipmentId=${shipmentId}&orderId=${orderId}`
+      });
+    } catch (err) {
+      console.error('加载物流信息失败:', err);
+      wx.showToast({ title: '加载物流失败', icon: 'none' });
+    } finally {
+      wx.hideLoading();
+    }
   },
 
   // 联系买家
