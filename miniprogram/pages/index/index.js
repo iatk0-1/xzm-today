@@ -62,6 +62,7 @@ Page({
   onLoad: function() {
     this._isInitializingHome = false;
     this._isRefreshingHome = false;
+    this._hasLoadedHomeData = false;
 
     this.checkAdmin();
 
@@ -81,10 +82,19 @@ Page({
     // 每次显示页面时检查管理员状态
     this.checkAdmin();
 
-    // 从商品详情返回时保留当前列表与滚动位置，不在 onShow 里重置首页数据
+    // 首次进入时由 onLoad 负责初始化，避免 onLoad/onShow 同时发起重复请求。
+    if (this._isInitializingHome || this._isRefreshingHome) {
+      return;
+    }
+
+    // 页面实例还没有完成首次加载时，继续走认证后初始化流程。
     if (!this.hasLoadedHomeData()) {
       this.waitForAuthAndLoad();
+      return;
     }
+
+    // 从其他页面返回时刷新首页，商品、档口、标签一起更新；筛选条件和滚动位置保留。
+    this.refreshHomeData();
   },
 
   onUnload: function() {
@@ -93,7 +103,7 @@ Page({
   },
 
   hasLoadedHomeData: function() {
-    return this.data.page > 0 || this.data.loading;
+    return this._hasLoadedHomeData === true;
   },
 
   // 取窗口尺寸：新老基础库都兜住
@@ -145,6 +155,11 @@ Page({
         if (!this._isInitializingHome) return;
         this.checkAdmin();
         return this.loadAllData();
+      })
+      .then(() => {
+        if (this._isInitializingHome) {
+          this._hasLoadedHomeData = true;
+        }
       })
       .catch((err) => {
         console.error('首页数据加载失败:', err);

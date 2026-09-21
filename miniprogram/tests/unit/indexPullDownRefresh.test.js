@@ -136,6 +136,32 @@ test('下拉刷新：用原生刷新动画，不再弹全局 loading 遮罩', as
   assert.equal(wxCalls.hideLoading, 0);
 });
 
+test('页面重新显示：自动刷新商品、档口和标签', async () => {
+  const page = createPage();
+  page._hasLoadedHomeData = true;
+  requestHandler = backendStub();
+
+  page.onShow();
+  await flush();
+
+  const urls = requestLog.map((item) => item.url).sort();
+  assert.deepEqual(urls, ['/products/query', '/stalls', '/tags']);
+});
+
+test('首页首次初始化：page 从 1 开始时仍会发起三类查询', async () => {
+  const page = createPage();
+  requestHandler = backendStub();
+
+  page.onLoad();
+  page.onShow();
+  await flush();
+  await flush();
+
+  const urls = requestLog.map((item) => item.url).sort();
+  assert.deepEqual(urls, ['/products/query', '/stalls', '/tags']);
+  assert.equal(page.hasLoadedHomeData(), true);
+});
+
 test('下拉刷新：接口异常也会收掉刷新态，不卡在转圈', async () => {
   const page = createPage();
   requestHandler = backendStub({ failProducts: true });
