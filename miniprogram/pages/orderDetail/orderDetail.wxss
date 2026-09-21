@@ -63,6 +63,8 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
 .goods-remark { display: flex; align-items: flex-start; gap: 8rpx; margin-top: 8rpx; }
 .remark-tag { font-size: 20rpx; color: #666; background-color: #f0f0f0; padding: 2rpx 10rpx; border-radius: 6rpx; flex-shrink: 0; }
 .remark-text { font-size: 22rpx; color: #888; line-height: 1.5; word-break: break-all; }
+.remark-edit { margin-left: auto; color: #1a1a1a; font-size: 22rpx; white-space: nowrap; text-decoration: underline; }
+.change-request-status { color: #1a1a1a; text-decoration: underline; }
 
 /* 费用明细 */
 .money-breakdown { border-top: 1rpx solid #f5f5f5; padding-top: 30rpx; margin-top: 10rpx; }

@@ -2,7 +2,7 @@
 
   <view class="status-header">
     <view class="status-title">{{order.statusDisplay}}</view>
-    <view class="status-desc" wx:if="{{order.status === 'pending' || order.status === 'stocking' || order.status === 'paid'}}" bindtap="openChangeRequest">申请修改收件信息/备注</view>
+    <view class="status-desc change-request-status" wx:if="{{order.status === 'pending' || order.status === 'stocking' || order.status === 'paid'}}" bindtap="chooseAddressForChange">申请修改收件信息</view>
     <view class="status-desc" wx:if="{{changeRequests.length > 0}}">修改申请：{{changeRequests[0].status === 'pending' ? '待管理员审批' : (changeRequests[0].status === 'approved' ? '已通过' : '已处理')}}</view>
     <view class="status-desc" wx:if="{{order.status === 'pending'}}">
       <text>请尽快完成支付，超时将自动取消</text>
@@ -49,9 +49,10 @@
           <text class="price">¥ {{item.salePrice}}</text>
           <text class="count">x {{item.qty}}</text>
         </view>
-        <view class="goods-remark" wx:if="{{item.remark}}">
+        <view class="goods-remark">
           <text class="remark-tag">备注</text>
-          <text class="remark-text">{{item.remark}}</text>
+          <text class="remark-text">{{item.remark || '暂无备注'}}</text>
+          <text class="remark-edit" wx:if="{{order.status === 'pending' || order.status === 'stocking' || order.status === 'paid'}}" bindtap="editItemRemark" data-index="{{index}}">修改备注</text>
         </view>
       </view>
     </view>
@@ -183,19 +184,4 @@
     <view class="btn-ghost" wx:if="{{order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped' || order.status === 'shipped' || order.status === 'completed'}}" bindtap="requestRefund">申请售后</view>
   </view>
 
-</view>
-
-<view class="panel-mask" wx:if="{{showChangeRequestPanel}}" catchtap="closeChangeRequest"></view>
-<view class="bottom-panel" wx:if="{{showChangeRequestPanel}}">
-  <view class="panel-header"><text class="panel-title">申请修改订单</text><text class="panel-close" bindtap="closeChangeRequest">关闭</text></view>
-  <scroll-view class="panel-body" scroll-y>
-    <view class="panel-field"><text class="panel-label">收件人</text><input class="panel-text-input" value="{{changeRequestForm.recipientName}}" data-field="recipientName" bindinput="onChangeRecipientInput" /></view>
-    <view class="panel-field"><text class="panel-label">联系电话</text><input class="panel-text-input" value="{{changeRequestForm.recipientPhone}}" data-field="recipientPhone" bindinput="onChangeRecipientInput" /></view>
-    <view class="panel-field"><text class="panel-label">省</text><input class="panel-text-input" value="{{changeRequestForm.recipientProvince}}" data-field="recipientProvince" bindinput="onChangeRecipientInput" /></view>
-    <view class="panel-field"><text class="panel-label">市</text><input class="panel-text-input" value="{{changeRequestForm.recipientCity}}" data-field="recipientCity" bindinput="onChangeRecipientInput" /></view>
-    <view class="panel-field"><text class="panel-label">区县</text><input class="panel-text-input" value="{{changeRequestForm.recipientDistrict}}" data-field="recipientDistrict" bindinput="onChangeRecipientInput" /></view>
-    <view class="panel-field"><text class="panel-label">详细地址</text><input class="panel-text-input" value="{{changeRequestForm.recipientDetail}}" data-field="recipientDetail" bindinput="onChangeRecipientInput" /></view>
-    <view class="panel-field" wx:for="{{order.items}}" wx:for-index="itemIndex" wx:key="id"><text class="panel-label">{{item.productName}} 备注</text><input class="panel-text-input" value="{{changeRequestForm.itemRemarks[itemIndex].remark}}" data-index="{{itemIndex}}" bindinput="onChangeRemarkInput" placeholder="留空表示清空备注" /></view>
-  </scroll-view>
-  <view class="panel-actions"><button class="panel-btn secondary" bindtap="closeChangeRequest">取消</button><button class="panel-btn danger" bindtap="submitChangeRequest">提交申请</button></view>
 </view>
