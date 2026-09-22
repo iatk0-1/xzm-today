@@ -20,6 +20,7 @@
     "pages/adminOrderDetail/adminOrderDetail",
     "pages/adminProduct/adminProduct",
     "pages/adminCatalogManage/adminCatalogManage",
+    "pages/adminChangeRequestManage/adminChangeRequestManage",
     "pages/adminCatalogProducts/adminCatalogProducts",
     "pages/adminProductRecycleBin/adminProductRecycleBin",
     "pages/adminWish/adminWish",

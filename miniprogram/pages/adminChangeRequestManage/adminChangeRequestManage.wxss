@@ -1,0 +1,30 @@
+.page { min-height: 100vh; background: #f6f6f6; display: flex; flex-direction: column; }
+.tabs { display: flex; flex-shrink: 0; height: 88rpx; background: #fff; border-bottom: 1rpx solid #eee; }
+.tab { flex: 1; display: flex; justify-content: center; align-items: center; color: #888; font-size: 26rpx; position: relative; }
+.tab.active { color: #111; font-weight: 600; }
+.tab.active::after { content: ''; position: absolute; bottom: 0; left: 30%; right: 30%; height: 5rpx; background: #111; }
+.request-list { flex: 1; box-sizing: border-box; padding: 20rpx; }
+.state { padding: 160rpx 0; color: #999; text-align: center; font-size: 26rpx; }
+.request-card { margin-bottom: 20rpx; padding: 24rpx; background: #fff; border-radius: 10rpx; }
+.card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
+.type { display: block; color: #111; font-size: 29rpx; font-weight: 600; }
+.order { display: block; margin-top: 8rpx; color: #666; font-size: 24rpx; }
+.status { flex-shrink: 0; padding: 6rpx 12rpx; border-radius: 6rpx; font-size: 22rpx; }
+.status-pending { color: #9a6200; background: #fff4d6; }
+.status-approved { color: #287a43; background: #e9f7ed; }
+.status-rejected { color: #b33a32; background: #fff0ef; }
+.meta { margin-top: 18rpx; color: #aaa; font-size: 22rpx; }
+.content-block { margin-top: 22rpx; padding: 18rpx; background: #fafafa; border-radius: 8rpx; }
+.label { margin-bottom: 12rpx; color: #888; font-size: 22rpx; }
+.recipient-name { color: #222; font-size: 26rpx; }
+.recipient-address { margin-top: 8rpx; color: #555; font-size: 24rpx; line-height: 1.5; word-break: break-all; }
+.remark-line { display: flex; align-items: flex-start; gap: 16rpx; padding: 10rpx 0; color: #555; font-size: 24rpx; }
+.remark-line + .remark-line { border-top: 1rpx solid #eee; }
+.remark-value { flex: 1; color: #222; word-break: break-all; text-align: right; }
+.reject-reason { margin-top: 18rpx; color: #b33a32; font-size: 24rpx; line-height: 1.5; }
+.actions { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 24rpx; }
+.actions button { width: 180rpx; height: 64rpx; margin: 0; padding: 0; border-radius: 8rpx; font-size: 25rpx; line-height: 64rpx; }
+.actions button::after { display: none; }
+.order-btn { color: #333; background: #fff; border: 1rpx solid #ddd; }
+.reject-btn { color: #555; background: #f3f3f3; }
+.approve-btn { color: #fff; background: #111; }

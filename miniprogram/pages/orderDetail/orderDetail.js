@@ -14,8 +14,9 @@ Page({
     afterSaleRecords: [],
     shipments: [],       // 多个发货单（支持分批发货）
     logisticsTraceList: [],  // 多个发货单的物流轨迹
-    logisticsTraceMap: {}
-    ,changeRequests: []
+    logisticsTraceMap: {},
+    changeRequests: [],
+    changeRequestSummary: ''
   },
 
   onLoad: function(options) {
@@ -297,7 +298,16 @@ Page({
   loadChangeRequests: async function(orderId) {
     try {
       const changeRequests = await api.get(`/orders/${orderId}/change-requests`);
-      this.setData({ changeRequests: changeRequests || [] });
+      const requests = changeRequests || [];
+      const pendingCount = requests.filter(item => item.status === 'pending').length;
+      const approvedCount = requests.filter(item => item.status === 'approved').length;
+      const rejectedCount = requests.filter(item => item.status === 'rejected').length;
+      const summary = [
+        pendingCount ? `待审批 ${pendingCount} 项` : '',
+        approvedCount ? `已通过 ${approvedCount} 项` : '',
+        rejectedCount ? `已拒绝 ${rejectedCount} 项` : ''
+      ].filter(Boolean).join('，');
+      this.setData({ changeRequests: requests, changeRequestSummary: summary });
     } catch (err) { console.error('加载修改申请失败:', err); }
   },
 

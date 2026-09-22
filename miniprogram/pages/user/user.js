@@ -283,5 +283,11 @@ Page({
     wx.navigateTo({
       url: '/pages/adminCatalogManage/adminCatalogManage'
     });
+  },
+
+  goToChangeRequestManage: function() {
+    wx.navigateTo({
+      url: '/pages/adminChangeRequestManage/adminChangeRequestManage'
+    });
   }
 });

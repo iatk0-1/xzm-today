@@ -1,0 +1,53 @@
+<view class="page">
+  <view class="tabs">
+    <view
+      wx:for="{{tabs}}"
+      wx:key="key"
+      class="tab {{currentTab === item.key ? 'active' : ''}}"
+      data-key="{{item.key}}"
+      bindtap="switchTab">
+      {{item.label}}
+    </view>
+  </view>
+
+  <scroll-view class="request-list" scroll-y refresher-enabled bindrefresherrefresh="onPullDownRefresh" refresher-triggered="{{isLoading}}">
+    <view wx:if="{{isLoading && requests.length === 0}}" class="state">加载中...</view>
+    <view wx:elif="{{requests.length === 0}}" class="state">暂无申请记录</view>
+
+    <view class="request-card" wx:for="{{requests}}" wx:key="id">
+      <view class="card-header">
+        <view>
+          <text class="type">{{item.requestTypeText}}</text>
+          <text class="order">订单 {{item.orderId}}</text>
+        </view>
+        <text class="status status-{{item.status}}">{{item.statusText}}</text>
+      </view>
+
+      <view class="meta">申请时间：{{item.createdAt}}</view>
+
+      <view wx:if="{{item.requestType === 'recipient'}}" class="content-block">
+        <view class="label">申请收件信息</view>
+        <view class="recipient-name">{{item.recipientName}} {{item.recipientPhone}}</view>
+        <view class="recipient-address">{{item.recipientAddress}}</view>
+      </view>
+
+      <view wx:if="{{item.requestType === 'item_remark'}}" class="content-block">
+        <view class="label">申请商品备注</view>
+        <view wx:for="{{item.itemRemarks}}" wx:for-item="remark" wx:key="orderItemId" class="remark-line">
+          <text>商品 SKU 项 {{remark.orderItemId}}</text>
+          <text class="remark-value">{{remark.remark || '清空备注'}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{item.status === 'rejected' && item.rejectionReason}}" class="reject-reason">
+        拒绝原因：{{item.rejectionReason}}
+      </view>
+
+      <view class="actions">
+        <button class="order-btn" data-order-id="{{item.orderId}}" bindtap="viewOrder">查看订单</button>
+        <button wx:if="{{item.status === 'pending'}}" class="reject-btn" data-id="{{item.id}}" bindtap="rejectRequest">拒绝</button>
+        <button wx:if="{{item.status === 'pending'}}" class="approve-btn" data-id="{{item.id}}" bindtap="approveRequest">通过</button>
+      </view>
+    </view>
+  </scroll-view>
+</view>

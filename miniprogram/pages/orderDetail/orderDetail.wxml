@@ -3,7 +3,7 @@
   <view class="status-header">
     <view class="status-title">{{order.statusDisplay}}</view>
     <view class="status-desc change-request-status" wx:if="{{order.status === 'pending' || order.status === 'stocking' || order.status === 'paid'}}" bindtap="chooseAddressForChange">申请修改收件信息</view>
-    <view class="status-desc" wx:if="{{changeRequests.length > 0}}">修改申请：{{changeRequests[0].status === 'pending' ? '待管理员审批' : (changeRequests[0].status === 'approved' ? '已通过' : '已处理')}}</view>
+    <view class="status-desc" wx:if="{{changeRequestSummary}}">修改申请：{{changeRequestSummary}}</view>
     <view class="status-desc" wx:if="{{order.status === 'pending'}}">
       <text>请尽快完成支付，超时将自动取消</text>
       <text wx:if="{{countdownText}}" class="countdown-timer">{{countdownText}}</text>
