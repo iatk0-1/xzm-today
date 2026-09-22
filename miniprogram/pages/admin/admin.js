@@ -2,6 +2,7 @@
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const config = require('../../utils/config');
+const stockUtils = require('../../utils/stock');
 const { compressImage, compressVideo } = require('../../utils/media');
 const draft = require('../../utils/draft');
 
@@ -68,6 +69,8 @@ Page({
     quickPrice: '',
     quickStock: '',
     quickImage: '',
+    // 与后端一致：达到该库存值时按无限库存展示。
+    unlimitedStockThreshold: stockUtils.UNLIMITED_THRESHOLD,
 
     // 批量设置弹窗相关
     showBatchModal: false,
@@ -1411,6 +1414,21 @@ Page({
     this.setData({ showBatchModal: false });
   },
 
+  // 编辑全部库存时，实时预估可用库存；清空库存则恢复接口返回的旧值。
+  getExpectedAvailableStock(sku, stock) {
+    const stockText = String(stock == null ? '' : stock).trim();
+    if (stockText === '') {
+      return Number(sku.availableMain || 0);
+    }
+
+    const totalStock = Number(stockText);
+    if (!Number.isFinite(totalStock)) {
+      return Number(sku.availableMain || 0);
+    }
+
+    return Math.max(0, totalStock - Number(sku.soldMain || 0) - Number(sku.lockedMain || 0));
+  },
+
   confirmBatch() {
     this._markDirty();
     const { batchPrice, batchStock, batchImage, batchSelectedColors, batchSelectedSizes, skuList } = this.data;
@@ -1433,10 +1451,12 @@ Page({
       const sizeMatch = selectedSizes.length === 0 || selectedSizes.includes(item.size);
 
       if (colorMatch && sizeMatch) {
+        const nextStock = batchStock || item.stock;
         return {
           ...item,
           price: batchPrice || item.price,
-          stock: batchStock || item.stock,
+          stock: nextStock,
+          availableMain: batchStock ? this.getExpectedAvailableStock(item, nextStock) : item.availableMain,
           image: batchImage || item.image
         };
       }
@@ -1450,7 +1470,12 @@ Page({
   onSkuInput(e) {
     const { index, field } = e.currentTarget.dataset;
     const key = `skuList[${index}].${field}`;
-    this.setData({ [key]: e.detail.value });
+    const value = e.detail.value;
+    const updates = { [key]: value };
+    if (field === 'stock') {
+      updates[`skuList[${index}].availableMain`] = this.getExpectedAvailableStock(this.data.skuList[index], value);
+    }
+    this.setData(updates);
     this._markDirty();
   },
 
@@ -1916,10 +1941,12 @@ Page({
 
     // 执行填充逻辑
     const newList = skuList.map(sku => {
+      const nextStock = quickStock !== '' ? quickStock : sku.stock;
       return {
         ...sku,
         price: quickPrice !== '' ? quickPrice : sku.price,
-        stock: quickStock !== '' ? quickStock : sku.stock,
+        stock: nextStock,
+        availableMain: quickStock !== '' ? this.getExpectedAvailableStock(sku, nextStock) : sku.availableMain,
         image: quickImage !== '' ? quickImage : sku.image
       };
     });

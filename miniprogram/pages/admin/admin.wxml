@@ -175,7 +175,7 @@
         <view class="sku-inventory-stats">
           <text>售出库存 {{item.soldMain || 0}}</text>
           <text>锁定库存 {{item.lockedMain || 0}}</text>
-          <text>可用库存 {{item.stock === '' ? '无限' : (item.availableMain || 0)}}</text>
+          <text>可用库存 {{item.stock === '' || item.availableMain >= unlimitedStockThreshold ? '无限' : (item.availableMain || 0)}}</text>
         </view>
       </view>
     </view>
