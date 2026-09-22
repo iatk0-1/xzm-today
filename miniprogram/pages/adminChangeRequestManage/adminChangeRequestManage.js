@@ -44,13 +44,25 @@ Page({
       const status = STATUS_MAP[this.data.currentTab];
       if (status) params.status = status;
       const result = await api.get('/admin/orders-manage/change-requests', params);
-      const requests = (result || []).map(item => ({
-        ...item,
-        requestTypeText: item.requestType === 'recipient' ? '收件信息修改' : '商品备注修改',
-        statusText: item.status === 'pending' ? '待审批' : (item.status === 'approved' ? '已通过' : '已拒绝'),
-        recipientAddress: [item.recipientProvince, item.recipientCity, item.recipientDistrict, item.recipientDetail]
-          .filter(Boolean).join('')
-      }));
+      const requests = (result || []).map(item => {
+        const request = item.request || item;
+        return {
+          ...request,
+          ...item,
+          requestTypeText: request.requestType === 'recipient' ? '收件信息修改' : '商品备注修改',
+          statusText: request.status === 'pending' ? '待审批' : (request.status === 'approved' ? '已通过' : '已拒绝'),
+          beforeRecipientAddress: [request.beforeRecipientProvince, request.beforeRecipientCity,
+            request.beforeRecipientDistrict, request.beforeRecipientDetail].filter(Boolean).join(''),
+          requestedRecipientAddress: [request.recipientProvince, request.recipientCity,
+            request.recipientDistrict, request.recipientDetail].filter(Boolean).join(''),
+          currentRecipientAddress: [item.currentRecipientProvince, item.currentRecipientCity,
+            item.currentRecipientDistrict, item.currentRecipientDetail].filter(Boolean).join(''),
+          itemRemarks: (request.itemRemarks || []).map(remark => {
+            const orderItem = (item.orderItems || []).find(goods => goods.id === remark.orderItemId);
+            return { ...remark, beforeRemark: orderItem ? orderItem.remark : '' };
+          })
+        };
+      });
       this.setData({ requests });
     } catch (err) {
       wx.showToast({ title: err.message || '加载申请失败', icon: 'none' });
