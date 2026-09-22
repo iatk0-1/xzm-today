@@ -42,6 +42,17 @@ const STATUS_DISPLAY = {
   'cancelled': '已取消'
 };
 
+// 订单状态中文显示
+const ORDER_STATUS_DISPLAY = {
+  'pending': '待付款',
+  'stocking': '备货中',
+  'paid': '待发货',
+  'partial_shipped': '部分发货',
+  'shipped': '已发货',
+  'completed': '已完成',
+  'cancelled': '已关闭'
+};
+
 // 类型中文显示
 const TYPE_DISPLAY = {
   'refund': '仅退款',
@@ -197,7 +208,10 @@ Page({
           afterSales: newList.map(item => ({
             ...item,
             statusDisplay: STATUS_DISPLAY[item.status] || item.status,
+            orderStatusDisplay: ORDER_STATUS_DISPLAY[item.orderStatus] || item.orderStatus || '-',
             typeDisplay: TYPE_DISPLAY[item.type] || item.type,
+            createdAtDisplay: this.formatDateTime(item.createdAt),
+            orderCreatedAtDisplay: this.formatDateTime(item.orderCreatedAt),
             itemDisplay: item.items && item.items.length > 0 
               ? `${item.items.length} 件商品` 
               : `${item.totalQty || 0} 件商品`
@@ -216,6 +230,24 @@ Page({
         this.setData({ isLoading: false });
         if (callback) callback();
       });
+  },
+
+  // 格式化列表中的时间，统一显示到秒
+  formatDateTime: function(raw) {
+    if (!raw) return '-';
+
+    let date;
+    if (typeof raw === 'number') {
+      date = new Date(raw < 1e10 ? raw * 1000 : raw);
+    } else if (Array.isArray(raw)) {
+      date = new Date(raw[0], (raw[1] || 1) - 1, raw[2] || 1, raw[3] || 0, raw[4] || 0, raw[5] || 0);
+    } else {
+      date = new Date(raw);
+    }
+
+    if (Number.isNaN(date.getTime())) return String(raw);
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
   },
 
   // 刷新列表
