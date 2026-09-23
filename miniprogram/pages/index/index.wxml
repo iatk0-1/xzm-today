@@ -21,15 +21,7 @@
           <view class="line"></view>
         </view>
 
-        <view class="tab-item {{currentMainTab === '分类' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="分类">
-          <text>分类</text>
-          <view class="line"></view>
-        </view>
-
-        <view class="tab-item {{currentMainTab === '直播' ? 'active' : ''}}" bindtap="goToLiveRoom" data-tab="直播">
-          <text>直播</text>
-          <view class="line"></view>
-        </view>
+        <!-- 功能暂时不开放：分类和直播标签暂时隐藏 -->
       </view>
 
     
