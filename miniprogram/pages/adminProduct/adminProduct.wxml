@@ -48,7 +48,7 @@
     </view>
   </view>
 
-  <scroll-view scroll-y class="product-scroll-area {{selectMode ? 'with-batch-bar' : ''}}" enable-flex enhanced bindscrolltolower="loadMore">
+  <scroll-view scroll-y class="product-scroll-area {{selectMode ? 'with-batch-bar' : ''}}" enable-flex enhanced refresher-enabled="true" refresher-triggered="{{isRefreshing}}" refresher-background="#f2f2f2" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore">
 
     <view class="empty-state" wx:if="{{products.length === 0 && !isLoading}}">
       <view class="empty-text" wx:if="{{searchKeyword || activeStatus !== 'all' || selectedStall || selectedTag}}">没有找到符合条件的商品</view>

@@ -6,6 +6,7 @@ Page({
   data: {
     products: [],
     isLoading: false,  // 初始为 false，允许首次加载
+    isRefreshing: false,
     activeStatus: 'all',
     searchKeyword: '',
     searchFocus: false,
@@ -26,11 +27,22 @@ Page({
 
   onLoad: function() {
     this.loadFilterOptions();
-    this.loadProducts();
   },
 
   onShow: function() {
-    // 页面显示时不自动刷新，避免重复加载
+    // 从商品详情页返回时重新拉取，确保上下架、编辑等变更立即反映在列表中。
+    this.loadProducts();
+  },
+
+  onRefresh: async function() {
+    if (this.data.isRefreshing || this.data.isLoading) return;
+
+    this.setData({ isRefreshing: true });
+    try {
+      await this.loadProducts();
+    } finally {
+      this.setData({ isRefreshing: false });
+    }
   },
 
   // 滚动到底部加载更多（scroll-view 使用）
