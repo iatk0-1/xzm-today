@@ -28,6 +28,7 @@ Page({
     tempMoveY: 0,
 
     shippingInfo: '付款后按排单顺序发货',
+    publishOnSale: true,
     description: '',
     fabricCare: '',
     sizeChartTip: '',
@@ -249,6 +250,7 @@ Page({
       // 填充基本信息
       const formData = {
         title: product.name || '',
+        publishOnSale: product.status !== 'off',
         videoUrl: product.videoUrl || '',
         videoThumbPath: '',
         useVideoCover: false,
@@ -1612,9 +1614,14 @@ Page({
   },
 
   // ================= 提交商品 =================
+  togglePublishStatus: function(e) {
+    this.setData({ publishOnSale: !!e.detail.value });
+  },
+
   submitProduct: async function() {
     const { mediaList, title, selectedStalls, selectedTags, skuList, lookbookImgs, detailImgs, manualRelated,
-            videoUrl, videoThumbPath, useVideoCover, shippingInfo, description, fabricCare, sizeChartTip, warmTips, editId } = this.data;
+            videoUrl, videoThumbPath, useVideoCover, shippingInfo, description, fabricCare, sizeChartTip, warmTips,
+            publishOnSale, editId } = this.data;
 
     var isBundle = this.data.isBundleMode && this.data.bundleGroups.length > 0;
     var hasSkus = isBundle
@@ -1720,7 +1727,7 @@ Page({
         bannerImages: bannerImages,
         stallIds: selectedStalls.map(s => s.id),
         relateTagIds: selectedTags.map(t => t.id),
-        status: 'on',
+        status: publishOnSale ? 'on' : 'off',
         retailPrice: minPrice,
         displayPrice: displayPrice,
         lookbookImages: uploadedLookbookUrls,
@@ -1805,7 +1812,7 @@ Page({
       // 清除草稿
       this.clearDraft();
 
-      wx.showToast({ title: editId ? '修改成功!' : '上架成功!', icon: 'success' });
+      wx.showToast({ title: editId ? '修改成功!' : '发布成功!', icon: 'success' });
       setTimeout(() => {
         wx.navigateBack();
       }, 1500);
@@ -2373,6 +2380,7 @@ Page({
       videoThumbPath: data.videoThumbPath || '',
       useVideoCover: data.useVideoCover || false,
       shippingInfo: data.shippingInfo,
+      publishOnSale: data.publishOnSale,
       description: data.description,
       fabricCare: data.fabricCare,
       sizeChartTip: data.sizeChartTip,
@@ -2508,6 +2516,7 @@ Page({
       videoThumbPath: '',  // 临时路径草稿恢复后已失效，置空
       useVideoCover: safeGet(draftData, 'useVideoCover', false),
       shippingInfo: safeGet(draftData, 'shippingInfo', '付款后按排单顺序发货'),
+      publishOnSale: safeGet(draftData, 'publishOnSale', true),
       description: safeGet(draftData, 'description', ''),
       fabricCare: safeGet(draftData, 'fabricCare', ''),
       sizeChartTip: safeGet(draftData, 'sizeChartTip', ''),
