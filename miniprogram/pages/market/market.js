@@ -214,7 +214,8 @@ Page({
     }
     console.log('新状态 - isLiked:', targetWish.isLiked, 'likes:', targetWish.likes);
 
-    this.updateWishColumns(currentWishes.slice().sort((a, b) => b.likes - a.likes));
+    // 点赞只更新当前卡片，列表位置保持用户正在浏览时的稳定顺序。
+    this.updateWishColumns(currentWishes);
 
     // 调用后端 API
     try {
@@ -236,7 +237,7 @@ Page({
       targetWish.isLiked = originalLiked;
       targetWish.likes = originalLikes;
 
-      this.updateWishColumns(currentWishes.slice().sort((a, b) => b.likes - a.likes));
+      this.updateWishColumns(currentWishes);
 
       const errorMsg = err.message || err.error || '操作失败';
       wx.showToast({ title: errorMsg, icon: 'none' });

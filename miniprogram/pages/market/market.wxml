@@ -16,16 +16,15 @@
       <view class="page-subtitle">探索 · 许愿 · 为你寻觅</view>
     </view>
 
-    <view class="waterfall-container" wx:if="{{wishes.length > 0}}">
+    <view class="masonry-grid" wx:if="{{wishes.length > 0}}">
       <!-- 左列 -->
-      <view class="waterfall-column">
-        <view class="wish-item" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToWishDetail" data-id="{{item.id}}">
-          <view class="wish-image-wrap">
-            <image class="wish-img" src="{{item.image}}" mode="aspectFill" lazy-load="true"></image>
-          </view>
+      <view class="masonry-column">
+        <view class="wish-card" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToWishDetail" data-id="{{item.id}}">
 
-          <view class="wish-info">
-            <view class="wish-title">{{item.title || item.content}}</view>
+          <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
+
+          <view class="card-content">
+            <view class="card-desc">{{item.title || item.content}}</view>
 
             <view class="progress-section" wx:if="{{!item.linkedProductId}}">
               <view class="progress-bar">
@@ -46,14 +45,13 @@
       </view>
 
       <!-- 右列 -->
-      <view class="waterfall-column">
-        <view class="wish-item" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToWishDetail" data-id="{{item.id}}">
-          <view class="wish-image-wrap">
-            <image class="wish-img" src="{{item.image}}" mode="aspectFill" lazy-load="true"></image>
-          </view>
+      <view class="masonry-column">
+        <view class="wish-card" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToWishDetail" data-id="{{item.id}}">
 
-          <view class="wish-info">
-            <view class="wish-title">{{item.title || item.content}}</view>
+          <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
+
+          <view class="card-content">
+            <view class="card-desc">{{item.title || item.content}}</view>
 
             <view class="progress-section" wx:if="{{!item.linkedProductId}}">
               <view class="progress-bar">

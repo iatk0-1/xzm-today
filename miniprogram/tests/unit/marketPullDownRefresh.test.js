@@ -104,6 +104,22 @@ nodeTest('市集页面级下拉刷新：结束后收起原生刷新动画', asyn
   assert.equal(page.data.refreshing, false);
 });
 
+nodeTest('市集点赞：只更新当前卡片，不重新排列列表', async () => {
+  const page = createPage();
+  const first = wish('first', 20);
+  const second = wish('second', 1);
+  page.data.wishes = [first, second];
+  page.data.leftColumn = [first];
+  page.data.rightColumn = [second];
+
+  await page.handleLike({ currentTarget: { dataset: { id: 'second' } } });
+
+  assert.deepEqual(page.data.wishes.map((item) => item.id), ['first', 'second']);
+  assert.equal(page.data.wishes[1].likes, 2);
+  assert.deepEqual(page.data.leftColumn.map((item) => item.id), ['first']);
+  assert.deepEqual(page.data.rightColumn.map((item) => item.id), ['second']);
+});
+
 nodeTest('市集卡片：爱心阻止事件冒泡，热度只展示数值', () => {
   const wxml = fs.readFileSync(
     path.join(__dirname, '../../pages/market/market.wxml'),
@@ -112,6 +128,7 @@ nodeTest('市集卡片：爱心阻止事件冒泡，热度只展示数值', () =
 
   assert.equal((wxml.match(/catchtap="handleLike"/g) || []).length, 2);
   assert.equal((wxml.match(/热度[^\n]*\/ 50/g) || []).length, 0);
-  assert.equal(wxml.includes('class="waterfall-container"'), true);
-  assert.equal(wxml.includes('class="wish-image-wrap"'), true);
+  assert.equal(wxml.includes('class="masonry-grid"'), true);
+  assert.equal(wxml.includes('class="wish-card"'), true);
+  assert.equal(wxml.includes('mode="widthFix"'), true);
 });
