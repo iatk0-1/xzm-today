@@ -28,7 +28,7 @@ Page({
     tempMoveY: 0,
 
     shippingInfo: '付款后按排单顺序发货',
-    publishOnSale: true,
+    publishOnSale: false,
     description: '',
     fabricCare: '',
     sizeChartTip: '',
@@ -2516,7 +2516,7 @@ Page({
       videoThumbPath: '',  // 临时路径草稿恢复后已失效，置空
       useVideoCover: safeGet(draftData, 'useVideoCover', false),
       shippingInfo: safeGet(draftData, 'shippingInfo', '付款后按排单顺序发货'),
-      publishOnSale: safeGet(draftData, 'publishOnSale', true),
+      publishOnSale: safeGet(draftData, 'publishOnSale', false),
       description: safeGet(draftData, 'description', ''),
       fabricCare: safeGet(draftData, 'fabricCare', ''),
       sizeChartTip: safeGet(draftData, 'sizeChartTip', ''),
