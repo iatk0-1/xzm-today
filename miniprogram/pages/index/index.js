@@ -41,6 +41,7 @@ Page({
     currentSkuId: null,
     currentSkuUnlimited: false,
     currentSkuSoldOut: false,
+    quantity: 1,
 
     // 套装子项选择
     bundleSelections: [],
@@ -549,7 +550,8 @@ if (bundleGroups && bundleGroups.length > 0) {
     currentSkuId: null,
     currentSkuUnlimited: false,
     currentSkuSoldOut: false,
-    showSku: true, 
+    quantity: 1,
+    showSku: true,
     bundleSelections: result.bundleSelections, 
     bundleAllSelected: result.bundleAllSelected,
     bundlePriceRange: rangeStr, // ✨ 价格区间下发到前端
@@ -582,6 +584,7 @@ if (bundleGroups && bundleGroups.length > 0) {
       currentSkuId: null,
       currentSkuUnlimited: false,
       currentSkuSoldOut: false,
+      quantity: 1,
       bundleSelections: [],
       bundleAllSelected: false,
       showSku: true
@@ -618,7 +621,8 @@ if (bundleGroups && bundleGroups.length > 0) {
           currentSkuSoldOut: isSkuSoldOut(match),
           currentSkuStockText: formatStock(match.stock, match.unlimitedStock),
           currentSkuId: match.skuId,
-          currentSkuImage: match.imageUrl || (currentProduct.coverUrl || currentProduct.image)
+          currentSkuImage: match.imageUrl || (currentProduct.coverUrl || currentProduct.image),
+          quantity: this.normalizeSkuQuantity(this.data.quantity, match.stock, match.unlimitedStock)
         });
       } else {
         // 没有匹配的 SKU 信息，库存为 0，使用商品封面图
@@ -629,10 +633,54 @@ if (bundleGroups && bundleGroups.length > 0) {
           currentSkuSoldOut: false,
           currentSkuStockText: '0',
           currentSkuId: null,
-          currentSkuImage: currentProduct.coverUrl || currentProduct.image
+          currentSkuImage: currentProduct.coverUrl || currentProduct.image,
+          quantity: 1
         });
       }
     }
+  },
+
+  normalizeSkuQuantity(value, stock, unlimitedStock) {
+    var quantity = parseInt(value, 10);
+    if (isNaN(quantity) || quantity < 1) quantity = 1;
+    if (!unlimitedStock && stock != null && Number(stock) > 0) {
+      quantity = Math.min(quantity, Number(stock));
+    }
+    return quantity;
+  },
+
+  skuQuantityMinus() {
+    if (this.data.quantity <= 1) return;
+    this.setData({ quantity: this.data.quantity - 1 });
+  },
+
+  skuQuantityPlus() {
+    const { quantity, currentSkuStock, currentSkuUnlimited } = this.data;
+    const hasStockLimit = !currentSkuUnlimited && currentSkuStock !== null;
+    const maxQuantity = hasStockLimit ? Number(currentSkuStock) : 99;
+    if (maxQuantity <= 0) {
+      wx.showToast({ title: '该规格已售罄', icon: 'none' });
+      return;
+    }
+    if (quantity >= maxQuantity) {
+      wx.showToast({ title: '已达到库存上限', icon: 'none' });
+      return;
+    }
+    this.setData({ quantity: quantity + 1 });
+  },
+
+  skuQuantityInput(e) {
+    const { currentSkuStock, currentSkuUnlimited } = this.data;
+    this.setData({
+      quantity: this.normalizeSkuQuantity(e.detail.value, currentSkuStock, currentSkuUnlimited)
+    });
+  },
+
+  skuQuantityInputBlur(e) {
+    const { currentSkuStock, currentSkuUnlimited } = this.data;
+    this.setData({
+      quantity: this.normalizeSkuQuantity(e.detail.value, currentSkuStock, currentSkuUnlimited)
+    });
   },
 
   // 套装子项选择处理
@@ -739,6 +787,15 @@ if (bundleGroups && bundleGroups.length > 0) {
     if (url) { wx.previewImage({ urls: [url], current: url }); }
   },
 
+  // SKU 面板商品图预览（单张）
+  previewSkuPanelImage() {
+    var product = this.data.currentProduct || {};
+    var current = this.data.currentSkuImage || product.coverUrl || product.image;
+    if (current) {
+      wx.previewImage({ urls: [current], current: current });
+    }
+  },
+
 // ====== 精巧的数量增减器核心控制 ======
 // ✨ 新增助手函数：点加减号时，同步重新算一次底部总价
 _updateBundleTotals(sel) {
@@ -830,7 +887,7 @@ bundleInputBlur(e) {
 
   confirmAddToCart(e) {
     const actionType = e.currentTarget.dataset.action;
-    const { currentProduct, bundleSelections, bundleAllSelected, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuUnlimited, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes } = this.data;
+    const { currentProduct, bundleSelections, bundleAllSelected, selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuUnlimited, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes, quantity } = this.data;
     if (!currentProduct) return;
 
     if (bundleSelections && bundleSelections.length > 0) {
@@ -888,7 +945,7 @@ bundleInputBlur(e) {
         selectedSize: selectedSize,
         finalPrice: currentSkuPrice,
         price: Number(currentSkuPrice || currentProduct.price || currentProduct.retailPrice || 0),
-        count: 1,
+        count: quantity,
         selected: true
       };
       wx.setStorageSync('checkoutItems', [finalItem]);
@@ -902,7 +959,7 @@ bundleInputBlur(e) {
         skuId: currentSkuId || 0,
         color: selectedColor || '默认',
         size: selectedSize || '均码',
-        count: 1
+        count: quantity
       };
 
       api.post('/cart/items', cartData)

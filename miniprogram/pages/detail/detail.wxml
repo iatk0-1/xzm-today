@@ -116,14 +116,26 @@
 <view class="sku-panel {{showSku ? 'show' : ''}}">
   <view class="sku-close" catchtap="closeSkuPanel">×</view>
   <view class="sku-header">
-    <view class="sku-img-wrap">
-      <image class="sku-img" src="{{currentSkuImage || product.image}}" mode="aspectFill" catchtap="previewSkuPanelImage"></image>
-      <view class="sold-out-overlay" wx:if="{{currentSkuId ? currentSkuSoldOut : product.soldOut}}"><text>售罄</text></view>
+    <view class="sku-image-column">
+      <view class="sku-img-wrap">
+        <image class="sku-img" src="{{currentSkuImage || product.image}}" mode="aspectFill" catchtap="previewSkuPanelImage"></image>
+        <view class="sold-out-overlay" wx:if="{{currentSkuId ? currentSkuSoldOut : product.soldOut}}"><text>售罄</text></view>
+      </view>
     </view>
     <view class="sku-main">
       <view class="sku-price" style="color: #d32f2f;">¥ {{currentSkuPrice || product.displayPrice || product.price}}</view>
       <view class="sku-stock" style="color: {{currentSkuStock === 0 && !currentSkuUnlimited ? 'red' : '#999'}};">库存: {{currentSkuStockText || '请选择规格'}}</view>
-      <view class="sku-choose-tip">已选: {{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
+      <view class="sku-meta-row">
+        <view class="sku-choose-tip">已选: {{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
+        <view class="sku-quantity" wx:if="{{bundleSelections.length === 0}}">
+          <text class="sku-quantity-label">数量</text>
+          <view class="sku-quantity-control">
+            <view class="sku-quantity-btn {{quantity <= 1 ? 'disabled' : ''}}" catchtap="skuQuantityMinus">-</view>
+            <input class="sku-quantity-input" type="number" value="{{quantity}}" bindinput="skuQuantityInput" bindblur="skuQuantityInputBlur" />
+            <view class="sku-quantity-btn {{!currentSkuUnlimited && currentSkuStock !== null && currentSkuStock <= quantity ? 'disabled' : ''}}" catchtap="skuQuantityPlus">+</view>
+          </view>
+        </view>
+      </view>
     </view>
   </view>
   <!-- 套装商品颜色/尺码选择 -->

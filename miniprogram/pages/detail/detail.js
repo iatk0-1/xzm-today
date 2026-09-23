@@ -26,6 +26,7 @@ Page({
     currentSkuId: null,
     currentSkuUnlimited: false,
     currentSkuSoldOut: false,
+    quantity: 1,
     showVideo: false,
     currentAuraTab: '',
     // 套装子项选择
@@ -277,7 +278,8 @@ Page({
         showSku: true, skuAction: action,
         bundleSelections: result.bundleSelections,
         bundleAllSelected: result.bundleAllSelected,
-        currentSkuPrice: result.currentSkuPrice
+        currentSkuPrice: result.currentSkuPrice,
+        quantity: 1
       });
       return;
     }
@@ -295,7 +297,8 @@ Page({
       currentSkuStock: hasNoSku ? 0 : null,
       currentSkuUnlimited: false,
       currentSkuStockText: hasNoSku ? '0' : null,
-      currentSkuSoldOut: hasNoSku
+      currentSkuSoldOut: hasNoSku,
+      quantity: 1
     });
     if (uniqueColors.length === 1 && uniqueSizes.length === 1) {
       this.checkSkuMatch();
@@ -333,7 +336,8 @@ Page({
           currentSkuSoldOut: isSkuSoldOut(match),
           currentSkuStockText: formatStock(match.stock, match.unlimitedStock),
           currentSkuId: match.skuId,
-          currentSkuImage: match.imageUrl || product.coverUrl
+          currentSkuImage: match.imageUrl || product.coverUrl,
+          quantity: this.normalizeSkuQuantity(this.data.quantity, match.stock, match.unlimitedStock)
         });
       } else {
         // 没有匹配的 SKU 信息，库存为 0，价格使用商品展示价格
@@ -344,10 +348,54 @@ Page({
           currentSkuSoldOut: false,
           currentSkuStockText: '0',
           currentSkuId: null,
-          currentSkuImage: product.coverUrl
+          currentSkuImage: product.coverUrl,
+          quantity: 1
         });
       }
     }
+  },
+
+  normalizeSkuQuantity(value, stock, unlimitedStock) {
+    var quantity = parseInt(value, 10);
+    if (isNaN(quantity) || quantity < 1) quantity = 1;
+    if (!unlimitedStock && stock != null && Number(stock) > 0) {
+      quantity = Math.min(quantity, Number(stock));
+    }
+    return quantity;
+  },
+
+  skuQuantityMinus() {
+    if (this.data.quantity <= 1) return;
+    this.setData({ quantity: this.data.quantity - 1 });
+  },
+
+  skuQuantityPlus() {
+    const { quantity, currentSkuStock, currentSkuUnlimited } = this.data;
+    const hasStockLimit = !currentSkuUnlimited && currentSkuStock !== null;
+    const maxQuantity = hasStockLimit ? Number(currentSkuStock) : 99;
+    if (maxQuantity <= 0) {
+      wx.showToast({ title: '该规格已售罄', icon: 'none' });
+      return;
+    }
+    if (quantity >= maxQuantity) {
+      wx.showToast({ title: '已达到库存上限', icon: 'none' });
+      return;
+    }
+    this.setData({ quantity: quantity + 1 });
+  },
+
+  skuQuantityInput(e) {
+    const { currentSkuStock, currentSkuUnlimited } = this.data;
+    this.setData({
+      quantity: this.normalizeSkuQuantity(e.detail.value, currentSkuStock, currentSkuUnlimited)
+    });
+  },
+
+  skuQuantityInputBlur(e) {
+    const { currentSkuStock, currentSkuUnlimited } = this.data;
+    this.setData({
+      quantity: this.normalizeSkuQuantity(e.detail.value, currentSkuStock, currentSkuUnlimited)
+    });
   },
 
   // 套装子项选择处理
@@ -421,7 +469,7 @@ Page({
     }
 
     // 普通商品流程
-    const { selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuUnlimited, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes } = this.data;
+    const { selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuUnlimited, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes, quantity } = this.data;
 
     // 检查是否选择了颜色和尺码
     if (uniqueColors.length > 0 && !selectedColor) {
@@ -468,7 +516,7 @@ Page({
         selectedSize: finalSize,
         finalPrice: currentSkuPrice || product.retailPrice || product.displayPrice,
         price: Number(currentSkuPrice || product.retailPrice || product.displayPrice),
-        count: 1,
+        count: quantity,
         selected: true
       };
       wx.setStorageSync('checkoutItems', [finalItem]);
@@ -482,7 +530,7 @@ Page({
         skuId: currentSkuId || 0,
         color: finalColor,
         size: finalSize,
-        count: 1
+        count: quantity
       };
 
       api.post('/cart/items', cartData)
