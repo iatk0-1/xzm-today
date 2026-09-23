@@ -428,6 +428,9 @@
             </view>
           </view>
         </view>
+        <view class="shipment-actions" wx:if="{{item.id}}">
+          <view class="shipment-trace-btn" bindtap="viewShipmentTrace" data-shipment-id="{{item.id}}">物流详情</view>
+        </view>
       </view>
     </view>
   </view>

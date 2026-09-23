@@ -604,6 +604,19 @@ Page({
     clipboard.copyText(e.currentTarget.dataset.expressNo, '快递单号');
   },
 
+  // 查看关联发货单的物流详情
+  viewShipmentTrace: function(e) {
+    const shipmentId = e.currentTarget.dataset.shipmentId;
+    if (!shipmentId) {
+      wx.showToast({ title: '暂无发货单信息', icon: 'none' });
+      return;
+    }
+
+    wx.navigateTo({
+      url: `/pages/shipmentTraceDetail/shipmentTraceDetail?shipmentId=${shipmentId}&orderId=${this.data.afterSale && this.data.afterSale.orderId || ''}`
+    });
+  },
+
   copyOrderNo: function() {
     const afterSale = this.data.afterSale || {};
     clipboard.copyText(afterSale.outTradeNo, '订单号');

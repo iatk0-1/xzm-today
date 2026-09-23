@@ -394,6 +394,23 @@
   color: #666;
 }
 
+.shipment-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #eee;
+}
+
+.shipment-trace-btn {
+  padding: 12rpx 24rpx;
+  border: 1rpx solid #222;
+  border-radius: 8rpx;
+  color: #222;
+  font-size: 24rpx;
+  line-height: 1.4;
+}
+
 /* 时间轴 */
 .timeline {
   display: flex;
