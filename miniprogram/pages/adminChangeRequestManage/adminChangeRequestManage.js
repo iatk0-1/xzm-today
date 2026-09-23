@@ -8,6 +8,55 @@ const STATUS_MAP = {
   rejected: 'rejected'
 };
 
+const ORDER_STATUS_DISPLAY = {
+  pending: '待付款',
+  stocking: '备货中',
+  paid: '待发货',
+  partial_shipped: '部分发货',
+  shipped: '已发货',
+  completed: '已完成',
+  cancelled: '已关闭'
+};
+
+function firstValue() {
+  const values = Array.prototype.slice.call(arguments);
+  return values.find(value => value !== undefined && value !== null && value !== '') || '';
+}
+
+function normalizeOrderItem(item) {
+  return {
+    ...item,
+    productName: firstValue(item.productName, item.name, '商品'),
+    productImage: firstValue(item.productImage, item.imageUrl),
+    skuImageUrl: firstValue(item.skuImageUrl, item.skuImage),
+    skuSpec: firstValue(item.skuSpec, item.productSpec, item.spec, '图片色'),
+    skuSize: firstValue(item.skuSize, item.productSize, item.size, '均码')
+  };
+}
+
+function getOrderItems(item) {
+  const orderItems = Array.isArray(item.orderItems) ? item.orderItems : item.items;
+  return Array.isArray(orderItems) ? orderItems.map(normalizeOrderItem) : [];
+}
+
+function findOrderItem(orderItems, orderItemId) {
+  return orderItems.find(goods => String(goods.id) === String(orderItemId));
+}
+
+function buildRequestItemRemarks(request, orderItems) {
+  return (request.itemRemarks || []).map(remark => {
+    const orderItem = findOrderItem(orderItems, remark.orderItemId);
+    return {
+      ...remark,
+      productName: orderItem ? orderItem.productName : '',
+      skuSpec: orderItem ? orderItem.skuSpec : '',
+      skuSize: orderItem ? orderItem.skuSize : '',
+      qty: orderItem ? orderItem.qty : '',
+      beforeRemark: orderItem ? orderItem.remark : request.beforeItemRemark || ''
+    };
+  });
+}
+
 Page({
   data: {
     tabs: [
@@ -44,25 +93,42 @@ Page({
       const status = STATUS_MAP[this.data.currentTab];
       if (status) params.status = status;
       const result = await api.get('/admin/orders-manage/change-requests', params);
-      const requests = (result || []).map(item => {
+      const detailRequests = new Map();
+      const loadFallbackOrderItems = (orderId) => {
+        const key = String(orderId);
+        if (!detailRequests.has(key)) {
+          detailRequests.set(key, api.get(`/admin/orders-manage/orders/${orderId}`)
+            .then(order => getOrderItems(order || {}))
+            .catch(() => []));
+        }
+        return detailRequests.get(key);
+      };
+
+      const requests = await Promise.all((result || []).map(async item => {
         const request = item.request || item;
+        let orderItems = getOrderItems(item);
+        const needsOrderDetail = orderItems.length === 0
+          || orderItems.some(goods => !goods.productImage && !goods.skuImageUrl);
+        if (needsOrderDetail) {
+          orderItems = await loadFallbackOrderItems(request.orderId);
+        }
         return {
           ...request,
           ...item,
           requestTypeText: request.requestType === 'recipient' ? '收件信息修改' : '商品备注修改',
           statusText: request.status === 'pending' ? '待审批' : (request.status === 'approved' ? '已通过' : '已拒绝'),
+          orderStatusText: ORDER_STATUS_DISPLAY[item.orderStatus] || item.orderStatus || '未知状态',
+          orderStatusClass: item.orderStatus || 'unknown',
           beforeRecipientAddress: [request.beforeRecipientProvince, request.beforeRecipientCity,
             request.beforeRecipientDistrict, request.beforeRecipientDetail].filter(Boolean).join(''),
           requestedRecipientAddress: [request.recipientProvince, request.recipientCity,
             request.recipientDistrict, request.recipientDetail].filter(Boolean).join(''),
           currentRecipientAddress: [item.currentRecipientProvince, item.currentRecipientCity,
             item.currentRecipientDistrict, item.currentRecipientDetail].filter(Boolean).join(''),
-          itemRemarks: (request.itemRemarks || []).map(remark => {
-            const orderItem = (item.orderItems || []).find(goods => goods.id === remark.orderItemId);
-            return { ...remark, beforeRemark: orderItem ? orderItem.remark : '' };
-          })
+          orderItems,
+          itemRemarks: buildRequestItemRemarks(request, orderItems)
         };
-      });
+      }));
       this.setData({ requests });
     } catch (err) {
       wx.showToast({ title: err.message || '加载申请失败', icon: 'none' });

@@ -8,7 +8,13 @@
 .request-card { margin-bottom: 20rpx; padding: 24rpx; background: #fff; border-radius: 10rpx; }
 .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
 .type { display: block; color: #111; font-size: 29rpx; font-weight: 600; }
-.order { display: block; margin-top: 8rpx; color: #666; font-size: 24rpx; }
+.order-line { display: flex; align-items: center; flex-wrap: wrap; gap: 10rpx; margin-top: 8rpx; }
+.order { color: #666; font-size: 24rpx; word-break: break-all; }
+.order-status { flex-shrink: 0; padding: 4rpx 10rpx; border-radius: 4rpx; font-size: 20rpx; }
+.order-status-pending, .order-status-stocking, .order-status-paid { color: #9a6200; background: #fff4d6; }
+.order-status-partial_shipped, .order-status-shipped { color: #286aa6; background: #eaf4ff; }
+.order-status-completed { color: #287a43; background: #e9f7ed; }
+.order-status-cancelled, .order-status-unknown { color: #888; background: #f1f1f1; }
 .status { flex-shrink: 0; padding: 6rpx 12rpx; border-radius: 6rpx; font-size: 22rpx; }
 .status-pending { color: #9a6200; background: #fff4d6; }
 .status-approved { color: #287a43; background: #e9f7ed; }
@@ -19,15 +25,24 @@
 .recipient-name { color: #222; font-size: 26rpx; }
 .recipient-address { margin-top: 8rpx; color: #555; font-size: 24rpx; line-height: 1.5; word-break: break-all; }
 .order-items-label { margin-top: 20rpx; }
-.order-item-line { padding: 10rpx 0; border-top: 1rpx solid #eee; }
-.order-item-name, .order-item-remark { display: block; color: #555; font-size: 23rpx; line-height: 1.5; word-break: break-all; }
-.order-item-remark { color: #888; }
+.order-item-line { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 14rpx; padding: 12rpx 0; border-top: 1rpx solid #eee; }
+.order-item-image { width: 96rpx; height: 96rpx; flex-shrink: 0; border-radius: 8rpx; background: #f2f2f2; }
+.order-item-info { position: relative; flex: 1; min-width: 0; padding-right: 56rpx; }
+.order-item-name, .order-item-sku, .order-item-qty, .order-item-remark { display: block; line-height: 1.5; word-break: break-all; }
+.order-item-name { color: #333; font-size: 25rpx; font-weight: 500; }
+.order-item-sku { margin-top: 6rpx; color: #999; font-size: 22rpx; }
+.order-item-qty { position: absolute; top: 0; right: 0; color: #666; font-size: 23rpx; }
+.order-item-remark { margin-top: 6rpx; color: #888; font-size: 22rpx; }
 .history-label { margin-top: 12rpx; color: #999; font-size: 22rpx; }
 .requested-label { color: #333; }
-.remark-line { display: flex; align-items: flex-start; gap: 16rpx; padding: 10rpx 0; color: #555; font-size: 24rpx; }
+.remark-line { padding: 10rpx 0; color: #555; font-size: 24rpx; }
 .remark-line + .remark-line { border-top: 1rpx solid #eee; }
-.remark-before { display: block; margin-top: 6rpx; color: #999; font-size: 22rpx; }
-.remark-value { flex: 1; color: #222; word-break: break-all; text-align: right; }
+.remark-product { display: flex; align-items: baseline; gap: 12rpx; }
+.remark-product-name { flex: 1; color: #333; font-weight: 500; word-break: break-all; }
+.remark-product-spec { flex-shrink: 0; color: #999; font-size: 22rpx; }
+.remark-change { margin-top: 6rpx; display: flex; align-items: flex-start; gap: 16rpx; }
+.remark-before { flex: 1; color: #999; font-size: 22rpx; word-break: break-all; }
+.remark-value { flex: 1; color: #222; font-size: 22rpx; word-break: break-all; text-align: right; }
 .reject-reason { margin-top: 18rpx; color: #b33a32; font-size: 24rpx; line-height: 1.5; }
 .actions { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 24rpx; }
 .actions button { width: 180rpx; height: 64rpx; margin: 0; padding: 0; border-radius: 8rpx; font-size: 25rpx; line-height: 64rpx; }
