@@ -48,7 +48,7 @@
   <!-- 推荐列表 -->
   <view class="recommend-list">
     <view class="recommend-item {{item.selected ? 'selected' : ''}}" wx:for="{{recommendList}}" wx:key="skuId">
-      <view class="item-checkbox" wx:if="{{filterStatus === 'pending'}}">
+      <view class="item-checkbox" wx:if="{{filterStatus === 'pending' && item.recommendQty > 0}}">
         <view class="checkbox {{item.selected ? 'checked' : ''}}" bindtap="toggleSelect" data-index="{{index}}">
           <text wx:if="{{item.selected}}">✓</text>
         </view>

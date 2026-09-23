@@ -64,13 +64,10 @@ Page({
         selected: false,
         imageUrl: item.imageUrl || '',
         defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
-        // 接口中的 unshippedQty 兼容字段当前代表全部数量，未发数量由全部数量扣除已发数量得到。
-        allQty: Number(item.unshippedQty ?? item.totalQty) || 0,
+        // totalQty 是该 SKU 的全部数量，unshippedQty 只统计 paid/partial_shipped 的未发数量。
+        allQty: Number(item.totalQty ?? item.unshippedQty) || 0,
         shippedQty: Number(item.shippedQty) || 0,
-        pendingShipQty: Math.max(
-          0,
-          (Number(item.unshippedQty ?? item.totalQty) || 0) - (Number(item.shippedQty) || 0)
-        )
+        pendingShipQty: Number(item.unshippedQty) || 0
       }));
       const nextList = reset ? newList : [...this.data.recommendList, ...newList];
       const hasMore = res.hasNext !== undefined ? res.hasNext : newList.length === size;
@@ -137,13 +134,14 @@ Page({
   // 全选/取消全选
   toggleSelectAll: function() {
     const newAllSelected = !this.data.allSelected;
-    
+    const selectableItems = this.data.filteredList.filter(item => Number(item.recommendQty) > 0);
+
     this.data.filteredList.forEach(item => {
-      item.selected = newAllSelected;
+      item.selected = newAllSelected && Number(item.recommendQty) > 0;
     });
     
     this.setData({
-      allSelected: newAllSelected,
+      allSelected: newAllSelected && selectableItems.length > 0,
       filteredList: this.data.filteredList,
       recommendList: this.data.recommendList
     });
@@ -172,7 +170,7 @@ Page({
   // 创建报单（显示详情弹窗）
   createPurchaseOrder: async function() {
     const selectedItems = this.data.filteredList
-      .filter(i => i.selected);
+      .filter(i => i.selected && Number(i.recommendQty) > 0);
 
     if (selectedItems.length === 0) {
       wx.showToast({ title: '请选择商品', icon: 'none' });
@@ -185,7 +183,7 @@ Page({
       productName: i.productName,
       spec: i.spec,
       size: i.size,
-      qty: Number(i.recommendQty) || 1,
+      qty: Math.max(1, Number(i.recommendQty) || 1),
       imageUrl: i.imageUrl,
       defaultImageUrl: i.defaultImageUrl
     }));
