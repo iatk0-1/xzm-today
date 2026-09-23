@@ -63,7 +63,7 @@
             <view class="goods-sku" wx:else>
               {{goods.productSpec || '图片色'}} / {{goods.productSize || '均码'}}
             </view>
-            <view class="remark-badge" wx:if="{{goods.remark}}">备注</view>
+            <view class="remark-badge" wx:if="{{goods.remark}}">{{goods.remark}}</view>
             <view class="goods-price-row">
               <text class="price">¥ {{goods.salePrice}}</text>
               <text class="count">x {{goods.qty}}</text>
@@ -96,8 +96,11 @@
 
       <view class="card-footer">
         <view class="total-row">
-          <text class="total-label">实付款</text>
-          <text class="total-price">¥ {{item.payAmount}}</text>
+          <text class="order-time" wx:if="{{item.createdAtDisplay}}">下单时间：{{item.createdAtDisplay}}</text>
+          <view class="payment-summary">
+            <text class="total-label">实付款</text>
+            <text class="total-price">¥ {{item.payAmount}}</text>
+          </view>
         </view>
 
         <view class="action-row">

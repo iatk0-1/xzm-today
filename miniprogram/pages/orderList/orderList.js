@@ -112,7 +112,8 @@ Page({
       // 后端返回格式：{ items: [...], total: N, page: 1, size: 20 }
       const orders = (res.content || res.items || []).map(order => ({
         ...order,
-        statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status
+        statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status,
+        createdAtDisplay: this.formatTime(order.createdAt)
       }));
 
       wx.hideLoading();
@@ -121,6 +122,29 @@ Page({
       wx.hideLoading();
       console.error('获取订单失败:', err);
       wx.showToast({ title: '获取订单失败', icon: 'none' });
+    }
+  },
+
+  formatTime: function(raw) {
+    if (!raw) return '';
+
+    try {
+      var date;
+      if (typeof raw === 'number') {
+        date = new Date(raw < 1e10 ? raw * 1000 : raw);
+      } else if (raw instanceof Array) {
+        date = new Date(raw[0], raw[1] - 1, raw[2], raw[3] || 0, raw[4] || 0, raw[5] || 0);
+      } else {
+        date = new Date(String(raw));
+      }
+
+      if (isNaN(date.getTime())) return String(raw);
+
+      var pad = function(value) { return value < 10 ? '0' + value : '' + value; };
+      return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate())
+        + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
+    } catch (err) {
+      return String(raw);
     }
   },
 
