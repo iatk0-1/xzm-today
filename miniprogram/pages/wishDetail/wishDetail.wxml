@@ -3,7 +3,7 @@
   <!-- 心愿图片 -->
   <swiper class="wish-swiper" indicator-dots="{{wish.images.length > 1}}" circular="{{wish.images.length > 1}}" wx:if="{{wish.images.length}}">
     <swiper-item wx:for="{{wish.images}}" wx:key="*this">
-      <image class="wish-image" src="{{item}}" mode="aspectFit" catchtap="previewImage" data-index="{{index}}"></image>
+      <image class="wish-image" src="{{item}}" mode="aspectFill" catchtap="previewImage" data-index="{{index}}"></image>
     </swiper-item>
   </swiper>
   <view class="image-count" wx:if="{{wish.images.length > 1}}">共 {{wish.images.length}} 张</view>
