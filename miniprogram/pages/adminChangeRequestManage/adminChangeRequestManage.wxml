@@ -10,6 +10,17 @@
     </view>
   </view>
 
+  <view class="search-bar">
+    <input
+      class="search-input"
+      placeholder="订单号/收件人/商品名称/序号"
+      value="{{searchKeyword}}"
+      bindinput="onSearchInput"
+      confirm-type="search"
+      bindconfirm="onSearchConfirm" />
+    <button class="search-btn" bindtap="onSearchConfirm">搜索</button>
+  </view>
+
   <scroll-view class="request-list" scroll-y refresher-enabled bindrefresherrefresh="onPullDownRefresh" refresher-triggered="{{isLoading}}">
     <view wx:if="{{isLoading && requests.length === 0}}" class="state">加载中...</view>
     <view wx:elif="{{requests.length === 0}}" class="state">暂无申请记录</view>
@@ -18,8 +29,10 @@
       <view class="card-header">
         <view>
           <text class="type">{{item.requestTypeText}}</text>
+          <text class="admin-seq" wx:if="{{item.adminSeqNo}}">序号：{{item.adminSeqNo}}</text>
           <view class="order-line">
-            <text class="order">订单 {{item.orderId}} {{item.outTradeNo ? '· ' + item.outTradeNo : ''}}</text>
+            <text class="order">订单 {{item.displayOrderNo}}</text>
+            <text class="copy-link" catchtap="copyOrderNo" data-order-no="{{item.displayOrderNo}}">复制</text>
             <text class="order-status order-status-{{item.orderStatusClass}}">{{item.orderStatusText}}</text>
           </view>
         </view>
@@ -30,7 +43,10 @@
 
       <view class="content-block order-info-block">
         <view class="label">订单当前信息</view>
-        <view class="recipient-name">{{item.currentRecipientName}} {{item.currentRecipientPhone}}</view>
+        <view class="recipient-head">
+          <text class="recipient-name">{{item.currentRecipientName}} {{item.currentRecipientPhone}}</text>
+          <text class="copy-link" catchtap="copyRecipientInfo" data-name="{{item.currentRecipientName}}" data-phone="{{item.currentRecipientPhone}}" data-address="{{item.currentRecipientAddress}}">复制</text>
+        </view>
         <view class="recipient-address">{{item.currentRecipientAddress || '暂无收件信息'}}</view>
         <view class="label order-items-label">订单商品明细</view>
         <view wx:for="{{item.orderItems}}" wx:for-item="goods" wx:key="id" class="order-item-line">
@@ -46,12 +62,22 @@
 
       <view wx:if="{{item.requestType === 'recipient'}}" class="content-block">
         <view class="label">收件信息变更记录</view>
-        <view class="history-label">修改前</view>
-        <view class="recipient-name">{{item.beforeRecipientName}} {{item.beforeRecipientPhone}}</view>
-        <view class="recipient-address">{{item.beforeRecipientAddress || '暂无收件信息'}}</view>
-        <view class="history-label requested-label">申请修改为</view>
-        <view class="recipient-name">{{item.recipientName}} {{item.recipientPhone}}</view>
-        <view class="recipient-address">{{item.requestedRecipientAddress}}</view>
+        <view class="history-row">
+          <view class="history-content">
+            <view class="history-label">修改前</view>
+            <view class="recipient-name">{{item.beforeRecipientName}} {{item.beforeRecipientPhone}}</view>
+            <view class="recipient-address">{{item.beforeRecipientAddress || '暂无收件信息'}}</view>
+          </view>
+          <text class="copy-link" catchtap="copyRecipientInfo" data-name="{{item.beforeRecipientName}}" data-phone="{{item.beforeRecipientPhone}}" data-address="{{item.beforeRecipientAddress}}">复制</text>
+        </view>
+        <view class="history-row requested-history-row">
+          <view class="history-content">
+            <view class="history-label requested-label">申请修改为</view>
+            <view class="recipient-name">{{item.recipientName}} {{item.recipientPhone}}</view>
+            <view class="recipient-address">{{item.requestedRecipientAddress}}</view>
+          </view>
+          <text class="copy-link" catchtap="copyRecipientInfo" data-name="{{item.recipientName}}" data-phone="{{item.recipientPhone}}" data-address="{{item.requestedRecipientAddress}}">复制</text>
+        </view>
       </view>
 
       <view wx:if="{{item.requestType === 'item_remark'}}" class="content-block">

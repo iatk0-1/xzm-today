@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const clipboard = require('../../utils/clipboard');
 
 const STATUS_MAP = {
   all: '',
@@ -46,13 +47,18 @@ function findOrderItem(orderItems, orderItemId) {
 function buildRequestItemRemarks(request, orderItems) {
   return (request.itemRemarks || []).map(remark => {
     const orderItem = findOrderItem(orderItems, remark.orderItemId);
+    const hasBeforeRemarkSnapshot = request.beforeItemRemark !== undefined
+      && request.beforeItemRemark !== null;
+    const beforeRemark = hasBeforeRemarkSnapshot
+      ? request.beforeItemRemark
+      : (request.status === 'pending' && orderItem ? orderItem.remark : '');
     return {
       ...remark,
       productName: orderItem ? orderItem.productName : '',
       skuSpec: orderItem ? orderItem.skuSpec : '',
       skuSize: orderItem ? orderItem.skuSize : '',
       qty: orderItem ? orderItem.qty : '',
-      beforeRemark: orderItem ? orderItem.remark : request.beforeItemRemark || ''
+      beforeRemark
     };
   });
 }
@@ -66,6 +72,7 @@ Page({
       { key: 'rejected', label: '已拒绝' }
     ],
     currentTab: 'pending',
+    searchKeyword: '',
     requests: [],
     isLoading: false
   },
@@ -84,6 +91,26 @@ Page({
     this.setData({ currentTab }, () => this.loadRequests());
   },
 
+  onSearchInput: function(e) {
+    this.setData({ searchKeyword: e.detail.value });
+  },
+
+  onSearchConfirm: function() {
+    this.loadRequests();
+  },
+
+  copyOrderNo: function(e) {
+    clipboard.copyText(e.currentTarget.dataset.orderNo, '订单号');
+  },
+
+  copyRecipientInfo: function(e) {
+    clipboard.copyRecipient({
+      recipientName: e.currentTarget.dataset.name,
+      recipientPhone: e.currentTarget.dataset.phone,
+      recipientAddress: e.currentTarget.dataset.address
+    });
+  },
+
   loadRequests: async function() {
     if (this.data.isLoading) return;
     this.setData({ isLoading: true });
@@ -92,6 +119,8 @@ Page({
       const params = { page: 1, size: 100 };
       const status = STATUS_MAP[this.data.currentTab];
       if (status) params.status = status;
+      const keyword = (this.data.searchKeyword || '').trim();
+      if (keyword) params.keyword = keyword;
       const result = await api.get('/admin/orders-manage/change-requests', params);
       const detailRequests = new Map();
       const loadFallbackOrderItems = (orderId) => {
@@ -117,6 +146,7 @@ Page({
           ...item,
           requestTypeText: request.requestType === 'recipient' ? '收件信息修改' : '商品备注修改',
           statusText: request.status === 'pending' ? '待审批' : (request.status === 'approved' ? '已通过' : '已拒绝'),
+          displayOrderNo: firstValue(item.outTradeNo, request.orderId),
           orderStatusText: ORDER_STATUS_DISPLAY[item.orderStatus] || item.orderStatus || '未知状态',
           orderStatusClass: item.orderStatus || 'unknown',
           beforeRecipientAddress: [request.beforeRecipientProvince, request.beforeRecipientCity,
