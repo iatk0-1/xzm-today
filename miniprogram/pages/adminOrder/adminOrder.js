@@ -104,7 +104,8 @@ Page({
 
   loadStallList: async function() {
     try {
-      const stalls = await api.get('/stalls');
+      // 管理端筛选展示全部未删除档口，不受可见性和上架商品数量限制。
+      const stalls = await api.get('/stalls/all');
       this.setData({ stallList: Array.isArray(stalls) ? stalls : [] });
     } catch (err) {
       console.error('加载档口列表失败:', err);
@@ -114,7 +115,8 @@ Page({
 
   loadTagList: async function() {
     try {
-      const tags = await api.get('/tags');
+      // 管理端筛选展示全部未删除标签，不受可见性和上架商品数量限制。
+      const tags = await api.get('/tags/all');
       this.setData({ tagList: Array.isArray(tags) ? tags : [] });
     } catch (err) {
       console.error('加载标签列表失败:', err);
