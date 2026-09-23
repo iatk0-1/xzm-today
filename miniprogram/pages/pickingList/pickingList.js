@@ -156,7 +156,7 @@ Page({
     const selectedCount = this.data.filteredList.filter(i => i.selected).length;
     const totalQty = this.data.filteredList
       .filter(i => i.selected)
-      .reduce((sum, i) => sum + i.recommendQty, 0);
+      .reduce((sum, i) => sum + (Number(i.recommendQty) || 0), 0);
     
     this.setData({ selectedCount, totalQty });
   },
@@ -185,34 +185,93 @@ Page({
       productName: i.productName,
       spec: i.spec,
       size: i.size,
-      qty: i.recommendQty,
+      qty: Number(i.recommendQty) || 1,
       imageUrl: i.imageUrl,
       defaultImageUrl: i.defaultImageUrl
     }));
 
     this.setData({
       orderPreviewList,
+      totalQty: orderPreviewList.reduce((sum, item) => sum + item.qty, 0),
       showOrderModal: true
     });
+  },
+
+  // 调整弹窗中的报单数量，不限制上限，最低保留 1 件。
+  adjustOrderQty: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const delta = Number(e.currentTarget.dataset.delta);
+    const item = this.data.orderPreviewList[index];
+    if (!item) return;
+
+    const currentQty = this.parseOrderQty(item.qty) || 1;
+    const nextQty = Math.max(1, currentQty + delta);
+    this.setOrderQty(index, nextQty);
+  },
+
+  // 支持直接输入报单数量，先保留输入态，失焦时再归一化。
+  onOrderQtyInput: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    this.setOrderQty(index, e.detail.value);
+  },
+
+  normalizeOrderQty: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.orderPreviewList[index];
+    if (!item) return;
+
+    const qty = this.parseOrderQty(item.qty);
+    this.setOrderQty(index, qty || 1);
+  },
+
+  setOrderQty: function(index, qty) {
+    const key = `orderPreviewList[${index}].qty`;
+    this.setData({ [key]: qty }, () => {
+      const totalQty = this.data.orderPreviewList.reduce(
+        (sum, item) => sum + (this.parseOrderQty(item.qty) || 0),
+        0
+      );
+      this.setData({ totalQty });
+    });
+  },
+
+  parseOrderQty: function(qty) {
+    const value = String(qty ?? '').trim();
+    if (!/^\d+$/.test(value)) return 0;
+
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0;
   },
 
   // 隐藏报单弹窗
   hideOrderModal: function() {
     this.setData({ showOrderModal: false });
+    // 取消编辑时，操作栏恢复显示当前勾选商品的推荐数量合计。
+    this.updateSelectedInfo();
   },
 
   // 确认报单
   confirmOrder: async function() {
+    const selectedItems = this.data.orderPreviewList.map(item => ({
+      ...item,
+      qty: this.parseOrderQty(item.qty)
+    }));
+    const invalidItem = selectedItems.find(item => item.qty <= 0);
+    if (invalidItem) {
+      wx.showToast({ title: '报单数量必须是大于 0 的整数', icon: 'none' });
+      return;
+    }
+
     wx.showLoading({ title: '提交中...' });
 
     try {
-      const selectedItems = this.data.orderPreviewList.map(i => ({
+      const requestItems = selectedItems.map(i => ({
         skuId: i.skuId,
         qty: i.qty,
         note: `拣货单推荐，${i.spec} ${i.size}`
       }));
 
-      await api.post('/picking-list/order', { items: selectedItems });
+      await api.post('/picking-list/order', { items: requestItems });
 
       wx.hideLoading();
       wx.showToast({ title: '报单成功', icon: 'success' });

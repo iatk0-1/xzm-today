@@ -53,6 +53,7 @@ page {
 .btn-history::after,
 .sku-search-btn::after,
 .btn-order::after,
+.qty-adjust::after,
 .btn-cancel::after,
 .btn-confirm::after {
   border: none;
@@ -455,6 +456,57 @@ page {
   font-size: 22rpx;
   color: #999;
   margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.qty-label {
+  flex-shrink: 0;
+}
+
+.qty-editor {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  width: 204rpx;
+  flex: 0 0 204rpx;
+  min-width: 204rpx;
+}
+
+.qty-adjust {
+  width: 48rpx;
+  min-width: 48rpx;
+  max-width: 48rpx;
+  flex: 0 0 48rpx;
+  height: 44rpx;
+  line-height: 40rpx;
+  margin: 0;
+  padding: 0;
+  border: 1rpx solid #d9dee7;
+  border-radius: 6rpx;
+  background: #f7f8fa;
+  color: #344054;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.qty-input {
+  width: 92rpx;
+  min-width: 92rpx;
+  max-width: 92rpx;
+  flex: 0 0 92rpx;
+  height: 44rpx;
+  padding: 0 8rpx;
+  border: 1rpx solid #b8c4d3;
+  border-radius: 6rpx;
+  color: #1677c8;
+  font-size: 24rpx;
+  font-weight: 700;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .qty-highlight {

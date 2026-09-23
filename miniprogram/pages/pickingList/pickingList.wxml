@@ -111,14 +111,28 @@
   <view class="modal" wx:if="{{showOrderModal}}">
     <view class="modal-mask" bindtap="hideOrderModal"></view>
     <view class="modal-content modal-order">
-      <view class="modal-title">确认报单</view>
+      <view class="modal-title">确认报单数量</view>
       <scroll-view class="order-list" scroll-y>
         <view class="order-item" wx:for="{{orderPreviewList}}" wx:key="skuId">
           <image class="order-item-image" src="{{item.imageUrl ? item.imageUrl : item.defaultImageUrl}}" mode="aspectFill" />
           <view class="order-item-info">
             <view class="order-item-name">{{item.productName}}</view>
             <view class="order-item-sku">{{item.spec}} {{item.size}}</view>
-            <view class="order-item-qty">报单数量：<text class="qty-highlight">{{item.qty}}</text></view>
+            <view class="order-item-qty">
+              <text class="qty-label">报单数量</text>
+              <view class="qty-editor">
+                <button class="qty-adjust" bindtap="adjustOrderQty" data-index="{{index}}" data-delta="-1">−</button>
+                <input
+                  class="qty-input"
+                  type="number"
+                  value="{{item.qty}}"
+                  bindinput="onOrderQtyInput"
+                  bindblur="normalizeOrderQty"
+                  data-index="{{index}}"
+                />
+                <button class="qty-adjust" bindtap="adjustOrderQty" data-index="{{index}}" data-delta="1">+</button>
+              </view>
+            </view>
           </view>
         </view>
       </scroll-view>
