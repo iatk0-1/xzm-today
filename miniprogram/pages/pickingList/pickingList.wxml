@@ -4,7 +4,7 @@
   <view class="header-bar">
     <view class="header-main">
       <view class="header-title">拣货单推荐</view>
-      <view class="header-subtitle">按未发货需求生成报单数量</view>
+      <view class="header-subtitle">按 SKU 数量汇总生成报单数量</view>
     </view>
     <button class="btn-history" bindtap="goToOrders">报单记录</button>
   </view>
@@ -66,17 +66,25 @@
           <view class="item-name">{{item.productName}}</view>
           <view class="item-sku">{{item.spec || '默认规格'}} · {{item.size || '均码'}}</view>
           <view class="item-stats">
-            <view class="stat">
-              <text class="stat-label">未发</text>
-              <text class="stat-value">{{item.unshippedQty}}</text>
-            </view>
-            <view class="stat">
-              <text class="stat-label">已报</text>
-              <text class="stat-value">{{item.orderedQty}}</text>
-            </view>
             <view class="stat recommend">
               <text class="stat-label">待报</text>
               <text class="stat-value">{{item.recommendQty}}</text>
+            </view>
+            <view class="stat ordered-stat">
+              <text class="stat-label ordered-label">已报</text>
+              <text class="stat-value ordered-value">{{item.orderedQty}}</text>
+            </view>
+            <view class="stat total-stat">
+              <text class="stat-label">全部</text>
+              <text class="stat-value">{{item.allQty}}</text>
+            </view>
+            <view class="stat pending-stat">
+              <text class="stat-label pending-label">未发</text>
+              <text class="stat-value pending-value">{{item.pendingShipQty}}</text>
+            </view>
+            <view class="stat shipped-stat">
+              <text class="stat-label shipped-label">已发</text>
+              <text class="stat-value shipped-value">{{item.shippedQty}}</text>
             </view>
           </view>
         </view>

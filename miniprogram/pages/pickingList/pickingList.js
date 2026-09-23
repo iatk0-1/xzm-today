@@ -63,7 +63,14 @@ Page({
         ...item,
         selected: false,
         imageUrl: item.imageUrl || '',
-        defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png'
+        defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
+        // 接口中的 unshippedQty 兼容字段当前代表全部数量，未发数量由全部数量扣除已发数量得到。
+        allQty: Number(item.unshippedQty ?? item.totalQty) || 0,
+        shippedQty: Number(item.shippedQty) || 0,
+        pendingShipQty: Math.max(
+          0,
+          (Number(item.unshippedQty ?? item.totalQty) || 0) - (Number(item.shippedQty) || 0)
+        )
       }));
       const nextList = reset ? newList : [...this.data.recommendList, ...newList];
       const hasMore = res.hasNext !== undefined ? res.hasNext : newList.length === size;

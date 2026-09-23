@@ -314,6 +314,33 @@ page {
   color: #1677c8;
 }
 
+.stat.ordered-stat {
+  background: #f1edff;
+}
+
+.stat.ordered-stat .stat-label,
+.stat.ordered-stat .stat-value {
+  color: #6b4fc4;
+}
+
+.stat.shipped-stat {
+  background: #edf8f0;
+}
+
+.stat.shipped-stat .stat-label,
+.stat.shipped-stat .stat-value {
+  color: #2f8f46;
+}
+
+.stat.pending-stat {
+  background: #fff6e8;
+}
+
+.stat.pending-stat .stat-label,
+.stat.pending-stat .stat-value {
+  color: #b26a00;
+}
+
 /* 空状态和加载状态 */
 .empty-state, .loading-state {
   padding: 80rpx 0;
