@@ -1,27 +1,37 @@
 <view class="page">
-  <view class="tabs">
-    <view
-      wx:for="{{tabs}}"
-      wx:key="key"
-      class="tab {{currentTab === item.key ? 'active' : ''}}"
-      data-key="{{item.key}}"
-      bindtap="switchTab">
-      {{item.label}}
+  <view class="top-header">
+    <view class="tabs">
+      <view
+        wx:for="{{tabs}}"
+        wx:key="key"
+        class="tab {{currentTab === item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="switchTab">
+        {{item.label}}
+      </view>
+    </view>
+
+    <view class="search-bar">
+      <input
+        class="search-input"
+        placeholder="订单号/收件人/商品名称/序号"
+        value="{{searchKeyword}}"
+        bindinput="onSearchInput"
+        confirm-type="search"
+        bindconfirm="onSearchConfirm" />
+      <button class="search-btn" bindtap="onSearchConfirm">搜索</button>
     </view>
   </view>
 
-  <view class="search-bar">
-    <input
-      class="search-input"
-      placeholder="订单号/收件人/商品名称/序号"
-      value="{{searchKeyword}}"
-      bindinput="onSearchInput"
-      confirm-type="search"
-      bindconfirm="onSearchConfirm" />
-    <button class="search-btn" bindtap="onSearchConfirm">搜索</button>
-  </view>
-
-  <scroll-view class="request-list" scroll-y refresher-enabled bindrefresherrefresh="onPullDownRefresh" refresher-triggered="{{isLoading}}">
+  <scroll-view
+    class="request-list"
+    scroll-y
+    scroll-top="{{scrollTop}}"
+    lower-threshold="120"
+    refresher-enabled
+    bindscrolltolower="onScrollToLower"
+    bindrefresherrefresh="onPullDownRefresh"
+    refresher-triggered="{{isLoading}}">
     <view wx:if="{{isLoading && requests.length === 0}}" class="state">加载中...</view>
     <view wx:elif="{{requests.length === 0}}" class="state">暂无申请记录</view>
 
@@ -104,5 +114,8 @@
         <button wx:if="{{item.status === 'pending'}}" class="approve-btn" data-id="{{item.id}}" bindtap="approveRequest">通过</button>
       </view>
     </view>
+
+    <view class="loading-more" wx:if="{{isLoadingMore}}">加载中...</view>
+    <view class="no-more" wx:elif="{{!hasMore && requests.length > 0}}">没有更多申请了</view>
   </scroll-view>
 </view>

@@ -74,21 +74,26 @@ Page({
     currentTab: 'pending',
     searchKeyword: '',
     requests: [],
-    isLoading: false
+    isLoading: false,
+    isLoadingMore: false,
+    page: 1,
+    pageSize: 20,
+    hasMore: true,
+    scrollTop: 0
   },
 
   onLoad: function() {
-    this.loadRequests();
+    this.loadRequests(true);
   },
 
   onPullDownRefresh: async function() {
-    await this.loadRequests();
+    await this.loadRequests(true);
     wx.stopPullDownRefresh();
   },
 
   switchTab: function(e) {
     const currentTab = e.currentTarget.dataset.key;
-    this.setData({ currentTab }, () => this.loadRequests());
+    this.setData({ currentTab }, () => this.loadRequests(true));
   },
 
   onSearchInput: function(e) {
@@ -96,7 +101,11 @@ Page({
   },
 
   onSearchConfirm: function() {
-    this.loadRequests();
+    this.loadRequests(true);
+  },
+
+  onScrollToLower: function() {
+    return this.loadRequests(false);
   },
 
   copyOrderNo: function(e) {
@@ -111,17 +120,26 @@ Page({
     });
   },
 
-  loadRequests: async function() {
-    if (this.data.isLoading) return;
-    this.setData({ isLoading: true });
+  loadRequests: async function(isRefresh) {
+    if (isRefresh === undefined) isRefresh = true;
+    if (isRefresh && (this.data.isLoading || this.data.isLoadingMore)) return;
+    if (!isRefresh && (this.data.isLoading || this.data.isLoadingMore || !this.data.hasMore)) return;
+
+    const targetPage = isRefresh ? 1 : this.data.page + 1;
+    this.setData(isRefresh
+      ? { isLoading: true, page: 1, hasMore: true, scrollTop: 0 }
+      : { isLoadingMore: true });
     try {
       await auth.ensureAuthenticated({ silent: true });
-      const params = { page: 1, size: 100 };
+      const params = { page: targetPage, size: this.data.pageSize };
       const status = STATUS_MAP[this.data.currentTab];
       if (status) params.status = status;
       const keyword = (this.data.searchKeyword || '').trim();
       if (keyword) params.keyword = keyword;
       const result = await api.get('/admin/orders-manage/change-requests', params);
+      const resultList = Array.isArray(result)
+        ? result
+        : ((result && (result.content || result.items)) || []);
       const detailRequests = new Map();
       const loadFallbackOrderItems = (orderId) => {
         const key = String(orderId);
@@ -133,7 +151,7 @@ Page({
         return detailRequests.get(key);
       };
 
-      const requests = await Promise.all((result || []).map(async item => {
+      const requests = await Promise.all(resultList.map(async item => {
         const request = item.request || item;
         let orderItems = getOrderItems(item);
         const needsOrderDetail = orderItems.length === 0
@@ -159,11 +177,25 @@ Page({
           itemRemarks: buildRequestItemRemarks(request, orderItems)
         };
       }));
-      this.setData({ requests });
+      const allRequests = isRefresh ? requests : this.data.requests.concat(requests);
+      const rawTotal = result && !Array.isArray(result)
+        ? Number(result.totalElements !== undefined ? result.totalElements : result.total)
+        : NaN;
+      const hasMore = Number.isFinite(rawTotal)
+        ? allRequests.length < rawTotal
+        : requests.length === this.data.pageSize;
+      this.setData({
+        requests: allRequests,
+        page: targetPage,
+        hasMore,
+        isLoading: false,
+        isLoadingMore: false
+      });
     } catch (err) {
       wx.showToast({ title: err.message || '加载申请失败', icon: 'none' });
+      this.setData({ isLoading: false, isLoadingMore: false });
     } finally {
-      this.setData({ isLoading: false });
+      this.setData({ isLoading: false, isLoadingMore: false });
     }
   },
 
@@ -196,7 +228,7 @@ Page({
       const path = `/admin/orders-manage/change-requests/${id}/${action === 'approve' ? 'approve' : 'reject'}`;
       await api.post(path, body || {});
       wx.showToast({ title: action === 'approve' ? '申请已通过' : '申请已拒绝', icon: 'success' });
-      await this.loadRequests();
+      await this.loadRequests(true);
     } catch (err) {
       wx.showToast({ title: err.message || '操作失败', icon: 'none' });
     } finally {
