@@ -1,5 +1,6 @@
 page { background-color: #ffffff; }
 .market-wrapper { padding-bottom: 120px; }
+.market-scroll { height: calc(100vh - 100rpx - env(safe-area-inset-bottom)); }
 
 /* 头部策展区 */
 .header-section { text-align: center; padding: 25px 0 35px; }

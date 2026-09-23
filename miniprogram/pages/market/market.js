@@ -11,22 +11,71 @@ Page({
     // 分页参数
     page: 1,
     pageSize: 20,
-    hasMore: true
+    hasMore: true,
+    loading: false,
+    refreshing: false
   },
 
   onLoad: function() {
+    this._isRefreshingMarket = false;
+    this._wishesTask = null;
+    this._hasLoadedMarketData = false;
     this.checkAdmin();
   },
 
   onShow: function() {
     this.checkAdmin();
-    this.loadWishes();
+    if (this._isRefreshingMarket) {
+      return;
+    }
+    if (!this._hasLoadedMarketData) {
+      this.loadWishes();
+    } else {
+      this.refreshMarketData();
+    }
   },
 
   // 触底加载更多
   onReachBottom: function() {
     if (!this.data.hasMore || this.data.loading) return;
     this.loadWishes(false);
+  },
+
+  // scroll-view 内置下拉刷新：手指释放时触发
+  onRefresh: function() {
+    this.setData({ refreshing: true });
+    return this.refreshMarketData();
+  },
+
+  // 页面级下拉刷新兜底，避免旧基础库没有触发 scroll-view 刷新事件时卡住
+  onPullDownRefresh: function() {
+    return this.refreshMarketData().then(function() {
+      wx.stopPullDownRefresh();
+    });
+  },
+
+  refreshMarketData: function() {
+    if (this._isRefreshingMarket) {
+      return this._wishesTask || Promise.resolve();
+    }
+
+    this._isRefreshingMarket = true;
+    const waitIdle = this.data.loading && this._wishesTask
+      ? this._wishesTask.catch(function() {})
+      : Promise.resolve();
+
+    const task = waitIdle
+      .then(() => this.loadWishes(true, true))
+      .catch(function(err) {
+        console.error('刷新心愿失败:', err);
+      })
+      .finally(() => {
+        this._isRefreshingMarket = false;
+        this.setData({ refreshing: false });
+      });
+
+    this._refreshingTask = task;
+    return task;
   },
 
   checkAdmin: function() {
@@ -37,28 +86,30 @@ Page({
     }
   },
 
-  // 改造：从后端 API 获取心愿列表（支持分页）
-  loadWishes: async function(reset = true) {
+  // 从后端 API 获取心愿列表（支持分页）
+  loadWishes: function(reset = true, silent = false) {
     if (reset) {
       this.setData({ page: 1, wishes: [], hasMore: true });
     }
 
-    if (!this.data.hasMore || this.data.loading) return;
+    if (!this.data.hasMore || this.data.loading) {
+      return this._wishesTask || Promise.resolve();
+    }
 
+    const task = this.fetchWishes(reset, silent);
+    this._wishesTask = task;
+    return task;
+  },
+
+  fetchWishes: async function(reset, silent) {
     this.setData({ loading: true });
-    wx.showLoading({ title: '探索中...' });
+    if (!silent) {
+      wx.showLoading({ title: '探索中...' });
+    }
 
     try {
       const { page, pageSize } = this.data;
       const res = await api.get(`/wishes?page=${page}&size=${pageSize}`);
-
-      console.log('=== loadWishes 返回数据 ===');
-      console.log('res.content:', res.content);
-      if (res.content && res.content.length > 0) {
-        console.log('第一个 wish 示例:', res.content[0]);
-        console.log('第一个 wish 的 _id:', res.content[0]._id);
-        console.log('第一个 wish 的 id:', res.content[0].id);
-      }
 
       // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
       const newWishes = (res.content || []).map(function(wish) {
@@ -68,40 +119,49 @@ Page({
         return Object.assign({}, wish, {
           images: images,
           image: wish.image || images[0] || '',
-          title: wish.title || wish.content || ''
+          title: wish.title || wish.content || '',
+          likes: Number(wish.likes) || 0
         });
       });
       const hasMore = res.hasNext !== undefined ? res.hasNext : newWishes.length === pageSize;
 
-      // 将心愿分配到左右两列（奇数位置放左列，偶数位置放右列）
-      const allWishes = reset ? newWishes : [...this.data.wishes, ...newWishes];
-      const leftColumn = [];
-      const rightColumn = [];
-      allWishes.forEach((item, index) => {
-        if (index % 2 === 0) {
-          leftColumn.push(item);
-        } else {
-          rightColumn.push(item);
-        }
-      });
-
-      console.log('leftColumn 第一个元素:', leftColumn[0]);
-      console.log('rightColumn 第一个元素:', rightColumn[0]);
-
-      this.setData({
-        wishes: allWishes,
-        leftColumn: leftColumn,
-        rightColumn: rightColumn,
+      // 接口当前未提供排序参数，前端统一按热度倒序，分页追加后也保持全局顺序。
+      const allWishes = (reset ? newWishes : this.data.wishes.concat(newWishes))
+        .sort(function(a, b) { return b.likes - a.likes; });
+      this.updateWishColumns(allWishes, {
         page: this.data.page + 1,
         hasMore: hasMore,
         loading: false
       });
-      wx.hideLoading();
     } catch (err) {
-      wx.hideLoading();
+      console.error('加载心愿失败:', err);
+      this.setData({ loading: false, wishes: reset ? [] : this.data.wishes });
       wx.showToast({ title: '加载失败', icon: 'none' });
-      this.setData({ loading: false });
+    } finally {
+      if (!silent) {
+        wx.hideLoading();
+      }
+      this._wishesTask = null;
+      this._hasLoadedMarketData = true;
     }
+  },
+
+  updateWishColumns: function(wishes, extraData) {
+    const leftColumn = [];
+    const rightColumn = [];
+    wishes.forEach(function(item, index) {
+      if (index % 2 === 0) {
+        leftColumn.push(item);
+      } else {
+        rightColumn.push(item);
+      }
+    });
+
+    this.setData(Object.assign({
+      wishes: wishes,
+      leftColumn: leftColumn,
+      rightColumn: rightColumn
+    }, extraData || {}));
   },
 
   // 改造：点赞/取消点赞
@@ -129,7 +189,7 @@ Page({
     console.log('当前 wishes 数量:', currentWishes.length);
 
     // 根据 wishId 查找目标心愿（使用 id 字段而非 _id）
-    const targetIndex = currentWishes.findIndex(wish => wish.id === wishId);
+    const targetIndex = currentWishes.findIndex(wish => String(wish.id) === String(wishId));
     console.log('找到的索引:', targetIndex);
 
     if (targetIndex === -1) {
@@ -152,22 +212,7 @@ Page({
     }
     console.log('新状态 - isLiked:', targetWish.isLiked, 'likes:', targetWish.likes);
 
-    // 重新分配左右列数据
-    const leftColumn = [];
-    const rightColumn = [];
-    currentWishes.forEach((item, index) => {
-      if (index % 2 === 0) {
-        leftColumn.push(item);
-      } else {
-        rightColumn.push(item);
-      }
-    });
-
-    this.setData({
-      wishes: currentWishes,
-      leftColumn: leftColumn,
-      rightColumn: rightColumn
-    });
+    this.updateWishColumns(currentWishes.slice().sort((a, b) => b.likes - a.likes));
 
     // 调用后端 API
     try {
@@ -189,22 +234,7 @@ Page({
       targetWish.isLiked = originalLiked;
       targetWish.likes = originalLikes;
 
-      // 重新分配左右列数据
-      const leftColumn = [];
-      const rightColumn = [];
-      currentWishes.forEach((item, index) => {
-        if (index % 2 === 0) {
-          leftColumn.push(item);
-        } else {
-          rightColumn.push(item);
-        }
-      });
-
-      this.setData({
-        wishes: currentWishes,
-        leftColumn: leftColumn,
-        rightColumn: rightColumn
-      });
+      this.updateWishColumns(currentWishes.slice().sort((a, b) => b.likes - a.likes));
 
       const errorMsg = err.message || err.error || '操作失败';
       wx.showToast({ title: errorMsg, icon: 'none' });
