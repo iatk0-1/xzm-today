@@ -56,6 +56,10 @@
           <text class="remark-tag">备注</text>
           <text class="remark-text">{{item.remark}}</text>
         </view>
+        <view class="goods-remark admin-remark-row" bindtap="openAdminRemarkEditor" data-index="{{itemIndex}}">
+          <text class="remark-tag admin-remark-tag">管理员备注</text>
+          <text class="remark-text admin-remark-text">{{item.adminRemark || '点击添加'}}</text>
+        </view>
       </view>
     </view>
 
@@ -196,10 +200,6 @@
             data-index="{{refundIndex}}"
             catchtap="increaseRefundQty">+</view>
         </view>
-        <view class="goods-remark admin-remark-row" bindtap="openAdminRemarkEditor" data-index="{{itemIndex}}">
-          <text class="remark-tag">管理员备注</text>
-          <text class="remark-text">{{item.adminRemark || '点击添加'}}</text>
-        </view>
         <input class="panel-input" type="digit" disabled="{{refundItem.disabled}}" placeholder="金额" value="{{refundItem.inputAmount}}" data-index="{{refundIndex}}" bindinput="onRefundAmountInput" />
       </view>
     </view>
@@ -218,25 +218,13 @@
   </view>
 </view>
 
-<view class="panel-mask" wx:if="{{showRecipientPanel}}" catchtap="closeRecipientEditor"></view>
-<view class="bottom-panel" wx:if="{{showRecipientPanel}}">
-  <view class="panel-header"><text class="panel-title">修改收件信息</text><text class="panel-close" bindtap="closeRecipientEditor">关闭</text></view>
-  <view class="panel-body">
-    <input class="panel-text-input" placeholder="收件人" value="{{editRecipient.recipientName}}" data-field="recipientName" bindinput="onRecipientInput" />
-    <input class="panel-text-input" placeholder="联系电话" value="{{editRecipient.recipientPhone}}" data-field="recipientPhone" bindinput="onRecipientInput" />
-    <input class="panel-text-input" placeholder="省" value="{{editRecipient.recipientProvince}}" data-field="recipientProvince" bindinput="onRecipientInput" />
-    <input class="panel-text-input" placeholder="市" value="{{editRecipient.recipientCity}}" data-field="recipientCity" bindinput="onRecipientInput" />
-    <input class="panel-text-input" placeholder="区县" value="{{editRecipient.recipientDistrict}}" data-field="recipientDistrict" bindinput="onRecipientInput" />
-    <input class="panel-text-input" placeholder="详细地址" value="{{editRecipient.recipientDetail}}" data-field="recipientDetail" bindinput="onRecipientInput" />
-  </view>
-  <view class="panel-actions"><button class="panel-btn secondary" bindtap="closeRecipientEditor">取消</button><button class="panel-btn danger" bindtap="saveRecipient">保存</button></view>
-</view>
-
 <view class="panel-mask" wx:if="{{adminRemarkPanel}}" catchtap="closeAdminRemarkEditor"></view>
-<view class="bottom-panel" wx:if="{{adminRemarkPanel}}">
+<view class="bottom-panel admin-remark-panel" wx:if="{{adminRemarkPanel}}">
   <view class="panel-header"><text class="panel-title">管理员备注</text><text class="panel-close" bindtap="closeAdminRemarkEditor">关闭</text></view>
-  <view class="panel-body"><textarea class="panel-text-input" maxlength="500" placeholder="仅管理员可见" value="{{adminRemarkValue}}" bindinput="onAdminRemarkInput"></textarea></view>
-  <view class="panel-actions"><button class="panel-btn secondary" bindtap="closeAdminRemarkEditor">取消</button><button class="panel-btn danger" bindtap="saveAdminRemark">保存</button></view>
+  <view class="panel-body admin-remark-body">
+    <textarea class="panel-text-input admin-remark-input" maxlength="500" placeholder="请输入管理员备注" value="{{adminRemarkValue}}" bindinput="onAdminRemarkInput" cursor-spacing="24" show-confirm-bar="false"></textarea>
+  </view>
+  <view class="panel-actions admin-remark-actions"><button class="panel-btn secondary" bindtap="closeAdminRemarkEditor">取消</button><button class="panel-btn danger" bindtap="saveAdminRemark">保存</button></view>
 </view>
 
 <view class="panel-mask" wx:if="{{showPartialUnbindPanel}}" catchtap="closePartialUnbindPanel"></view>

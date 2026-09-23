@@ -17,10 +17,8 @@ Page({
     showRefundPanel: false,
     partialUnbindShipment: null,
     partialUnbindItems: [],
-    showPartialUnbindPanel: false
-    ,showRecipientPanel: false
-    ,editRecipient: {}
-    ,adminRemarkPanel: null
+    showPartialUnbindPanel: false,
+    adminRemarkPanel: null
     ,adminRemarkValue: ''
   },
 
@@ -334,21 +332,25 @@ Page({
       wx.showToast({ title: '当前状态不允许修改收件信息', icon: 'none' });
       return;
     }
-    this.setData({ showRecipientPanel: true, editRecipient: {
-      recipientName: order.recipientName || '', recipientPhone: order.recipientPhone || '',
-      recipientProvince: order.recipientProvince || '', recipientCity: order.recipientCity || '',
-      recipientDistrict: order.recipientDistrict || '', recipientDetail: order.recipientDetail || ''
-    }});
+    wx.chooseAddress({
+      success: address => this.saveRecipient(address),
+      fail: err => {
+        if (!err || !String(err.errMsg || '').includes('cancel')) {
+          wx.showToast({ title: '获取微信收货地址失败', icon: 'none' });
+        }
+      }
+    });
   },
 
-  closeRecipientEditor() { this.setData({ showRecipientPanel: false }); },
-
-  onRecipientInput(e) {
-    this.setData({ [`editRecipient.${e.currentTarget.dataset.field}`]: e.detail.value });
-  },
-
-  async saveRecipient() {
-    const value = this.data.editRecipient;
+  async saveRecipient(address) {
+    const value = {
+      recipientName: address.userName,
+      recipientPhone: address.telNumber,
+      recipientProvince: address.provinceName,
+      recipientCity: address.cityName,
+      recipientDistrict: address.countyName,
+      recipientDetail: address.detailInfo
+    };
     if (!value.recipientName || !value.recipientPhone || !value.recipientDetail) {
       wx.showToast({ title: '请填写完整收件信息', icon: 'none' });
       return;
@@ -357,7 +359,6 @@ Page({
     try {
       await api.patch(`/admin/orders-manage/orders/${this.data.orderId}/recipient`, value);
       wx.showToast({ title: '收件信息已保存', icon: 'success' });
-      this.closeRecipientEditor();
       this.loadOrderDetail();
     } catch (err) { wx.showToast({ title: err.message || '保存失败', icon: 'none' }); }
     finally { wx.hideLoading(); }
@@ -366,6 +367,7 @@ Page({
   openAdminRemarkEditor(e) {
     const index = Number(e.currentTarget.dataset.index);
     const item = this.data.order.items[index];
+    if (!item) return;
     this.setData({ adminRemarkPanel: { index, itemId: item.id }, adminRemarkValue: item.adminRemark || '' });
   },
 

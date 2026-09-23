@@ -86,7 +86,7 @@
               {{goods.productSpec || '图片色'}} / {{goods.productSize || '均码'}}
             </view>
             <view class="remark-badge" wx:if="{{goods.remark}}">{{goods.remark}}</view>
-            <view class="remark-badge admin-remark-badge" bindtap="openAdminRemarkEditor" data-order="{{item.id}}" data-item="{{goods}}">管理员：{{goods.adminRemark || '添加'}}</view>
+            <view class="remark-badge admin-remark-badge" catchtap="openAdminRemarkEditor" data-order="{{item.id}}" data-item="{{goods}}">管理员：{{goods.adminRemark || '添加'}}</view>
             <view class="goods-price-row">
               <text class="price">¥ {{goods.salePrice}}</text>
               <text class="count">x {{goods.qty}}</text>
@@ -213,8 +213,10 @@
 </view>
 
 <view class="panel-mask" wx:if="{{adminRemarkPanel}}" catchtap="closeAdminRemarkEditor"></view>
-<view class="bottom-panel" wx:if="{{adminRemarkPanel}}">
+<view class="bottom-panel admin-remark-panel" wx:if="{{adminRemarkPanel}}">
   <view class="panel-header"><text class="panel-title">管理员备注</text><text class="panel-close" bindtap="closeAdminRemarkEditor">关闭</text></view>
-  <view class="panel-body"><textarea class="panel-text-input" maxlength="500" placeholder="仅管理员可见" value="{{adminRemarkValue}}" bindinput="onAdminRemarkInput"></textarea></view>
-  <view class="panel-actions"><button class="panel-btn secondary" bindtap="closeAdminRemarkEditor">取消</button><button class="panel-btn danger" bindtap="saveAdminRemark">保存</button></view>
+  <view class="panel-body admin-remark-body">
+    <textarea class="panel-text-input admin-remark-input" maxlength="500" placeholder="请输入管理员备注" value="{{adminRemarkValue}}" bindinput="onAdminRemarkInput" cursor-spacing="24" show-confirm-bar="false"></textarea>
+  </view>
+  <view class="panel-actions admin-remark-actions"><button class="panel-btn secondary" bindtap="closeAdminRemarkEditor">取消</button><button class="panel-btn danger" bindtap="saveAdminRemark">保存</button></view>
 </view>
