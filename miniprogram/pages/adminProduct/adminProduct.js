@@ -14,6 +14,13 @@ Page({
     tagList: [],
     selectedStall: '',
     selectedTag: '',
+    relationEditProductId: '',
+    relationEditType: '',
+    showRelationPicker: false,
+    relationPickerType: '',
+    relationPickerProductId: '',
+    relationPickerItems: [],
+    relationOperating: false,
     // 分页参数
     page: 1,
     pageSize: 20,
@@ -186,18 +193,132 @@ Page({
     (this.data.tagList || []).forEach(tag => {
       tagMap[this.normalizeId(tag.id)] = tag.name;
     });
-    item.stallNames = (item.stallIds || [])
-      .map(id => stallMap[this.normalizeId(id)])
-      .filter(Boolean);
-    item.tagNames = (item.relateTagIds || [])
-      .map(id => tagMap[this.normalizeId(id)])
-      .filter(Boolean);
+    item.stallRelations = (item.stallIds || [])
+      .map(id => ({ id, name: stallMap[this.normalizeId(id)] }))
+      .filter(item => item.name);
+    item.tagRelations = (item.relateTagIds || [])
+      .map(id => ({ id, name: tagMap[this.normalizeId(id)] }))
+      .filter(item => item.name);
+    item.stallNames = item.stallRelations.map(relation => relation.name);
+    item.tagNames = item.tagRelations.map(relation => relation.name);
     return item;
   },
 
   refreshProductLabels: function() {
     if (!this.data.products.length) return;
     this.setData({ products: this.data.products.map(item => this.enrichProductLabels(item)) });
+  },
+
+  onRelationLongPress: function(e) {
+    this.setData({
+      relationEditProductId: e.currentTarget.dataset.productId,
+      relationEditType: e.currentTarget.dataset.type
+    });
+  },
+
+  onRelationTap: function() {
+    // 关联项点击只处理编辑态，不允许冒泡触发商品详情；编辑态下点击非叉号区域收起叉号。
+    if (this.data.relationEditProductId) {
+      this.closeRelationEdit();
+    }
+  },
+
+  closeRelationEdit: function() {
+    this.setData({ relationEditProductId: '', relationEditType: '' });
+  },
+
+  openRelationPicker: function(e) {
+    const type = e.currentTarget.dataset.type;
+    const productId = e.currentTarget.dataset.productId;
+    const product = this.data.products.find(item => this.normalizeId(item.id) === this.normalizeId(productId));
+    if (!product) return;
+
+    const relations = type === 'stall' ? (product.stallRelations || []) : (product.tagRelations || []);
+    const selectedIds = {};
+    relations.forEach(relation => { selectedIds[this.normalizeId(relation.id)] = true; });
+    const source = type === 'stall' ? this.data.stallList : this.data.tagList;
+    const availableItems = (source || []).filter(item => !selectedIds[this.normalizeId(item.id)]);
+    if (availableItems.length === 0) {
+      wx.showToast({ title: `没有可添加的${type === 'stall' ? '档口' : '标签'}`, icon: 'none' });
+      return;
+    }
+
+    this.setData({
+      relationEditProductId: '',
+      relationEditType: '',
+      showRelationPicker: true,
+      relationPickerType: type,
+      relationPickerProductId: productId,
+      relationPickerItems: availableItems
+    });
+  },
+
+  closeRelationPicker: function() {
+    if (this.data.relationOperating) return;
+    this.setData({
+      showRelationPicker: false,
+      relationPickerType: '',
+      relationPickerProductId: '',
+      relationPickerItems: []
+    });
+  },
+
+  selectRelationOption: async function(e) {
+    if (this.data.relationOperating) return;
+    const type = this.data.relationPickerType;
+    const productId = this.data.relationPickerProductId;
+    const groupId = e.currentTarget.dataset.id;
+    const name = e.currentTarget.dataset.name;
+    await this.updateProductRelation(type, productId, groupId, name, 'ADD');
+  },
+
+  removeProductRelation: async function(e) {
+    if (this.data.relationOperating) return;
+    const type = e.currentTarget.dataset.type;
+    const productId = e.currentTarget.dataset.productId;
+    const groupId = e.currentTarget.dataset.id;
+    const name = e.currentTarget.dataset.name;
+    await this.updateProductRelation(type, productId, groupId, name, 'REMOVE');
+  },
+
+  updateProductRelation: async function(type, productId, groupId, name, action) {
+    this.setData({ relationOperating: true });
+    const endpoint = type === 'stall' ? `/stalls/${groupId}/products` : `/tags/${groupId}/products`;
+    try {
+      await api.patch(endpoint, { action, productIds: [productId] });
+      const products = this.data.products.map(product => {
+        if (this.normalizeId(product.id) !== this.normalizeId(productId)) return product;
+        const idField = type === 'stall' ? 'stallIds' : 'relateTagIds';
+        const relationField = type === 'stall' ? 'stallRelations' : 'tagRelations';
+        const ids = (product[idField] || []).slice();
+        const relations = (product[relationField] || []).slice();
+        const normalizedGroupId = this.normalizeId(groupId);
+        const index = ids.findIndex(id => this.normalizeId(id) === normalizedGroupId);
+        if (action === 'ADD' && index < 0) {
+          ids.push(groupId);
+          relations.push({ id: groupId, name });
+        } else if (action === 'REMOVE' && index >= 0) {
+          ids.splice(index, 1);
+          const relationIndex = relations.findIndex(relation => this.normalizeId(relation.id) === normalizedGroupId);
+          if (relationIndex >= 0) relations.splice(relationIndex, 1);
+        }
+        return this.enrichProductLabels({ ...product, [idField]: ids, [relationField]: relations });
+      });
+      this.setData({
+        products,
+        relationOperating: false,
+        showRelationPicker: false,
+        relationPickerType: '',
+        relationPickerProductId: '',
+        relationPickerItems: [],
+        relationEditProductId: action === 'REMOVE' ? this.data.relationEditProductId : '',
+        relationEditType: action === 'REMOVE' ? this.data.relationEditType : ''
+      });
+      wx.showToast({ title: action === 'ADD' ? '关联成功' : '已取消关联', icon: 'success' });
+    } catch (err) {
+      this.setData({ relationOperating: false });
+      wx.showToast({ title: err.message || '关联操作失败', icon: 'none' });
+    }
   },
 
   normalizeId: function(id) {
@@ -266,6 +387,10 @@ Page({
   },
 
   handleProductTap: function(e) {
+    if (this.data.relationEditProductId) {
+      this.closeRelationEdit();
+      return;
+    }
     const id = e.currentTarget.dataset.id;
     if (this.data.selectMode) {
       this.toggleProductId(id);

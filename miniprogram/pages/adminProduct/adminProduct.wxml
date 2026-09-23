@@ -67,9 +67,27 @@
         <view class="product-info">
           <view class="product-title">{{item.name}}</view>
           <view class="product-price">¥ {{item.displayPrice || item.retailPrice}}</view>
+          <view class="relation-group" catchtap="onRelationTap" catchlongpress="onRelationLongPress" data-type="stall" data-product-id="{{item.id}}">
+            <text class="relation-label">档口</text>
+            <view class="relation-list">
+              <view class="tag stall-tag" wx:for="{{item.stallRelations}}" wx:for-item="relation" wx:key="id" catchlongpress="onRelationLongPress" data-type="stall" data-product-id="{{item.id}}">
+                <text>{{relation.name}}</text>
+                <text class="relation-remove" wx:if="{{relationEditProductId === item.id && relationEditType === 'stall'}}" catchtap="removeProductRelation" data-id="{{relation.id}}" data-name="{{relation.name}}" data-type="stall" data-product-id="{{item.id}}">×</text>
+              </view>
+            </view>
+            <view class="relation-add" catchtap="openRelationPicker" data-type="stall" data-product-id="{{item.id}}">+</view>
+          </view>
+          <view class="relation-group" catchtap="onRelationTap" catchlongpress="onRelationLongPress" data-type="tag" data-product-id="{{item.id}}">
+            <text class="relation-label">标签</text>
+            <view class="relation-list">
+              <view class="tag" wx:for="{{item.tagRelations}}" wx:for-item="relation" wx:key="id" catchlongpress="onRelationLongPress" data-type="tag" data-product-id="{{item.id}}">
+                <text>{{relation.name}}</text>
+                <text class="relation-remove" wx:if="{{relationEditProductId === item.id && relationEditType === 'tag'}}" catchtap="removeProductRelation" data-id="{{relation.id}}" data-name="{{relation.name}}" data-type="tag" data-product-id="{{item.id}}">×</text>
+              </view>
+            </view>
+            <view class="relation-add" catchtap="openRelationPicker" data-type="tag" data-product-id="{{item.id}}">+</view>
+          </view>
           <view class="product-tags">
-            <text class="tag stall-tag" wx:for="{{item.stallNames}}" wx:key="*this">{{item}}</text>
-            <text class="tag" wx:for="{{item.tagNames}}" wx:key="*this">{{item}}</text>
             <text class="tag status-tag {{item.status === 'off' ? 'offline' : 'online'}}">
               {{item.status === 'off' ? '已下架' : '售卖中'}}
             </text>
@@ -89,6 +107,22 @@
 
     </view>
   </scroll-view>
+
+  <view class="relation-picker" wx:if="{{showRelationPicker}}">
+    <view class="relation-picker-mask" catchtap="closeRelationPicker"></view>
+    <view class="relation-picker-panel">
+      <view class="relation-picker-header">
+        <text>添加{{relationPickerType === 'stall' ? '档口' : '标签'}}</text>
+        <text class="relation-picker-close" catchtap="closeRelationPicker">×</text>
+      </view>
+      <scroll-view class="relation-picker-list" scroll-y="true">
+        <view class="relation-picker-item" wx:for="{{relationPickerItems}}" wx:key="id" bindtap="selectRelationOption" data-id="{{item.id}}" data-name="{{item.name}}">
+          <text>{{item.name}}</text>
+          <text class="relation-picker-arrow">›</text>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
 
   <view class="batch-bar" wx:if="{{selectMode}}">
     <view class="batch-summary">
