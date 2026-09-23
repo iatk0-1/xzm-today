@@ -58,6 +58,8 @@ function wish(id, likes) {
 
 nodeTest('市集下拉刷新：重新请求首屏并按热度倒序展示', async () => {
   const page = createPage();
+  page.data.wishes = [wish('old', 20)];
+  page.data.leftColumn = [wish('old', 20)];
   requestHandler = async () => ({
     content: [wish('low', 2), wish('high', 12), wish('middle', 7)],
     hasNext: false
@@ -72,6 +74,24 @@ nodeTest('市集下拉刷新：重新请求首屏并按热度倒序展示', asyn
   assert.deepEqual(page.data.wishes.map((item) => item.id), ['high', 'middle', 'low']);
   assert.deepEqual(page.data.leftColumn.map((item) => item.id), ['high', 'low']);
   assert.deepEqual(page.data.rightColumn.map((item) => item.id), ['middle']);
+});
+
+nodeTest('市集刷新：请求期间保留旧列表，避免先清空导致页面闪动', async () => {
+  const page = createPage();
+  page.data.wishes = [wish('old', 8)];
+  page.data.leftColumn = [wish('old', 8)];
+  let resolveRequest;
+  requestHandler = () => new Promise((resolve) => { resolveRequest = resolve; });
+
+  const refresh = page.onRefresh();
+  await Promise.resolve();
+  assert.deepEqual(page.data.wishes.map((item) => item.id), ['old']);
+  assert.equal(page.data.loading, true);
+
+  resolveRequest({ content: [wish('new', 12)], hasNext: false });
+  await refresh;
+
+  assert.deepEqual(page.data.wishes.map((item) => item.id), ['new']);
 });
 
 nodeTest('市集页面级下拉刷新：结束后收起原生刷新动画', async () => {
@@ -92,4 +112,6 @@ nodeTest('市集卡片：爱心阻止事件冒泡，热度只展示数值', () =
 
   assert.equal((wxml.match(/catchtap="handleLike"/g) || []).length, 2);
   assert.equal((wxml.match(/热度[^\n]*\/ 50/g) || []).length, 0);
+  assert.equal(wxml.includes('class="waterfall-container"'), true);
+  assert.equal(wxml.includes('class="wish-image-wrap"'), true);
 });

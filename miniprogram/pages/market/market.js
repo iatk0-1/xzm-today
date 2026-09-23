@@ -89,7 +89,8 @@ Page({
   // 从后端 API 获取心愿列表（支持分页）
   loadWishes: function(reset = true, silent = false) {
     if (reset) {
-      this.setData({ page: 1, wishes: [], hasMore: true });
+      // 刷新期间保留旧列表，等新数据返回后一次性替换，避免页面闪成空状态。
+      this.setData({ page: 1, hasMore: true });
     }
 
     if (!this.data.hasMore || this.data.loading) {
@@ -125,7 +126,7 @@ Page({
       });
       const hasMore = res.hasNext !== undefined ? res.hasNext : newWishes.length === pageSize;
 
-      // 接口当前未提供排序参数，前端统一按热度倒序，分页追加后也保持全局顺序。
+      // 后端已经按热度排序，前端继续兜底，分页追加后也保持全局顺序。
       const allWishes = (reset ? newWishes : this.data.wishes.concat(newWishes))
         .sort(function(a, b) { return b.likes - a.likes; });
       this.updateWishColumns(allWishes, {
@@ -135,7 +136,8 @@ Page({
       });
     } catch (err) {
       console.error('加载心愿失败:', err);
-      this.setData({ loading: false, wishes: reset ? [] : this.data.wishes });
+      // 请求失败时也保留上一版列表，避免刷新失败后页面突然变空。
+      this.setData({ loading: false });
       wx.showToast({ title: '加载失败', icon: 'none' });
     } finally {
       if (!silent) {

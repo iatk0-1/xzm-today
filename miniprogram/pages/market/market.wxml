@@ -16,65 +16,65 @@
       <view class="page-subtitle">探索 · 许愿 · 为你寻觅</view>
     </view>
 
-    <view class="masonry-grid" wx:if="{{wishes.length > 0}}">
-    <!-- 左列 -->
-    <view class="masonry-column">
-      <view class="wish-card" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToWishDetail" data-id="{{item.id}}">
-
-        <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
-
-        <view class="card-content">
-          <view class="card-desc">{{item.title || item.content}}</view>
-
-          <view class="progress-section" wx:if="{{!item.linkedProductId}}">
-            <view class="progress-bar">
-              <view class="progress-fill" style="width: {{ (item.likes / 50) * 100 }}%; max-width: 100%;"></view>
-            </view>
-
-            <view class="progress-text">
-              <text class="heart-btn" catchtap="handleLike" data-index="{{index}}" data-id="{{item.id}}">{{item.isLiked ? '♥' : '♡'}}</text>
-              <text>热度 {{item.likes || 0}}</text>
-            </view>
+    <view class="waterfall-container" wx:if="{{wishes.length > 0}}">
+      <!-- 左列 -->
+      <view class="waterfall-column">
+        <view class="wish-item" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToWishDetail" data-id="{{item.id}}">
+          <view class="wish-image-wrap">
+            <image class="wish-img" src="{{item.image}}" mode="aspectFill" lazy-load="true"></image>
           </view>
 
-          <view class="buy-section" wx:else>
-            <view class="btn-buy-black" catchtap="goToProduct" data-id="{{item.linkedProductId}}">BUY NOW</view>
+          <view class="wish-info">
+            <view class="wish-title">{{item.title || item.content}}</view>
+
+            <view class="progress-section" wx:if="{{!item.linkedProductId}}">
+              <view class="progress-bar">
+                <view class="progress-fill" style="width: {{ (item.likes / 50) * 100 }}%; max-width: 100%;"></view>
+              </view>
+
+              <view class="progress-text">
+                <text class="heart-btn" catchtap="handleLike" data-index="{{index}}" data-id="{{item.id}}">{{item.isLiked ? '♥' : '♡'}}</text>
+                <text>热度 {{item.likes || 0}}</text>
+              </view>
+            </view>
+
+            <view class="buy-section" wx:else>
+              <view class="btn-buy-black" catchtap="goToProduct" data-id="{{item.linkedProductId}}">BUY NOW</view>
+            </view>
           </view>
         </view>
+      </view>
 
+      <!-- 右列 -->
+      <view class="waterfall-column">
+        <view class="wish-item" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToWishDetail" data-id="{{item.id}}">
+          <view class="wish-image-wrap">
+            <image class="wish-img" src="{{item.image}}" mode="aspectFill" lazy-load="true"></image>
+          </view>
+
+          <view class="wish-info">
+            <view class="wish-title">{{item.title || item.content}}</view>
+
+            <view class="progress-section" wx:if="{{!item.linkedProductId}}">
+              <view class="progress-bar">
+                <view class="progress-fill" style="width: {{ (item.likes / 50) * 100 }}%; max-width: 100%;"></view>
+              </view>
+
+              <view class="progress-text">
+                <text class="heart-btn" catchtap="handleLike" data-index="{{index}}" data-id="{{item.id}}">{{item.isLiked ? '♥' : '♡'}}</text>
+                <text>热度 {{item.likes || 0}}</text>
+              </view>
+            </view>
+
+            <view class="buy-section" wx:else>
+              <view class="btn-buy-black" catchtap="goToProduct" data-id="{{item.linkedProductId}}">BUY NOW</view>
+            </view>
+          </view>
+        </view>
       </view>
     </view>
 
-    <!-- 右列 -->
-    <view class="masonry-column">
-      <view class="wish-card" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToWishDetail" data-id="{{item.id}}">
-
-        <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
-
-        <view class="card-content">
-          <view class="card-desc">{{item.title || item.content}}</view>
-
-          <view class="progress-section" wx:if="{{!item.linkedProductId}}">
-            <view class="progress-bar">
-              <view class="progress-fill" style="width: {{ (item.likes / 50) * 100 }}%; max-width: 100%;"></view>
-            </view>
-
-            <view class="progress-text">
-              <text class="heart-btn" catchtap="handleLike" data-index="{{index}}" data-id="{{item.id}}">{{item.isLiked ? '♥' : '♡'}}</text>
-              <text>热度 {{item.likes || 0}}</text>
-            </view>
-          </view>
-
-          <view class="buy-section" wx:else>
-            <view class="btn-buy-black" catchtap="goToProduct" data-id="{{item.linkedProductId}}">BUY NOW</view>
-          </view>
-        </view>
-
-      </view>
-    </view>
-    </view>
-
-    <view class="empty-state" wx:else>暂无心愿，点击右下角成为第一个策展人</view>
+    <view class="empty-state" wx:elif="{{!loading}}">暂无心愿，点击右下角成为第一个策展人</view>
   </scroll-view>
 
   <view class="fab-upload" bindtap="uploadWish">
