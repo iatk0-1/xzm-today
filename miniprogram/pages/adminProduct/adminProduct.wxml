@@ -13,10 +13,46 @@
     </view>
   </view>
 
+  <view class="product-toolbar">
+    <view class="search-input-wrapper">
+      <input class="search-input" placeholder="搜索商品名称、档口或标签" value="{{searchKeyword}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearchConfirm" focus="{{searchFocus}}" />
+      <view class="search-clear" wx:if="{{searchKeyword}}" bindtap="clearSearch">×</view>
+      <view class="search-btn" bindtap="onSearchConfirm">搜索</view>
+    </view>
+
+    <scroll-view class="status-tabs" scroll-x="true" enhanced="true" show-scrollbar="false">
+      <view class="status-tab {{activeStatus === 'all' ? 'active' : ''}}" bindtap="selectStatusTab" data-status="all">全部</view>
+      <view class="status-tab {{activeStatus === 'on' ? 'active' : ''}}" bindtap="selectStatusTab" data-status="on">已上架</view>
+      <view class="status-tab {{activeStatus === 'off' ? 'active' : ''}}" bindtap="selectStatusTab" data-status="off">已下架</view>
+    </scroll-view>
+
+    <view class="filter-section">
+      <view class="filter-row">
+        <text class="filter-label">档口</text>
+        <view class="filter-fixed-option filter-tag {{selectedStall === '' ? 'active' : ''}}" bindtap="selectStall" data-stall="all">全部</view>
+        <scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+          <view class="filter-options">
+            <view class="filter-tag {{selectedStall === item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}">{{item.name}}</view>
+          </view>
+        </scroll-view>
+      </view>
+      <view class="filter-row">
+        <text class="filter-label">标签</text>
+        <view class="filter-fixed-option filter-tag {{selectedTag === '' ? 'active' : ''}}" bindtap="selectTag" data-tag="all">全部</view>
+        <scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+          <view class="filter-options">
+            <view class="filter-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}">{{item.name}}</view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+  </view>
+
   <scroll-view scroll-y class="product-scroll-area {{selectMode ? 'with-batch-bar' : ''}}" enable-flex enhanced bindscrolltolower="loadMore">
 
     <view class="empty-state" wx:if="{{products.length === 0 && !isLoading}}">
-      <view class="empty-text">系统里还没有任何商品</view>
+      <view class="empty-text" wx:if="{{searchKeyword || activeStatus !== 'all' || selectedStall || selectedTag}}">没有找到符合条件的商品</view>
+      <view class="empty-text" wx:else>系统里还没有任何商品</view>
     </view>
 
     <view class="product-card {{item.selected ? 'selected' : ''}}" wx:for="{{products}}" wx:key="id">
@@ -32,7 +68,8 @@
           <view class="product-title">{{item.name}}</view>
           <view class="product-price">¥ {{item.displayPrice || item.retailPrice}}</view>
           <view class="product-tags">
-            <text class="tag" wx:if="{{item.tags && item.tags.length > 0}}">{{item.tags[0]}}</text>
+            <text class="tag stall-tag" wx:for="{{item.stallNames}}" wx:key="*this">{{item}}</text>
+            <text class="tag" wx:for="{{item.tagNames}}" wx:key="*this">{{item}}</text>
             <text class="tag status-tag {{item.status === 'off' ? 'offline' : 'online'}}">
               {{item.status === 'off' ? '已下架' : '售卖中'}}
             </text>

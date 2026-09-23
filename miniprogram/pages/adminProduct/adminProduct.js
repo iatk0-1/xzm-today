@@ -6,6 +6,13 @@ Page({
   data: {
     products: [],
     isLoading: false,  // 初始为 false，允许首次加载
+    activeStatus: 'all',
+    searchKeyword: '',
+    searchFocus: false,
+    stallList: [],
+    tagList: [],
+    selectedStall: '',
+    selectedTag: '',
     // 分页参数
     page: 1,
     pageSize: 20,
@@ -18,6 +25,7 @@ Page({
   },
 
   onLoad: function() {
+    this.loadFilterOptions();
     this.loadProducts();
   },
 
@@ -29,6 +37,68 @@ Page({
   loadMore: function() {
     if (!this.data.hasMore || this.data.isLoading) return;
     this.loadProducts(false);
+  },
+
+  loadFilterOptions: async function() {
+    try {
+      const [stalls, tags] = await Promise.all([
+        api.get('/stalls/all'),
+        api.get('/tags/all')
+      ]);
+      this.setData({
+        stallList: Array.isArray(stalls) ? stalls : [],
+        tagList: Array.isArray(tags) ? tags : []
+      }, () => this.refreshProductLabels());
+    } catch (err) {
+      console.error('加载档口和标签失败:', err);
+      this.setData({ stallList: [], tagList: [] });
+    }
+  },
+
+  getQueryParams: function() {
+    const params = {
+      status: this.data.activeStatus,
+      page: this.data.page,
+      size: this.data.pageSize
+    };
+    const keyword = this.data.searchKeyword.trim();
+    if (keyword) params.keyword = keyword;
+    if (this.data.selectedStall) params.stallId = this.data.selectedStall;
+    if (this.data.selectedTag) params.tagId = this.data.selectedTag;
+    return params;
+  },
+
+  selectStatusTab: function(e) {
+    const status = e.currentTarget.dataset.status;
+    if (status === this.data.activeStatus) return;
+    this.setData({ activeStatus: status }, () => this.loadProducts());
+  },
+
+  onSearchInput: function(e) {
+    const keyword = e.detail.value || '';
+    this.setData({ searchKeyword: keyword });
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.loadProducts(), 450);
+  },
+
+  onSearchConfirm: function() {
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.setData({ searchFocus: false }, () => this.loadProducts());
+  },
+
+  clearSearch: function() {
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.setData({ searchKeyword: '', searchFocus: false }, () => this.loadProducts());
+  },
+
+  selectStall: function(e) {
+    const stallId = e.currentTarget.dataset.stall;
+    this.setData({ selectedStall: stallId === 'all' ? '' : stallId }, () => this.loadProducts());
+  },
+
+  selectTag: function(e) {
+    const tagId = e.currentTarget.dataset.tag;
+    this.setData({ selectedTag: tagId === 'all' ? '' : tagId }, () => this.loadProducts());
   },
 
   // 改造：从后端 API 加载商品列表（支持分页）
@@ -55,13 +125,8 @@ Page({
 
     try {
       await auth.ensureAuthenticated({ silent: true });
-      const { page, pageSize } = this.data;
-
-      const res = await api.get('/products/query', {
-        status: 'all',
-        page: page,
-        size: pageSize
-      });
+      const pageSize = this.data.pageSize;
+      const res = await api.get('/products/query', this.getQueryParams());
 
       let list = (res.content || []).map(item => this.normalizeProduct(item));
 
@@ -97,7 +162,30 @@ Page({
       item.createTimeStr = `${month}-${day} ${hour}:${minute}`;
     }
     item.selected = false;
+    return this.enrichProductLabels(item);
+  },
+
+  enrichProductLabels: function(item) {
+    const stallMap = {};
+    const tagMap = {};
+    (this.data.stallList || []).forEach(stall => {
+      stallMap[this.normalizeId(stall.id)] = stall.name;
+    });
+    (this.data.tagList || []).forEach(tag => {
+      tagMap[this.normalizeId(tag.id)] = tag.name;
+    });
+    item.stallNames = (item.stallIds || [])
+      .map(id => stallMap[this.normalizeId(id)])
+      .filter(Boolean);
+    item.tagNames = (item.relateTagIds || [])
+      .map(id => tagMap[this.normalizeId(id)])
+      .filter(Boolean);
     return item;
+  },
+
+  refreshProductLabels: function() {
+    if (!this.data.products.length) return;
+    this.setData({ products: this.data.products.map(item => this.enrichProductLabels(item)) });
   },
 
   normalizeId: function(id) {
