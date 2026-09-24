@@ -35,8 +35,10 @@ Page({
     selectedProduct: null,
     previewGroups: [],
     canShip: false,
-    page: 1,
+    page: 0,
     hasMore: true,
+    loadingMore: false,
+    selectingAll: false,
     blockedAfterSaleCount: 0
   },
 
@@ -53,6 +55,23 @@ Page({
     this.loadTagList();
     // 空搜索时，自动加载所有未发货商品明细
     this.loadAllPendingItems();
+  },
+
+  onPullDownRefresh: async function() {
+    try {
+      await Promise.all([this.reloadPendingItems(), this.loadLogisticsAccounts(),
+        this.loadStallList(), this.loadTagList()]);
+    } finally {
+      wx.stopPullDownRefresh();
+    }
+  },
+
+  onReachBottom: function() {
+    if (!this.data.selectingAll) this.loadNextPendingPage();
+  },
+
+  loadMorePendingItems: function() {
+    if (!this.data.selectingAll) this.loadNextPendingPage();
   },
 
   copyOrderNo: function(e) {
@@ -225,17 +244,16 @@ Page({
 
   reloadPendingItems: function() {
     if (this.data.selectedProducts.length === 0) {
-      this.loadAllPendingItems();
-      return;
+      return this.loadAllPendingItems();
     }
 
     const productsWithoutSkus = this.data.selectedProducts.filter(product =>
       !product.skus || product.skus.length === 0
     );
     if (productsWithoutSkus.length > 0) {
-      this.loadProductsSkus(productsWithoutSkus);
+      return this.loadProductsSkus(productsWithoutSkus);
     } else {
-      this.loadPendingItems();
+      return this.loadPendingItems();
     }
   },
 
@@ -246,32 +264,8 @@ Page({
   // ==================== 商品搜索 ====================
 
   // 加载所有未发货商品明细（进入页面时调用）
-  loadAllPendingItems: async function() {
-    wx.showLoading({ title: '加载中...' });
-
-    try {
-      // 档口和标签会与商品/SKU条件一起传给后端，统一按 AND 过滤
-      const res = await api.get('/shipments/pending-items', this.getPendingFilterParams());
-      
-      const items = res || [];
-      
-      // 按订单分组
-      const grouped = this.groupByOrder(items);
-      
-      this.setData({
-        orderGroups: grouped.groups,
-        selectedItems: this.collectSelectedItems(grouped.groups),
-        allSelected: this.isAllGroupsSelected(grouped.groups),
-        blockedAfterSaleCount: grouped.blockedAfterSaleCount,
-        hasMore: false,
-        page: 1
-      });
-    } catch (err) {
-      console.error('加载未发货商品失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
-    } finally {
-      wx.hideLoading();
-    }
+  loadAllPendingItems: function() {
+    return this.resetPendingPages(this.getPendingFilterParams());
   },
 
   // 输入时搜索（防抖）
@@ -354,7 +348,7 @@ Page({
       });
     });
     
-    Promise.all(promises).then(results => {
+    return Promise.all(promises).then(results => {
       // 更新已选商品的 SKU 列表
       const updatedProducts = this.data.selectedProducts.map(product => {
         const skuResult = results.find(r => r.productId === product.id);
@@ -368,7 +362,7 @@ Page({
       wx.hideLoading();
       
       // 加载订单明细
-      this.loadPendingItems();
+      return this.loadPendingItems();
     });
   },
 
@@ -513,10 +507,10 @@ Page({
   // ==================== 加载订单明细 ====================
 
   // 加载订单明细（根据已选商品和 SKU）
-  loadPendingItems: async function() {
+  loadPendingItems: function() {
     if (this.data.selectedProducts.length === 0) {
       wx.showToast({ title: '请先选择商品', icon: 'none' });
-      return;
+      return Promise.resolve();
     }
 
     // 收集已选 SKU ID
@@ -535,38 +529,75 @@ Page({
 
     if (selectedSkuIds.length === 0) {
       wx.showToast({ title: '请选择商品', icon: 'none' });
-      return;
+      return Promise.resolve();
     }
 
-    wx.showLoading({ title: '加载中...' });
+    return this.resetPendingPages({
+      ...this.getPendingFilterParams(),
+      skuIds: selectedSkuIds.join(',')
+    });
+  },
 
-    try {
-      // 调用后端 API 获取未发货商品明细
-      const params = {
-        ...this.getPendingFilterParams(),
-        skuIds: selectedSkuIds.join(',')
-      };
-      const res = await api.get('/shipments/pending-items', params);
-      
-      const items = res || [];
-      
-      // 按订单分组
-      const grouped = this.groupByOrder(items);
-      
+  resetPendingPages: function(params) {
+    this.pendingRequestVersion = (this.pendingRequestVersion || 0) + 1;
+    this.pendingQueryParams = params;
+    this.rawPendingItems = [];
+    this.pendingPagePromise = null;
+    this.setData({
+      orderGroups: [], selectedItems: [], allSelected: false,
+      blockedAfterSaleCount: 0, page: 0, hasMore: true, loading: true,
+      loadingMore: false, selectingAll: false
+    });
+    return this.loadNextPendingPage(this.pendingRequestVersion);
+  },
+
+  loadNextPendingPage: function(version) {
+    const requestVersion = version || this.pendingRequestVersion;
+    if (!this.data.hasMore || requestVersion !== this.pendingRequestVersion) {
+      return Promise.resolve();
+    }
+    if (this.pendingPagePromise) return this.pendingPagePromise;
+
+    const nextPage = this.data.page + 1;
+    this.setData({ loadingMore: nextPage > 1 });
+    const request = api.get('/shipments/pending-items/query', {
+      ...this.pendingQueryParams, page: nextPage
+    }).then(res => {
+      if (requestVersion !== this.pendingRequestVersion) return;
+      const content = Array.isArray(res.content) ? res.content : [];
+      const seen = new Set(this.rawPendingItems.map(item => this.getPendingItemKey(item)));
+      content.forEach(item => {
+        const key = this.getPendingItemKey(item);
+        if (!seen.has(key)) {
+          this.rawPendingItems.push(item);
+          seen.add(key);
+        }
+      });
+      const grouped = this.groupByOrder(this.rawPendingItems);
       this.setData({
         orderGroups: grouped.groups,
         selectedItems: this.collectSelectedItems(grouped.groups),
-        allSelected: this.isAllGroupsSelected(grouped.groups),
+        allSelected: !res.hasNext && grouped.groups.length > 0
+          && grouped.groups.every(group => group.selected),
         blockedAfterSaleCount: grouped.blockedAfterSaleCount,
-        hasMore: false,
-        page: 1
+        hasMore: Boolean(res.hasNext),
+        page: nextPage
       });
-    } catch (err) {
-      console.error('加载未发货商品失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
-    } finally {
-      wx.hideLoading();
-    }
+      return true;
+    }).catch(err => {
+      if (requestVersion === this.pendingRequestVersion) {
+        console.error('加载未发货商品失败:', err);
+        wx.showToast({ title: err.message || '加载失败', icon: 'none' });
+      }
+      return false;
+    }).finally(() => {
+      if (requestVersion === this.pendingRequestVersion) {
+        this.setData({ loading: false, loadingMore: false });
+      }
+      if (this.pendingPagePromise === request) this.pendingPagePromise = null;
+    });
+    this.pendingPagePromise = request;
+    return request;
   },
 
   // 按订单分组
@@ -585,6 +616,7 @@ Page({
           adminSeqNo: item.adminSeqNo || '',
           orderNo: item.orderNo || item.orderId,
           createdAt: this.formatDate(item.orderCreatedAt),
+          orderCreatedAt: item.orderCreatedAt,
           recipientName: item.recipientName,
           recipientPhone: item.recipientPhone,
           recipientAddress: item.recipientAddress,
@@ -653,6 +685,7 @@ Page({
           adminSeqNo: group.adminSeqNo,
           orderNo: group.orderNo,
           createdAt: group.createdAt,
+          orderCreatedAt: group.orderCreatedAt,
           recipientName: group.recipientName,
           recipientPhone: group.recipientPhone,
           recipientAddress: group.recipientAddress
@@ -667,8 +700,22 @@ Page({
     return selectableGroups.length > 0 && selectableGroups.every(group => group.selected);
   },
 
-  toggleSelectAll: function() {
+  toggleSelectAll: async function() {
+    if (this.data.selectingAll || this.data.loading) return;
     const allSelected = !this.data.allSelected;
+    if (allSelected && this.data.hasMore) {
+      const version = this.pendingRequestVersion;
+      this.setData({ selectingAll: true });
+      try {
+        while (this.data.hasMore && version === this.pendingRequestVersion) {
+          const loaded = await this.loadNextPendingPage(version);
+          if (!loaded) return;
+        }
+        if (version !== this.pendingRequestVersion) return;
+      } finally {
+        if (version === this.pendingRequestVersion) this.setData({ selectingAll: false });
+      }
+    }
     
     const orderGroups = this.data.orderGroups.map(group => ({
       ...group,
@@ -715,6 +762,7 @@ Page({
 
   updateSelectedItems: function(orderGroups) {
     const selectedItems = this.collectSelectedItems(orderGroups);
+    const selectedMap = new Map(selectedItems.map(item => [this.getPendingItemKey(item), item]));
     const pendingMap = {};
     (this.data.pendingShipItems || []).forEach(item => {
       pendingMap[this.getPendingItemKey(item)] = item;
@@ -725,8 +773,7 @@ Page({
       group.items.forEach(item => {
         const key = this.getPendingItemKey(item);
         if (item.canShip && item.selected) {
-          const selectedItem = selectedItems.find(item => this.getPendingItemKey(item) === key);
-          pendingMap[key] = selectedItem;
+          pendingMap[key] = selectedMap.get(key);
         } else {
           delete pendingMap[key];
         }
@@ -737,7 +784,7 @@ Page({
     this.setData({
       orderGroups,
       selectedItems,
-      allSelected: this.isAllGroupsSelected(orderGroups)
+      allSelected: !this.data.hasMore && this.isAllGroupsSelected(orderGroups)
     });
     this.updatePendingShipSummary(pendingShipItems);
     if (pendingShipItems.length === 0) {
@@ -832,26 +879,35 @@ Page({
 
   updatePendingShipSummary: function(pendingShipItems) {
     const orderIds = {};
-    const groupsMap = {};
+    const groupsMap = new Map();
     pendingShipItems.forEach((item, index) => {
       orderIds[item.orderId] = true;
-      if (!groupsMap[item.orderId]) {
-        groupsMap[item.orderId] = {
+      if (!groupsMap.has(item.orderId)) {
+        groupsMap.set(item.orderId, {
           orderId: item.orderId,
           adminSeqNo: item.adminSeqNo || '',
           orderNo: item.orderNo || item.orderId,
           createdAt: item.createdAt || '',
+          orderCreatedAt: item.orderCreatedAt || '',
           recipientName: item.recipientName || '',
           recipientPhone: item.recipientPhone || '',
           recipientAddress: item.recipientAddress || '',
           items: []
-        };
+        });
       }
-      groupsMap[item.orderId].items.push({ ...item, pendingIndex: index });
+      groupsMap.get(item.orderId).items.push({ ...item, pendingIndex: index });
+    });
+    const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => {
+      const timeA = Date.parse(a.orderCreatedAt || a.createdAt) || 0;
+      const timeB = Date.parse(b.orderCreatedAt || b.createdAt) || 0;
+      if (timeA !== timeB) return timeA - timeB;
+      const idA = String(a.orderId);
+      const idB = String(b.orderId);
+      return idA.length - idB.length || idA.localeCompare(idB);
     });
     this.setData({
       pendingShipItems,
-      pendingOrderGroups: Object.values(groupsMap),
+      pendingOrderGroups: sortedGroups,
       pendingOrderCount: Object.keys(orderIds).length,
       pendingItemCount: pendingShipItems.length,
       pendingTotalQty: pendingShipItems.reduce((sum, item) => sum + (Number(item.shipQty) || 0), 0)
@@ -963,12 +1019,19 @@ Page({
     const skuIds = [...new Set(this.data.pendingShipItems.map(item => item.skuId).filter(Boolean))];
     if (skuIds.length === 0) return;
 
-    const res = await api.get('/shipments/pending-items?skuIds=' + encodeURIComponent(skuIds.join(',')));
-    const latestItems = Array.isArray(res) ? res : [];
     const latestMap = {};
-    latestItems.forEach(item => {
-      latestMap[item.orderId + '_' + item.orderItemId + '_' + item.skuId] = item;
-    });
+    let page = 1;
+    let hasNext = true;
+    while (hasNext) {
+      const res = await api.get('/shipments/pending-items/query', {
+        skuIds: skuIds.join(','), page
+      });
+      (res.content || []).forEach(item => {
+        latestMap[item.orderId + '_' + item.orderItemId + '_' + item.skuId] = item;
+      });
+      hasNext = Boolean(res.hasNext);
+      page += 1;
+    }
 
     const refreshedItems = this.data.pendingShipItems.map(item => {
       const latest = latestMap[item.uniqueKey || (item.orderId + '_' + item.orderItemId + '_' + item.skuId)];
