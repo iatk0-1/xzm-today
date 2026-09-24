@@ -22,6 +22,28 @@
         全部
       </view>
     </view>
+
+    <!-- 档口和标签筛选 -->
+    <view class="relation-filter-section">
+      <view class="relation-filter-row">
+        <text class="relation-filter-label">档口</text>
+        <view class="relation-filter-fixed relation-filter-tag {{selectedStall === '' ? 'active' : ''}}" bindtap="selectStall" data-stall="all">全部</view>
+        <scroll-view class="relation-filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+          <view class="relation-filter-options">
+            <view class="relation-filter-tag {{selectedStall === item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}">{{item.name}}</view>
+          </view>
+        </scroll-view>
+      </view>
+      <view class="relation-filter-row">
+        <text class="relation-filter-label">标签</text>
+        <view class="relation-filter-fixed relation-filter-tag {{selectedTag === '' ? 'active' : ''}}" bindtap="selectTag" data-tag="all">全部</view>
+        <scroll-view class="relation-filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+          <view class="relation-filter-options">
+            <view class="relation-filter-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}">{{item.name}}</view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
     
     <!-- SKU 筛选 -->
     <view class="sku-filter">

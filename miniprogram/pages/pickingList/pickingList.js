@@ -12,6 +12,10 @@ Page({
     allSelected: false,
     // SKU 筛选
     skuKeyword: '',
+    stallList: [],
+    tagList: [],
+    selectedStall: '',
+    selectedTag: '',
     filteredList: [],
     // 分页
     page: 1,
@@ -23,7 +27,37 @@ Page({
   },
 
   onLoad: function() {
+    this.loadFilterOptions();
     this.loadRecommendations();
+  },
+
+  // 加载档口和标签筛选项
+  loadFilterOptions: async function() {
+    try {
+      const [stalls, tags] = await Promise.all([
+        api.get('/stalls/all'),
+        api.get('/tags/all')
+      ]);
+      this.setData({
+        stallList: Array.isArray(stalls) ? stalls : [],
+        tagList: Array.isArray(tags) ? tags : []
+      });
+    } catch (err) {
+      console.error('加载档口和标签失败:', err);
+      this.setData({ stallList: [], tagList: [] });
+    }
+  },
+
+  getQueryParams: function() {
+    const params = {
+      status: this.data.filterStatus,
+      keyword: this.data.skuKeyword.trim(),
+      page: this.data.page,
+      size: this.data.size
+    };
+    if (this.data.selectedStall) params.stallId = this.data.selectedStall;
+    if (this.data.selectedTag) params.tagId = this.data.selectedTag;
+    return params;
   },
 
   // 跳转到报单记录页面
@@ -54,10 +88,8 @@ Page({
     this.setData({ loading: true });
     try {
       await auth.ensureAuthenticated({ silent: true });
-      const { page, size, filterStatus, skuKeyword } = this.data;
-      
       // 调用分页搜索接口
-      const res = await api.get(`/picking-list/recommend/search/query?status=${filterStatus}&keyword=${encodeURIComponent(skuKeyword)}&page=${page}&size=${size}`);
+      const res = await api.get('/picking-list/recommend/search/query', this.getQueryParams());
       
       const newList = (res.content || []).map(item => ({
         ...item,
@@ -70,7 +102,7 @@ Page({
         pendingShipQty: Number(item.unshippedQty) || 0
       }));
       const nextList = reset ? newList : [...this.data.recommendList, ...newList];
-      const hasMore = res.hasNext !== undefined ? res.hasNext : newList.length === size;
+      const hasMore = res.hasNext !== undefined ? res.hasNext : newList.length === this.data.size;
       
       this.setData({
         recommendList: nextList,
@@ -102,8 +134,23 @@ Page({
     this.setData({ 
       filterStatus: status,
       skuKeyword: ''
-    });
-    this.loadRecommendations(true);  // 重置并重新加载
+    }, () => this.loadRecommendations(true));  // 重置并重新加载
+  },
+
+  // 按档口筛选
+  selectStall: function(e) {
+    const stallId = e.currentTarget.dataset.stall;
+    this.setData({
+      selectedStall: stallId === 'all' ? '' : stallId
+    }, () => this.loadRecommendations(true));
+  },
+
+  // 按标签筛选
+  selectTag: function(e) {
+    const tagId = e.currentTarget.dataset.tag;
+    this.setData({
+      selectedTag: tagId === 'all' ? '' : tagId
+    }, () => this.loadRecommendations(true));
   },
 
   // SKU 搜索

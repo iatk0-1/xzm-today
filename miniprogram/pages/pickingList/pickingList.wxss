@@ -93,6 +93,60 @@ page {
   font-weight: 600;
 }
 
+/* 档口和标签筛选 */
+.relation-filter-section {
+  margin-bottom: 14rpx;
+}
+
+.relation-filter-row {
+  display: flex;
+  align-items: center;
+  min-height: 64rpx;
+}
+
+.relation-filter-label {
+  width: 64rpx;
+  flex-shrink: 0;
+  color: #333;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.relation-filter-fixed {
+  flex-shrink: 0;
+  margin-right: 12rpx;
+}
+
+.relation-filter-scroll {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.relation-filter-options {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 6rpx 2rpx;
+}
+
+.relation-filter-tag {
+  flex-shrink: 0;
+  padding: 10rpx 24rpx;
+  background: #f2f4f7;
+  color: #666;
+  font-size: 24rpx;
+  line-height: 32rpx;
+  border-radius: 12rpx;
+}
+
+.relation-filter-tag.active {
+  background: #f2f4f7;
+  color: #1f2933;
+  font-weight: 800;
+  box-shadow: inset 0 -4rpx 0 #1f2933;
+}
+
 /* SKU 筛选 */
 .sku-filter {
   display: flex;
