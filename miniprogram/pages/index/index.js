@@ -63,6 +63,7 @@ Page({
   onLoad: function() {
     this._isInitializingHome = false;
     this._isRefreshingHome = false;
+    this._skipNextHomeRefresh = false;
     this._hasLoadedHomeData = false;
 
     this.checkAdmin();
@@ -91,6 +92,12 @@ Page({
     // 页面实例还没有完成首次加载时，继续走认证后初始化流程。
     if (!this.hasLoadedHomeData()) {
       this.waitForAuthAndLoad();
+      return;
+    }
+
+    // 从商品详情返回时保留当前分页和滚动位置，不要把列表重置到第一页。
+    if (this._skipNextHomeRefresh) {
+      this._skipNextHomeRefresh = false;
       return;
     }
 
@@ -467,7 +474,13 @@ Page({
   // 基础跳转功能
   goToSearch: function() { wx.navigateTo({ url: '/pages/search/search' }); },
   goToCart: function() { wx.navigateTo({ url: '/pages/cart/cart' }); },
-  goToDetail: function(e) { wx.navigateTo({ url: '/pages/detail/detail?id=' + e.currentTarget.dataset.id }); },
+  goToDetail: function(e) {
+    this._skipNextHomeRefresh = true;
+    wx.navigateTo({
+      url: '/pages/detail/detail?id=' + e.currentTarget.dataset.id,
+      fail: () => { this._skipNextHomeRefresh = false; }
+    });
+  },
   goToMarket: function() { wx.reLaunch({ url: '/pages/market/market' }); },
   goToUser: function() { wx.reLaunch({ url: '/pages/user/user' }); },
   goToIndex: function() { wx.reLaunch({ url: '/pages/index/index' }); },

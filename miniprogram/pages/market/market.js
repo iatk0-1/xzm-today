@@ -19,6 +19,7 @@ Page({
   onLoad: function() {
     this._isRefreshingMarket = false;
     this._wishesTask = null;
+    this._skipNextMarketRefresh = false;
     this._hasLoadedMarketData = false;
     this.checkAdmin();
   },
@@ -30,6 +31,9 @@ Page({
     }
     if (!this._hasLoadedMarketData) {
       this.loadWishes();
+    } else if (this._skipNextMarketRefresh) {
+      // 从心愿详情返回时保留当前分页和滚动位置，不要重新加载第一页。
+      this._skipNextMarketRefresh = false;
     } else {
       this.refreshMarketData();
     }
@@ -255,8 +259,10 @@ Page({
   goToWishDetail: function(e) {
     var wishId = e.currentTarget.dataset.id;
     if (wishId) {
+      this._skipNextMarketRefresh = true;
       wx.navigateTo({
-        url: '/pages/wishDetail/wishDetail?id=' + wishId
+        url: '/pages/wishDetail/wishDetail?id=' + wishId,
+        fail: function() { this._skipNextMarketRefresh = false; }.bind(this)
       });
     }
   },
@@ -265,8 +271,10 @@ Page({
   goToProduct: function(e) {
     const productId = e.currentTarget.dataset.id;
     if (productId) {
+      this._skipNextMarketRefresh = true;
       wx.navigateTo({
-        url: `/pages/detail/detail?id=${productId}`
+        url: `/pages/detail/detail?id=${productId}`,
+        fail: () => { this._skipNextMarketRefresh = false; }
       });
     }
   },
