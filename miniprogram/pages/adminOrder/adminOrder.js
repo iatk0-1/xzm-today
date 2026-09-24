@@ -30,6 +30,7 @@ Page({
     pendingTotalQty: 0,
     showPendingShipList: false,
     loading: false,
+    isRefreshing: false,
     showSkuModal: false,
     showPreviewModal: false,
     selectedProduct: null,
@@ -57,17 +58,36 @@ Page({
     this.loadAllPendingItems();
   },
 
+  refreshPendingData: async function() {
+    await Promise.all([this.reloadPendingItems(), this.loadLogisticsAccounts(),
+      this.loadStallList(), this.loadTagList()]);
+  },
+
+  onListPullDownRefresh: async function() {
+    if (this.data.isRefreshing) return;
+    this.setData({ isRefreshing: true });
+    try {
+      await this.refreshPendingData();
+    } finally {
+      this.setData({ isRefreshing: false });
+    }
+  },
+
+  // 保留页面事件兼容性，实际刷新和分页由列表区块接管。
   onPullDownRefresh: async function() {
     try {
-      await Promise.all([this.reloadPendingItems(), this.loadLogisticsAccounts(),
-        this.loadStallList(), this.loadTagList()]);
+      await this.refreshPendingData();
     } finally {
       wx.stopPullDownRefresh();
     }
   },
 
-  onReachBottom: function() {
+  onListScrollToLower: function() {
     if (!this.data.selectingAll) this.loadNextPendingPage();
+  },
+
+  onReachBottom: function() {
+    this.onListScrollToLower();
   },
 
   loadMorePendingItems: function() {

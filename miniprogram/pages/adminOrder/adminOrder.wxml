@@ -166,12 +166,25 @@
     </view>
   </view>
 
-  <view class="after-sale-alert" wx:if="{{blockedAfterSaleCount > 0}}">
-    有 {{blockedAfterSaleCount}} 个待发货订单因售后暂无可发商品，已从可发列表中隐藏
-  </view>
+  <!-- 订单列表区域独立滚动，避免下拉时带动整个页面 -->
+  <scroll-view
+    class="order-list-scroll"
+    scroll-y="true"
+    enable-flex="true"
+    enhanced="true"
+    refresher-enabled="true"
+    refresher-triggered="{{isRefreshing}}"
+    refresher-background="#f2f2f2"
+    bindrefresherrefresh="onListPullDownRefresh"
+    bindscrolltolower="onListScrollToLower"
+    lower-threshold="120"
+  >
+    <view class="after-sale-alert" wx:if="{{blockedAfterSaleCount > 0}}">
+      有 {{blockedAfterSaleCount}} 个待发货订单因售后暂无可发商品，已从可发列表中隐藏
+    </view>
 
-  <!-- 订单列表 -->
-  <view class="order-list">
+    <!-- 订单列表 -->
+    <view class="order-list">
     <view class="order-group" wx:for="{{orderGroups}}" wx:key="orderId" wx:for-item="group" wx:for-index="index">
       <view class="order-header">
         <view class="order-checkbox {{group.selected ? 'checked' : ''}}" bindtap="toggleGroupSelect" data-index="{{index}}">
@@ -254,7 +267,8 @@
     <view class="page-loading" wx:if="{{loadingMore || selectingAll}}">{{selectingAll ? '正在加载剩余订单...' : '正在加载更多...'}}</view>
     <view class="page-loading" wx:elif="{{hasMore && !loading}}" bindtap="loadMorePendingItems">继续加载更多订单</view>
     <view class="page-loading" wx:elif="{{!hasMore && orderGroups.length > 0}}">已加载全部订单</view>
-  </view>
+    </view>
+  </scroll-view>
 
   <view class="modal" wx:if="{{showDateModal}}">
     <view class="modal-mask" bindtap="closeDateModal"></view>

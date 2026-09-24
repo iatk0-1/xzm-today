@@ -2,6 +2,5 @@
   "navigationBarTitleText": "主理人控制台 - 订单管理",
   "navigationBarBackgroundColor": "#ffffff",
   "navigationBarTextStyle": "black",
-  "enablePullDownRefresh": true,
   "usingComponents": {}
 }
