@@ -260,3 +260,10 @@ page { height: 100vh; overflow: hidden; background-color: #f2f2f2; }
 .modal-cancel { background: #f5f5f5; color: #666; border-right: 1rpx solid #f0f0f0; }
 .modal-confirm { background: #1a1a1a; color: #fff; }
 .modal-confirm[disabled] { background: #ccc; }
+.batch-progress-entry { display: block; padding: 12rpx; color: #1769aa; font-size: 24rpx; }
+.batch-progress-summary { padding: 18rpx 24rpx; font-size: 25rpx; background: #f7f7f7; }
+.batch-progress-group { border-bottom: 1rpx solid #eee; padding: 18rpx 10rpx; font-size: 24rpx; }
+.batch-progress-head { font-weight: 600; }
+.batch-progress-meta, .batch-progress-status { color: #666; margin-top: 7rpx; }
+.batch-progress-reason { color: #b3261e; margin-top: 8rpx; white-space: normal; }
+.batch-review-btn { margin-top: 12rpx; font-size: 22rpx; background: #fff5e9; color: #9b5d00; }

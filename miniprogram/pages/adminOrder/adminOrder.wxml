@@ -83,6 +83,8 @@
       <button class="batch-ship-btn" bindtap="openPendingShipList" disabled="{{pendingShipItems.length === 0 || !logisticsAccounts[logisticsIndex]}}">
         批量发货（{{pendingOrderCount}} 单）
       </button>
+      <text class="batch-progress-entry" wx:if="{{batchProgress}}" bindtap="openBatchProgress">查看发货进度 {{batchProgress.completed}}/{{batchProgress.total}}</text>
+      <text class="batch-progress-entry" bindtap="openRecentBatchTasks">历史发货任务</text>
     </view>
   </view>
 
@@ -346,6 +348,44 @@
       <view class="modal-footer">
         <button class="modal-cancel" bindtap="closePreviewModal">取消</button>
         <button class="modal-confirm" bindtap="confirmBatchShip" disabled="{{!canShip}}">确认发货</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="modal" wx:if="{{showRecentBatchTasks}}">
+    <view class="modal-mask" bindtap="closeRecentBatchTasks"></view>
+    <view class="modal-content modal-large">
+      <view class="modal-title">历史发货任务</view>
+      <scroll-view class="preview-list" scroll-y>
+        <view class="batch-progress-group" wx:for="{{recentBatchTasks}}" wx:key="id" wx:for-item="task" wx:for-index="index" bindtap="selectRecentBatchTask" data-index="{{index}}">
+          <view class="batch-progress-head">任务 {{task.id}}</view>
+          <view class="batch-progress-meta">{{task.groups.length}} 个发货组 · 点击查看进度</view>
+        </view>
+      </scroll-view>
+      <view class="modal-footer"><button class="modal-cancel" bindtap="closeRecentBatchTasks">关闭</button></view>
+    </view>
+  </view>
+
+  <view class="modal" wx:if="{{showBatchProgress && batchProgress}}">
+    <view class="modal-mask" bindtap="closeBatchProgress"></view>
+    <view class="modal-content modal-large">
+      <view class="modal-title">批量发货进度 {{batchProgress.completed}}/{{batchProgress.total}}</view>
+      <view class="batch-progress-summary">成功 {{batchProgress.success}} 组，需处理 {{batchProgress.failed}} 组</view>
+      <scroll-view class="preview-list" scroll-y>
+        <view class="batch-progress-group" wx:for="{{batchProgress.groups}}" wx:key="id" wx:for-item="group">
+          <view class="batch-progress-head">{{group.sequenceNo + 1}}. {{group.recipientName}} {{group.recipientPhone}}</view>
+          <view class="batch-progress-meta">订单 {{group.orderText}}</view>
+          <view class="batch-progress-status">{{group.statusText}} · {{group.stageText}}</view>
+          <view class="batch-progress-reason" wx:if="{{group.reason}}">原因：{{group.reason}}</view>
+          <button class="batch-review-btn" wx:if="{{group.canReview}}" bindtap="reviewBatchGroup" data-group-id="{{group.id}}">人工核查后解除占用</button>
+          <button class="batch-review-btn" wx:if="{{group.canReviewWechat}}" bindtap="reviewBatchWechat" data-group-id="{{group.id}}">核查微信上报结果</button>
+          <button class="batch-review-btn" wx:if="{{group.canRetryWechat}}" bindtap="retryBatchWechat" data-group-id="{{group.id}}">只重试微信上报</button>
+        </view>
+      </scroll-view>
+      <view class="modal-footer">
+        <button class="modal-cancel" bindtap="closeBatchProgress">关闭</button>
+        <button class="modal-confirm" wx:if="{{batchProgress.canRetry}}" bindtap="retryBatchFailedGroups">重试失败组</button>
+        <button class="modal-confirm" wx:if="{{batchProgress.completed === batchProgress.total && !batchProgress.hasPendingReview}}" bindtap="finishBatchTask">结束任务</button>
       </view>
     </view>
   </view>

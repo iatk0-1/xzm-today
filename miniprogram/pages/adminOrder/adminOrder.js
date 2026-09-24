@@ -2,6 +2,7 @@
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const BATCH_TASK_STORAGE = 'admin_order_active_batch_task';
 
 Page({
   data: {
@@ -40,7 +41,12 @@ Page({
     hasMore: true,
     loadingMore: false,
     selectingAll: false,
-    blockedAfterSaleCount: 0
+    blockedAfterSaleCount: 0,
+    batchTask: null,
+    batchProgress: null,
+    showBatchProgress: false,
+    showRecentBatchTasks: false,
+    recentBatchTasks: []
   },
 
   onLoad: async function() {
@@ -56,6 +62,7 @@ Page({
     this.loadTagList();
     // 空搜索时，自动加载所有未发货商品明细
     this.loadAllPendingItems();
+    this.resumeBatchTask();
   },
 
   refreshPendingData: async function() {
@@ -1100,14 +1107,15 @@ Page({
       return;
     }
 
-    // 检查剩余单号：按收件人分组后需要的面单数 vs 剩余余额
     const account = this.data.logisticsAccounts[this.data.logisticsIndex];
-    const groupsMap = {};
-    this.data.pendingShipItems.forEach(item => {
-      const key = `${item.recipientName}|${item.recipientPhone}|${item.recipientAddress}`;
-      groupsMap[key] = true;
-    });
-    const neededWaybills = Object.keys(groupsMap).length;
+    let task;
+    try {
+      task = await this.createBatchTask(account);
+    } catch (err) {
+      wx.showToast({ title: err.message || '建立发货任务失败', icon: 'none' });
+      return;
+    }
+    const neededWaybills = task.groups.length;
     if (account.quotaNum < neededWaybills) {
       wx.showToast({
         title: `剩余单号不足 (${account.quotaNum} < ${neededWaybills})`,
@@ -1118,35 +1126,24 @@ Page({
 
     this.setData({ showPendingShipList: false });
     // 生成发货预览
-    this.generatePreview();
+    this.generatePreview(task);
   },
 
-  generatePreview: function() {
-    // 按收件人信息分组
-    const groupsMap = {};
-
-    this.data.pendingShipItems.forEach(item => {
-      const key = `${item.recipientName}|${item.recipientPhone}|${item.recipientAddress}`;
-
-      if (!groupsMap[key]) {
-        groupsMap[key] = {
-          recipientName: item.recipientName,
-          recipientPhone: item.recipientPhone,
-          recipientAddress: item.recipientAddress,
-          packageCount: 0,  // 包裹数（商品种类数）
-          totalItems: 0,    // 总商品件数
-          items: []
-        };
-      }
-
-      groupsMap[key].packageCount += 1;  // 每个 item 是一个商品种类
-      groupsMap[key].totalItems += (item.shipQty || 0);  // 累加发货数量
-      groupsMap[key].items.push(item);
+  generatePreview: function(task) {
+    // 以后端分组为准，避免同地址不同用户被误合并。
+    const previewGroups = task.groups.map(group => {
+      const orderIds = new Set(group.orderIds.map(String));
+      const items = this.data.pendingShipItems.filter(item => orderIds.has(String(item.orderId)));
+      return {
+        recipientName: group.recipientName,
+        recipientPhone: group.recipientPhone,
+        recipientAddress: group.recipientAddress,
+        totalItems: items.reduce((sum, item) => sum + Number(item.shipQty || 0), 0),
+        items
+      };
     });
-
-    const previewGroups = Object.values(groupsMap);
-
     this.setData({
+      batchTask: task,
       previewGroups,
       canShip: true,
       showPreviewModal: true
@@ -1155,59 +1152,309 @@ Page({
 
   closePreviewModal: function() {
     this.setData({ showPreviewModal: false });
+    const saved = this.getSavedBatchTask();
+    if (saved && !saved.confirmed) {
+      wx.removeStorageSync(BATCH_TASK_STORAGE);
+      this.setData({ batchTask: null });
+    }
   },
 
   confirmBatchShip: async function() {
-    if (!this.validatePendingShipItems()) {
+    if (!this.data.batchTask) return;
+    const saved = this.getSavedBatchTask();
+    if (!saved) return;
+    saved.confirmed = true;
+    wx.setStorageSync(BATCH_TASK_STORAGE, saved);
+    this.setData({ showPreviewModal: false, showBatchProgress: true });
+    this.runBatchTask(false);
+  },
+
+  getSavedBatchTask: function() {
+    try { return wx.getStorageSync(BATCH_TASK_STORAGE) || null; }
+    catch (err) { return null; }
+  },
+
+  createBatchTask: async function(account) {
+    const existing = this.getSavedBatchTask();
+    if (existing && existing.confirmed) {
+      throw new Error('上次发货任务仍在，请先查看进度');
+    }
+    const requestId = `admin_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const saved = { requestId, confirmed: false, items: this.data.pendingShipItems };
+    wx.setStorageSync(BATCH_TASK_STORAGE, saved);
+    const payload = {
+      clientRequestId: requestId,
+      accountId: account.bizId,
+      expressCode: account.deliveryId,
+      useElectronicWaybill: true,
+      items: saved.items.map(item => ({
+        orderId: item.orderId, orderItemId: item.orderItemId,
+        skuId: item.skuId, shipQty: item.shipQty
+      }))
+    };
+    let task;
+    try {
+      task = await api.post('/shipments/batch-tasks', payload);
+    } catch (err) {
+      // 创建响应丢失时先按客户端请求号查询，避免重复建立任务。
+      try { task = await api.get(`/shipments/batch-tasks/by-request/${requestId}`); }
+      catch (lookupError) { throw err; }
+    }
+    saved.taskId = task.id;
+    wx.setStorageSync(BATCH_TASK_STORAGE, saved);
+    return task;
+  },
+
+  resumeBatchTask: async function() {
+    const saved = this.getSavedBatchTask();
+    if (!saved || !saved.confirmed) return;
+    if (!saved.historyOnly) this.updatePendingShipSummary(saved.items || []);
+    this.setData({ showBatchProgress: true });
+    try {
+      const task = saved.taskId
+        ? await api.get(`/shipments/batch-tasks/${saved.taskId}`)
+        : await api.get(`/shipments/batch-tasks/by-request/${saved.requestId}`);
+      const latest = this.getSavedBatchTask();
+      if (!latest || latest.requestId !== saved.requestId) return;
+      saved.taskId = task.id;
+      wx.setStorageSync(BATCH_TASK_STORAGE, saved);
+      this.updateBatchProgress(task);
+      this.runBatchTask(false);
+    } catch (err) {
+      wx.showToast({ title: '任务状态暂不可查，请稍后重试', icon: 'none' });
+    }
+  },
+
+  updateBatchProgress: function(task) {
+    const labels = {
+      WAITING: '等待处理', PROCESSING: '正在处理', PROCESSING_WECHAT: '正在补报微信', SUCCESS: '发货完成',
+      FAILED: '发货失败', BLOCKED: '商品被其他任务占用', SHIPMENT_CREATED_WECHAT_FAILED: '发货单已创建，微信上报失败',
+      NEEDS_REVIEW: '需人工核查'
+    };
+    const stageLabels = {
+      WAITING: '等待处理', VALIDATING: '校验订单与数量',
+      REQUESTING_WAYBILL: '准备获取面单', WAYBILL_API_CALL: '获取面单中',
+      WAYBILL_ACQUIRED: '面单已获取', SHIPMENT_CREATED: '发货单已创建',
+      WECHAT_REPORT: '上报微信', MANUALLY_VERIFIED: '人工核查完成',
+      WECHAT_REVIEWED: '微信上报已核查'
+    };
+    const groups = (task.groups || []).map(group => ({
+      ...group,
+      statusText: labels[group.status] || group.status,
+      stageText: stageLabels[group.stage] || group.stage || '',
+      orderText: (group.orderIds || []).join('、'),
+      canReview: group.status === 'NEEDS_REVIEW' && !group.shipmentId,
+      canReviewWechat: group.status === 'NEEDS_REVIEW' && !!group.shipmentId,
+      canRetryWechat: group.status === 'SHIPMENT_CREATED_WECHAT_FAILED'
+    }));
+    this.setData({
+      batchTask: task,
+      batchProgress: {
+        total: groups.length,
+        completed: groups.filter(group => !['WAITING', 'PROCESSING', 'PROCESSING_WECHAT'].includes(group.status)).length,
+        success: groups.filter(group => group.status === 'SUCCESS').length,
+        failed: groups.filter(group => ['FAILED', 'BLOCKED', 'SHIPMENT_CREATED_WECHAT_FAILED', 'NEEDS_REVIEW'].includes(group.status)).length,
+        canRetry: groups.some(group => ['FAILED', 'BLOCKED'].includes(group.status)),
+        hasPendingReview: groups.some(group =>
+          ['NEEDS_REVIEW', 'SHIPMENT_CREATED_WECHAT_FAILED'].includes(group.status)),
+        groups
+      }
+    });
+    const saved = this.getSavedBatchTask();
+    if (saved && saved.taskId === task.id && !saved.historyOnly) {
+      const successOrderIds = new Set(groups.filter(group =>
+        ['SUCCESS', 'SHIPMENT_CREATED_WECHAT_FAILED'].includes(group.status))
+        .flatMap(group => group.orderIds.map(String)));
+      const remaining = (saved.items || []).filter(item => !successOrderIds.has(String(item.orderId)));
+      saved.items = remaining;
+      wx.setStorageSync(BATCH_TASK_STORAGE, saved);
+      this.updatePendingShipSummary(remaining);
+    }
+  },
+
+  runBatchTask: async function(retryFailed) {
+    if (this.batchTaskRunning) return;
+    this.batchTaskRunning = true;
+    const runToken = (this.batchRunToken || 0) + 1;
+    this.batchRunToken = runToken;
+    this.setData({ showBatchProgress: true });
+    try {
+      const saved = this.getSavedBatchTask();
+      if (!saved || !saved.taskId) return;
+      const isCurrentRun = () => this.batchRunToken === runToken
+        && this.getSavedBatchTask()?.taskId === saved.taskId;
+      let task = await api.get(`/shipments/batch-tasks/${saved.taskId}`);
+      if (!isCurrentRun()) return;
+      const retryIds = new Set(retryFailed && !saved.historyOnly
+        ? task.groups.filter(item => ['FAILED', 'BLOCKED'].includes(item.status)).map(item => String(item.id)) : []);
+      while (!this.batchPageClosed && isCurrentRun()) {
+        this.updateBatchProgress(task);
+        const group = task.groups.find(item => ['PROCESSING', 'PROCESSING_WECHAT'].includes(item.status))
+          || task.groups.find(item => (!saved.historyOnly && item.status === 'WAITING')
+            || (['FAILED', 'BLOCKED'].includes(item.status) && retryIds.has(String(item.id))));
+        if (!group) break;
+        if (!['PROCESSING', 'PROCESSING_WECHAT'].includes(group.status)) {
+          retryIds.delete(String(group.id));
+          // 启动响应丢失也只查询原组状态，不另建任务或更换组号。
+          try { await api.post(`/shipments/batch-tasks/${task.id}/groups/${group.id}/start`, {}); }
+          catch (err) {
+            task = await api.get(`/shipments/batch-tasks/${task.id}`);
+            if (task.groups.find(item => item.id === group.id)?.status === 'WAITING') throw err;
+          }
+        }
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        if (!isCurrentRun()) return;
+        task = await api.get(`/shipments/batch-tasks/${task.id}`);
+        if (!isCurrentRun()) return;
+      }
+      if (!isCurrentRun()) return;
+      this.updateBatchProgress(task);
+      if (this.data.batchProgress && this.data.batchProgress.failed === 0
+          && this.data.batchProgress.completed === this.data.batchProgress.total) {
+        if (!isCurrentRun()) return;
+        wx.removeStorageSync(BATCH_TASK_STORAGE);
+        this.reloadPendingItems();
+      }
+    } catch (err) {
+      console.error('查询发货任务进度失败:', err);
+      wx.showToast({ title: '进度查询中断，重新打开页面可恢复', icon: 'none' });
+    } finally {
+      if (this.batchRunToken === runToken) this.batchTaskRunning = false;
+    }
+  },
+
+  retryBatchFailedGroups: function() {
+    this.runBatchTask(true);
+  },
+
+  reviewBatchGroup: function(event) {
+    const groupId = event.currentTarget.dataset.groupId;
+    const task = this.data.batchTask;
+    if (!task) return;
+    wx.showModal({
+      title: '人工核查确认',
+      content: '请先在物流平台确认未取得面单，并在后台确认未创建发货单。确认后才可解除占用。',
+      editable: true,
+      placeholderText: '填写核查依据',
+      success: async result => {
+        if (!result.confirm) return;
+        try {
+          const updated = await api.post(`/shipments/batch-tasks/${task.id}/groups/${groupId}/confirm-no-shipment`,
+            { note: result.content });
+          this.updateBatchProgress(updated);
+        } catch (err) {
+          wx.showToast({ title: err.message || '人工核查确认失败', icon: 'none' });
+        }
+      }
+    });
+  },
+
+  reviewBatchWechat: function(event) {
+    const groupId = event.currentTarget.dataset.groupId;
+    const task = this.data.batchTask;
+    if (!task) return;
+    wx.showModal({
+      title: '核查微信上报',
+      content: '请先核对微信后台。填写仍需补报的订单 ID，多个用逗号隔开；全部已上报则留空。',
+      editable: true,
+      placeholderText: '待补报订单 ID',
+      success: idsResult => {
+        if (!idsResult.confirm) return;
+        const failedOrderIds = (idsResult.content || '').split(/[,，、\s]+/).filter(Boolean);
+        wx.showModal({
+          title: '填写核查依据',
+          editable: true,
+          placeholderText: '微信后台核查结果及时间',
+          success: async noteResult => {
+            if (!noteResult.confirm) return;
+            try {
+              const updated = await api.post(
+                `/shipments/batch-tasks/${task.id}/groups/${groupId}/resolve-wechat-review`,
+                { failedOrderIds, note: noteResult.content });
+              this.updateBatchProgress(updated);
+            } catch (err) {
+              wx.showToast({ title: err.message || '微信上报核查保存失败', icon: 'none' });
+            }
+          }
+        });
+      }
+    });
+  },
+
+  retryBatchWechat: async function(event) {
+    const task = this.data.batchTask;
+    if (!task) return;
+    const groupId = event.currentTarget.dataset.groupId;
+    try {
+      const updated = await api.post(`/shipments/batch-tasks/${task.id}/groups/${groupId}/retry-wechat`, {});
+      this.updateBatchProgress(updated);
+      this.runBatchTask(false);
+    } catch (err) {
+      wx.showToast({ title: err.message || '微信补报启动失败', icon: 'none' });
+    }
+  },
+
+  closeBatchProgress: function() {
+    if (this.getSavedBatchTask()?.historyOnly) {
+      this.batchRunToken = (this.batchRunToken || 0) + 1;
+      this.batchTaskRunning = false;
+      wx.removeStorageSync(BATCH_TASK_STORAGE);
+      this.setData({ showBatchProgress: false, batchTask: null, batchProgress: null });
       return;
     }
-    wx.showLoading({ title: '发货中...' });
+    this.setData({ showBatchProgress: false });
+  },
 
-    try {
-      const selectedAccount = this.data.logisticsAccounts[this.data.logisticsIndex];
-      const accountId = selectedAccount.bizId;
-      const expressCode = selectedAccount.deliveryId;  // 获取快递公司编码
-
-      // 调用批量发货 API
-      await api.post('/shipments/batch-create', {
-        accountId: accountId,
-        expressCode: expressCode,  // 传递快递公司编码
-        items: this.data.pendingShipItems.map(item => ({
-          orderId: item.orderId,
-          orderItemId: item.orderItemId,
-          skuId: item.skuId,
-          shipQty: item.shipQty
-        }))
-      });
-
-      wx.hideLoading();
-      wx.showToast({ title: '发货成功', icon: 'success' });
-
-      // 清除选中状态并重新加载
-      this.setData({
-        selectedItems: [],
-        pendingShipItems: [],
-        pendingOrderGroups: [],
-        pendingOrderCount: 0,
-        pendingItemCount: 0,
-        pendingTotalQty: 0,
-        allSelected: false,
-        showPreviewModal: false,
-        showPendingShipList: false
-      });
-
-      // 自动重新加载未发货数据
-      if (this.data.selectedProducts.length > 0) {
-        this.loadPendingItems();
-      } else {
-        this.loadAllPendingItems();
-      }
-
-    } catch (err) {
-      wx.hideLoading();
-      console.error('批量发货失败:', err);
-      wx.showToast({ title: err.message || '发货失败', icon: 'none' });
+  finishBatchTask: function() {
+    const progress = this.data.batchProgress;
+    if (!progress || progress.completed !== progress.total) return;
+    if (progress.hasPendingReview) {
+      wx.showToast({ title: '仍有待核查或微信待补报的发货组', icon: 'none' });
+      return;
     }
+    wx.removeStorageSync(BATCH_TASK_STORAGE);
+    this.setData({ showBatchProgress: false, batchTask: null, batchProgress: null });
+  },
+
+  openBatchProgress: function() {
+    this.setData({ showBatchProgress: true });
+    this.resumeBatchTask();
+  },
+
+  openRecentBatchTasks: async function() {
+    if (this.getSavedBatchTask()?.confirmed) {
+      this.openBatchProgress();
+      return;
+    }
+    try {
+      const tasks = await api.get('/shipments/batch-tasks');
+      if (!tasks.length) {
+        wx.showToast({ title: '暂无历史发货任务', icon: 'none' });
+        return;
+      }
+      this.setData({ recentBatchTasks: tasks, showRecentBatchTasks: true });
+    } catch (err) {
+      wx.showToast({ title: err.message || '查询历史任务失败', icon: 'none' });
+    }
+  },
+
+  selectRecentBatchTask: function(event) {
+    const task = this.data.recentBatchTasks[event.currentTarget.dataset.index];
+    if (!task) return;
+    wx.setStorageSync(BATCH_TASK_STORAGE,
+      { taskId: task.id, requestId: task.clientRequestId, confirmed: true,
+        historyOnly: true, items: [] });
+    this.updateBatchProgress(task);
+    this.setData({ showRecentBatchTasks: false, showBatchProgress: true });
+  },
+
+  closeRecentBatchTasks: function() {
+    this.setData({ showRecentBatchTasks: false });
+  },
+
+  onUnload: function() {
+    this.batchPageClosed = true;
+    this.batchRunToken = (this.batchRunToken || 0) + 1;
   },
 
   // ==================== 工具函数 ====================
