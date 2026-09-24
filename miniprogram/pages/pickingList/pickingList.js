@@ -107,7 +107,7 @@ Page({
       this.setData({
         recommendList: nextList,
         filteredList: nextList,
-        page: page + 1,
+        page: this.data.page + 1,
         hasMore: hasMore,
         selectedCount: reset ? 0 : this.data.selectedCount,
         totalQty: reset ? 0 : this.data.totalQty,
