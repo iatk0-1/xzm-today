@@ -1,16 +1,31 @@
 // miniprogram/pages/wishDetail/wishDetail.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const { createShareImage } = require('../../utils/shareImage');
 
 Page({
   data: {
     wish: { images: [] },
     wishId: null,
     canDelete: false,
-    createdAtDisplay: ''
+    createdAtDisplay: '',
+    shareImages: {
+      single: '',
+      double: '',
+      triple: ''
+    },
+    shareImageCount: 0,
+    shareTemplatesReady: false,
+    showShareTemplates: false,
+    canShowShareFloat: false,
+    shareFloatLeft: 0,
+    shareFloatTop: 0
   },
 
   onLoad: function(options) {
+    var sysInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    this.initShareFloatPosition(sysInfo);
+    this.refreshShareFloatVisibility();
     if (options.id) {
       this.setData({ wishId: options.id });
       this.loadWishDetail();
@@ -21,6 +36,7 @@ Page({
   },
 
   onShow: function() {
+    this.refreshShareFloatVisibility();
     if (this.data.wishId) {
       this.loadWishDetail();
     }
@@ -49,8 +65,14 @@ Page({
 
       this.setData({
         wish: wish,
-        createdAtDisplay: createdAtDisplay
+        createdAtDisplay: createdAtDisplay,
+        shareImages: { single: '', double: '', triple: '' },
+        shareImageCount: 0,
+        shareTemplatesReady: false,
+        canShowShareFloat: auth.isAdmin() === true
       });
+
+      this.prepareShareImages(images);
 
       // 检查删除权限：管理员 或 心愿创建者
       this.checkDeletePermission(wish);
@@ -64,6 +86,117 @@ Page({
         success: function() { wx.navigateBack(); }
       });
     }
+  },
+
+  refreshShareFloatVisibility: function() {
+    this.setData({ canShowShareFloat: auth.isAdmin() === true });
+  },
+
+  initShareFloatPosition: function(sysInfo) {
+    var windowWidth = sysInfo.windowWidth || 375;
+    var windowHeight = sysInfo.windowHeight || 667;
+    var menuRect = wx.getMenuButtonBoundingClientRect ? wx.getMenuButtonBoundingClientRect() : null;
+    var floatSize = 58;
+    var top = menuRect ? menuRect.bottom + 12 : (sysInfo.statusBarHeight || 20) + 44 + 12;
+    this._shareWindow = { width: windowWidth, height: windowHeight };
+    this.setData({
+      shareFloatLeft: Math.max(0, windowWidth - floatSize - 18),
+      shareFloatTop: Math.max(0, Math.min(windowHeight - floatSize, top))
+    });
+  },
+
+  startShareFloatDrag: function(e) {
+    var touch = e.touches && e.touches[0];
+    if (!touch) return;
+    this._shareFloatDrag = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      left: this.data.shareFloatLeft,
+      top: this.data.shareFloatTop,
+      moved: false
+    };
+  },
+
+  moveShareFloat: function(e) {
+    var drag = this._shareFloatDrag;
+    var touch = e.touches && e.touches[0];
+    if (!drag || !touch) return;
+
+    var deltaX = touch.clientX - drag.startX;
+    var deltaY = touch.clientY - drag.startY;
+    if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) drag.moved = true;
+
+    var windowInfo = this._shareWindow || { width: 375, height: 667 };
+    var size = 58;
+    var left = Math.max(0, Math.min(windowInfo.width - size, drag.left + deltaX));
+    var top = Math.max(0, Math.min(windowInfo.height - size, drag.top + deltaY));
+    this.setData({ shareFloatLeft: left, shareFloatTop: top });
+  },
+
+  endShareFloatDrag: function() {
+    var drag = this._shareFloatDrag;
+    this._shareFloatDrag = null;
+    if (drag && !drag.moved) {
+      this.openShareTemplateSelector();
+    }
+  },
+
+  prepareShareImages: function(images) {
+    var shareSources = (images || []).filter(function(image) { return image; }).slice(0, 3);
+    var tasks = [{ key: 'single', sources: shareSources.slice(0, 1), canvasId: 'wishDetailShareCanvasSingle' }];
+    if (shareSources.length >= 2) {
+      tasks.push({ key: 'double', sources: shareSources.slice(0, 2), canvasId: 'wishDetailShareCanvasDouble' });
+    }
+    if (shareSources.length >= 3) {
+      tasks.push({ key: 'triple', sources: shareSources.slice(0, 3), canvasId: 'wishDetailShareCanvasTriple' });
+    }
+
+    this.setData({
+      shareImageCount: shareSources.length,
+      shareTemplatesReady: false
+    });
+
+    var page = this;
+    tasks.reduce(function(sequence, task) {
+      return sequence.then(function() {
+        return createShareImage(page, task.sources, task.canvasId).then(function(filePath) {
+          if (filePath) {
+            var update = {};
+            update['shareImages.' + task.key] = filePath;
+            page.setData(update);
+          }
+        });
+      });
+    }, Promise.resolve()).then(function() {
+      page.setData({ shareTemplatesReady: true });
+    });
+  },
+
+  openShareTemplateSelector: function() {
+    if (!this.data.canShowShareFloat) return;
+    if (this.data.shareImageCount === 0) {
+      wx.showToast({ title: '分享图片还在加载，请稍后再试', icon: 'none' });
+      return;
+    }
+    if (!this.data.shareTemplatesReady) {
+      wx.showToast({ title: '分享模板还在生成，请稍后再试', icon: 'none' });
+      return;
+    }
+    this.setData({ showShareTemplates: true });
+  },
+
+  closeShareTemplateSelector: function() {
+    this.setData({ showShareTemplates: false });
+  },
+
+  stopShareTemplateTap: function() {},
+
+  getShareTemplate: function(res) {
+    var template = res && res.target && res.target.dataset && res.target.dataset.template;
+    if (template) return template;
+    if (this.data.shareImageCount >= 3) return 'triple';
+    if (this.data.shareImageCount === 2) return 'double';
+    return 'single';
   },
 
   // 检查当前用户是否可以删除
@@ -157,6 +290,29 @@ Page({
     if (images.length > 0) {
       wx.previewImage({ urls: images, current: images[index] || images[0] });
     }
+  },
+
+  onShareAppMessage: function(res) {
+    var wish = this.data.wish || {};
+    var id = this.data.wishId;
+    var template = this.getShareTemplate(res);
+    this.setData({ showShareTemplates: false });
+    return {
+      title: wish.title || wish.content || '心愿详情',
+      path: id ? '/pages/wishDetail/wishDetail?id=' + id : '/pages/market/market',
+      imageUrl: this.data.shareImages[template] || wish.image || (wish.images && wish.images[0]) || ''
+    };
+  },
+
+  onShareTimeline: function() {
+    var wish = this.data.wish || {};
+    var id = this.data.wishId;
+    var template = this.getShareTemplate();
+    return {
+      title: wish.title || wish.content || '心愿详情',
+      query: id ? 'id=' + id : '',
+      imageUrl: this.data.shareImages[template] || wish.image || (wish.images && wish.images[0]) || ''
+    };
   },
 
   // 格式化时间

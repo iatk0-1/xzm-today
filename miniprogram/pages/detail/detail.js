@@ -2,6 +2,7 @@
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const { formatStock, hasStock, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
+const { createShareImage } = require('../../utils/shareImage');
 
 Page({
   data: {
@@ -29,6 +30,17 @@ Page({
     quantity: 1,
     showVideo: false,
     currentAuraTab: '',
+    shareImages: {
+      single: '',
+      double: '',
+      triple: ''
+    },
+    shareImageCount: 0,
+    shareTemplatesReady: false,
+    showShareTemplates: false,
+    canShowShareFloat: false,
+    shareFloatLeft: 0,
+    shareFloatTop: 0,
     // 套装子项选择
     bundleSelections: [],    // [{bundleGroupName, selectedColor, selectedSize, selectedSkuId, selectedPrice, selectedStock, selectedImage}]
     bundleAllSelected: false,
@@ -41,6 +53,8 @@ Page({
       statusBarHeight: sbHeight,
       navHeight: sbHeight + 44
     });
+    this.initShareFloatPosition(sysInfo);
+    this.refreshShareFloatVisibility();
 
     const productId = options.id;
     this._productId = productId;
@@ -57,7 +71,12 @@ Page({
   // 安全加载：等待认证就绪 + 带重试（解决分享链接冷启动 401 问题）
   loadProductSafe: async function(productId) {
     await this.waitForAuth(5000);
+    this.refreshShareFloatVisibility();
     await this.getProductDetailWithRetry(productId, 2);
+  },
+
+  refreshShareFloatVisibility: function() {
+    this.setData({ canShowShareFloat: auth.isAdmin() === true });
   },
 
   // 等待认证初始化完成（分享链接冷启动时 auth 可能尚未完成）
@@ -157,6 +176,8 @@ Page({
         bundleAllSelected: false
       });
 
+      this.prepareShareImages(banners.length > 0 ? banners : [product.image]);
+
       this.checkSkuMatch();
       
       // 🚀 智能定位第一个有内容的标签
@@ -178,7 +199,116 @@ Page({
     }
   },
 
-  // 改造：获取关联商品
+  // 预生成所有可选分享模板，分享回调里直接返回本地临时文件路径
+  prepareShareImages: function(images) {
+    var shareSources = (images || []).filter(function(image) { return image; }).slice(0, 3);
+    var tasks = [{ key: 'single', sources: shareSources.slice(0, 1), canvasId: 'detailShareCanvasSingle' }];
+    if (shareSources.length >= 2) {
+      tasks.push({ key: 'double', sources: shareSources.slice(0, 2), canvasId: 'detailShareCanvasDouble' });
+    }
+    if (shareSources.length >= 3) {
+      tasks.push({ key: 'triple', sources: shareSources.slice(0, 3), canvasId: 'detailShareCanvasTriple' });
+    }
+
+    this.setData({
+      shareImageCount: shareSources.length,
+      shareTemplatesReady: false,
+      shareImages: { single: '', double: '', triple: '' }
+    });
+
+    var page = this;
+    tasks.reduce(function(sequence, task) {
+      return sequence.then(function() {
+        return createShareImage(page, task.sources, task.canvasId).then(function(filePath) {
+          if (filePath) {
+            var update = {};
+            update['shareImages.' + task.key] = filePath;
+            page.setData(update);
+          }
+        });
+      });
+    }, Promise.resolve()).then(function() {
+      page.setData({ shareTemplatesReady: true });
+    });
+  },
+
+  initShareFloatPosition: function(sysInfo) {
+    var windowWidth = sysInfo.windowWidth || 375;
+    var windowHeight = sysInfo.windowHeight || 667;
+    var menuRect = wx.getMenuButtonBoundingClientRect ? wx.getMenuButtonBoundingClientRect() : null;
+    var floatSize = 58;
+    var top = menuRect ? menuRect.bottom + 12 : (sysInfo.statusBarHeight || 20) + 44 + 12;
+    this._shareWindow = { width: windowWidth, height: windowHeight };
+    this.setData({
+      shareFloatLeft: Math.max(0, windowWidth - floatSize - 18),
+      shareFloatTop: Math.max(0, Math.min(windowHeight - floatSize, top))
+    });
+  },
+
+  startShareFloatDrag: function(e) {
+    var touch = e.touches && e.touches[0];
+    if (!touch) return;
+    this._shareFloatDrag = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      left: this.data.shareFloatLeft,
+      top: this.data.shareFloatTop,
+      moved: false
+    };
+  },
+
+  moveShareFloat: function(e) {
+    var drag = this._shareFloatDrag;
+    var touch = e.touches && e.touches[0];
+    if (!drag || !touch) return;
+
+    var deltaX = touch.clientX - drag.startX;
+    var deltaY = touch.clientY - drag.startY;
+    if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) drag.moved = true;
+
+    var windowInfo = this._shareWindow || { width: 375, height: 667 };
+    var size = 58;
+    var left = Math.max(0, Math.min(windowInfo.width - size, drag.left + deltaX));
+    var top = Math.max(0, Math.min(windowInfo.height - size, drag.top + deltaY));
+    this.setData({ shareFloatLeft: left, shareFloatTop: top });
+  },
+
+  endShareFloatDrag: function() {
+    var drag = this._shareFloatDrag;
+    this._shareFloatDrag = null;
+    if (drag && !drag.moved) {
+      this.openShareTemplateSelector();
+    }
+  },
+
+  openShareTemplateSelector: function() {
+    if (!this.data.canShowShareFloat) return;
+    if (this.data.shareImageCount === 0) {
+      wx.showToast({ title: '分享图片还在加载，请稍后再试', icon: 'none' });
+      return;
+    }
+    if (!this.data.shareTemplatesReady) {
+      wx.showToast({ title: '分享模板还在生成，请稍后再试', icon: 'none' });
+      return;
+    }
+    this.setData({ showShareTemplates: true });
+  },
+
+  closeShareTemplateSelector: function() {
+    this.setData({ showShareTemplates: false });
+  },
+
+  stopShareTemplateTap: function() {},
+
+  getShareTemplate: function(res) {
+    var template = res && res.target && res.target.dataset && res.target.dataset.template;
+    if (template) return template;
+    if (this.data.shareImageCount >= 3) return 'triple';
+    if (this.data.shareImageCount === 2) return 'double';
+    return 'single';
+  },
+
+  // 获取关联商品
   getRelatedProducts: async function(relatedIds) {
     try {
       if (relatedIds && relatedIds.length > 0) {
@@ -663,23 +793,26 @@ switchAuraTab(e) {
     });
   },
 
-  onShareAppMessage: function() {
+  onShareAppMessage: function(res) {
     const { product } = this.data;
     const id = product.id || this._productId;
+    const template = this.getShareTemplate(res);
+    this.setData({ showShareTemplates: false });
     return {
       title: product.name || product.title || '好物推荐',
       path: id ? `/pages/detail/detail?id=${id}` : '/pages/index/index',
-      imageUrl: product.coverUrl || product.image || ''
+      imageUrl: this.data.shareImages[template] || product.coverUrl || product.image || ''
     };
   },
 
   onShareTimeline: function() {
     const { product } = this.data;
     const id = product.id || this._productId;
+    const template = this.getShareTemplate();
     return {
       title: product.name || product.title || '好物推荐',
       query: id ? `id=${id}` : '',
-      imageUrl: product.coverUrl || product.image || ''
+      imageUrl: this.data.shareImages[template] || product.coverUrl || product.image || ''
     };
   }
 });

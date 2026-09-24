@@ -107,6 +107,40 @@
   </view>
 </view>
 
+<view class="share-float" wx:if="{{canShowShareFloat}}" style="left: {{shareFloatLeft}}px; top: {{shareFloatTop}}px;" catchtouchstart="startShareFloatDrag" catchtouchmove="moveShareFloat" catchtouchend="endShareFloatDrag">
+  <text>分享</text>
+</view>
+
+<!-- 分享卡片专用画布：按图片数量生成单图、双图或三联图，不影响页面展示 -->
+<canvas canvas-id="detailShareCanvasSingle" class="share-canvas" width="500" height="400"></canvas>
+<canvas canvas-id="detailShareCanvasDouble" class="share-canvas" width="500" height="400"></canvas>
+<canvas canvas-id="detailShareCanvasTriple" class="share-canvas" width="500" height="400"></canvas>
+
+<view class="share-template-mask" wx:if="{{showShareTemplates}}" bindtap="closeShareTemplateSelector"></view>
+<view class="share-template-panel" wx:if="{{showShareTemplates}}" catchtap="stopShareTemplateTap">
+  <view class="share-template-header">
+    <text>选择分享版式</text>
+    <text class="share-template-close" bindtap="closeShareTemplateSelector">×</text>
+  </view>
+  <scroll-view class="share-template-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+    <view class="share-template-options">
+      <button class="share-template-option" open-type="share" data-template="single">
+        <image class="share-template-preview" src="{{shareImages.single}}" mode="aspectFill"></image>
+        <text class="share-template-label">单图模板</text>
+      </button>
+      <button class="share-template-option" wx:if="{{shareImageCount >= 2}}" open-type="share" data-template="double">
+        <image class="share-template-preview" src="{{shareImages.double}}" mode="aspectFill"></image>
+        <text class="share-template-label">双图模板</text>
+      </button>
+      <button class="share-template-option" wx:if="{{shareImageCount >= 3}}" open-type="share" data-template="triple">
+        <image class="share-template-preview" src="{{shareImages.triple}}" mode="aspectFill"></image>
+        <text class="share-template-label">三联模板</text>
+      </button>
+    </view>
+  </scroll-view>
+  <view class="share-template-cancel" bindtap="closeShareTemplateSelector">取消</view>
+</view>
+
 <view class="floating-action-bar">
   <view class="btn-add-half" bindtap="openSkuPanel" data-action="cart">加入购物车</view>
   <view class="btn-buy-half" bindtap="openSkuPanel" data-action="buy">立即购买</view>

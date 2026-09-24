@@ -2,6 +2,119 @@ page {
   background-color: #ffffff; /* 页面最底层背景色设置为纯白 */
 }
 
+.share-canvas {
+  position: fixed;
+  left: -1000px;
+  top: -1000px;
+  width: 500px;
+  height: 400px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.share-float {
+  position: fixed;
+  z-index: 1200;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #e5e5e5;
+  color: #111;
+  font-size: 13px;
+  line-height: 58px;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  box-sizing: border-box;
+}
+
+.share-template-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.share-template-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2001;
+  padding: 24px 18px calc(18px + env(safe-area-inset-bottom));
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  box-sizing: border-box;
+}
+
+.share-template-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  color: #111;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.share-template-close {
+  color: #999;
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 20px;
+}
+
+.share-template-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.share-template-options {
+  display: flex;
+  width: max-content;
+  gap: 16px;
+  padding: 0 2px 4px;
+}
+
+.share-template-option {
+  flex: 0 0 142px;
+  width: 142px;
+  min-width: 142px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  line-height: normal;
+}
+
+.share-template-option::after {
+  border: 0;
+}
+
+.share-template-preview {
+  display: block;
+  width: 142px;
+  height: 114px;
+  background: #f6f6f6;
+}
+
+.share-template-label {
+  display: block;
+  padding: 12px 4px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.share-template-cancel {
+  margin-top: 20px;
+  padding: 14px 0 4px;
+  border-top: 1px solid #f2f2f2;
+  color: #999;
+  font-size: 13px;
+  text-align: center;
+}
+
 .page-wrapper { 
   width: 100%; /* 页面容器宽度占满屏幕 */
   overflow-x: hidden; /* 隐藏水平滚动条，防止页面左右晃动 */
