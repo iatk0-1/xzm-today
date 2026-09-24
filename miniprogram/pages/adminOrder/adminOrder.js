@@ -12,6 +12,10 @@ Page({
     tagList: [],         // 标签列表
     selectedStall: '',   // 当前档口筛选
     selectedTag: '',     // 当前标签筛选
+    dateRange: { startDate: '', endDate: '', quickSelect: '' },
+    editingDateRange: { startDate: '', endDate: '', quickSelect: '' },
+    today: '',
+    showDateModal: false,
     selectedProducts: [],  // 已选商品列表 (SPU 维度)
     selectedSkuIds: [],    // 已选 SKU ID 列表
     logisticsAccounts: [],
@@ -37,6 +41,7 @@ Page({
   },
 
   onLoad: async function() {
+    this.setData({ today: this.formatCalendarDate(new Date()) });
     try {
       await auth.ensureAuthenticated({ silent: true });
     } catch (err) {
@@ -132,7 +137,74 @@ Page({
     if (this.data.selectedTag) {
       params.tagId = this.data.selectedTag;
     }
+    if (this.data.dateRange.startDate) {
+      params.startDate = this.data.dateRange.startDate;
+    }
+    if (this.data.dateRange.endDate) {
+      params.endDate = this.data.dateRange.endDate;
+    }
     return params;
+  },
+
+  showDateRangeSelector: function() {
+    this.setData({
+      editingDateRange: { ...this.data.dateRange },
+      showDateModal: true
+    });
+  },
+
+  closeDateModal: function() {
+    this.setData({ showDateModal: false });
+  },
+
+  selectDateRange: function(e) {
+    const type = e.currentTarget.dataset.type;
+    const today = new Date();
+    let startDate;
+    if (type === '7days') {
+      startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+    } else if (type === '30days') {
+      startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29);
+    } else {
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    }
+    this.setData({
+      editingDateRange: {
+        startDate: this.formatCalendarDate(startDate),
+        endDate: this.formatCalendarDate(today),
+        quickSelect: type
+      }
+    });
+  },
+
+  onStartDateChange: function(e) {
+    this.setData({
+      'editingDateRange.startDate': e.detail.value,
+      'editingDateRange.quickSelect': ''
+    });
+  },
+
+  onEndDateChange: function(e) {
+    this.setData({
+      'editingDateRange.endDate': e.detail.value,
+      'editingDateRange.quickSelect': ''
+    });
+  },
+
+  clearDateRange: function() {
+    this.setData({
+      dateRange: { startDate: '', endDate: '', quickSelect: '' }
+    }, () => this.reloadPendingItems());
+  },
+
+  confirmDateRange: function() {
+    const range = this.data.editingDateRange;
+    if (range.startDate && range.endDate && range.startDate > range.endDate) {
+      wx.showToast({ title: '开始日期不能晚于结束日期', icon: 'none' });
+      return;
+    }
+    this.setData({ dateRange: { ...range }, showDateModal: false },
+      () => this.reloadPendingItems());
   },
 
   selectStall: function(e) {
@@ -234,7 +306,8 @@ Page({
     try {
       const res = await api.get('/products/query', {
         keyword,
-        ...this.getPendingFilterParams(),
+        ...(this.data.selectedStall ? { stallId: this.data.selectedStall } : {}),
+        ...(this.data.selectedTag ? { tagId: this.data.selectedTag } : {}),
         page: 1,
         size: 10
       });
@@ -498,7 +571,7 @@ Page({
 
   // 按订单分组
   groupByOrder: function(items) {
-    const groupsMap = {};
+    const groupsMap = new Map();
     const pendingMap = {};
     (this.data.pendingShipItems || []).forEach(pendingItem => {
       pendingMap[this.getPendingItemKey(pendingItem)] = pendingItem;
@@ -506,8 +579,8 @@ Page({
 
     items.forEach(item => {
       const key = item.orderId;
-      if (!groupsMap[key]) {
-        groupsMap[key] = {
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, {
           orderId: item.orderId,
           adminSeqNo: item.adminSeqNo || '',
           orderNo: item.orderNo || item.orderId,
@@ -517,13 +590,13 @@ Page({
           recipientAddress: item.recipientAddress,
           selected: false,
           items: []
-        };
+        });
       }
 
       const uniqueKey = [item.orderId, item.orderItemId, item.skuId].join('_');
       const pendingItem = pendingMap[uniqueKey];
       const unshippedQty = Math.max(0, item.unshippedQty || 0);
-      groupsMap[key].items.push({
+      groupsMap.get(key).items.push({
         orderId: item.orderId,
         orderItemId: item.orderItemId,
         uniqueKey,
@@ -548,7 +621,7 @@ Page({
       });
     });
 
-    const allGroups = Object.values(groupsMap);
+    const allGroups = Array.from(groupsMap.values());
     const blockedAfterSaleCount = allGroups.filter(group =>
       group.items.length > 0 &&
       group.items.every(item => !item.canShip) &&
@@ -557,12 +630,7 @@ Page({
 
     // 过滤：去掉所有商品都因售后不可发的订单，但保留部分售后仍可发的订单
     const groups = allGroups
-      .filter(group => group.items.some(item => item.canShip))
-      .sort((a, b) => {
-        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return timeB - timeA;
-      });
+      .filter(group => group.items.some(item => item.canShip));
 
     groups.forEach(group => {
       const selectableItems = group.items.filter(item => item.canShip);
@@ -1060,6 +1128,13 @@ Page({
   },
 
   // ==================== 工具函数 ====================
+
+  formatCalendarDate: function(date) {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
 
   formatDate: function(dateStr) {
     if (!dateStr) return '';
