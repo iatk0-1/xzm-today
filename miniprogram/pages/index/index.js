@@ -60,11 +60,14 @@ Page({
     listTop: 0
   },
 
-  onLoad: function() {
+  onLoad: function(options) {
     this._isInitializingHome = false;
     this._isRefreshingHome = false;
     this._skipNextHomeRefresh = false;
     this._hasLoadedHomeData = false;
+
+    // 从分享链接恢复筛选条件；标签入口虽然隐藏，但标签参数仍需保留。
+    this.restoreShareFilters(options || {});
 
     this.checkAdmin();
 
@@ -78,6 +81,25 @@ Page({
 
     // 等待认证完成后加载所有数据
     this.waitForAuthAndLoad();
+  },
+
+  restoreShareFilters: function(options) {
+    const stallId = options.stallId || '';
+    const tagId = options.tagId || '';
+    const shareTab = options.tab || '';
+
+    // 标签入口保持隐藏，带标签参数的分享页不主动展开标签面板。
+    // 档口页仍按分享前的状态显示；没有筛选时回到默认的“上新”。
+    const currentMainTab = shareTab === '档口' || stallId ? '档口' : '上新';
+
+    this.setData({
+      currentMainTab: currentMainTab,
+      selectedStall: stallId,
+      selectedTag: tagId,
+      showStall: false,
+      showTag: false,
+      showAllPanel: false
+    });
   },
 
   onShow: function() {
@@ -993,19 +1015,38 @@ bundleInputBlur(e) {
     }
   },
 
+  buildShareQuery: function() {
+    const query = [];
+    const currentMainTab = this.data.currentMainTab || '上新';
+
+    if (currentMainTab !== '上新') {
+      query.push('tab=' + encodeURIComponent(currentMainTab));
+    }
+    if (this.data.selectedStall) {
+      query.push('stallId=' + encodeURIComponent(this.data.selectedStall));
+    }
+    if (this.data.selectedTag) {
+      query.push('tagId=' + encodeURIComponent(this.data.selectedTag));
+    }
+
+    return query.join('&');
+  },
+
   onShareAppMessage: function() {
     const tabName = this.data.currentMainTab || '上新';
+    const query = this.buildShareQuery();
     return {
       title: `现在买 - ${tabName}`,
-      path: '/pages/index/index',
+      path: '/pages/index/index' + (query ? '?' + query : ''),
       imageUrl: ''
     };
   },
 
   onShareTimeline: function() {
+    const query = this.buildShareQuery();
     return {
       title: '现在买 - 潮流服饰好物',
-      query: '',
+      query: query,
       imageUrl: ''
     };
   }
