@@ -184,13 +184,25 @@ async function run() {
     );
     const purchaseOrders = await waitForPageData(
       purchaseOrdersPage,
-      (data) => !data.loading && data.orderList.length > 0,
+      (data) => !data.loading && data.batchList.length > 0,
       15000,
       'purchase order history'
     );
-    const purchaseRecord = purchaseOrders.orderList.find(
-      (item) => String(item.skuId) === String(skuId) && item.status === 'ordered'
-    );
+    let purchaseRecord;
+    const batchHeaders = await purchaseOrdersPage.$$('.batch-header');
+    for (const [index, batch] of purchaseOrders.batchList.entries()) {
+      await withTimeout(batchHeaders[index].tap(), 10000, 'open purchase order batch');
+      const detail = await waitForPageData(
+        purchaseOrdersPage,
+        (data) => !data.detailLoading && String(data.activeBatchId) === String(batch.id),
+        15000,
+        'purchase order batch detail'
+      );
+      purchaseRecord = detail.detailList.find(
+        (item) => String(item.skuId) === String(skuId) && item.status === 'ordered'
+      );
+      if (purchaseRecord) break;
+    }
     assert.ok(purchaseRecord, `ordered purchase record for SKU ${skuId} must exist`);
 
     process.stdout.write(JSON.stringify({

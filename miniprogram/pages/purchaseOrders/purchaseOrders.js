@@ -5,141 +5,188 @@ const auth = require('../../utils/auth');
 Page({
   data: {
     status: 'ordered',
-    orderList: [],
-    displayList: [],
+    batchList: [],
+    activeBatchId: '',
+    detailList: [],
+    detailLoading: false,
     loading: false,
-    // 商品筛选
     keyword: '',
-    // 全选功能
+    appliedKeyword: '',
     allSelected: false,
     selectedCount: 0,
     selectMode: false,
-    // 分页参数（本地分页）
     page: 1,
     pageSize: 20,
     hasMore: true
   },
 
   onLoad: function() {
-    this.loadOrders();
+    this.loadBatches();
   },
 
   // 触底加载更多
   onReachBottom: function() {
     if (!this.data.hasMore || this.data.loading) return;
-    this.loadOrders(false);
+    this.loadBatches(false);
   },
 
   // 切换状态
   setStatus: function(e) {
     const status = e.currentTarget.dataset.status;
-    this.setData({ 
+    if (status === this.data.status) return;
+    this.setData({
       status,
-      keyword: '',  // 重置搜索关键词
+      keyword: '',
+      appliedKeyword: '',
+      activeBatchId: '',
+      detailList: [],
       allSelected: false,
       selectedCount: 0,
       selectMode: false
     });
-    this.loadOrders();  // 重置并重新加载
+    this.loadBatches();
   },
 
-  // 加载报单记录（分页）
-  loadOrders: async function(reset = true) {
+  // 按批次分页，展开时才获取该批次的商品明细。
+  loadBatches: async function(reset = true, reopenId = '') {
+    if (!reset && (this.data.loading || !this.data.hasMore)) return;
+    const requestId = (this._batchRequestId || 0) + 1;
+    this._batchRequestId = requestId;
     if (reset) {
-      this.setData({ page: 1, orderList: [], hasMore: true });
+      this._detailRequestId = (this._detailRequestId || 0) + 1;
+      this.setData({
+        page: 1, batchList: [], hasMore: true,
+        activeBatchId: '', detailList: [], detailLoading: false,
+        allSelected: false, selectedCount: 0, selectMode: false
+      });
     }
-
-    if (!this.data.hasMore || this.data.loading) return;
 
     this.setData({ loading: true });
     try {
       await auth.ensureAuthenticated({ silent: true });
-      const { page, pageSize, status, keyword } = this.data;
+      const { page, pageSize, status, appliedKeyword } = this.data;
       const query = `status=${encodeURIComponent(status)}&page=${page}&size=${pageSize}`
-        + (keyword.trim() ? `&keyword=${encodeURIComponent(keyword.trim())}` : '');
-      const res = await api.get(`/picking-list/orders/query?${query}`);
-      
-      const orderList = (res.content || []).map(item => ({
+        + (appliedKeyword ? `&keyword=${encodeURIComponent(appliedKeyword)}` : '');
+      const res = await api.get(`/picking-list/orders/batches/query?${query}`);
+      if (requestId !== this._batchRequestId) return;
+
+      const batches = (res.content || []).map(item => ({
         ...item,
-        imageUrl: item.imageUrl || '',
-        defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
-        createdAt: this.formatTime(item.createdAt),
-        selected: false
+        displayCode: String(item.id).slice(-6),
+        displayTime: this.formatTime(item.createdAt)
       }));
-
-      const hasMore = orderList.length === pageSize;
-
+      const batchList = reset ? batches : [...this.data.batchList, ...batches];
       this.setData({
-        orderList: reset ? orderList : [...this.data.orderList, ...orderList],
-        displayList: reset ? orderList : [...this.data.displayList, ...orderList],
-        page: this.data.page + 1,
-        hasMore: hasMore,
+        batchList,
+        page: page + 1,
+        hasMore: res.hasNext !== undefined ? res.hasNext : batches.length === pageSize,
         loading: false
       });
+      if (reopenId && batchList.some(batch => String(batch.id) === String(reopenId))) {
+        this.openBatch(reopenId);
+      }
     } catch (err) {
-      console.error('加载报单记录失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      if (requestId !== this._batchRequestId) return;
+      console.error('加载报单批次失败:', err);
+      wx.showToast({ title: '批次加载失败', icon: 'none' });
       this.setData({ loading: false });
     }
   },
 
-  // 商品筛选
+  toggleBatch: function(e) {
+    const batchId = String(e.currentTarget.dataset.id);
+    if (this.data.activeBatchId === batchId) {
+      this._detailRequestId = (this._detailRequestId || 0) + 1;
+      this.setData({
+        activeBatchId: '', detailList: [], detailLoading: false,
+        allSelected: false, selectedCount: 0, selectMode: false
+      });
+      return;
+    }
+    this.openBatch(batchId);
+  },
+
+  openBatch: async function(batchId) {
+    const requestId = (this._detailRequestId || 0) + 1;
+    this._detailRequestId = requestId;
+    this.setData({
+      activeBatchId: String(batchId), detailList: [], detailLoading: true,
+      allSelected: false, selectedCount: 0, selectMode: false
+    });
+    try {
+      const { status, appliedKeyword } = this.data;
+      const query = `status=${encodeURIComponent(status)}`
+        + (appliedKeyword ? `&keyword=${encodeURIComponent(appliedKeyword)}` : '');
+      const items = await api.get(
+        `/picking-list/orders/batches/${encodeURIComponent(batchId)}/items?${query}`
+      );
+      if (requestId !== this._detailRequestId) return;
+      this.setData({
+        detailList: (items || []).map(item => ({
+          ...item,
+          imageUrl: item.imageUrl || '',
+          defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
+          displayTime: this.formatTime(item.createdAt),
+          selected: false
+        })),
+        detailLoading: false
+      });
+    } catch (err) {
+      if (requestId !== this._detailRequestId) return;
+      console.error('加载报单商品明细失败:', err);
+      wx.showToast({ title: '明细加载失败', icon: 'none' });
+      this.setData({ detailLoading: false });
+    }
+  },
+
   onKeywordInput: function(e) {
     this.setData({ keyword: e.detail.value });
   },
 
   search: function() {
-    this.loadOrders(true);
+    this.setData({ appliedKeyword: this.data.keyword.trim() });
+    this.loadBatches(true);
   },
 
-  // 图片加载失败处理
   onImageError: function(e) {
     const index = e.currentTarget.dataset.index;
-    // 图片加载失败时，使用默认图片
-    console.log('图片加载失败，使用默认图片');
+    this.setData({ [`detailList[${index}].imageUrl`]: '/images/default-goods-image.png' });
   },
 
   // 全选/取消全选
   toggleSelectAll: function() {
     const newAllSelected = !this.data.allSelected;
-    
-    this.data.displayList.forEach(item => {
-      item.selected = newAllSelected;
-    });
-    
-    const selectedCount = newAllSelected ? this.data.displayList.length : 0;
-    
+    const detailList = this.data.detailList.map(item => ({
+      ...item, selected: item.status === 'ordered' && newAllSelected
+    }));
+    const selectedCount = detailList.filter(item => item.selected).length;
     this.setData({
-      allSelected: newAllSelected,
-      selectedCount: selectedCount,
+      allSelected: selectedCount > 0 && selectedCount === detailList.filter(item => item.status === 'ordered').length,
+      selectedCount,
       selectMode: selectedCount > 0,
-      displayList: this.data.displayList
+      detailList
     });
   },
 
   // 切换选中状态
   toggleSelect: function(e) {
     const index = e.currentTarget.dataset.index;
-    const item = this.data.displayList[index];
-    
-    item.selected = !item.selected;
-    
-    // 重新计算选中数量
-    const selectedCount = this.data.displayList.filter(i => i.selected).length;
-    const allSelected = selectedCount > 0 && selectedCount === this.data.displayList.length;
-    
+    const detailList = this.data.detailList.map((item, itemIndex) => itemIndex === index
+      ? { ...item, selected: !item.selected }
+      : item);
+    const selectedCount = detailList.filter(item => item.selected).length;
+    const selectableCount = detailList.filter(item => item.status === 'ordered').length;
     this.setData({
-      allSelected: allSelected,
-      selectedCount: selectedCount,
+      allSelected: selectedCount > 0 && selectedCount === selectableCount,
+      selectedCount,
       selectMode: selectedCount > 0,
-      displayList: this.data.displayList
+      detailList
     });
   },
 
   // 单个撤销
   cancelOrder: function(e) {
     const orderId = e.currentTarget.dataset.id;
-    const index = e.currentTarget.dataset.index;
 
     wx.showModal({
       title: '确认撤销',
@@ -157,7 +204,7 @@ Page({
             wx.showToast({ title: '撤销成功', icon: 'success' });
 
             // 重新加载列表，确保状态正确
-            this.loadOrders();
+            this.loadBatches(true, this.data.activeBatchId);
           } catch (err) {
             wx.hideLoading();
             console.error('撤销失败:', err);
@@ -186,7 +233,7 @@ Page({
 
           try {
             // 批量撤销选中的报单
-            const selectedItems = this.data.displayList.filter(i => i.selected);
+            const selectedItems = this.data.detailList.filter(i => i.selected);
             const promises = selectedItems.map(item =>
               api.delete(`/picking-list/order/${item.id}`)
             );
@@ -197,7 +244,7 @@ Page({
             wx.showToast({ title: '批量撤销成功', icon: 'success' });
 
             // 重新加载列表
-            this.loadOrders();
+            this.loadBatches(true, this.data.activeBatchId);
           } catch (err) {
             wx.hideLoading();
             console.error('批量撤销失败:', err);
