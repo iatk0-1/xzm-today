@@ -155,8 +155,8 @@ Page({
   updateListMetrics: function() {
     const win = this.getWindowSize();
     const subNavVisible = this.data.currentMainTab === '档口' || this.data.currentMainTab === '分类';
-    // 子导航留白 100rpx，按屏宽换算成 px
-    const listTop = subNavVisible ? Math.round(100 * win.width / 750) : 0;
+    // 列表只让开固定的 88rpx 子导航高度，避免商品卡片上方多出一截空白
+    const listTop = subNavVisible ? Math.round(88 * win.width / 750) : 0;
     const listHeight = Math.max(200, win.height - (this.data.totalNavHeight || 0) - listTop);
 
     if (listTop === this.data.listTop && listHeight === this.data.listHeight) return;
