@@ -135,3 +135,30 @@ test('列表触底加载期间停在底部可接着翻页，列表下拉刷新�
   assert.equal(page.data.refreshing, false);
   delete wx.createSelectorQuery;
 });
+
+test('时间范围取消不生效，确认后筛选批次且翻页沿用日期，清除后恢复', async () => {
+  requests.length = 0;
+  responses.push(
+    Promise.resolve({ content: [], hasNext: true }),
+    Promise.resolve({ content: [], hasNext: false }),
+    Promise.resolve({ content: [], hasNext: false })
+  );
+  const page = createPage();
+  page.showDateRangeSelector();
+  page.onStartDateChange({ detail: { value: '2026-09-01' } });
+  page.onEndDateChange({ detail: { value: '2026-09-25' } });
+  page.closeDateModal();
+  assert.deepEqual(page.data.dateRange, { startDate: '', endDate: '', quickSelect: '' });
+
+  page.showDateRangeSelector();
+  page.onStartDateChange({ detail: { value: '2026-09-01' } });
+  page.onEndDateChange({ detail: { value: '2026-09-25' } });
+  await page.confirmDateRange();
+  assert.match(requests[0], /page=1.*startDate=2026-09-01&endDate=2026-09-25/);
+  await page.loadBatches(false);
+  assert.match(requests[1], /page=2.*startDate=2026-09-01&endDate=2026-09-25/);
+
+  await page.clearDateRange();
+  assert.match(requests[2], /page=1/);
+  assert.doesNotMatch(requests[2], /startDate|endDate/);
+});

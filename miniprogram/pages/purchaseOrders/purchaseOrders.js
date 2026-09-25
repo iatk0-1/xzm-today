@@ -10,13 +10,74 @@ Page({
     refreshing: false,
     keyword: '',
     appliedKeyword: '',
+    dateRange: { startDate: '', endDate: '', quickSelect: '' },
+    draftDateRange: { startDate: '', endDate: '', quickSelect: '' },
+    showDateModal: false,
+    today: '',
     page: 1,
     pageSize: 20,
     hasMore: true
   },
 
   onLoad: function() {
+    this.setData({ today: this.formatDate(new Date()) });
     this.loadBatches();
+  },
+
+  showDateRangeSelector: function() {
+    this.setData({
+      draftDateRange: { ...this.data.dateRange },
+      today: this.formatDate(new Date()),
+      showDateModal: true
+    });
+  },
+
+  closeDateModal: function() {
+    this.setData({ showDateModal: false });
+  },
+
+  selectDateRange: function(e) {
+    const type = e.currentTarget.dataset.type;
+    const today = new Date();
+    const endDate = this.formatDate(today);
+    let start;
+    switch (type) {
+      case '1day': start = today; break;
+      case '7days': start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6); break;
+      case '30days': start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29); break;
+      case 'month': start = new Date(today.getFullYear(), today.getMonth(), 1); break;
+      default: return;
+    }
+    this.setData({ draftDateRange: {
+      startDate: this.formatDate(start), endDate, quickSelect: type
+    } });
+  },
+
+  onStartDateChange: function(e) {
+    this.setData({ draftDateRange: {
+      ...this.data.draftDateRange, startDate: e.detail.value, quickSelect: ''
+    } });
+  },
+
+  onEndDateChange: function(e) {
+    this.setData({ draftDateRange: {
+      ...this.data.draftDateRange, endDate: e.detail.value, quickSelect: ''
+    } });
+  },
+
+  confirmDateRange: function() {
+    const range = this.data.draftDateRange;
+    if (range.startDate && range.endDate && range.startDate > range.endDate) {
+      wx.showToast({ title: '开始日期不能晚于结束日期', icon: 'none' });
+      return;
+    }
+    this.setData({ dateRange: { ...range }, showDateModal: false });
+    return this.loadBatches(true, true);
+  },
+
+  clearDateRange: function() {
+    this.setData({ dateRange: { startDate: '', endDate: '', quickSelect: '' } });
+    return this.loadBatches(true, true);
   },
 
   onListPullDownRefresh: async function() {
@@ -83,9 +144,11 @@ Page({
     this.setData({ loading: true });
     try {
       await auth.ensureAuthenticated({ silent: true });
-      const { page, pageSize, status, appliedKeyword } = this.data;
+      const { page, pageSize, status, appliedKeyword, dateRange } = this.data;
       const query = `status=${encodeURIComponent(status)}&page=${page}&size=${pageSize}`
-        + (appliedKeyword ? `&keyword=${encodeURIComponent(appliedKeyword)}` : '');
+        + (appliedKeyword ? `&keyword=${encodeURIComponent(appliedKeyword)}` : '')
+        + (dateRange.startDate ? `&startDate=${encodeURIComponent(dateRange.startDate)}` : '')
+        + (dateRange.endDate ? `&endDate=${encodeURIComponent(dateRange.endDate)}` : '');
       const res = await api.get(`/picking-list/orders/batches/query?${query}`);
       if (requestId !== this._batchRequestId) return;
 
@@ -291,6 +354,11 @@ Page({
         }
       }
     });
+  },
+
+  formatDate: function(date) {
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   },
 
   // 格式化时间

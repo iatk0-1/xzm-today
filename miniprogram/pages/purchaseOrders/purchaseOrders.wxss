@@ -90,6 +90,85 @@ page {
   border: none;
 }
 
+.date-filter {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+
+.date-picker {
+  flex: 1;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f6f7f9;
+  border-radius: 10rpx;
+  color: #666;
+  font-size: 24rpx;
+}
+
+.clear-date {
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #f0f0f0;
+  border-radius: 50%;
+  color: #999;
+  font-size: 28rpx;
+}
+
+.modal { position: fixed; inset: 0; z-index: 1000; }
+.modal-mask { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); }
+.modal-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600rpx;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 16rpx;
+}
+.modal-title { padding: 28rpx; border-bottom: 1rpx solid #f0f0f0; text-align: center; font-size: 30rpx; font-weight: 600; }
+.quick-options { display: flex; flex-wrap: wrap; gap: 12rpx; padding: 16rpx; border-bottom: 1rpx solid #f0f0f0; }
+.quick-option {
+  flex: 1 1 calc(50% - 6rpx);
+  height: 64rpx;
+  box-sizing: border-box;
+  background: #f5f5f5;
+  border-radius: 8rpx;
+  color: #666;
+  text-align: center;
+  line-height: 64rpx;
+  font-size: 24rpx;
+}
+.quick-option.selected { background: #1f2933; color: #fff; }
+.custom-section { padding: 24rpx 16rpx; }
+.custom-title { margin-bottom: 16rpx; color: #999; font-size: 24rpx; }
+.date-picker-input {
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+  padding: 0 24rpx;
+  background: #f5f5f5;
+  border-radius: 8rpx;
+  color: #333;
+  font-size: 26rpx;
+}
+.modal-footer { display: flex; border-top: 1rpx solid #f0f0f0; }
+.modal-cancel, .modal-confirm { flex: 1; height: 88rpx; padding: 0; border: 0; border-radius: 0; line-height: 88rpx; font-size: 28rpx; }
+.modal-cancel { background: #f5f5f5; color: #666; border-right: 1rpx solid #f0f0f0; }
+.modal-confirm { background: #1f2933; color: #fff; }
+
 .batch-scroll {
   flex: 1;
   height: 0;

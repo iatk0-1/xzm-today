@@ -10,6 +10,13 @@
         <input class="sku-input" placeholder="搜索商品名称" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="search" />
         <button class="sku-search-btn" bindtap="search">搜索</button>
       </view>
+      <view class="date-filter">
+        <view class="date-picker" bindtap="showDateRangeSelector">
+          <text wx:if="{{!dateRange.startDate && !dateRange.endDate}}">选择时间范围</text>
+          <text wx:else>{{dateRange.startDate || '开始'}} - {{dateRange.endDate || '结束'}}</text>
+        </view>
+        <view class="clear-date" wx:if="{{dateRange.startDate || dateRange.endDate}}" bindtap="clearDateRange">×</view>
+      </view>
     </view>
   </view>
 
@@ -66,4 +73,29 @@
     <view class="loading-state {{batchList.length > 0 ? 'loading-more' : ''}}" wx:if="{{loading}}">加载中...</view>
   </view>
   </scroll-view>
+  <view class="modal" wx:if="{{showDateModal}}">
+    <view class="modal-mask" bindtap="closeDateModal"></view>
+    <view class="modal-content">
+      <view class="modal-title">选择时间范围</view>
+      <view class="quick-options">
+        <view class="quick-option {{draftDateRange.quickSelect === '1day' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="1day">最近 1 天</view>
+        <view class="quick-option {{draftDateRange.quickSelect === '7days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="7days">最近 7 天</view>
+        <view class="quick-option {{draftDateRange.quickSelect === '30days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="30days">最近 30 天</view>
+        <view class="quick-option {{draftDateRange.quickSelect === 'month' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="month">本月</view>
+      </view>
+      <view class="custom-section">
+        <view class="custom-title">自定义时间</view>
+        <picker mode="date" value="{{draftDateRange.startDate}}" end="{{draftDateRange.endDate || today}}" bindchange="onStartDateChange">
+          <view class="date-picker-input">开始日期：{{draftDateRange.startDate || '选择'}}</view>
+        </picker>
+        <picker mode="date" value="{{draftDateRange.endDate}}" start="{{draftDateRange.startDate}}" end="{{today}}" bindchange="onEndDateChange">
+          <view class="date-picker-input">结束日期：{{draftDateRange.endDate || '选择'}}</view>
+        </picker>
+      </view>
+      <view class="modal-footer">
+        <button class="modal-cancel" bindtap="closeDateModal">取消</button>
+        <button class="modal-confirm" bindtap="confirmDateRange">确定</button>
+      </view>
+    </view>
+  </view>
 </view>
