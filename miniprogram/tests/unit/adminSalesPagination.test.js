@@ -8,6 +8,8 @@ global.wx = { showToast() {}, stopPullDownRefresh() {} };
 
 const requests = [];
 let responses = [];
+const overviewRequests = [];
+let overviewResponses = [];
 const originalLoad = Module._load;
 Module._load = function(request, ...args) {
   if (request.endsWith('utils/api')) {
@@ -16,6 +18,10 @@ Module._load = function(request, ...args) {
         if (url === '/admin/sales/query/products') {
           requests.push(params);
           return responses.shift();
+        }
+        if (url === '/admin/sales/overview') {
+          overviewRequests.push(params);
+          return overviewResponses.shift() || Promise.resolve({});
         }
         return Promise.resolve([]);
       }
@@ -40,6 +46,22 @@ function createPage() {
 function product(productId) {
   return { productId, productName: `商品${productId}` };
 }
+
+test('销售页首次打开默认查询当天商品和统计', { concurrency: false }, async () => {
+  requests.length = 0;
+  overviewRequests.length = 0;
+  responses = [Promise.resolve({ content: [], totalElements: 0 })];
+  overviewResponses = [Promise.resolve({ soldQty: 2, totalAmount: 100, afterSaleCount: 0, afterSaleAmount: 0 })];
+  const page = createPage();
+  await page.onLoad();
+  const today = page.formatDate(new Date());
+  assert.equal(page.data.quickSelect, '1day');
+  assert.equal(page.data.startDate, today);
+  assert.equal(page.data.endDate, today);
+  assert.equal(requests[0].startDate, today);
+  assert.equal(requests[0].endDate, today);
+  assert.deepEqual(overviewRequests[0], { startDate: today, endDate: today });
+});
 
 test('档口和标签组合筛选后从第一页查询，翻页追加且不重复发请求', { concurrency: false }, async () => {
   requests.length = 0;
@@ -100,4 +122,49 @@ test('筛选切换后忽略旧请求，下拉刷新保留筛选并重置分页',
   assert.equal(requests[2].tagId, 5);
   assert.deepEqual(page.data.products.map(item => item.productId), [3]);
   assert.equal(page.data.isRefreshing, false);
+});
+
+test('销售页最近 1 天只查询当天，取消编辑不改已生效范围', { concurrency: false }, async () => {
+  requests.length = 0;
+  overviewRequests.length = 0;
+  responses = [Promise.resolve({ content: [], totalElements: 0 })];
+  overviewResponses = [Promise.resolve({ soldQty: 25, totalAmount: 3316.25, afterSaleCount: 1, afterSaleAmount: 132.65 })];
+  const page = createPage();
+  const today = page.formatDate(new Date());
+  page.showDateRangeSelector();
+  page.selectDateRange({ currentTarget: { dataset: { type: '1day' } } });
+  assert.deepEqual(page.data.editingDateRange, {
+    startDate: today, endDate: today, quickSelect: '1day'
+  });
+  page.closeDateModal();
+  assert.equal(page.data.startDate, '');
+  page.showDateRangeSelector();
+  page.selectDateRange({ currentTarget: { dataset: { type: '1day' } } });
+  page.confirmDateRange();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests[0].startDate, today);
+  assert.equal(requests[0].endDate, today);
+  assert.equal(requests[0].page, 1);
+  assert.deepEqual(overviewRequests[0], { startDate: today, endDate: today });
+  assert.deepEqual(page.data.overview, {
+    soldQty: 25, totalAmount: 3316.25, afterSaleCount: 1, afterSaleAmount: 132.65
+  });
+});
+
+test('销售统计忽略日期切换前的旧结果', { concurrency: false }, async () => {
+  overviewRequests.length = 0;
+  let resolveOld;
+  overviewResponses = [
+    new Promise(resolve => { resolveOld = resolve; }),
+    Promise.resolve({ soldQty: 8, totalAmount: 100, afterSaleCount: 0, afterSaleAmount: 0 })
+  ];
+  const page = createPage();
+  const oldRequest = page.loadOverview();
+  page.data.startDate = '2026-09-25';
+  const newRequest = page.loadOverview();
+  await newRequest;
+  resolveOld({ soldQty: 99, totalAmount: 999, afterSaleCount: 9, afterSaleAmount: 99 });
+  await oldRequest;
+  assert.equal(page.data.overview.soldQty, 8);
+  assert.deepEqual(overviewRequests, [{}, { startDate: '2026-09-25' }]);
 });

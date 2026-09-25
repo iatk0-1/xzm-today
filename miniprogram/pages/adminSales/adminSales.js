@@ -13,6 +13,9 @@ Page({
     loading: false,
     loadError: false,
     isRefreshing: false,
+    overview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleAmount: 0 },
+    overviewLoading: false,
+    overviewError: false,
     // 筛选
     searchInput: '',
     keyword: '',
@@ -22,20 +25,25 @@ Page({
     selectedTag: '',
     startDate: '',
     endDate: '',
+    quickSelect: '',
+    editingDateRange: { startDate: '', endDate: '', quickSelect: '' },
+    showDateModal: false,
     today: ''
   },
 
+  formatDate(date) {
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  },
+
   onLoad() {
-    const today = new Date();
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, '0');
-    const d = String(today.getDate()).padStart(2, '0');
-    this.setData({ today: y + '-' + m + '-' + d });
-    auth.ensureAuthenticated({ silent: true })
+    const today = this.formatDate(new Date());
+    this.setData({ today, startDate: today, endDate: today, quickSelect: '1day' });
+    return auth.ensureAuthenticated({ silent: true })
       .then(() => {
         this.loadStallList();
         this.loadTagList();
-        return this.loadProducts();
+        return Promise.all([this.loadProducts(), this.loadOverview()]);
       })
       .catch(err => {
         console.error('销售统计页认证恢复失败:', err);
@@ -64,6 +72,30 @@ Page({
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
     return params;
+  },
+
+  loadOverview() {
+    const requestId = (this.overviewRequestId || 0) + 1;
+    this.overviewRequestId = requestId;
+    const params = {};
+    if (this.data.startDate) params.startDate = this.data.startDate;
+    if (this.data.endDate) params.endDate = this.data.endDate;
+    this.setData({ overviewLoading: true, overviewError: false });
+    return api.get('/admin/sales/overview', params).then(res => {
+      if (requestId !== this.overviewRequestId) return;
+      this.setData({ overview: {
+        soldQty: res.soldQty || 0,
+        totalAmount: res.totalAmount || 0,
+        afterSaleCount: res.afterSaleCount || 0,
+        afterSaleAmount: res.afterSaleAmount || 0
+      } });
+    }).catch(err => {
+      if (requestId !== this.overviewRequestId) return;
+      console.error('加载销售统计失败:', err);
+      this.setData({ overviewError: true });
+    }).finally(() => {
+      if (requestId === this.overviewRequestId) this.setData({ overviewLoading: false });
+    });
   },
 
   loadProducts() {
@@ -114,22 +146,80 @@ Page({
     this.setData({ selectedTag: tagId === 'all' ? '' : tagId }, () => this.loadProducts());
   },
 
+  showDateRangeSelector() {
+    this.setData({
+      editingDateRange: {
+        startDate: this.data.startDate,
+        endDate: this.data.endDate,
+        quickSelect: this.data.quickSelect
+      },
+      today: this.formatDate(new Date()),
+      showDateModal: true
+    });
+  },
+
+  closeDateModal() {
+    this.setData({ showDateModal: false });
+  },
+
+  selectDateRange(e) {
+    const type = e.currentTarget.dataset.type;
+    const today = new Date();
+    let start = today;
+    if (type === '7days') start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+    if (type === '30days') start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29);
+    if (type === 'month') start = new Date(today.getFullYear(), today.getMonth(), 1);
+    this.setData({ editingDateRange: {
+      startDate: this.formatDate(start),
+      endDate: this.formatDate(today),
+      quickSelect: type
+    } });
+  },
+
   onStartDateChange(e) {
-    this.setData({ startDate: e.detail.value }, () => this.loadProducts());
+    this.setData({ editingDateRange: {
+      ...this.data.editingDateRange,
+      startDate: e.detail.value,
+      quickSelect: ''
+    } });
   },
 
   onEndDateChange(e) {
-    this.setData({ endDate: e.detail.value }, () => this.loadProducts());
+    this.setData({ editingDateRange: {
+      ...this.data.editingDateRange,
+      endDate: e.detail.value,
+      quickSelect: ''
+    } });
   },
 
-  clearDate() {
-    this.setData({ startDate: '', endDate: '' }, () => this.loadProducts());
+  confirmDateRange() {
+    const range = this.data.editingDateRange;
+    if (range.startDate && range.endDate && range.startDate > range.endDate) {
+      wx.showToast({ title: '开始日期不能晚于结束日期', icon: 'none' });
+      return;
+    }
+    this.setData({
+      startDate: range.startDate,
+      endDate: range.endDate,
+      quickSelect: range.quickSelect,
+      showDateModal: false
+    }, () => {
+      this.loadProducts();
+      this.loadOverview();
+    });
+  },
+
+  clearDateRange() {
+    this.setData({ startDate: '', endDate: '', quickSelect: '' }, () => {
+      this.loadProducts();
+      this.loadOverview();
+    });
   },
 
   onListPullDownRefresh() {
     if (this.data.isRefreshing) return;
     this.setData({ isRefreshing: true });
-    return Promise.all([this.loadProducts(), this.loadStallList(), this.loadTagList()])
+    return Promise.all([this.loadProducts(), this.loadOverview(), this.loadStallList(), this.loadTagList()])
       .finally(() => this.setData({ isRefreshing: false }));
   },
 

@@ -372,10 +372,10 @@ page {
   border-bottom: 1rpx solid #f0f0f0;
 }
 .quick-options {
-  display: flex; padding: 16rpx; gap: 12rpx; border-bottom: 1rpx solid #f0f0f0;
+  display: flex; flex-wrap: wrap; padding: 16rpx; gap: 12rpx; border-bottom: 1rpx solid #f0f0f0;
 }
 .quick-option {
-  flex: 1; height: 64rpx; line-height: 64rpx; text-align: center;
+  flex: 1 1 calc(50% - 6rpx); box-sizing: border-box; height: 64rpx; line-height: 64rpx; text-align: center;
   background: #f5f5f5; border-radius: 8rpx; font-size: 24rpx; color: #666;
 }
 .quick-option.selected { background: #1a1a1a; color: #fff; }

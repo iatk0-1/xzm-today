@@ -47,13 +47,14 @@ Page({
       endDate: '',
       quickSelect: ''
     },
-    today: new Date().toISOString().split('T')[0],
+    today: '',
     showDateModal: false
     ,adminRemarkPanel: null
     ,adminRemarkValue: ''
   },
 
   onLoad: function(options) {
+    this.setData({ today: this.formatDate(new Date()) });
     const statusMap = {
       'all': '全部',
       'pay': '待付款',
@@ -127,6 +128,9 @@ Page({
     let endDate = this.formatDate(today);
 
     switch(type) {
+      case '1day':
+        startDate = endDate;
+        break;
       case '7days':
         startDate = this.formatDate(new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000));
         break;

@@ -1,4 +1,31 @@
 <view class="page-wrapper">
+  <!-- 销售数据统计 -->
+  <view class="overview-card">
+    <view class="overview-status" wx:if="{{overviewLoading}}">统计加载中...</view>
+    <view class="overview-status" wx:elif="{{overviewError}}" bindtap="loadOverview">统计加载失败，点击重试</view>
+    <block wx:else>
+      <view class="stat-row">
+        <view class="stat-item">
+          <text class="stat-val">{{overview.soldQty || 0}}</text>
+          <text class="stat-label">售出数量</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-val">¥{{overview.totalAmount || 0}}</text>
+          <text class="stat-label">售出金额</text>
+        </view>
+      </view>
+      <view class="stat-row">
+        <view class="stat-item">
+          <text class="stat-val">{{overview.afterSaleCount || 0}}</text>
+          <text class="stat-label">售后数</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-val">¥{{overview.afterSaleAmount || 0}}</text>
+          <text class="stat-label">退款金额</text>
+        </view>
+      </view>
+    </block>
+  </view>
   <!-- 筛选区 -->
   <view class="filter-bar">
     <view class="search-row">
@@ -25,15 +52,12 @@
         </scroll-view>
       </view>
     </view>
-    <view class="date-row">
-      <picker mode="date" value="{{startDate}}" end="{{endDate || today}}" bindchange="onStartDateChange">
-        <view class="date-pick">{{startDate || '开始日期'}}</view>
-      </picker>
-      <text class="date-sep">—</text>
-      <picker mode="date" value="{{endDate}}" start="{{startDate}}" end="{{today}}" bindchange="onEndDateChange">
-        <view class="date-pick">{{endDate || '结束日期'}}</view>
-      </picker>
-      <view class="clear-date" wx:if="{{startDate || endDate}}" bindtap="clearDate">清除</view>
+    <view class="date-filter">
+      <view class="date-picker" bindtap="showDateRangeSelector">
+        <text wx:if="{{!startDate && !endDate}}">选择时间范围</text>
+        <text wx:else>{{startDate || '开始'}} - {{endDate || '结束'}}</text>
+      </view>
+      <view class="clear-date" wx:if="{{startDate || endDate}}" bindtap="clearDateRange">×</view>
     </view>
   </view>
 
@@ -61,5 +85,30 @@
     <view class="empty-state" wx:elif="{{loadError}}" bindtap="loadProducts">加载失败，点击重试</view>
     <view class="empty-state" wx:elif="{{products.length === 0}}">暂无销售记录</view>
     </scroll-view>
+  </view>
+  <view class="modal" wx:if="{{showDateModal}}">
+    <view class="modal-mask" bindtap="closeDateModal"></view>
+    <view class="modal-content">
+      <view class="modal-title">选择时间范围</view>
+      <view class="quick-options">
+        <view class="quick-option {{editingDateRange.quickSelect === '1day' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="1day">最近 1 天</view>
+        <view class="quick-option {{editingDateRange.quickSelect === '7days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="7days">最近 7 天</view>
+        <view class="quick-option {{editingDateRange.quickSelect === '30days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="30days">最近 30 天</view>
+        <view class="quick-option {{editingDateRange.quickSelect === 'month' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="month">本月</view>
+      </view>
+      <view class="custom-section">
+        <view class="custom-title">自定义时间</view>
+        <picker mode="date" value="{{editingDateRange.startDate}}" end="{{editingDateRange.endDate || today}}" bindchange="onStartDateChange">
+          <view class="date-picker-input">开始日期：{{editingDateRange.startDate || '选择'}}</view>
+        </picker>
+        <picker mode="date" value="{{editingDateRange.endDate}}" start="{{editingDateRange.startDate}}" end="{{today}}" bindchange="onEndDateChange">
+          <view class="date-picker-input">结束日期：{{editingDateRange.endDate || '选择'}}</view>
+        </picker>
+      </view>
+      <view class="modal-footer">
+        <button class="modal-cancel" bindtap="closeDateModal">取消</button>
+        <button class="modal-confirm" bindtap="confirmDateRange">确定</button>
+      </view>
+    </view>
   </view>
 </view>

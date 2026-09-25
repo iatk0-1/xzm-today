@@ -188,6 +188,7 @@
       
       <!-- 快捷选项 -->
       <view class="quick-options">
+        <view class="quick-option {{dateRange.quickSelect === '1day' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="1day">最近 1 天</view>
         <view class="quick-option {{dateRange.quickSelect === '7days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="7days">最近 7 天</view>
         <view class="quick-option {{dateRange.quickSelect === '30days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="30days">最近 30 天</view>
         <view class="quick-option {{dateRange.quickSelect === 'month' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="month">本月</view>

@@ -19,21 +19,24 @@ Page({
     // 筛选
     startDate: '',
     endDate: '',
+    quickSelect: '',
+    editingDateRange: { startDate: '', endDate: '', quickSelect: '' },
+    showDateModal: false,
     today: ''
   },
 
-  onLoad(options) {
-    const today = new Date();
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, '0');
-    const d = String(today.getDate()).padStart(2, '0');
+  formatDate(date) {
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  },
 
+  onLoad(options) {
     const productId = options.productId;
     const productName = decodeURIComponent(options.productName || '');
     const startDate = options.startDate || '';
     const endDate = options.endDate || '';
 
-    this.setData({ productId, productName, startDate, endDate, today: y + '-' + m + '-' + d });
+    this.setData({ productId, productName, startDate, endDate, today: this.formatDate(new Date()) });
 
     wx.setNavigationBarTitle({ title: productName || '商品销售详情' });
 
@@ -108,16 +111,68 @@ Page({
     this.setData({ orderPage: this.data.orderPage + 1 }, () => this.loadOrders(false));
   },
 
+  showDateRangeSelector() {
+    this.setData({
+      editingDateRange: {
+        startDate: this.data.startDate,
+        endDate: this.data.endDate,
+        quickSelect: this.data.quickSelect
+      },
+      today: this.formatDate(new Date()),
+      showDateModal: true
+    });
+  },
+
+  closeDateModal() {
+    this.setData({ showDateModal: false });
+  },
+
+  selectDateRange(e) {
+    const type = e.currentTarget.dataset.type;
+    const today = new Date();
+    let start = today;
+    if (type === '7days') start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+    if (type === '30days') start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29);
+    if (type === 'month') start = new Date(today.getFullYear(), today.getMonth(), 1);
+    this.setData({ editingDateRange: {
+      startDate: this.formatDate(start),
+      endDate: this.formatDate(today),
+      quickSelect: type
+    } });
+  },
+
   onStartDateChange(e) {
-    this.setData({ startDate: e.detail.value }, () => this.loadAll());
+    this.setData({ editingDateRange: {
+      ...this.data.editingDateRange,
+      startDate: e.detail.value,
+      quickSelect: ''
+    } });
   },
 
   onEndDateChange(e) {
-    this.setData({ endDate: e.detail.value }, () => this.loadAll());
+    this.setData({ editingDateRange: {
+      ...this.data.editingDateRange,
+      endDate: e.detail.value,
+      quickSelect: ''
+    } });
   },
 
-  clearDate() {
-    this.setData({ startDate: '', endDate: '' }, () => this.loadAll());
+  confirmDateRange() {
+    const range = this.data.editingDateRange;
+    if (range.startDate && range.endDate && range.startDate > range.endDate) {
+      wx.showToast({ title: '开始日期不能晚于结束日期', icon: 'none' });
+      return;
+    }
+    this.setData({
+      startDate: range.startDate,
+      endDate: range.endDate,
+      quickSelect: range.quickSelect,
+      showDateModal: false
+    }, () => this.loadAll());
+  },
+
+  clearDateRange() {
+    this.setData({ startDate: '', endDate: '', quickSelect: '' }, () => this.loadAll());
   },
 
   formatTime(raw) {
