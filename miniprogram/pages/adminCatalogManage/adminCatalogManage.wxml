@@ -60,7 +60,10 @@
             data-index="{{index}}">⋮⋮</view>
 
           <view class="group-main">
-            <view class="group-name">{{item.name}}</view>
+            <view class="group-name-row">
+              <view class="group-name">{{item.name}}</view>
+              <view class="rename-btn" catchtap="renameGroup" data-index="{{index}}">改名</view>
+            </view>
             <view class="group-meta">
               上架 {{item.onSaleProductCount}} / 全部 {{item.totalProductCount}}
               <text wx:if="{{item.hiddenReason === 'NO_ON_SALE_PRODUCT'}}" class="auto-hidden">无上架商品，暂不展示</text>
@@ -87,4 +90,15 @@
       </movable-view>
     </movable-area>
   </scroll-view>
+
+  <view class="rename-overlay" wx:if="{{renameVisible}}" catchtap="noop" catchtouchmove="noop">
+    <view class="rename-dialog">
+      <view class="rename-title">修改{{typeLabel}}名称</view>
+      <input class="rename-input" value="{{editName}}" maxlength="64" focus="{{renameVisible}}" bindinput="onEditNameInput" bindconfirm="saveRename" />
+      <view class="rename-actions">
+        <view class="rename-cancel" bindtap="closeRename">取消</view>
+        <view class="rename-save" bindtap="saveRename">{{renaming ? '保存中...' : '保存'}}</view>
+      </view>
+    </view>
+  </view>
 </view>

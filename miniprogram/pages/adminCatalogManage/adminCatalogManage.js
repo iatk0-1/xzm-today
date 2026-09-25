@@ -33,6 +33,10 @@ Page({
     newName: '',
     loading: false,
     saving: false,
+    renaming: false,
+    renameVisible: false,
+    renameId: '',
+    editName: '',
     deleting: false,
     dragIndex: -1,
     dragY: 0,
@@ -103,8 +107,8 @@ Page({
   switchType(e) {
     const type = e.currentTarget.dataset.type;
     if (type === this.data.currentType) return;
-    if (this.data.saving) {
-      wx.showToast({ title: '排序保存中，请稍候', icon: 'none' });
+    if (this.data.saving || this.data.renaming || this.data.renameVisible) {
+      wx.showToast({ title: '正在保存，请稍候', icon: 'none' });
       return;
     }
     this.setData({
@@ -417,6 +421,59 @@ Page({
 
   hasOpenSwipe() {
     return this.data.groups.some(item => (item.offsetX || 0) !== 0);
+  },
+
+  renameGroup(e) {
+    if (this.data.renaming || this.data.saving || this.data.deleting) return;
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.groups[index];
+    if (!item) return;
+    this.setData({ renameVisible: true, renameId: item.id, editName: item.name });
+  },
+
+  onEditNameInput(e) {
+    this.setData({ editName: e.detail.value });
+  },
+
+  closeRename() {
+    if (this.data.renaming) return;
+    this.setData({ renameVisible: false, renameId: '', editName: '' });
+  },
+
+  async saveRename() {
+    if (!this.data.renameVisible || this.data.renaming) return;
+    const name = this.data.editName.trim();
+    const item = this.data.groups.find(group => group.id === this.data.renameId);
+    if (!item) return;
+    if (!name) {
+      wx.showToast({ title: this.data.typeLabel + '名称不能为空', icon: 'none' });
+      return;
+    }
+    if (name.length > 64) {
+      wx.showToast({ title: this.data.typeLabel + '名称最多 64 个字符', icon: 'none' });
+      return;
+    }
+    if (name === item.name) {
+      this.closeRename();
+      return;
+    }
+    this.setData({ renaming: true });
+    wx.showLoading({ title: '保存中...', mask: true });
+    try {
+      const updated = await api.patch(this.resourcePath() + '/' + item.id + '/name', { name });
+      const currentIndex = this.data.groups.findIndex(group => group.id === item.id);
+      if (currentIndex >= 0) {
+        this.setData({ [`groups[${currentIndex}].name`]: updated.name });
+      }
+      this.setData({ renameVisible: false, renameId: '', editName: '' });
+      wx.hideLoading();
+      wx.showToast({ title: '名称已修改', icon: 'success' });
+    } catch (err) {
+      wx.hideLoading();
+      wx.showToast({ title: err.message || '修改名称失败', icon: 'none' });
+    } finally {
+      this.setData({ renaming: false });
+    }
   },
 
   // ===== 显隐、删除、进入商品列表 =====

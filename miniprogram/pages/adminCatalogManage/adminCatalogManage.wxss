@@ -22,7 +22,9 @@ page { height: 100vh; background: #f4f6f8; }
 .row-content.snapping { transition: transform 0.2s ease-out; }
 .drag-handle { width: 28px; color: #9aa3ac; font-size: 20px; line-height: 1; letter-spacing: 0; flex-shrink: 0; }
 .group-main { flex: 1; min-width: 0; padding-right: 8px; }
-.group-name { color: #1f2933; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.group-name-row { display: flex; align-items: center; gap: 8px; }
+.group-name { flex: 1; min-width: 0; color: #1f2933; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rename-btn { flex-shrink: 0; color: #486780; font-size: 12px; padding: 4px 0; }
 .group-meta { margin-top: 3px; color: #7b858f; font-size: 11px; white-space: nowrap; overflow: hidden; }
 .auto-hidden { margin-left: 8px; color: #b44b3e; }
 .manual-hidden { margin-left: 8px; color: #7b858f; }
@@ -32,3 +34,11 @@ page { height: 100vh; background: #f4f6f8; }
 .switch-cell { flex-shrink: 0; }
 .visibility-switch { transform: scale(0.78); }
 .loading, .empty { padding: 180rpx 0; color: #929ba4; font-size: 26rpx; text-align: center; }
+.rename-overlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 32rpx; background: rgba(0, 0, 0, 0.45); box-sizing: border-box; }
+.rename-dialog { width: 100%; max-width: 600rpx; padding: 36rpx; border-radius: 16rpx; background: #fff; box-sizing: border-box; }
+.rename-title { color: #1f2933; font-size: 30rpx; font-weight: 600; }
+.rename-input { height: 80rpx; margin-top: 28rpx; padding: 0 20rpx; border-radius: 8rpx; background: #f4f6f8; font-size: 28rpx; box-sizing: border-box; }
+.rename-actions { display: flex; justify-content: flex-end; gap: 20rpx; margin-top: 32rpx; }
+.rename-cancel, .rename-save { min-width: 120rpx; padding: 14rpx 20rpx; border-radius: 8rpx; text-align: center; font-size: 26rpx; box-sizing: border-box; }
+.rename-cancel { color: #68737d; background: #f4f6f8; }
+.rename-save { color: #fff; background: #1f2933; }

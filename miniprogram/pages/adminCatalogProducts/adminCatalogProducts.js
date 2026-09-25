@@ -15,6 +15,9 @@ Page({
     hasMore: true,
     loading: false,
     operating: false,
+    renaming: false,
+    renameVisible: false,
+    editName: '',
     selectedIds: [],
     selectedCount: 0,
     allLoadedSelected: false
@@ -41,6 +44,55 @@ Page({
 
   resourcePath() {
     return this.data.type === 'stall' ? '/stalls' : '/tags';
+  },
+
+  noop() {},
+
+  renameGroup() {
+    if (this.data.renaming || this.data.operating) return;
+    this.setData({ renameVisible: true, editName: this.data.groupName });
+  },
+
+  onEditNameInput(e) {
+    this.setData({ editName: e.detail.value });
+  },
+
+  closeRename() {
+    if (this.data.renaming) return;
+    this.setData({ renameVisible: false, editName: '' });
+  },
+
+  async saveRename() {
+    if (!this.data.renameVisible || this.data.renaming) return;
+    const name = this.data.editName.trim();
+    const label = this.data.type === 'stall' ? '档口' : '标签';
+    if (!name) {
+      wx.showToast({ title: label + '名称不能为空', icon: 'none' });
+      return;
+    }
+    if (name.length > 64) {
+      wx.showToast({ title: label + '名称最多 64 个字符', icon: 'none' });
+      return;
+    }
+    if (name === this.data.groupName) {
+      this.closeRename();
+      return;
+    }
+    this.setData({ renaming: true });
+    wx.showLoading({ title: '保存中...', mask: true });
+    try {
+      const updated = await api.patch(
+        this.resourcePath() + '/' + this.data.groupId + '/name', { name }
+      );
+      this.setData({ groupName: updated.name, renameVisible: false, editName: '' });
+      wx.hideLoading();
+      wx.showToast({ title: '名称已修改', icon: 'success' });
+    } catch (err) {
+      wx.hideLoading();
+      wx.showToast({ title: err.message || '修改名称失败', icon: 'none' });
+    } finally {
+      this.setData({ renaming: false });
+    }
   },
 
   normalizeId(id) {
