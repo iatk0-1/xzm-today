@@ -194,6 +194,7 @@ Page({
     if (!alreadyBusy) this.setData({ refundBusy: true });
     const requested = entries.reduce((sum, entry) => sum + Number(entry.pendingQty || 0), 0);
     let completed = 0;
+    let processing = 0;
     let message = '';
     try {
       for (const entry of entries) {
@@ -201,8 +202,8 @@ Page({
         if (result.status === 'success') {
           completed += Number(entry.pendingQty || 0);
         } else if (result.status === 'processing') {
-          message = '微信正在处理一笔退款，已暂停后续订单，请稍后刷新确认';
-          break;
+          // 微信已受理，后续由回调或对账确认结果；继续提交其他订单。
+          processing += Number(entry.pendingQty || 0);
         } else {
           message = result.errorMessage || '微信退款失败，已暂停后续订单';
           break;
@@ -214,7 +215,8 @@ Page({
       this.setData({ refundBusy: false, showRefundModal: false, refundOrders: [], refundSku: null });
       await this.loadRecommendations();
     }
-    if (message) wx.showModal({ title: '退款未完成', content: `已成功退 ${completed} 件，剩余 ${Math.max(requested - completed, 0)} 件。${message}`, showCancel: false });
+    if (message) wx.showModal({ title: '退款未完成', content: `已成功退款 ${completed} 件，微信处理中 ${processing} 件，未完成 ${Math.max(requested - completed - processing, 0)} 件。${message}${processing > 0 ? '处理中订单请勿重复提交，系统会自动同步结果。' : ''}`, showCancel: false });
+    else if (processing > 0) wx.showModal({ title: '退款处理中', content: `已成功退款 ${completed} 件，微信处理中 ${processing} 件。后续结果由系统自动同步，请勿重复提交。`, showCancel: false });
     else wx.showToast({ title: `已退 ${completed} 件`, icon: 'success' });
   },
 

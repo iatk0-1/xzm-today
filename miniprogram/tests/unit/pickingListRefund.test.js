@@ -4,11 +4,15 @@ const Module = require('node:module');
 
 let config;
 const calls = [];
+const modals = [];
 let preview;
 let refundResult;
 global.Page = value => { config = value; };
 global.wx = {
-  showModal: options => options.success && options.success({ confirm: true }),
+  showModal: options => {
+    modals.push(options);
+    if (options.success) options.success({ confirm: true });
+  },
   showToast() {},
   showLoading() {},
   hideLoading() {}
@@ -22,7 +26,7 @@ Module._load = function(request, ...args) {
     },
     post: async (url, body) => {
       calls.push({ url, body });
-      return refundResult;
+      return typeof refundResult === 'function' ? refundResult(url, body) : refundResult;
     }
   };
   if (request.endsWith('utils/auth')) return {};
@@ -67,15 +71,30 @@ test('可退数量不足时停止且不提交退款', async () => {
   assert.equal(calls.length, 0);
 });
 
-test('微信返回处理中时不继续提交后续订单', async () => {
+test('微信返回处理中时继续提交后续订单，并区分成功与处理中数量', async () => {
   calls.length = 0;
+  modals.length = 0;
   preview = { availableRefundAmount: '50.00', items: [
     { orderItemId: '200', availableQty: 2, salePrice: '10.00', availableRefundAmount: '20.00' }
   ] };
-  refundResult = { status: 'processing' };
+  refundResult = url => ({ status: url.includes('/100/') ? 'processing' : 'success' });
   const instance = page();
-  await instance.executeRefunds([entry, entry]);
+  await instance.executeRefunds([entry, { ...entry, order: { id: '101', outTradeNo: 'O101' } }]);
+  assert.equal(calls.length, 2);
+  assert.match(modals[0].content, /已成功退款 2 件，微信处理中 2 件/);
+  assert.match(modals[0].content, /请勿重复提交/);
+});
+
+test('退款真实失败时暂停后续订单并报告未完成数量', async () => {
+  calls.length = 0;
+  modals.length = 0;
+  preview = { availableRefundAmount: '50.00', items: [
+    { orderItemId: '200', availableQty: 2, salePrice: '10.00', availableRefundAmount: '20.00' }
+  ] };
+  refundResult = url => ({ status: url.includes('/100/') ? 'failed' : 'success', errorMessage: '退款已关闭' });
+  await page().executeRefunds([entry, { ...entry, order: { id: '101', outTradeNo: 'O101' } }]);
   assert.equal(calls.length, 1);
+  assert.match(modals[0].content, /未完成 4 件.*退款已关闭/);
 });
 
 test('刷新后待报增加也不超过卡片点击时的数量', () => {

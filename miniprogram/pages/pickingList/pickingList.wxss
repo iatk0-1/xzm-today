@@ -247,6 +247,7 @@ page {
 }
 
 .recommend-item {
+  position: relative;
   display: flex;
   align-items: center;
   padding: 16rpx;
@@ -331,15 +332,30 @@ page {
   text-overflow: ellipsis;
 }
 
+.recommend-item.has-refund .item-name,
+.recommend-item.has-refund .item-sku {
+  padding-right: 94rpx;
+  box-sizing: border-box;
+}
+
 .item-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8rpx;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
   margin-top: 4rpx;
+  white-space: nowrap;
+}
+
+.item-stats-row {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 8rpx;
+  white-space: nowrap;
 }
 
 .stat {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 6rpx;
   height: 38rpx;
@@ -368,8 +384,7 @@ page {
 .stat.recommend .stat-value {
   color: #1677c8;
 }
-.item-refund-btn { flex-shrink: 0; align-self: center; width: 88rpx; height: 54rpx; line-height: 52rpx; margin: 0 0 0 10rpx; padding: 0; border: 1rpx solid #d93026; border-radius: 8rpx; background: #fff; color: #d93026; font-size: 22rpx; }
-.item-refund-btn::after { display: none; }
+.item-refund-btn { position: absolute; top: 16rpx; right: 16rpx; z-index: 1; display: flex; align-items: center; justify-content: center; width: 84rpx; height: 46rpx; border: 1rpx solid #d93026; border-radius: 8rpx; background: #fff; color: #d93026; font-size: 21rpx; box-sizing: border-box; }
 
 /* 空状态和加载状态 */
 .empty-state, .loading-state {
