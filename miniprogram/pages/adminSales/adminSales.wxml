@@ -93,10 +93,6 @@
   <!-- 商品列表 -->
   <view class="products-section">
     <view class="section-title">商品销售 ({{total}})</view>
-    <scroll-view class="products-scroll" scroll-y="true" enable-flex="true" enhanced="true"
-      refresher-enabled="true" refresher-triggered="{{isRefreshing}}"
-      refresher-background="#f5f5f5" bindrefresherrefresh="onListPullDownRefresh"
-      bindscrolltolower="onListScrollToLower" lower-threshold="120">
     <view class="product-card" wx:for="{{products}}" wx:key="productId" bindtap="goToDetail" data-item="{{item}}">
       <image class="product-img" src="{{item.productImage || '/images/placeholder.png'}}" mode="aspectFill" />
       <view class="product-info">
@@ -113,8 +109,8 @@
     <view class="empty-state" wx:if="{{loading && products.length === 0}}">正在加载...</view>
     <view class="empty-state" wx:elif="{{loadError}}" bindtap="loadProducts">加载失败，点击重试</view>
     <view class="empty-state" wx:elif="{{products.length === 0}}">暂无销售记录</view>
-    </scroll-view>
   </view>
+  <button class="back-to-top" bindtap="backToTop">回到顶部</button>
   <view class="modal" wx:if="{{showDateModal}}">
     <view class="modal-mask" bindtap="closeDateModal"></view>
     <view class="modal-content">

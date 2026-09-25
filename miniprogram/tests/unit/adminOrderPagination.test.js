@@ -11,6 +11,9 @@ global.wx = {
 
 const requests = [];
 let pages = [];
+const productRequests = [];
+let productPages = [];
+let logisticsAccounts = [];
 const originalLoad = Module._load;
 Module._load = function(request, ...args) {
   if (request.endsWith('utils/api')) {
@@ -20,6 +23,11 @@ Module._load = function(request, ...args) {
           requests.push({ url, params });
           return pages.shift();
         }
+        if (url === '/products/query') {
+          productRequests.push(params);
+          return productPages.shift();
+        }
+        if (url === '/logistics/bound-accounts') return logisticsAccounts;
         return [];
       }
     };
@@ -101,6 +109,38 @@ test('下拉刷新保留筛选条件并从第一页重新查询', { concurrency:
   assert.ok(requests.every(request => request.params.tagId === '5'));
   assert.deepEqual(page.data.orderGroups.map(group => group.orderId), ['30']);
   assert.equal(wx.refreshStopped, true);
+});
+
+test('搜索弹窗触底加载下一页并保留已有商品', { concurrency: false }, async () => {
+  productRequests.length = 0;
+  productPages = [
+    { content: [{ id: 1, name: '羊毛衫' }], hasNext: true },
+    { content: [{ id: 2, name: '羊毛裤' }], hasNext: false }
+  ];
+  const page = createPage();
+  page.data.searchKeyword = '羊毛';
+  await page.searchProducts();
+  await page.loadMoreSearchProducts();
+  await page.loadMoreSearchProducts();
+
+  assert.deepEqual(productRequests.map(params => params.page), [1, 2]);
+  assert.deepEqual(page.data.searchDropdown.map(product => product.id), [1, 2]);
+  assert.equal(page.data.searchHasMore, false);
+});
+
+test('刷新物流账号时保留当前快递，即使账号顺序改变', { concurrency: false }, async () => {
+  const first = { bizId: 'a', deliveryId: 'A', deliveryName: '甲快递' };
+  const chosen = { bizId: 'b', deliveryId: 'B', deliveryName: '乙快递' };
+  const page = createPage();
+  page.data.logisticsAccounts = [first, chosen];
+  page.data.logisticsIndex = 1;
+  logisticsAccounts = [{ ...chosen, quotaNum: 12 }, first];
+
+  await page.loadLogisticsAccounts();
+
+  assert.equal(page.data.logisticsIndex, 0);
+  assert.equal(page.data.logisticsAccounts[page.data.logisticsIndex].bizId, 'b');
+  assert.equal(page.data.logisticsAccounts[page.data.logisticsIndex].quotaNum, 12);
 });
 
 test('发货前校验逐页查询，跨页找到已选订单项', { concurrency: false }, async () => {

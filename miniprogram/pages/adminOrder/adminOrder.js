@@ -9,6 +9,9 @@ Page({
     searchKeyword: '',
     searchDropdown: [],  // 搜索下拉列表
     searchFocus: false,  // 是否聚焦
+    searchPage: 0,
+    searchHasMore: false,
+    searchLoading: false,
     stallList: [],       // 档口列表
     tagList: [],         // 标签列表
     selectedStall: '',   // 当前档口筛选
@@ -80,7 +83,6 @@ Page({
     }
   },
 
-  // 保留页面事件兼容性，实际刷新和分页由列表区块接管。
   onPullDownRefresh: async function() {
     try {
       await this.refreshPendingData();
@@ -95,6 +97,10 @@ Page({
 
   onReachBottom: function() {
     this.onListScrollToLower();
+  },
+
+  backToTop: function() {
+    wx.pageScrollTo({ scrollTop: 0, duration: 300 });
   },
 
   loadMorePendingItems: function() {
@@ -118,9 +124,13 @@ Page({
   loadLogisticsAccounts: async function() {
     try {
       const accounts = await api.get('/logistics/bound-accounts');
+      const selected = this.data.logisticsAccounts[this.data.logisticsIndex];
+      const selectedIndex = selected && Array.isArray(accounts)
+        ? accounts.findIndex(account => account.bizId === selected.bizId && account.deliveryId === selected.deliveryId)
+        : -1;
       this.setData({
         logisticsAccounts: accounts,
-        logisticsIndex: 0
+        logisticsIndex: selectedIndex >= 0 ? selectedIndex : 0
       });
     } catch (err) {
       console.error('加载物流账号失败:', err);
@@ -255,17 +265,19 @@ Page({
 
   selectStall: function(e) {
     const stallId = e.currentTarget.dataset.stall;
+    this.searchRequestVersion = (this.searchRequestVersion || 0) + 1;
     this.setData({
       selectedStall: stallId === 'all' ? '' : stallId,
-      searchDropdown: []
+      searchDropdown: [], searchHasMore: false, searchLoading: false
     }, () => this.reloadPendingItems());
   },
 
   selectTag: function(e) {
     const tagId = e.currentTarget.dataset.tag;
+    this.searchRequestVersion = (this.searchRequestVersion || 0) + 1;
     this.setData({
       selectedTag: tagId === 'all' ? '' : tagId,
-      searchDropdown: []
+      searchDropdown: [], searchHasMore: false, searchLoading: false
     }, () => this.reloadPendingItems());
   },
 
@@ -298,40 +310,44 @@ Page({
   // 输入时搜索（防抖）
   onSearchInput: function(e) {
     const keyword = e.detail.value.trim();
-    this.setData({ searchKeyword: keyword });
+    this.searchRequestVersion = (this.searchRequestVersion || 0) + 1;
+    this.setData({ searchKeyword: keyword, searchDropdown: [], searchPage: 0, searchHasMore: false, searchLoading: false });
+    if (this.searchTimer) clearTimeout(this.searchTimer);
     
-    // 清空下拉列表
-    if (!keyword) {
-      this.setData({ searchDropdown: [] });
-      return;
-    }
+    if (!keyword) return;
     
     // 防抖：500ms 后搜索
-    if (this.searchTimer) {
-      clearTimeout(this.searchTimer);
-    }
-    
     this.searchTimer = setTimeout(() => {
       this.searchProducts();
     }, 500);
   },
 
-  // 搜索商品
-  searchProducts: async function() {
+  searchProducts: function() {
     const keyword = this.data.searchKeyword.trim();
-    if (!keyword) {
-      this.setData({ searchDropdown: [] });
-      return;
-    }
+    if (!keyword) return Promise.resolve();
+    return this.fetchSearchProducts(1);
+  },
 
+  loadMoreSearchProducts: function() {
+    if (this.data.searchLoading || !this.data.searchHasMore) return Promise.resolve();
+    return this.fetchSearchProducts(this.data.searchPage + 1);
+  },
+
+  fetchSearchProducts: async function(page) {
+    const keyword = this.data.searchKeyword.trim();
+    if (!keyword) return;
+    const version = this.searchRequestVersion || 0;
+    const size = 10;
+    this.setData({ searchLoading: true });
     try {
       const res = await api.get('/products/query', {
         keyword,
         ...(this.data.selectedStall ? { stallId: this.data.selectedStall } : {}),
         ...(this.data.selectedTag ? { tagId: this.data.selectedTag } : {}),
-        page: 1,
-        size: 10
+        page,
+        size
       });
+      if (version !== (this.searchRequestVersion || 0)) return;
       const products = (res && res.content) || (Array.isArray(res) ? res : []);
       
       // 获取已选商品 ID 列表
@@ -344,19 +360,25 @@ Page({
         isSelected: selectedIds.includes(p.id)
       }));
       
-      // 更新下拉列表
       this.setData({
-        searchDropdown: markedProducts
+        searchDropdown: page === 1 ? markedProducts : this.data.searchDropdown.concat(markedProducts),
+        searchPage: page,
+        searchHasMore: res.hasNext !== undefined ? res.hasNext : products.length === size
       });
     } catch (err) {
+      if (version !== (this.searchRequestVersion || 0)) return;
       console.error('搜索商品失败:', err);
-      this.setData({ searchDropdown: [] });
+      wx.showToast({ title: '搜索商品失败，请重试', icon: 'none' });
+    } finally {
+      if (version === (this.searchRequestVersion || 0)) this.setData({ searchLoading: false });
     }
   },
 
   // 点击搜索按钮
   onSearchConfirm: function() {
-    this.setData({ searchDropdown: [], searchFocus: false }, () => this.reloadPendingItems());
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchRequestVersion = (this.searchRequestVersion || 0) + 1;
+    this.setData({ searchDropdown: [], searchHasMore: false, searchLoading: false, searchFocus: false }, () => this.reloadPendingItems());
   },
 
   // 批量加载商品 SKU
@@ -396,6 +418,8 @@ Page({
   // 选择商品（添加到已选列表）
   onSelectProduct: function(e) {
     const product = e.currentTarget.dataset.product;
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchRequestVersion = (this.searchRequestVersion || 0) + 1;
     
     // 添加到已选列表
     const selectedProducts = [...this.data.selectedProducts, {
@@ -407,6 +431,8 @@ Page({
     this.setData({
       selectedProducts,
       searchDropdown: [],
+      searchHasMore: false,
+      searchLoading: false,
       searchKeyword: ''
     });
   },

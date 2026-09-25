@@ -263,6 +263,14 @@ Page({
     return this.loadMore();
   },
 
+  onReachBottom() {
+    return this.onListScrollToLower();
+  },
+
+  backToTop() {
+    wx.pageScrollTo({ scrollTop: 0, duration: 300 });
+  },
+
   loadMore() {
     if (this.data.loading || !this.data.hasMore) return;
     const nextPage = this.data.page + 1;

@@ -1,4 +1,6 @@
 {
   "usingComponents": {},
-  "navigationBarTitleText": "销售数据"
+  "navigationBarTitleText": "销售数据",
+  "enablePullDownRefresh": true,
+  "onReachBottomDistance": 120
 }

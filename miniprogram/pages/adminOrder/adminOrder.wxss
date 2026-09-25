@@ -1,30 +1,16 @@
-page { height: 100vh; overflow: hidden; background-color: #f2f2f2; }
+page { background-color: #f2f2f2; }
 .item-image.refunded { opacity: 0.4; }
 .refund-tag { color: #e74c3c; font-size: 22rpx; margin-left: 8rpx; }
 .item-checkbox.disabled { background: #ddd; }
 .container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
   padding: 16rpx;
-  padding-bottom: 120rpx;
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
-.admin-order-sticky-header {
-  position: sticky;
-  top: 0;
-  z-index: 800;
-  width: 100%;
-  margin-top: -16rpx;
-  padding-top: 16rpx;
-  background: #f2f2f2;
-  flex-shrink: 0;
-}
-
+.admin-order-header { width: 100%; min-width: 0; box-sizing: border-box; }
 .search-section { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; width: 100%; max-width: 100%; box-sizing: border-box; }
 .search-box { position: relative; }
-
 .search-input-wrapper { display: flex; gap: 12rpx; margin-bottom: 16rpx; }
 .search-input { flex: 1; height: 72rpx; background: #f5f5f5; border-radius: 8rpx; padding: 0 24rpx; font-size: 28rpx; }
 .search-btn { width: 140rpx; height: 72rpx; line-height: 72rpx; background: #1a1a1a; color: #fff; font-size: 28rpx; border-radius: 8rpx; padding: 0; }
@@ -43,11 +29,9 @@ page { height: 100vh; overflow: hidden; background-color: #f2f2f2; }
 .date-picker { flex: 1; height: 64rpx; background: #f5f5f5; border-radius: 8rpx; display: flex; align-items: center; justify-content: center; font-size: 24rpx; color: #666; }
 .clear-date { width: 40rpx; height: 40rpx; background: #f0f0f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28rpx; color: #999; }
 
-/* 搜索下拉列表 */
 .search-dropdown {
   position: absolute; top: 100rpx; left: 0; right: 0; background: #fff;
-  border-radius: 12rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,.08);
-  max-height: 600rpx; overflow-y: auto; z-index: 100;
+  border-radius: 12rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,.08); z-index: 100;
 }
 .dropdown-item { display: flex; align-items: center; padding: 20rpx; border-bottom: 1rpx solid #f5f5f5; gap: 16rpx; position: relative; }
 .dropdown-item.selected { background: #f9f9f9; }
@@ -61,6 +45,7 @@ page { height: 100vh; overflow: hidden; background-color: #f2f2f2; }
 .dropdown-info { flex: 1; display: flex; flex-direction: column; gap: 6rpx; }
 .dropdown-name { font-size: 28rpx; font-weight: 600; color: #333; }
 .dropdown-sku-count { font-size: 22rpx; color: #999; }
+.dropdown-loading { padding: 20rpx; text-align: center; font-size: 24rpx; color: #999; }
 
 .selected-products { margin-top: 16rpx; }
 .selected-title { font-size: 24rpx; color: #666; margin-bottom: 10rpx; }
@@ -171,8 +156,14 @@ page { height: 100vh; overflow: hidden; background-color: #f2f2f2; }
 .batch-ship-btn { height: 64rpx; line-height: 64rpx; background: #1a1a1a; color: #fff; font-size: 26rpx; border-radius: 8rpx; padding: 0 28rpx; flex-shrink: 0; }
 .batch-ship-btn[disabled] { background: #ccc; }
 
-.order-list-scroll { flex: 1; min-height: 0; width: 100%; box-sizing: border-box; }
+.order-list-container { width: 100%; box-sizing: border-box; }
 .order-list { background: transparent; border-radius: 0; overflow: visible; width: 100%; max-width: 100%; padding-bottom: 16rpx; box-sizing: border-box; }
+.back-to-top {
+  position: fixed; right: 24rpx; bottom: calc(24rpx + env(safe-area-inset-bottom)); z-index: 900;
+  width: 184rpx; height: 72rpx; line-height: 72rpx; margin: 0; padding: 0;
+  background: #1a1a1a; color: #fff; border-radius: 36rpx; font-size: 26rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, .18);
+}
 .order-group { background: #fff; border-radius: 16rpx; overflow: hidden; margin-bottom: 16rpx; width: 100%; max-width: 100%; box-sizing: border-box; }
 .order-group:last-child { margin-bottom: 0; }
 .order-header { display: flex; align-items: flex-start; padding: 20rpx; background: #fafafa; gap: 16rpx; width: 100%; max-width: 100%; box-sizing: border-box; }
