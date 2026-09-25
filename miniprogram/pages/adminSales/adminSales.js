@@ -16,6 +16,9 @@ Page({
     overview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleAmount: 0 },
     overviewLoading: false,
     overviewError: false,
+    filteredOverview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleAmount: 0 },
+    filteredOverviewLoading: false,
+    filteredOverviewError: false,
     // 筛选
     searchInput: '',
     keyword: '',
@@ -43,7 +46,7 @@ Page({
       .then(() => {
         this.loadStallList();
         this.loadTagList();
-        return Promise.all([this.loadProducts(), this.loadOverview()]);
+        return Promise.all([this.reloadFilteredData(), this.loadOverview()]);
       })
       .catch(err => {
         console.error('销售统计页认证恢复失败:', err);
@@ -63,15 +66,23 @@ Page({
     }).catch(err => console.error('加载标签列表失败:', err));
   },
 
-  getProductParams(page) {
-    const { keyword, selectedStall, selectedTag, startDate, endDate, size } = this.data;
-    const params = { page, size };
+  getFilterParams() {
+    const { keyword, selectedStall, selectedTag, startDate, endDate } = this.data;
+    const params = {};
     if (keyword) params.keyword = keyword;
     if (selectedStall !== '') params.stallId = selectedStall;
     if (selectedTag !== '') params.tagId = selectedTag;
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
     return params;
+  },
+
+  getProductParams(page) {
+    return { ...this.getFilterParams(), page, size: this.data.size };
+  },
+
+  reloadFilteredData() {
+    return Promise.all([this.loadProducts(), this.loadFilteredOverview()]);
   },
 
   loadOverview() {
@@ -95,6 +106,27 @@ Page({
       this.setData({ overviewError: true });
     }).finally(() => {
       if (requestId === this.overviewRequestId) this.setData({ overviewLoading: false });
+    });
+  },
+
+  loadFilteredOverview() {
+    const requestId = (this.filteredOverviewRequestId || 0) + 1;
+    this.filteredOverviewRequestId = requestId;
+    this.setData({ filteredOverviewLoading: true, filteredOverviewError: false });
+    return api.get('/admin/sales/query/overview', this.getFilterParams()).then(res => {
+      if (requestId !== this.filteredOverviewRequestId) return;
+      this.setData({ filteredOverview: {
+        soldQty: res.soldQty || 0,
+        totalAmount: res.totalAmount || 0,
+        afterSaleCount: res.afterSaleCount || 0,
+        afterSaleAmount: res.afterSaleAmount || 0
+      } });
+    }).catch(err => {
+      if (requestId !== this.filteredOverviewRequestId) return;
+      console.error('加载筛选销售统计失败:', err);
+      this.setData({ filteredOverviewError: true });
+    }).finally(() => {
+      if (requestId === this.filteredOverviewRequestId) this.setData({ filteredOverviewLoading: false });
     });
   },
 
@@ -133,17 +165,17 @@ Page({
   },
 
   onSearch() {
-    this.setData({ keyword: this.data.searchInput.trim() }, () => this.loadProducts());
+    this.setData({ keyword: this.data.searchInput.trim() }, () => this.reloadFilteredData());
   },
 
   selectStall(e) {
     const stallId = e.currentTarget.dataset.stall;
-    this.setData({ selectedStall: stallId === 'all' ? '' : stallId }, () => this.loadProducts());
+    this.setData({ selectedStall: stallId === 'all' ? '' : stallId }, () => this.reloadFilteredData());
   },
 
   selectTag(e) {
     const tagId = e.currentTarget.dataset.tag;
-    this.setData({ selectedTag: tagId === 'all' ? '' : tagId }, () => this.loadProducts());
+    this.setData({ selectedTag: tagId === 'all' ? '' : tagId }, () => this.reloadFilteredData());
   },
 
   showDateRangeSelector() {
@@ -204,14 +236,14 @@ Page({
       quickSelect: range.quickSelect,
       showDateModal: false
     }, () => {
-      this.loadProducts();
+      this.reloadFilteredData();
       this.loadOverview();
     });
   },
 
   clearDateRange() {
     this.setData({ startDate: '', endDate: '', quickSelect: '' }, () => {
-      this.loadProducts();
+      this.reloadFilteredData();
       this.loadOverview();
     });
   },
@@ -219,7 +251,7 @@ Page({
   onListPullDownRefresh() {
     if (this.data.isRefreshing) return;
     this.setData({ isRefreshing: true });
-    return Promise.all([this.loadProducts(), this.loadOverview(), this.loadStallList(), this.loadTagList()])
+    return Promise.all([this.reloadFilteredData(), this.loadOverview(), this.loadStallList(), this.loadTagList()])
       .finally(() => this.setData({ isRefreshing: false }));
   },
 
