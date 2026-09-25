@@ -363,8 +363,11 @@ Page({
 
   // 弹窗与分流引擎
   openSkuPanel(e) {
+    const product = this.data.product;
+    if (!product.id || product.offSale || product.soldOut) return;
+
     const action = e.currentTarget.dataset.action || 'cart';
-    const { product, uniqueColors, uniqueSizes } = this.data;
+    const { uniqueColors, uniqueSizes } = this.data;
 
     // Build bundle groups from API or from skuMatrix
     var bundleGroups = product.bundleGroups;
@@ -570,6 +573,7 @@ Page({
   confirmSkuAction(e) {
     const action = e.currentTarget.dataset.action || this.data.skuAction;
     const { product, bundleSelections, bundleAllSelected } = this.data;
+    if (!product.id || product.offSale || product.soldOut) return;
 
     // 套装商品：仅收集完整选好的子项
     if (bundleSelections && bundleSelections.length > 0) {

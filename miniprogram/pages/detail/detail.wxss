@@ -197,6 +197,13 @@ page {
   box-sizing: border-box; /* 核心：确保1px的边框被吞进内部，绝不向外扩张挤压 */
 }
 
+.floating-action-bar .action-disabled {
+  background-color: #e5e5e5;
+  color: #999999;
+  border-color: #e5e5e5;
+  box-shadow: none;
+}
+
 /* ================= 页面主体内容 ================= */
 .main-swiper-wrap {
   position: relative;

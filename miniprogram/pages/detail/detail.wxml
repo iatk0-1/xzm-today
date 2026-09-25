@@ -142,8 +142,14 @@
 </view>
 
 <view class="floating-action-bar">
-  <view class="btn-add-half" bindtap="openSkuPanel" data-action="cart">加入购物车</view>
-  <view class="btn-buy-half" bindtap="openSkuPanel" data-action="buy">立即购买</view>
+  <block wx:if="{{product.id && !product.offSale && !product.soldOut}}">
+    <view class="btn-add-half" bindtap="openSkuPanel" data-action="cart">加入购物车</view>
+    <view class="btn-buy-half" bindtap="openSkuPanel" data-action="buy">立即购买</view>
+  </block>
+  <block wx:else>
+    <view class="btn-add-half action-disabled">加入购物车</view>
+    <view class="btn-buy-half action-disabled">立即购买</view>
+  </block>
 </view>
 <view class="sku-mask" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
 
