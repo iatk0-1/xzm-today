@@ -133,6 +133,8 @@
     </view>
   </view>
 
+  <button class="back-to-top" bindtap="backToTop">回到顶部</button>
+
   <view class="modal" wx:if="{{showRefundModal}}">
     <view class="modal-mask" bindtap="closeRefundModal"></view>
     <view class="modal-content refund-modal">

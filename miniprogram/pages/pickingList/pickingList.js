@@ -317,6 +317,10 @@ Page({
     }
   },
 
+  backToTop: function() {
+    wx.pageScrollTo({ scrollTop: 0, duration: 300 });
+  },
+
   // 切换筛选
   setFilter: function(e) {
     const status = e.currentTarget.dataset.status;
