@@ -1,16 +1,22 @@
 <view class="container">
-  <view class="filter-bar">
-    <view class="filter-tabs">
-      <view class="tab-item {{status === 'ordered' ? 'active' : ''}}" bindtap="setStatus" data-status="ordered">已报</view>
-      <view class="tab-item {{status === 'cancelled' ? 'active' : ''}}" bindtap="setStatus" data-status="cancelled">已撤</view>
-      <view class="tab-item {{status === 'all' ? 'active' : ''}}" bindtap="setStatus" data-status="all">全部</view>
-    </view>
-    <view class="sku-filter">
-      <input class="sku-input" placeholder="搜索商品名称" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="search" />
-      <button class="sku-search-btn" bindtap="search">搜索</button>
+  <view class="filter-sticky">
+    <view class="filter-bar">
+      <view class="filter-tabs">
+        <view class="tab-item {{status === 'ordered' ? 'active' : ''}}" bindtap="setStatus" data-status="ordered">已报</view>
+        <view class="tab-item {{status === 'cancelled' ? 'active' : ''}}" bindtap="setStatus" data-status="cancelled">已撤</view>
+        <view class="tab-item {{status === 'all' ? 'active' : ''}}" bindtap="setStatus" data-status="all">全部</view>
+      </view>
+      <view class="sku-filter">
+        <input class="sku-input" placeholder="搜索商品名称" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="search" />
+        <button class="sku-search-btn" bindtap="search">搜索</button>
+      </view>
     </view>
   </view>
 
+  <scroll-view class="batch-scroll" scroll-y="true" enable-flex="true" enhanced="true"
+    refresher-enabled="true" refresher-triggered="{{refreshing}}"
+    refresher-background="#f6f7f9" bindrefresherrefresh="onListPullDownRefresh"
+    bindscrolltolower="onListScrollToLower" lower-threshold="200">
   <view class="batch-list">
     <view class="batch-card" wx:for="{{batchList}}" wx:key="id">
       <view class="batch-header" bindtap="toggleBatch" data-id="{{item.id}}">
@@ -19,26 +25,26 @@
           <view class="batch-meta">{{item.displayTime}} · {{item.itemCount}} 款商品 · 共 {{item.totalQty}} 件</view>
           <view class="batch-meta" wx:if="{{status === 'all'}}">已报 {{item.orderedCount}} 款 · 已撤 {{item.cancelledCount}} 款</view>
         </view>
-        <view class="batch-arrow {{activeBatchId === item.id ? 'expanded' : ''}}">⌄</view>
+        <view class="batch-arrow {{item.expanded ? 'expanded' : ''}}">⌄</view>
       </view>
 
-      <view class="batch-content" wx:if="{{activeBatchId === item.id}}">
-        <view class="action-bar" wx:if="{{status !== 'cancelled' && item.orderedCount > 0 && detailList.length > 0}}">
-          <view class="select-all" bindtap="toggleSelectAll">
-            <view class="checkbox {{allSelected ? 'checked' : ''}}"><text wx:if="{{allSelected}}">✓</text></view>
+      <view class="batch-content" wx:if="{{item.expanded}}">
+        <view class="action-bar" wx:if="{{status !== 'cancelled' && item.orderedCount > 0 && item.detailList.length > 0}}">
+          <view class="select-all" bindtap="toggleSelectAll" data-batch-id="{{item.id}}">
+            <view class="checkbox {{item.allSelected ? 'checked' : ''}}"><text wx:if="{{item.allSelected}}">✓</text></view>
             <text>全选已报</text>
           </view>
-          <view class="selected-info {{selectedCount === 0 ? 'empty' : ''}}">
-            <text>{{selectedCount > 0 ? '已选 ' + selectedCount + ' 个报单' : '未选择报单'}}</text>
+          <view class="selected-info {{item.selectedCount === 0 ? 'empty' : ''}}">
+            <text>{{item.selectedCount > 0 ? '已选 ' + item.selectedCount + ' 个报单' : '未选择报单'}}</text>
           </view>
-          <button class="btn-batch-cancel" bindtap="batchCancel" disabled="{{selectedCount === 0}}">撤销{{selectedCount > 0 ? ' ' + selectedCount : ''}}</button>
+          <button class="btn-batch-cancel" bindtap="batchCancel" data-batch-id="{{item.id}}" disabled="{{item.selectedCount === 0}}">撤销{{item.selectedCount > 0 ? ' ' + item.selectedCount : ''}}</button>
         </view>
 
-        <view class="order-item {{detail.selected ? 'selected' : ''}}" wx:for="{{detailList}}" wx:for-item="detail" wx:for-index="detailIndex" wx:key="id">
+        <view class="order-item {{detail.selected ? 'selected' : ''}}" wx:for="{{item.detailList}}" wx:for-item="detail" wx:for-index="detailIndex" wx:key="id">
           <view class="item-checkbox" wx:if="{{detail.status === 'ordered'}}">
-            <view class="checkbox {{detail.selected ? 'checked' : ''}}" bindtap="toggleSelect" data-index="{{detailIndex}}"><text wx:if="{{detail.selected}}">✓</text></view>
+            <view class="checkbox {{detail.selected ? 'checked' : ''}}" bindtap="toggleSelect" data-batch-id="{{item.id}}" data-index="{{detailIndex}}"><text wx:if="{{detail.selected}}">✓</text></view>
           </view>
-          <image class="order-image" src="{{detail.imageUrl ? detail.imageUrl : detail.defaultImageUrl}}" mode="aspectFill" lazy-load="true" binderror="onImageError" data-index="{{detailIndex}}" />
+          <image class="order-image" src="{{detail.imageUrl ? detail.imageUrl : detail.defaultImageUrl}}" mode="aspectFill" lazy-load="true" binderror="onImageError" data-batch-id="{{item.id}}" data-index="{{detailIndex}}" />
           <view class="order-info">
             <view class="order-main">
               <view class="order-name">{{detail.productName}}</view>
@@ -51,12 +57,13 @@
             <view class="btn-cancel" bindtap="cancelOrder" data-id="{{detail.id}}">撤销</view>
           </view>
         </view>
-        <view class="detail-state" wx:if="{{detailLoading}}">明细加载中...</view>
-        <view class="detail-state" wx:elif="{{detailList.length === 0}}">暂无商品明细</view>
+        <view class="detail-state" wx:if="{{item.detailLoading}}">明细加载中...</view>
+        <view class="detail-state" wx:elif="{{item.detailList.length === 0}}">暂无商品明细</view>
       </view>
     </view>
 
     <view class="empty-state" wx:if="{{batchList.length === 0 && !loading}}">暂无报单批次</view>
-    <view class="loading-state" wx:if="{{loading}}">加载中...</view>
+    <view class="loading-state {{batchList.length > 0 ? 'loading-more' : ''}}" wx:if="{{loading}}">加载中...</view>
   </view>
+  </scroll-view>
 </view>

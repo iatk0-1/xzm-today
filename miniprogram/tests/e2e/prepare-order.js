@@ -194,11 +194,13 @@ async function run() {
       await withTimeout(batchHeaders[index].tap(), 10000, 'open purchase order batch');
       const detail = await waitForPageData(
         purchaseOrdersPage,
-        (data) => !data.detailLoading && String(data.activeBatchId) === String(batch.id),
+        (data) => data.batchList.some(item => String(item.id) === String(batch.id)
+          && item.expanded && !item.detailLoading),
         15000,
         'purchase order batch detail'
       );
-      purchaseRecord = detail.detailList.find(
+      const openedBatch = detail.batchList.find(item => String(item.id) === String(batch.id));
+      purchaseRecord = openedBatch.detailList.find(
         (item) => String(item.skuId) === String(skuId) && item.status === 'ordered'
       );
       if (purchaseRecord) break;

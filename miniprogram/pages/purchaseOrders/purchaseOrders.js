@@ -6,15 +6,10 @@ Page({
   data: {
     status: 'ordered',
     batchList: [],
-    activeBatchId: '',
-    detailList: [],
-    detailLoading: false,
     loading: false,
+    refreshing: false,
     keyword: '',
     appliedKeyword: '',
-    allSelected: false,
-    selectedCount: 0,
-    selectMode: false,
     page: 1,
     pageSize: 20,
     hasMore: true
@@ -24,10 +19,34 @@ Page({
     this.loadBatches();
   },
 
-  // 触底加载更多
-  onReachBottom: function() {
+  onListPullDownRefresh: async function() {
+    if (this.data.refreshing) return;
+    this.setData({ refreshing: true });
+    try {
+      await this.loadBatches();
+    } finally {
+      this.setData({ refreshing: false });
+    }
+  },
+
+  // 列表触底加载更多
+  onListScrollToLower: function() {
     if (!this.data.hasMore || this.data.loading) return;
     this.loadBatches(false);
+  },
+
+  // 新一页渲染后若仍接近底部，继续加载，避免触底事件在上次加载期间被漏掉。
+  checkLoadMoreAtBottom: function(requestId) {
+    if (!this.data.hasMore || this.data.loading || !wx.createSelectorQuery) return;
+    const query = wx.createSelectorQuery();
+    query.select('.batch-list').boundingClientRect();
+    query.select('.batch-scroll').boundingClientRect();
+    query.exec(([listRect, scrollRect]) => {
+      if (requestId !== this._batchRequestId || !this.data.hasMore || this.data.loading) return;
+      if (listRect && scrollRect && listRect.bottom - scrollRect.bottom <= 200) {
+        this.loadBatches(false);
+      }
+    });
   },
 
   // 切换状态
@@ -37,27 +56,27 @@ Page({
     this.setData({
       status,
       keyword: '',
-      appliedKeyword: '',
-      activeBatchId: '',
-      detailList: [],
-      allSelected: false,
-      selectedCount: 0,
-      selectMode: false
+      appliedKeyword: ''
     });
     this.loadBatches();
   },
 
   // 按批次分页，展开时才获取该批次的商品明细。
-  loadBatches: async function(reset = true, reopenId = '') {
+  loadBatches: async function(reset = true, collapseAll = false) {
     if (!reset && (this.data.loading || !this.data.hasMore)) return;
     const requestId = (this._batchRequestId || 0) + 1;
     this._batchRequestId = requestId;
+    const expandedIds = reset
+      ? (collapseAll ? [] : [...new Set([
+          ...(this._preservedExpandedIds || []),
+          ...this.data.batchList.filter(batch => batch.expanded).map(batch => String(batch.id))
+        ])])
+      : (this._preservedExpandedIds || []);
     if (reset) {
-      this._detailRequestId = (this._detailRequestId || 0) + 1;
+      this._preservedExpandedIds = expandedIds;
+      this._detailGeneration = (this._detailGeneration || 0) + 1;
       this.setData({
-        page: 1, batchList: [], hasMore: true,
-        activeBatchId: '', detailList: [], detailLoading: false,
-        allSelected: false, selectedCount: 0, selectMode: false
+        page: 1, batchList: [], hasMore: true
       });
     }
 
@@ -72,7 +91,12 @@ Page({
 
       const batches = (res.content || []).map(item => ({
         ...item,
-        displayTime: this.formatTime(item.createdAt)
+        displayTime: this.formatTime(item.createdAt),
+        expanded: expandedIds.includes(String(item.id)),
+        detailList: [],
+        detailLoading: false,
+        selectedCount: 0,
+        allSelected: false
       }));
       const batchList = reset ? batches : [...this.data.batchList, ...batches];
       this.setData({
@@ -80,10 +104,8 @@ Page({
         page: page + 1,
         hasMore: res.hasNext !== undefined ? res.hasNext : batches.length === pageSize,
         loading: false
-      });
-      if (reopenId && batchList.some(batch => String(batch.id) === String(reopenId))) {
-        this.openBatch(reopenId);
-      }
+      }, () => this.checkLoadMoreAtBottom(requestId));
+      batches.filter(batch => batch.expanded).forEach(batch => this.loadBatchDetails(batch.id));
     } catch (err) {
       if (requestId !== this._batchRequestId) return;
       console.error('加载报单批次失败:', err);
@@ -94,24 +116,27 @@ Page({
 
   toggleBatch: function(e) {
     const batchId = String(e.currentTarget.dataset.id);
-    if (this.data.activeBatchId === batchId) {
-      this._detailRequestId = (this._detailRequestId || 0) + 1;
-      this.setData({
-        activeBatchId: '', detailList: [], detailLoading: false,
-        allSelected: false, selectedCount: 0, selectMode: false
-      });
-      return;
+    const batch = this.data.batchList.find(item => String(item.id) === batchId);
+    if (!batch) return;
+    this._preservedExpandedIds = batch.expanded
+      ? (this._preservedExpandedIds || []).filter(id => id !== batchId)
+      : [...new Set([...(this._preservedExpandedIds || []), batchId])];
+    this.updateBatch(batchId, { expanded: !batch.expanded });
+    if (!batch.expanded && !batch.detailList.length && !batch.detailLoading) {
+      return this.loadBatchDetails(batchId);
     }
-    this.openBatch(batchId);
   },
 
-  openBatch: async function(batchId) {
-    const requestId = (this._detailRequestId || 0) + 1;
-    this._detailRequestId = requestId;
-    this.setData({
-      activeBatchId: String(batchId), detailList: [], detailLoading: true,
-      allSelected: false, selectedCount: 0, selectMode: false
-    });
+  updateBatch: function(batchId, changes) {
+    const batchList = this.data.batchList.map(batch => String(batch.id) === String(batchId)
+      ? { ...batch, ...changes }
+      : batch);
+    this.setData({ batchList });
+  },
+
+  loadBatchDetails: async function(batchId) {
+    const generation = this._detailGeneration || 0;
+    this.updateBatch(batchId, { detailLoading: true });
     try {
       const { status, appliedKeyword } = this.data;
       const query = `status=${encodeURIComponent(status)}`
@@ -119,8 +144,8 @@ Page({
       const items = await api.get(
         `/picking-list/orders/batches/${encodeURIComponent(batchId)}/items?${query}`
       );
-      if (requestId !== this._detailRequestId) return;
-      this.setData({
+      if (generation !== (this._detailGeneration || 0)) return;
+      this.updateBatch(batchId, {
         detailList: (items || []).map(item => ({
           ...item,
           imageUrl: item.imageUrl || '',
@@ -128,13 +153,15 @@ Page({
           displayTime: this.formatTime(item.createdAt),
           selected: false
         })),
-        detailLoading: false
+        detailLoading: false,
+        selectedCount: 0,
+        allSelected: false
       });
     } catch (err) {
-      if (requestId !== this._detailRequestId) return;
+      if (generation !== (this._detailGeneration || 0)) return;
       console.error('加载报单商品明细失败:', err);
       wx.showToast({ title: '明细加载失败', icon: 'none' });
-      this.setData({ detailLoading: false });
+      this.updateBatch(batchId, { detailLoading: false });
     }
   },
 
@@ -144,41 +171,51 @@ Page({
 
   search: function() {
     this.setData({ appliedKeyword: this.data.keyword.trim() });
-    this.loadBatches(true);
+    return this.loadBatches(true, true);
   },
 
   onImageError: function(e) {
+    const batchId = String(e.currentTarget.dataset.batchId);
     const index = e.currentTarget.dataset.index;
-    this.setData({ [`detailList[${index}].imageUrl`]: '/images/default-goods-image.png' });
+    const batch = this.data.batchList.find(item => String(item.id) === batchId);
+    if (!batch || !batch.detailList[index]) return;
+    const detailList = batch.detailList.map((item, itemIndex) => itemIndex === index
+      ? { ...item, imageUrl: '/images/default-goods-image.png' }
+      : item);
+    this.updateBatch(batchId, { detailList });
   },
 
   // 全选/取消全选
-  toggleSelectAll: function() {
-    const newAllSelected = !this.data.allSelected;
-    const detailList = this.data.detailList.map(item => ({
+  toggleSelectAll: function(e) {
+    const batchId = String(e.currentTarget.dataset.batchId);
+    const batch = this.data.batchList.find(item => String(item.id) === batchId);
+    if (!batch) return;
+    const newAllSelected = !batch.allSelected;
+    const detailList = batch.detailList.map(item => ({
       ...item, selected: item.status === 'ordered' && newAllSelected
     }));
     const selectedCount = detailList.filter(item => item.selected).length;
-    this.setData({
+    this.updateBatch(batchId, {
       allSelected: selectedCount > 0 && selectedCount === detailList.filter(item => item.status === 'ordered').length,
       selectedCount,
-      selectMode: selectedCount > 0,
       detailList
     });
   },
 
   // 切换选中状态
   toggleSelect: function(e) {
+    const batchId = String(e.currentTarget.dataset.batchId);
+    const batch = this.data.batchList.find(item => String(item.id) === batchId);
+    if (!batch) return;
     const index = e.currentTarget.dataset.index;
-    const detailList = this.data.detailList.map((item, itemIndex) => itemIndex === index
+    const detailList = batch.detailList.map((item, itemIndex) => itemIndex === index
       ? { ...item, selected: !item.selected }
       : item);
     const selectedCount = detailList.filter(item => item.selected).length;
     const selectableCount = detailList.filter(item => item.status === 'ordered').length;
-    this.setData({
+    this.updateBatch(batchId, {
       allSelected: selectedCount > 0 && selectedCount === selectableCount,
       selectedCount,
-      selectMode: selectedCount > 0,
       detailList
     });
   },
@@ -203,7 +240,7 @@ Page({
             wx.showToast({ title: '撤销成功', icon: 'success' });
 
             // 重新加载列表，确保状态正确
-            this.loadBatches(true, this.data.activeBatchId);
+            this.loadBatches(true);
           } catch (err) {
             wx.hideLoading();
             console.error('撤销失败:', err);
@@ -215,15 +252,17 @@ Page({
   },
 
   // 批量撤销
-  batchCancel: function() {
-    if (this.data.selectedCount === 0) {
+  batchCancel: function(e) {
+    const batchId = String(e.currentTarget.dataset.batchId);
+    const batch = this.data.batchList.find(item => String(item.id) === batchId);
+    if (!batch || batch.selectedCount === 0) {
       wx.showToast({ title: '请选择要撤销的报单', icon: 'none' });
       return;
     }
 
     wx.showModal({
       title: '确认批量撤销',
-      content: `确定要撤销选中的 ${this.data.selectedCount} 个报单记录吗？`,
+      content: `确定要撤销选中的 ${batch.selectedCount} 个报单记录吗？`,
       confirmText: '确认',
       confirmColor: '#f44336',
       success: async (res) => {
@@ -232,7 +271,7 @@ Page({
 
           try {
             // 批量撤销选中的报单
-            const selectedItems = this.data.detailList.filter(i => i.selected);
+            const selectedItems = batch.detailList.filter(i => i.selected);
             const promises = selectedItems.map(item =>
               api.delete(`/picking-list/order/${item.id}`)
             );
@@ -243,7 +282,7 @@ Page({
             wx.showToast({ title: '批量撤销成功', icon: 'success' });
 
             // 重新加载列表
-            this.loadBatches(true, this.data.activeBatchId);
+            this.loadBatches(true);
           } catch (err) {
             wx.hideLoading();
             console.error('批量撤销失败:', err);
