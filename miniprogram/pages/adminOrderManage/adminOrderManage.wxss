@@ -10,6 +10,11 @@ page {
   height: 100vh;
   overflow: hidden;
 }
+.picking-context { display: flex; justify-content: space-between; gap: 12rpx; padding: 20rpx 28rpx; background: #fff; font-size: 24rpx; color: #666; }
+.picking-context-name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #222; font-weight: 600; }
+.picking-relation-qty { display: flex; gap: 12rpx; margin-bottom: 16rpx; font-size: 22rpx; color: #1677c8; }
+.picking-relation-qty text { background: #eaf4ff; padding: 6rpx 12rpx; border-radius: 6rpx; }
+.picking-product-link { align-self: flex-start; margin-top: 8rpx; color: #1677c8; font-size: 22rpx; }
 
 .panel-mask { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .45); }
 .bottom-panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001; max-height: 82vh; background: #fff; display: flex; flex-direction: column; border-radius: 18rpx 18rpx 0 0; }

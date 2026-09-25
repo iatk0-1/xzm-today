@@ -44,6 +44,7 @@
           </view>
         </view>
         <view class="goods-sku" wx:else>{{item.productSpec || '默认规格'}} / {{item.productSize || '均码'}}</view>
+        <view class="goods-product-link" wx:if="{{item.productId}}" bindtap="goToProduct" data-product-id="{{item.productId}}">查看商品详情 ›</view>
         <view class="after-sale-tag" wx:if="{{item.afterSaleSummary && item.afterSaleSummary.hasAfterSale}}">
           {{item.afterSaleSummary.statusText}} {{item.afterSaleSummary.totalQty}}/{{item.totalOrderQty}}
           <text wx:if="{{item.afterSaleSummary.shipmentBlockedQty > 0}}"> · 可发 {{item.afterSaleSummary.canShipQty}}</text>

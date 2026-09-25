@@ -69,9 +69,9 @@
 
   <!-- 推荐列表 -->
   <view class="recommend-list">
-    <view class="recommend-item {{item.selected ? 'selected' : ''}}" wx:for="{{recommendList}}" wx:key="skuId">
+    <view class="recommend-item {{item.selected ? 'selected' : ''}}" wx:for="{{recommendList}}" wx:key="skuId" bindtap="goToRelatedOrders" data-index="{{index}}">
       <view class="item-checkbox" wx:if="{{filterStatus === 'pending' && item.recommendQty > 0}}">
-        <view class="checkbox {{item.selected ? 'checked' : ''}}" bindtap="toggleSelect" data-index="{{index}}">
+        <view class="checkbox {{item.selected ? 'checked' : ''}}" catchtap="toggleSelect" data-index="{{index}}">
           <text wx:if="{{item.selected}}">✓</text>
         </view>
       </view>
@@ -82,6 +82,7 @@
           mode="aspectFill" 
           lazy-load="true"
           binderror="onImageError"
+          catchtap="previewProductImage"
           data-index="{{index}}"
         />
         <view class="item-info">
@@ -111,6 +112,7 @@
           </view>
         </view>
       </view>
+      <button class="item-refund-btn" wx:if="{{filterStatus === 'pending' && item.recommendQty > 0}}" catchtap="openRefundModal" data-index="{{index}}">退款</button>
     </view>
 
     <!-- 空状态 -->
@@ -126,6 +128,41 @@
     <!-- 没有更多 -->
     <view class="loading-state" wx:if="{{recommendList.length > 0 && !loading && !hasMore}}">
       <text>没有更多了</text>
+    </view>
+  </view>
+
+  <view class="modal" wx:if="{{showRefundModal}}">
+    <view class="modal-mask" bindtap="closeRefundModal"></view>
+    <view class="modal-content refund-modal">
+      <view class="modal-title">待报商品退款</view>
+      <view class="refund-modal-subtitle">{{refundSku.productName}} · {{refundSku.spec || '默认规格'}} / {{refundSku.size || '均码'}}</view>
+      <scroll-view class="refund-order-list" scroll-y>
+        <view class="refund-loading" wx:if="{{refundLoading}}">关联订单加载中...</view>
+        <view class="refund-loading" wx:elif="{{refundOrders.length === 0}}">暂无可退的关联订单</view>
+        <view class="refund-order-card" wx:for="{{refundOrders}}" wx:key="id">
+          <view class="refund-order-head">
+            <view class="refund-order-no">订单号：{{item.order.outTradeNo || item.order.id}}</view>
+            <text class="refund-order-status">{{item.order.statusDisplay}}</text>
+          </view>
+          <view class="refund-order-time">{{item.order.createdAt}}</view>
+          <view class="refund-order-recipient" wx:if="{{item.order.recipientName}}">{{item.order.recipientName}} {{item.order.recipientPhone}}</view>
+          <view class="refund-order-goods" wx:for="{{item.relatedGoods}}" wx:for-item="goods" wx:key="orderItemId">
+            <image src="{{goods.productImage || refundSku.imageUrl || refundSku.defaultImageUrl}}" mode="aspectFill" />
+            <view class="refund-order-goods-info">
+              <text>{{goods.productName || refundSku.productName}}</text>
+              <text>{{goods.productSpec || refundSku.spec}} / {{goods.productSize || refundSku.size}} · 待报 {{goods.pendingQty}} 件</text>
+            </view>
+          </view>
+          <view class="refund-order-bottom">
+            <text>该商品待报 {{item.pendingQty}} 件 · 实付款 ¥{{item.order.payAmount}}</text>
+            <button class="refund-order-btn" catchtap="refundRelatedOrder" data-index="{{index}}" disabled="{{refundBusy}}">退款</button>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="refund-modal-footer">
+        <button class="btn-cancel" bindtap="closeRefundModal" disabled="{{refundBusy}}">关闭</button>
+        <button class="btn-all-refund" bindtap="refundAllPending" disabled="{{refundBusy || refundLoading || refundOrders.length === 0}}">全部退款</button>
+      </view>
     </view>
   </view>
 

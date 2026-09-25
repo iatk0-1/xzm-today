@@ -28,6 +28,9 @@ const STATUS_DISPLAY_MAP = {
 
 Page({
   data: {
+    pickingSkuId: '',
+    pickingStatus: '',
+    pickingProductName: '',
     tabs: ['全部', '待付款', '备货中', '待发货', '部分发货', '已发货', '已完成', '已关闭'],
     currentTab: '全部',
     orders: [],
@@ -55,6 +58,16 @@ Page({
 
   onLoad: function(options) {
     this.setData({ today: this.formatDate(new Date()) });
+    if (options.skuId && ['pending', 'ordered', 'all'].includes(options.pickingStatus)) {
+      this.setData({
+        pickingSkuId: options.skuId,
+        pickingStatus: options.pickingStatus,
+        pickingProductName: decodeURIComponent(options.productName || '')
+      });
+      wx.setNavigationBarTitle({ title: '商品关联订单' });
+      this.loadOrders();
+      return;
+    }
     const statusMap = {
       'all': '全部',
       'pay': '待付款',
@@ -202,9 +215,20 @@ Page({
       params.page = targetPage;
       params.size = this.data.size;
 
-      const res = await api.get('/admin/orders-manage/orders/query', params);
+      const res = this.data.pickingSkuId
+        ? await api.get(`/picking-list/skus/${this.data.pickingSkuId}/orders/query`, {
+          status: this.data.pickingStatus, page: targetPage, size: this.data.size
+        })
+        : await api.get('/admin/orders-manage/orders/query', params);
 
-      const items = (res && (res.content || res.items)) || [];
+      const items = ((res && (res.content || res.items)) || []).map(entry => {
+        if (!this.data.pickingSkuId) return entry;
+        return {
+          ...entry.order,
+          pickingPendingQty: entry.pendingQty,
+          pickingOrderedQty: entry.orderedQty
+        };
+      });
       const list = isRefresh ? items : this.data.orders.concat(items);
       // 后端把所有 long 都序列化成字符串，这里统一转成数字再比较
       const rawTotal = res && res.totalElements !== undefined
@@ -305,6 +329,11 @@ Page({
         }
       }
     });
+  },
+
+  goToProduct: function(e) {
+    const id = e.currentTarget.dataset.productId;
+    if (id) wx.navigateTo({ url: `/pages/detail/detail?id=${id}` });
   },
 
   openAdminRemarkEditor: function(e) {

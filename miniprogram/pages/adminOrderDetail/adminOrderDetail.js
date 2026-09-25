@@ -326,6 +326,11 @@ Page({
     });
   },
 
+  goToProduct(e) {
+    const id = e.currentTarget.dataset.productId;
+    if (id) wx.navigateTo({ url: `/pages/detail/detail?id=${id}` });
+  },
+
   openRecipientEditor() {
     const order = this.data.order || {};
     if (!['pending', 'stocking', 'paid'].includes(order.status)) {
