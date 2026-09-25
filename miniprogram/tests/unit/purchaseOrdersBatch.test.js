@@ -32,7 +32,7 @@ function createPage() {
 test('首屏先显示批次，展开后才请求对应商品，并只选择已报单商品', async () => {
   requests.length = 0;
   responses.push(
-    Promise.resolve({ content: [{ id: '9007199254740993', createdAt: '2026-09-25T10:00:00+08:00', itemCount: 2, totalQty: 3, orderedCount: 1, cancelledCount: 1 }], hasNext: false }),
+    Promise.resolve({ content: [{ id: '9007199254740993', batchNo: '202609250001', createdAt: '2026-09-25T10:00:00+08:00', itemCount: 2, totalQty: 3, orderedCount: 1, cancelledCount: 1 }], hasNext: false }),
     Promise.resolve([
       { id: '1', status: 'ordered', qty: 2 },
       { id: '2', status: 'cancelled', qty: 1 }
@@ -42,6 +42,7 @@ test('首屏先显示批次，展开后才请求对应商品，并只选择已�
   await page.loadBatches();
   assert.equal(requests.length, 1);
   assert.equal(page.data.batchList.length, 1);
+  assert.equal(page.data.batchList[0].batchNo, '202609250001');
   assert.equal(page.data.detailList.length, 0);
 
   await page.toggleBatch({ currentTarget: { dataset: { id: '9007199254740993' } } });

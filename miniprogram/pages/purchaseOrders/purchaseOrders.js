@@ -72,7 +72,6 @@ Page({
 
       const batches = (res.content || []).map(item => ({
         ...item,
-        displayCode: String(item.id).slice(-6),
         displayTime: this.formatTime(item.createdAt)
       }));
       const batchList = reset ? batches : [...this.data.batchList, ...batches];

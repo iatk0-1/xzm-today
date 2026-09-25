@@ -15,7 +15,7 @@
     <view class="batch-card" wx:for="{{batchList}}" wx:key="id">
       <view class="batch-header" bindtap="toggleBatch" data-id="{{item.id}}">
         <view class="batch-info">
-          <view class="batch-title">报单批次 #{{item.displayCode}}</view>
+          <view class="batch-title">报单批次 #{{item.batchNo}}</view>
           <view class="batch-meta">{{item.displayTime}} · {{item.itemCount}} 款商品 · 共 {{item.totalQty}} 件</view>
           <view class="batch-meta" wx:if="{{status === 'all'}}">已报 {{item.orderedCount}} 款 · 已撤 {{item.cancelledCount}} 款</view>
         </view>
