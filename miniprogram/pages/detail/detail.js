@@ -180,12 +180,11 @@ Page({
 
       this.checkSkuMatch();
       
-      // 🚀 智能定位第一个有内容的标签
+      // 定位第一个有内容的详情标签，提示内容在标签下方单独展示
       let firstTab = '';
       if (product.description) firstTab = 'desc';
       else if (product.fabricCare) firstTab = 'fabric';
       else if (product.sizeChartTip) firstTab = 'size';
-      else if (product.warmTips) firstTab = 'tips';
       this.setData({ currentAuraTab: firstTab });
 
       // 获取关联商品（使用手动关联的 ID）
