@@ -2,8 +2,28 @@
   <!-- 筛选区 -->
   <view class="filter-bar">
     <view class="search-row">
-      <input class="search-input" placeholder="搜索商品名称..." value="{{keyword}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearch" />
+      <input class="search-input" placeholder="搜索商品名称..." value="{{searchInput}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearch" />
       <view class="search-btn" bindtap="onSearch">搜索</view>
+    </view>
+    <view class="filter-section">
+      <view class="filter-row">
+        <text class="filter-label">档口</text>
+        <view class="filter-fixed-option filter-tag {{selectedStall === '' ? 'active' : ''}}" bindtap="selectStall" data-stall="all">全部</view>
+        <scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+          <view class="filter-options">
+            <view class="filter-tag {{selectedStall === item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}">{{item.name}}</view>
+          </view>
+        </scroll-view>
+      </view>
+      <view class="filter-row">
+        <text class="filter-label">标签</text>
+        <view class="filter-fixed-option filter-tag {{selectedTag === '' ? 'active' : ''}}" bindtap="selectTag" data-tag="all">全部</view>
+        <scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+          <view class="filter-options">
+            <view class="filter-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}">{{item.name}}</view>
+          </view>
+        </scroll-view>
+      </view>
     </view>
     <view class="date-row">
       <picker mode="date" value="{{startDate}}" end="{{endDate || today}}" bindchange="onStartDateChange">
@@ -20,6 +40,10 @@
   <!-- 商品列表 -->
   <view class="products-section">
     <view class="section-title">商品销售 ({{total}})</view>
+    <scroll-view class="products-scroll" scroll-y="true" enable-flex="true" enhanced="true"
+      refresher-enabled="true" refresher-triggered="{{isRefreshing}}"
+      refresher-background="#f5f5f5" bindrefresherrefresh="onListPullDownRefresh"
+      bindscrolltolower="onListScrollToLower" lower-threshold="120">
     <view class="product-card" wx:for="{{products}}" wx:key="productId" bindtap="goToDetail" data-item="{{item}}">
       <image class="product-img" src="{{item.productImage || '/images/placeholder.png'}}" mode="aspectFill" />
       <view class="product-info">
@@ -31,7 +55,11 @@
       </view>
       <view class="product-arrow">></view>
     </view>
-    <view class="load-more" wx:if="{{products.length < total}}" bindtap="loadMore">加载更多</view>
-    <view class="empty-state" wx:if="{{products.length === 0}}">暂无销售记录</view>
+    <view class="load-more" wx:if="{{loading && products.length > 0}}">正在加载更多...</view>
+    <view class="load-more" wx:elif="{{hasMore}}" bindtap="loadMore">加载更多</view>
+    <view class="empty-state" wx:if="{{loading && products.length === 0}}">正在加载...</view>
+    <view class="empty-state" wx:elif="{{loadError}}" bindtap="loadProducts">加载失败，点击重试</view>
+    <view class="empty-state" wx:elif="{{products.length === 0}}">暂无销售记录</view>
+    </scroll-view>
   </view>
 </view>
