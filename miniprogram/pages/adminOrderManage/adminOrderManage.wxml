@@ -107,6 +107,15 @@
               <text wx:if="{{goods.afterSaleSummary.shipmentBlockedQty > 0}}">可发 {{goods.afterSaleSummary.canShipQty}}</text>
             </view>
 
+            <view class="shipment-section" wx:if="{{item.status === 'stocking'}}">
+              <view class="shipment-divider"></view>
+              <view class="shipment-tags">
+                <text class="shipment-tag tag-total">全部 {{goods.qty}}</text>
+                <text class="shipment-tag tag-pending">待报 {{goods.pendingQty || 0}}</text>
+                <text class="shipment-tag tag-ordered">已报 {{goods.orderedQty || 0}}</text>
+              </view>
+            </view>
+
             <!-- 发货数量信息 - 部分发货时显示 -->
             <view class="shipment-section" wx:if="{{item.status === 'partial_shipped'}}">
               <view class="shipment-divider"></view>

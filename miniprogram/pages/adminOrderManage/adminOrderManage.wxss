@@ -345,6 +345,7 @@ page {
 .shipment-tags { display: flex; align-items: center; gap: 8rpx; flex-wrap: wrap; }
 .shipment-tag { font-size: 20rpx; padding: 4rpx 10rpx; border-radius: 4rpx; font-family: inherit; }
 .tag-total { color: #999; background: #f5f5f5; }
+.tag-ordered { color: #1677c8; background: #eaf4ff; }
 .tag-shipped { color: #43a047; background: #e8f5e9; }
 .tag-pending { color: #ef6c00; background: #fff3e0; }
 .shipped-done-badge { display: inline-flex; align-items: center; font-size: 20rpx; color: #fff; background: #43a047; padding: 4rpx 12rpx; border-radius: 4rpx; }
