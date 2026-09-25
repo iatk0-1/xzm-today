@@ -216,12 +216,12 @@ Page({
   selectDateRange: function(e) {
     const type = e.currentTarget.dataset.type;
     const today = new Date();
-    let startDate;
+    let startDate = today;
     if (type === '7days') {
       startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
     } else if (type === '30days') {
       startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29);
-    } else {
+    } else if (type === 'month') {
       startDate = new Date(today.getFullYear(), today.getMonth(), 1);
     }
     this.setData({
@@ -1200,10 +1200,61 @@ Page({
     catch (err) { return null; }
   },
 
+  isBatchTaskRunning: function(task) {
+    return (task && task.groups || []).some(group =>
+      ['WAITING', 'PROCESSING', 'PROCESSING_WECHAT'].includes(group.status));
+  },
+
+  retainRetryableBatchItems: function(task, saved) {
+    const taskItems = saved && saved.items || [];
+    const taskKeys = new Set(taskItems.map(item => this.getPendingItemKey(item)));
+    if (taskKeys.size === 0) return;
+    const retryableOrderIds = new Set((task && task.groups || [])
+      .filter(group => group.status === 'FAILED')
+      .flatMap(group => (group.orderIds || []).map(String)));
+    const retryableKeys = new Set(taskItems
+      .filter(item => retryableOrderIds.has(String(item.orderId)))
+      .map(item => this.getPendingItemKey(item)));
+    const removedKeys = new Set([...taskKeys].filter(key => !retryableKeys.has(key)));
+    if (removedKeys.size === 0) return;
+
+    const orderGroups = this.data.orderGroups.map(group => {
+      const items = group.items.map(item =>
+        removedKeys.has(this.getPendingItemKey(item)) ? { ...item, selected: false } : item);
+      const selectableItems = items.filter(item => item.canShip);
+      return {
+        ...group,
+        items,
+        selected: selectableItems.length > 0 && selectableItems.every(item => item.selected)
+      };
+    });
+    const pendingShipItems = this.data.pendingShipItems.filter(item =>
+      !removedKeys.has(this.getPendingItemKey(item)));
+    this.setData({
+      orderGroups,
+      selectedItems: this.collectSelectedItems(orderGroups),
+      allSelected: this.isAllGroupsSelected(orderGroups)
+    });
+    this.updatePendingShipSummary(pendingShipItems);
+  },
+
   createBatchTask: async function(account) {
     const existing = this.getSavedBatchTask();
     if (existing && existing.confirmed) {
-      throw new Error('上次发货任务仍在，请先查看进度');
+      let previousTask;
+      try {
+        previousTask = existing.taskId
+          ? await api.get(`/shipments/batch-tasks/${existing.taskId}`)
+          : await api.get(`/shipments/batch-tasks/by-request/${existing.requestId}`);
+      } catch (err) {
+        throw new Error('上次发货任务状态暂不可查，请先查看进度');
+      }
+      if (this.isBatchTaskRunning(previousTask)) {
+        throw new Error('上次发货任务仍在处理中，请先查看进度');
+      }
+      this.retainRetryableBatchItems(previousTask, existing);
+      wx.removeStorageSync(BATCH_TASK_STORAGE);
+      this.setData({ batchTask: null, batchProgress: null, showBatchProgress: false });
     }
     const requestId = `admin_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const saved = { requestId, confirmed: false, items: this.data.pendingShipItems };
@@ -1254,7 +1305,7 @@ Page({
   updateBatchProgress: function(task) {
     const labels = {
       WAITING: '等待处理', PROCESSING: '正在处理', PROCESSING_WECHAT: '正在补报微信', SUCCESS: '发货完成',
-      FAILED: '发货失败', BLOCKED: '商品被其他任务占用', SHIPMENT_CREATED_WECHAT_FAILED: '发货单已创建，微信上报失败',
+      FAILED: '发货失败', BLOCKED: '商品被其他任务占用', SHIPMENT_CREATED_WECHAT_FAILED: '发货完成，微信同步失败',
       NEEDS_REVIEW: '需人工核查'
     };
     const stageLabels = {
@@ -1271,18 +1322,18 @@ Page({
       orderText: (group.orderIds || []).join('、'),
       canReview: group.status === 'NEEDS_REVIEW' && !group.shipmentId,
       canReviewWechat: group.status === 'NEEDS_REVIEW' && !!group.shipmentId,
-      canRetryWechat: group.status === 'SHIPMENT_CREATED_WECHAT_FAILED'
+      // 快递单已创建时，微信同步失败只记结果，不再引导重复补报。
+      canRetryWechat: false
     }));
     this.setData({
       batchTask: task,
       batchProgress: {
         total: groups.length,
         completed: groups.filter(group => !['WAITING', 'PROCESSING', 'PROCESSING_WECHAT'].includes(group.status)).length,
-        success: groups.filter(group => group.status === 'SUCCESS').length,
-        failed: groups.filter(group => ['FAILED', 'BLOCKED', 'SHIPMENT_CREATED_WECHAT_FAILED', 'NEEDS_REVIEW'].includes(group.status)).length,
+        success: groups.filter(group => ['SUCCESS', 'SHIPMENT_CREATED_WECHAT_FAILED'].includes(group.status)).length,
+        failed: groups.filter(group => ['FAILED', 'BLOCKED', 'NEEDS_REVIEW'].includes(group.status)).length,
         canRetry: groups.some(group => ['FAILED', 'BLOCKED'].includes(group.status)),
-        hasPendingReview: groups.some(group =>
-          ['NEEDS_REVIEW', 'SHIPMENT_CREATED_WECHAT_FAILED'].includes(group.status)),
+        hasPendingReview: groups.some(group => group.status === 'NEEDS_REVIEW'),
         groups
       }
     });
@@ -1434,10 +1485,7 @@ Page({
   finishBatchTask: function() {
     const progress = this.data.batchProgress;
     if (!progress || progress.completed !== progress.total) return;
-    if (progress.hasPendingReview) {
-      wx.showToast({ title: '仍有待核查或微信待补报的发货组', icon: 'none' });
-      return;
-    }
+    this.retainRetryableBatchItems(this.data.batchTask || progress, this.getSavedBatchTask());
     wx.removeStorageSync(BATCH_TASK_STORAGE);
     this.setData({ showBatchProgress: false, batchTask: null, batchProgress: null });
   },

@@ -91,27 +91,75 @@ test('微信补报处理中不会算完成，也不会清除任务', { concurren
   delete storage.admin_order_active_batch_task;
 });
 
-test('待核查任务不能结束，任务 ID 留给恢复', { concurrency: false }, () => {
+test('待核查任务可以结束并保留异常记录，不再阻塞新任务', { concurrency: false }, () => {
   const p = page();
   storage.admin_order_active_batch_task = { taskId: '99', confirmed: true, items: [] };
   p.updateBatchProgress({ id: '99', groups: [
     { id: 'a', orderIds: ['1'], status: 'NEEDS_REVIEW', stage: 'WAYBILL_API_CALL' }
   ] });
+  const progress = p.data.batchProgress;
   p.finishBatchTask();
-  assert.equal(storage.admin_order_active_batch_task.taskId, '99');
-  assert.equal(p.data.batchProgress.hasPendingReview, true);
-  delete storage.admin_order_active_batch_task;
+  assert.equal(storage.admin_order_active_batch_task, undefined);
+  assert.equal(progress.hasPendingReview, true);
 });
 
-test('微信上报失败时不能结束，保留补报入口', { concurrency: false }, () => {
+test('面单已创建但微信同步失败时按发货完成处理', { concurrency: false }, () => {
   const p = page();
   storage.admin_order_active_batch_task = { taskId: '99', confirmed: true, items: [] };
   p.updateBatchProgress({ id: '99', groups: [
     { id: 'a', orderIds: ['1'], status: 'SHIPMENT_CREATED_WECHAT_FAILED', shipmentId: '500' }
   ] });
+  const progress = p.data.batchProgress;
   p.finishBatchTask();
-  assert.equal(storage.admin_order_active_batch_task.taskId, '99');
-  assert.equal(p.data.batchProgress.groups[0].canRetryWechat, true);
+  assert.equal(storage.admin_order_active_batch_task, undefined);
+  assert.equal(progress.success, 1);
+  assert.equal(progress.failed, 0);
+  assert.equal(progress.hasPendingReview, false);
+  assert.equal(progress.groups[0].statusText, '发货完成，微信同步失败');
+  assert.equal(progress.groups[0].canRetryWechat, false);
+});
+
+test('结束任务时只保留明确未创建面单的失败订单用于重发', { concurrency: false }, () => {
+  const p = page();
+  const failedItem = { orderId: '1', orderItemId: '11', skuId: '111', shipQty: 1 };
+  const reviewItem = { orderId: '2', orderItemId: '22', skuId: '222', shipQty: 1 };
+  p.data.pendingShipItems = [failedItem, reviewItem];
+  storage.admin_order_active_batch_task = {
+    taskId: '99', confirmed: true, items: [failedItem, reviewItem]
+  };
+  p.updatePendingShipSummary(p.data.pendingShipItems);
+  p.updateBatchProgress({ id: '99', groups: [
+    { id: 'a', orderIds: ['1'], status: 'FAILED' },
+    { id: 'b', orderIds: ['2'], status: 'NEEDS_REVIEW' }
+  ] });
+
+  p.finishBatchTask();
+
+  assert.deepEqual(p.data.pendingShipItems.map(item => item.orderId), ['1']);
+  assert.equal(storage.admin_order_active_batch_task, undefined);
+});
+
+test('上一批只有终态异常时，创建新任务可以重新带上失败订单', { concurrency: false }, async () => {
+  calls.length = 0;
+  const p = page();
+  const failedItem = { orderId: '1', orderItemId: '11', skuId: '111', shipQty: 1 };
+  const newItem = { orderId: '2', orderItemId: '22', skuId: '222', shipQty: 1 };
+  p.data.pendingShipItems = [failedItem, newItem];
+  storage.admin_order_active_batch_task = {
+    taskId: '99', confirmed: true, items: [failedItem]
+  };
+  getHandler = async () => ({ id: '99', groups: [
+    { id: 'g1', orderIds: ['1'], status: 'FAILED' }
+  ] });
+  postHandler = async () => ({ id: '100', groups: [
+    { id: 'g2', orderIds: ['1', '2'], status: 'WAITING' }
+  ] });
+
+  const task = await p.createBatchTask({ bizId: 'biz', deliveryId: 'ZTO' });
+
+  assert.equal(task.id, '100');
+  assert.deepEqual(storage.admin_order_active_batch_task.items.map(item => item.orderId), ['1', '2']);
+  assert.deepEqual(calls.map(call => call[0]), ['GET', 'POST']);
   delete storage.admin_order_active_batch_task;
 });
 

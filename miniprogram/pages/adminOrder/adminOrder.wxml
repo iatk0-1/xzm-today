@@ -267,6 +267,7 @@
     <view class="modal-content">
       <view class="modal-title">选择下单时间范围</view>
       <view class="quick-options">
+        <view class="quick-option {{editingDateRange.quickSelect === '1day' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="1day">最近 1 天</view>
         <view class="quick-option {{editingDateRange.quickSelect === '7days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="7days">最近 7 天</view>
         <view class="quick-option {{editingDateRange.quickSelect === '30days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="30days">最近 30 天</view>
         <view class="quick-option {{editingDateRange.quickSelect === 'month' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="month">本月</view>
@@ -375,7 +376,7 @@
       <view class="modal-footer">
         <button class="modal-cancel" bindtap="closeBatchProgress">关闭</button>
         <button class="modal-confirm" wx:if="{{batchProgress.canRetry}}" bindtap="retryBatchFailedGroups">重试失败组</button>
-        <button class="modal-confirm" wx:if="{{batchProgress.completed === batchProgress.total && !batchProgress.hasPendingReview}}" bindtap="finishBatchTask">结束任务</button>
+        <button class="modal-confirm" wx:if="{{batchProgress.completed === batchProgress.total}}" bindtap="finishBatchTask">结束任务（保留异常）</button>
       </view>
     </view>
   </view>
