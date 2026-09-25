@@ -170,6 +170,7 @@
 
           <!-- 待发货 -->
           <view class="btn-ghost" wx:if="{{item.status === 'paid'}}" catchtap="cancelOrder" data-id="{{item.id}}">关闭订单</view>
+          <view class="btn-ghost" wx:if="{{item.status === 'cancelled'}}" catchtap="checkCancelRefund" data-id="{{item.id}}">查询关闭退款</view>
           <view class="btn-solid" wx:if="{{item.status === 'paid'}}" catchtap="goToShip" data-order="{{item}}">去发货</view>
 
           <!-- 已发货 -->
@@ -229,6 +230,22 @@
         <button class="modal-cancel" bindtap="closeDateModal">取消</button>
         <button class="modal-confirm" bindtap="confirmDateRange">确定</button>
       </view>
+    </view>
+  </view>
+</view>
+
+<view class="modal" wx:if="{{cancelOrderId}}">
+  <view class="modal-mask" bindtap="closeCancelOrderPanel"></view>
+  <view class="modal-content">
+    <view class="modal-title">关闭订单</view>
+    <view class="purchase-return-tip">{{cancelOrderPaid ? '已付款订单将发起退款，退款成功后再处理报单占用。' : '待付款订单关闭后会释放预占库存。'}}</view>
+    <checkbox-group wx:if="{{cancelOrderPaid}}" bindchange="changeCancelReturnPurchaseOrder" class="purchase-return-choice">
+      <label><checkbox value="return" checked="{{returnPurchaseOrder}}" />是否返回报单（默认不返回）</label>
+    </checkbox-group>
+    <view class="purchase-return-tip" wx:if="{{cancelOrderPaid}}">勾选后退款成功会将原占用重新分配；不勾选则作废对应已报件数。</view>
+    <view class="modal-footer">
+      <button class="modal-cancel" bindtap="closeCancelOrderPanel">取消</button>
+      <button class="modal-confirm" bindtap="confirmCancelOrder">确认关闭</button>
     </view>
   </view>
 </view>

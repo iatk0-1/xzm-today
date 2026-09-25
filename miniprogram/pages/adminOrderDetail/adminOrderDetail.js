@@ -14,6 +14,7 @@ Page({
     refundItems: [],
     refundReason: '管理员主动退款',
     refundNote: '',
+    returnPurchaseOrder: false,
     showRefundPanel: false,
     partialUnbindShipment: null,
     partialUnbindItems: [],
@@ -288,6 +289,7 @@ Page({
         refundItems,
         refundReason: '管理员主动退款',
         refundNote: '',
+        returnPurchaseOrder: false,
         showRefundPanel: true
       });
     } catch (err) {
@@ -303,6 +305,7 @@ Page({
       refundItems: [],
       refundReason: '管理员主动退款',
       refundNote: '',
+      returnPurchaseOrder: false,
       showRefundPanel: false
     });
   },
@@ -418,6 +421,10 @@ Page({
     this.setData({ refundNote: e.detail.value });
   },
 
+  changeReturnPurchaseOrder(e) {
+    this.setData({ returnPurchaseOrder: e.detail.value.includes('return') });
+  },
+
   async submitAdminRefund() {
     const items = this.data.refundItems
       .map(item => ({
@@ -448,6 +455,7 @@ Page({
       const res = await api.post(`/admin/orders-manage/orders/${this.data.orderId}/refunds`, {
         reason: this.data.refundReason,
         note: this.data.refundNote,
+        returnPurchaseOrder: this.data.returnPurchaseOrder,
         items: items.map(item => ({
           orderItemId: item.orderItemId,
           qty: item.qty,

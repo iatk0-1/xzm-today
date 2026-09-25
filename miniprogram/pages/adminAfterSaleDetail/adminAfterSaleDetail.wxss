@@ -945,3 +945,4 @@
   font-size: 28rpx;
   color: #666;
 }
+.purchase-return-choice { padding: 18rpx 28rpx; font-size: 25rpx; color: #333; }

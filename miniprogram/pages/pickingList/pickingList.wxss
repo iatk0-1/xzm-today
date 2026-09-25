@@ -628,3 +628,5 @@ page {
   background: #1f2933;
   color: #fff;
 }
+.refund-return-choice { flex-basis: 100%; font-size: 22rpx; }
+.refund-modal-footer { flex-wrap: wrap; }

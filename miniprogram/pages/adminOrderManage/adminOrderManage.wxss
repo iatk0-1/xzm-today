@@ -428,3 +428,5 @@ page {
 /* 没有更多 */
 .no-more { text-align: center; padding: 32rpx 0; }
 .no-more text { font-size: 24rpx; color: #ccc; }
+.purchase-return-tip { padding: 20rpx 28rpx 8rpx; color: #666; font-size: 24rpx; line-height: 1.5; }
+.purchase-return-choice { padding: 18rpx 28rpx 28rpx; font-size: 26rpx; }

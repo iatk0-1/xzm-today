@@ -315,3 +315,4 @@ page { background-color: #f2f2f2; }
 .admin-remark-actions { padding: 16rpx 28rpx calc(20rpx + env(safe-area-inset-bottom)); }
 .admin-remark-actions .panel-btn { height: 72rpx; line-height: 72rpx; }
 .goods-product-link { display: inline-block; align-self: flex-start; margin-top: 8rpx; color: #1677c8; font-size: 22rpx; }
+.purchase-return-choice { padding: 18rpx 4rpx; font-size: 25rpx; color: #333; }

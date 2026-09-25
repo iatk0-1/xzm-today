@@ -212,6 +212,10 @@
       <text class="panel-label">备注</text>
       <input class="panel-text-input" placeholder="可选" value="{{refundNote}}" bindinput="onRefundNoteInput" />
     </view>
+    <checkbox-group bindchange="changeReturnPurchaseOrder" class="purchase-return-choice">
+      <label><checkbox value="return" checked="{{returnPurchaseOrder}}" />是否返回报单（默认不返回）</label>
+    </checkbox-group>
+    <view class="purchase-return-choice">勾选后退款成功会重新分配；不勾选则作废对应已报件数。</view>
   </scroll-view>
   <view class="panel-actions">
     <button class="panel-btn secondary" bindtap="closeRefundPanel">取消</button>

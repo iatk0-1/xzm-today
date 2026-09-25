@@ -164,6 +164,10 @@
         </view>
       </scroll-view>
       <view class="refund-modal-footer">
+        <checkbox-group bindchange="changeRefundReturnPurchaseOrder" class="refund-return-choice">
+          <label><checkbox value="return" checked="{{refundReturnPurchaseOrder}}" />是否返回报单（默认不返回）</label>
+        </checkbox-group>
+        <view class="refund-return-choice">勾选后退款成功会重新分配；不勾选则作废对应已报件数。</view>
         <button class="btn-cancel" bindtap="closeRefundModal" disabled="{{refundBusy}}">关闭</button>
         <button class="btn-all-refund" bindtap="refundAllPending" disabled="{{refundBusy || refundLoading || refundOrders.length === 0}}">全部退款</button>
       </view>

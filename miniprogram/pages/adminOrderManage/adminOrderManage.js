@@ -51,9 +51,12 @@ Page({
       quickSelect: ''
     },
     today: '',
-    showDateModal: false
-    ,adminRemarkPanel: null
-    ,adminRemarkValue: ''
+    showDateModal: false,
+    cancelOrderId: null,
+    cancelOrderPaid: false,
+    returnPurchaseOrder: false,
+    adminRemarkPanel: null,
+    adminRemarkValue: ''
   },
 
   onLoad: function(options) {
@@ -411,26 +414,70 @@ Page({
   // 关闭订单
   cancelOrder: async function(e) {
     const orderId = e.currentTarget.dataset.id;
+    const order = this.data.orders.find(item => String(item.id) === String(orderId));
+    this.setData({ cancelOrderId: orderId,
+      cancelOrderPaid: order && order.status !== 'pending', returnPurchaseOrder: false });
+  },
 
-    wx.showModal({
-      title: '关闭订单',
-      content: '确定要关闭该订单吗？待付款订单会释放库存，已付款订单会发起退款',
-      confirmColor: '#f44336',
-      success: async (res) => {
-        if (res.confirm) {
-          wx.showLoading({ title: '处理中...' });
-          try {
-            await api.post(`/admin/orders-manage/orders/${orderId}/cancel`);
-            wx.hideLoading();
-            wx.showToast({ title: '订单已关闭', icon: 'success' });
-            this.loadOrders();
-          } catch (err) {
-            wx.hideLoading();
-            wx.showToast({ title: '操作失败', icon: 'none' });
-          }
+  closeCancelOrderPanel: function() {
+    this.setData({ cancelOrderId: null, cancelOrderPaid: false, returnPurchaseOrder: false });
+  },
+
+  changeCancelReturnPurchaseOrder: function(e) {
+    this.setData({ returnPurchaseOrder: e.detail.value.includes('return') });
+  },
+
+  confirmCancelOrder: async function() {
+    const orderId = this.data.cancelOrderId;
+    if (!orderId) return;
+    wx.showLoading({ title: '处理中...' });
+    try {
+      await api.post(`/admin/orders-manage/orders/${orderId}/cancel`, {
+        returnPurchaseOrder: this.data.returnPurchaseOrder
+      });
+      wx.showToast({ title: '订单已关闭', icon: 'success' });
+      this.closeCancelOrderPanel();
+      this.loadOrders();
+    } catch (err) {
+      wx.showToast({ title: err?.message || '操作失败', icon: 'none' });
+    } finally {
+      wx.hideLoading();
+    }
+  },
+
+  checkCancelRefund: async function(e) {
+    const orderId = e.currentTarget.dataset.id;
+    try {
+      const result = await api.get(`/admin/orders-manage/orders/${orderId}/cancel-refund/status`);
+      if (result.status === 'failed') {
+        if (!result.retryable) {
+          wx.showModal({ title: '关闭订单退款异常',
+            content: '微信退款状态异常，请先核实原退款单，避免重复退款。', showCancel: false });
+          return;
         }
+        wx.showModal({
+          title: '关闭订单退款失败',
+          content: '可按原来的“是否返回报单”选择重试退款。',
+          confirmText: '重试退款',
+          success: async res => {
+            if (!res.confirm) return;
+            try {
+              await api.post(`/admin/orders-manage/orders/${orderId}/cancel-refund/retry`);
+              wx.showToast({ title: '已提交重试', icon: 'success' });
+            } catch (err) {
+              wx.showToast({ title: err?.message || '重试失败', icon: 'none' });
+            }
+          }
+        });
+      } else {
+        const content = result.status === 'success' ? '退款已成功，报单占用已结算'
+          : result.status === 'processing' ? '微信退款处理中，报单占用暂时锁定'
+            : '这笔订单没有管理员关闭退款记录';
+        wx.showModal({ title: '关闭退款状态', content, showCancel: false });
       }
-    });
+    } catch (err) {
+      wx.showToast({ title: err?.message || '查询失败', icon: 'none' });
+    }
   },
 
   // 格式化日期

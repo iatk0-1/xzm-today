@@ -28,7 +28,8 @@ Page({
     refundSku: null,
     refundOrders: [],
     refundLoading: false,
-    refundBusy: false
+    refundBusy: false,
+    refundReturnPurchaseOrder: false
   },
 
   onLoad: function() {
@@ -62,7 +63,8 @@ Page({
   async openRefundModal(e) {
     const item = this.data.recommendList[Number(e.currentTarget.dataset.index)];
     if (!item || Number(item.recommendQty) <= 0) return;
-    this.setData({ showRefundModal: true, refundSku: item, refundOrders: [], refundLoading: true });
+    this.setData({ showRefundModal: true, refundSku: item, refundOrders: [], refundLoading: true,
+      refundReturnPurchaseOrder: false });
     try {
       const orders = await this.fetchAllRelatedOrders(item.skuId);
       this.setData({ refundOrders: orders, refundLoading: false });
@@ -98,6 +100,10 @@ Page({
     this.setData({ showRefundModal: false, refundSku: null, refundOrders: [] });
   },
 
+  changeRefundReturnPurchaseOrder: function(e) {
+    this.setData({ refundReturnPurchaseOrder: e.detail.value.includes('return') });
+  },
+
   confirmRefund: function(title, content) {
     return new Promise(resolve => wx.showModal({
       title, content, confirmText: '确认退款', confirmColor: '#d93026',
@@ -131,6 +137,7 @@ Page({
     return api.post(`/admin/orders-manage/orders/${orderId}/refunds`, {
       reason: '拣货单待报商品退款',
       note: `SKU ${this.data.refundSku.skuId} 待报数量退款`,
+      returnPurchaseOrder: this.data.refundReturnPurchaseOrder,
       items
     });
   },

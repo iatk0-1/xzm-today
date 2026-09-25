@@ -11,6 +11,7 @@ Page({
     // 审核操作
     showReviewModal: false,
     reviewDecision: 'approve',
+    returnPurchaseOrder: false,
     reviewItems: [],
     rejectReason: '',
     // 仓库收货
@@ -297,6 +298,7 @@ Page({
     this.setData({
       showReviewModal: true,
       reviewDecision: decision,
+      returnPurchaseOrder: false,
       reviewItems,
       rejectReason: ''
     });
@@ -366,6 +368,10 @@ Page({
   },
 
   // 提交审核
+  changeReturnPurchaseOrder: function(e) {
+    this.setData({ returnPurchaseOrder: e.detail.value.includes('return') });
+  },
+
   submitReview: async function() {
     if (this.data.reviewDecision === 'reject' && !this.data.rejectReason) {
       wx.showToast({ title: '请填写拒绝原因', icon: 'none' });
@@ -377,7 +383,8 @@ Page({
     try {
       const payload = {
         decision: this.data.reviewDecision,
-        rejectReason: this.data.reviewDecision === 'reject' ? this.data.rejectReason : null
+        rejectReason: this.data.reviewDecision === 'reject' ? this.data.rejectReason : null,
+        returnPurchaseOrder: this.data.reviewDecision === 'approve' && this.data.returnPurchaseOrder
       };
       if (this.data.reviewDecision === 'approve') {
         const invalid = this.data.reviewItems.find(item => {

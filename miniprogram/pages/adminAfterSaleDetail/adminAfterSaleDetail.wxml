@@ -310,6 +310,10 @@
           bindinput="onRejectReasonInput"
           maxlength="200"/>
       </view>
+      <checkbox-group wx:if="{{reviewDecision === 'approve'}}" bindchange="changeReturnPurchaseOrder" class="purchase-return-choice">
+        <label><checkbox value="return" checked="{{returnPurchaseOrder}}" />是否返回报单（默认不返回）</label>
+      </checkbox-group>
+      <view wx:if="{{reviewDecision === 'approve'}}" class="purchase-return-choice">勾选后退款成功会重新分配；不勾选则作废对应已报件数。</view>
       <view class="modal-actions">
         <view class="modal-btn cancel" bindtap="hideReviewModal">取消</view>
         <view class="modal-btn confirm {{reviewDecision === 'reject' ? 'danger' : ''}}" bindtap="submitReview">确认</view>

@@ -58,7 +58,11 @@
               <view class="order-status {{detail.status}}">{{detail.status === 'ordered' ? '已报单' : '已撤销'}}</view>
             </view>
             <view class="order-sku">{{detail.spec || '默认规格'}} · {{detail.size || '均码'}}</view>
-            <view class="order-meta"><view class="meta-chip">数量 {{detail.qty}}</view></view>
+            <view class="order-meta">
+              <view class="meta-chip">原报 {{detail.qty}}</view>
+              <view class="meta-chip" wx:if="{{detail.invalidQty > 0}}">退款作废 {{detail.invalidQty}}</view>
+              <view class="meta-chip" wx:if="{{detail.invalidQty > 0}}">有效 {{detail.qty - detail.invalidQty}}</view>
+            </view>
           </view>
           <view class="order-action" wx:if="{{detail.status === 'ordered'}}">
             <view class="btn-cancel" bindtap="cancelOrder" data-id="{{detail.id}}">撤销</view>
