@@ -159,11 +159,27 @@ Page({
       success: async (result) => {
         if (!result.confirm) return;
         try {
-          await api.patch(`/admin/orders-manage/orders/${item.orderId}/items/${item.orderItemId}/admin-remark`, { remark: result.content || '' });
+          const remark = result.content || '';
+          await api.patch(`/admin/orders-manage/orders/${item.orderId}/items/${item.orderItemId}/admin-remark`, { remark });
+          this.updateAdminRemarkItem(item.orderId, item.orderItemId, remark);
           wx.showToast({ title: '已保存', icon: 'success' });
-          this.reloadPendingItems();
         } catch (err) { wx.showToast({ title: err.message || '保存失败', icon: 'none' }); }
       }
+    });
+  },
+
+  updateAdminRemarkItem: function(orderId, orderItemId, remark) {
+    const matches = item => String(item.orderId) === String(orderId)
+      && String(item.orderItemId) === String(orderItemId);
+    const updateItem = item => matches(item) ? { ...item, adminRemark: remark } : item;
+    const updateGroups = groups => groups.map(group => String(group.orderId) === String(orderId)
+      ? { ...group, items: group.items.map(updateItem) } : group);
+    this.rawPendingItems = (this.rawPendingItems || []).map(updateItem);
+    this.setData({
+      orderGroups: updateGroups(this.data.orderGroups),
+      selectedItems: this.data.selectedItems.map(updateItem),
+      pendingShipItems: this.data.pendingShipItems.map(updateItem),
+      pendingOrderGroups: updateGroups(this.data.pendingOrderGroups)
     });
   },
 
