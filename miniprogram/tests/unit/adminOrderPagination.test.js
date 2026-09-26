@@ -124,6 +124,7 @@ test('搜索弹窗触底加载下一页并保留已有商品', { concurrency: fa
   await page.loadMoreSearchProducts();
 
   assert.deepEqual(productRequests.map(params => params.page), [1, 2]);
+  assert.ok(productRequests.every(params => params.status === 'all'));
   assert.deepEqual(page.data.searchDropdown.map(product => product.id), [1, 2]);
   assert.equal(page.data.searchHasMore, false);
 });

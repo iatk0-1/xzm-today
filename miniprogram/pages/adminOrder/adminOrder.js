@@ -347,6 +347,7 @@ Page({
     this.setData({ searchLoading: true });
     try {
       const res = await api.get('/products/query', {
+        status: 'all',
         keyword,
         ...(this.data.selectedStall ? { stallId: this.data.selectedStall } : {}),
         ...(this.data.selectedTag ? { tagId: this.data.selectedTag } : {}),
