@@ -26,6 +26,10 @@
         <text class="info-label">申请时间</text>
         <text class="info-value">{{afterSale.createdAtDisplay}}</text>
       </view>
+      <view class="info-row" wx:if="{{afterSale.orderId}}">
+        <text class="info-label">关联订单</text>
+        <text class="order-detail-link" bindtap="goToOrderDetail">查看订单详情 ›</text>
+      </view>
     </view>
   </view>
 

@@ -111,6 +111,12 @@ Page({
     clipboard.copyText(e.currentTarget.dataset.orderNo, '订单号');
   },
 
+  goToOrderDetail: function(e) {
+    const orderId = e.currentTarget.dataset.orderId;
+    if (!orderId) return;
+    wx.navigateTo({ url: `/pages/adminOrderDetail/adminOrderDetail?id=${orderId}` });
+  },
+
   copyRecipientInfo: function(e) {
     clipboard.copyRecipient({
       recipientName: e.currentTarget.dataset.name,

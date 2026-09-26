@@ -629,6 +629,12 @@ Page({
     clipboard.copyText(afterSale.outTradeNo, '订单号');
   },
 
+  goToOrderDetail: function() {
+    const orderId = this.data.afterSale && this.data.afterSale.orderId;
+    if (!orderId) return;
+    wx.navigateTo({ url: `/pages/adminOrderDetail/adminOrderDetail?id=${orderId}` });
+  },
+
   copyRecipientInfo: function() {
     const orderDetail = this.data.afterSale && this.data.afterSale.orderDetail;
     clipboard.copyRecipient(orderDetail || {});

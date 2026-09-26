@@ -64,6 +64,11 @@
   gap: 16rpx;
 }
 
+.order-detail-link {
+  font-size: 26rpx;
+  color: #576b95;
+}
+
 .info-row {
   display: flex;
   justify-content: space-between;

@@ -110,6 +110,7 @@
                   <text class="order-no">{{group.orderNo}}</text>
                 </view>
                 <text class="copy-link summary-action" catchtap="copyOrderNo" data-order-no="{{group.orderNo}}">复制</text>
+                <text class="copy-link summary-action" catchtap="goToOrderDetail" data-order-id="{{group.orderId}}">查看详情</text>
               </view>
               <text class="order-date">{{group.createdAt}}</text>
               <view class="summary-row recipient-row">
@@ -188,6 +189,7 @@
               <text class="order-no">{{group.orderNo}}</text>
             </view>
             <text class="copy-link summary-action" catchtap="copyOrderNo" data-order-no="{{group.orderNo}}">复制</text>
+            <text class="copy-link summary-action" catchtap="goToOrderDetail" data-order-id="{{group.orderId}}">查看详情</text>
           </view>
           <text class="order-date">{{group.createdAt}}</text>
           <view class="summary-row recipient-row">
