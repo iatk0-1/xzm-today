@@ -102,7 +102,7 @@
         <view class="shipment-info">
           <view class="info-row">
             <text class="label">快递公司</text>
-            <text class="value">{{item.expressCode === 'ZTO' ? '中通快递' : item.expressCode}}</text>
+            <text class="value">{{item.expressName}}</text>
           </view>
           <view class="info-row">
             <text class="label">快递单号</text>

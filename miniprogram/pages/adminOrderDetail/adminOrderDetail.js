@@ -1,6 +1,7 @@
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const { getExpressName } = require('../../utils/expressCompany');
 
 const pageSync = require('../../utils/pageSync');
 Page(pageSync.wrap({
@@ -136,6 +137,7 @@ Page(pageSync.wrap({
       const shipments = await api.get(`/orders/${orderId}/shipments/detail`);
       if (shipments && shipments.length > 0) {
         shipments.forEach(s => {
+          s.expressName = getExpressName(s.expressCode);
           s.shippedAtDisplay = this.formatTime(s.shippedAt);
         });
         this.setData({ shipments });

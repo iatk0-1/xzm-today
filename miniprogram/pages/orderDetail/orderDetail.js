@@ -3,6 +3,7 @@ const pageSync = require('../../utils/pageSync');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const { getExpressName } = require('../../utils/expressCompany');
 
 // 支付超时时间（30 分钟）
 const PAYMENT_TIMEOUT_MINUTES = 30;
@@ -165,9 +166,10 @@ Page(pageSync.wrap({
     try {
       const shipments = await api.get(`/orders/${orderId}/shipments/detail`);
       if (shipments && shipments.length > 0) {
-        // 格式化每条发货单的时间
+        // 格式化每条发货单的快递公司名称和时间
         var self = this;
         shipments.forEach(function(s) {
+          s.expressName = getExpressName(s.expressCode);
           s.shippedAtDisplay = self.formatTime(s.shippedAt);
         });
         this.setData({ shipments });
