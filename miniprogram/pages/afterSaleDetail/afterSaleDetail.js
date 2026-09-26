@@ -51,7 +51,7 @@ Page({
     const orderDetail = res.orderDetail ? this.formatOrderDetail(res.orderDetail) : null;
     return {
       ...res,
-      statusDisplay: this.getStatusDisplay(res.status),
+      statusDisplay: res.status === 'cancelled' && res.rejectReason ? '已关闭' : this.getStatusDisplay(res.status),
       typeDisplay: this.getAfterSaleTypeDisplay(res.type),
       createdAtDisplay: this.formatDateTime(res.createdAt),
       updatedAtDisplay: this.formatDateTime(res.updatedAt),
@@ -103,9 +103,9 @@ Page({
       return timeline;
     } else if (afterSale.status === 'cancelled') {
       timeline.push({
-        status: '已撤销',
+        status: afterSale.rejectReason ? '已关闭' : '已撤销',
         time: this.formatTime(afterSale.updatedAt),
-        description: '用户主动撤销申请'
+        description: afterSale.rejectReason || '用户主动撤销申请'
       });
       return timeline;
     }

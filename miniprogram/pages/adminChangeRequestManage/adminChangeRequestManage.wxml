@@ -107,6 +107,9 @@
       <view wx:if="{{item.status === 'rejected' && item.rejectionReason}}" class="reject-reason">
         拒绝原因：{{item.rejectionReason}}
       </view>
+      <view wx:if="{{item.status === 'cancelled' && item.rejectionReason}}" class="close-reason">
+        关闭原因：{{item.rejectionReason}}
+      </view>
 
       <view class="actions">
         <button class="order-btn" data-order-id="{{item.orderId}}" bindtap="viewOrder">查看订单</button>

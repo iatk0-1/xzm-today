@@ -141,7 +141,7 @@ Page(pageSync.wrap({
       const records = (res.content || []).map(item => ({
         ...item,
         typeDisplay: item.type === 'refund' ? '仅退款' : '退货退款',
-        statusDisplay: this.getAfterSaleStatusDisplay(item.status)
+        statusDisplay: item.status === 'cancelled' && item.rejectReason ? '已关闭' : this.getAfterSaleStatusDisplay(item.status)
       }));
       this.setData({ afterSaleRecords: records });
     } catch (err) {
@@ -296,10 +296,12 @@ Page(pageSync.wrap({
       const pendingCount = requests.filter(item => item.status === 'pending').length;
       const approvedCount = requests.filter(item => item.status === 'approved').length;
       const rejectedCount = requests.filter(item => item.status === 'rejected').length;
+      const cancelledCount = requests.filter(item => item.status === 'cancelled').length;
       const summary = [
         pendingCount ? `待审批 ${pendingCount} 项` : '',
         approvedCount ? `已通过 ${approvedCount} 项` : '',
-        rejectedCount ? `已拒绝 ${rejectedCount} 项` : ''
+        rejectedCount ? `已拒绝 ${rejectedCount} 项` : '',
+        cancelledCount ? `已关闭 ${cancelledCount} 项` : ''
       ].filter(Boolean).join('，');
       this.setData({ changeRequests: requests, changeRequestSummary: summary });
     } catch (err) { console.error('加载修改申请失败:', err); }

@@ -4,6 +4,7 @@
   <!-- 售后状态卡片 -->
   <view class="status-card">
     <view class="status-badge {{afterSale.status}}">{{afterSale.statusDisplay}}</view>
+    <view class="status-desc" wx:if="{{afterSale.status === 'cancelled' && afterSale.rejectReason}}">{{afterSale.rejectReason}}</view>
     <view class="refund-amount">¥ {{afterSale.totalRefundAmount}}</view>
     <view class="status-desc">
       <text wx:if="{{afterSale.type === 'refund'}}">仅退款</text>

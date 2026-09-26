@@ -208,7 +208,7 @@ Page(pageSync.wrap({
         this.setData({
           afterSales: newList.map(item => ({
             ...item,
-            statusDisplay: STATUS_DISPLAY[item.status] || item.status,
+            statusDisplay: item.status === 'cancelled' && item.rejectReason ? '已关闭' : (STATUS_DISPLAY[item.status] || item.status),
             orderStatusDisplay: ORDER_STATUS_DISPLAY[item.orderStatus] || item.orderStatus || '-',
             typeDisplay: TYPE_DISPLAY[item.type] || item.type,
             createdAtDisplay: this.formatDateTime(item.createdAt),
@@ -276,7 +276,7 @@ Page(pageSync.wrap({
       ...item,
       orderStatus: item.orderDetail && item.orderDetail.status,
       orderStatusDisplay: ORDER_STATUS_DISPLAY[item.orderDetail && item.orderDetail.status] || '-',
-      statusDisplay: STATUS_DISPLAY[item.status] || item.status,
+      statusDisplay: item.status === 'cancelled' && item.rejectReason ? '已关闭' : (STATUS_DISPLAY[item.status] || item.status),
       typeDisplay: TYPE_DISPLAY[item.type] || item.type,
       createdAtDisplay: this.formatDateTime(item.createdAt),
       itemDisplay: `${item.items && item.items.length || item.totalQty || 0} 件商品`

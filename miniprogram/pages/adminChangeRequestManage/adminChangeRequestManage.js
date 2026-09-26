@@ -6,7 +6,8 @@ const STATUS_MAP = {
   all: '',
   pending: 'pending',
   approved: 'approved',
-  rejected: 'rejected'
+  rejected: 'rejected',
+  cancelled: 'cancelled'
 };
 
 const ORDER_STATUS_DISPLAY = {
@@ -69,7 +70,8 @@ Page({
       { key: 'all', label: '全部' },
       { key: 'pending', label: '待审批' },
       { key: 'approved', label: '已通过' },
-      { key: 'rejected', label: '已拒绝' }
+      { key: 'rejected', label: '已拒绝' },
+      { key: 'cancelled', label: '已关闭' }
     ],
     currentTab: 'pending',
     searchKeyword: '',
@@ -163,7 +165,7 @@ Page({
           ...request,
           ...item,
           requestTypeText: request.requestType === 'recipient' ? '收件信息修改' : '商品备注修改',
-          statusText: request.status === 'pending' ? '待审批' : (request.status === 'approved' ? '已通过' : '已拒绝'),
+          statusText: ({ pending: '待审批', approved: '已通过', rejected: '已拒绝', cancelled: '已关闭' })[request.status] || request.status,
           displayOrderNo: firstValue(item.outTradeNo, request.orderId),
           orderStatusText: ORDER_STATUS_DISPLAY[item.orderStatus] || item.orderStatus || '未知状态',
           orderStatusClass: item.orderStatus || 'unknown',

@@ -91,7 +91,7 @@ Page({
       orderDetail,
       hasApprovedRefundItems,
       hasApprovedReturnRefundItems,
-      statusDisplay: this.getStatusDisplay(res.status),
+      statusDisplay: res.status === 'cancelled' && res.rejectReason ? '已关闭' : this.getStatusDisplay(res.status),
       typeDisplay: this.getAfterSaleTypeDisplay(res.type),
       createdAtDisplay: this.formatDateTime(res.createdAt),
       updatedAtDisplay: this.formatDateTime(res.updatedAt),
