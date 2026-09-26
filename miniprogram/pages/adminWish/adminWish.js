@@ -8,7 +8,7 @@ Page({
     isLoading: true
   },
 
-  onShow: function() {
+  onLoad: function() {
     this.loadWishes();
   },
 
@@ -123,7 +123,7 @@ Page({
       success: () => {
         wx.hideLoading();
         wx.showToast({ title: '绑定成功！', icon: 'success' });
-        this.loadWishes(); // 刷新，它会跑到“已上架”列表里
+        this.setData({ wishes: this.data.wishes.filter(item => item._id !== wishId) });
       }
     });
   },
@@ -142,7 +142,7 @@ Page({
             success: () => {
               wx.hideLoading();
               wx.showToast({ title: '已解除', icon: 'success' });
-              this.loadWishes();
+              this.setData({ wishes: this.data.wishes.filter(item => item._id !== wishId) });
             }
           });
         }
@@ -162,7 +162,7 @@ Page({
           db.collection('wishes').doc(wishId).remove({
             success: () => {
               wx.showToast({ title: '已删除', icon: 'success' });
-              this.loadWishes();
+              this.setData({ wishes: this.data.wishes.filter(item => item._id !== wishId) });
             }
           });
         }

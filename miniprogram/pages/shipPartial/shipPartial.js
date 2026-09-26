@@ -644,20 +644,8 @@ Page({
     });
   },
 
-  // 返回上一页并刷新
+  // 成功发货已记录订单变更，返回时由原页面同步对应订单。
   navigateBackAndRefresh: function() {
-    const pages = getCurrentPages();
-    const prevPage = pages[pages.length - 2];
-    if (prevPage) {
-      // 刷新订单列表页
-      if (prevPage.loadOrders) {
-        prevPage.loadOrders();
-      }
-      // 刷新订单详情页（通过onShow生命周期自动触发）
-      if (prevPage.loadOrderDetail && prevPage.orderId) {
-        prevPage.loadOrderDetail(prevPage.orderId);
-      }
-    }
     wx.navigateBack();
   },
 

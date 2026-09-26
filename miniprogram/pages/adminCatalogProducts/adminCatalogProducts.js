@@ -249,7 +249,8 @@ Page({
             title: '已' + actionText + (result.updatedCount || this.data.selectedCount) + '个',
             icon: 'success'
           });
-          this.loadProducts(true);
+          const selectedIds = new Set(this.data.selectedIds.map(String));
+          this.refreshSelection(this.data.products.filter(item => !selectedIds.has(String(item.id))), []);
         } catch (err) {
           wx.hideLoading();
           this.setData({ operating: false });

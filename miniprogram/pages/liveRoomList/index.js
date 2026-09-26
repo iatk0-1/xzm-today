@@ -1,8 +1,9 @@
+const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/liveRoomList/index.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page({
+Page(pageSync.wrap({
   data: {
     isLoading: false,
     hasData: false,
@@ -24,9 +25,7 @@ Page({
   },
 
   onShow: function() {
-    // 每次从其他页面返回时刷新列表（如从直播详情页结束直播后返回）
     this.checkAdmin();
-    this.loadLiveSessions();
   },
 
   // 触底加载更多
@@ -217,11 +216,11 @@ Page({
     wx.showLoading({ title: '创建中...' });
 
     try {
-      await api.post('/live-sessions', { title: titleInput.trim() });
+      const session = await api.post('/live-sessions', { title: titleInput.trim() });
+      this.setData({ activeSession: { ...session, startedAt: this.formatDateTime(session.startedAt) }, hasData: true });
       wx.hideLoading();
       this.hideCreateModal();
       wx.showToast({ title: '创建成功', icon: 'success' });
-      this.loadLiveSessions();
     } catch (err) {
       wx.hideLoading();
       console.error('创建直播失败:', err);
@@ -244,4 +243,21 @@ Page({
       imageUrl: ''
     };
   }
-});
+}, async function(changes) {
+  for (const change of changes.filter(item => item.entity === 'live-sessions')) {
+    const exists = this.data.allSessions.some(item => String(item.id) === change.id)
+      || (this.data.activeSession && String(this.data.activeSession.id) === change.id);
+    if (!exists) continue;
+    const session = await api.get('/live-sessions/' + change.id);
+    let allSessions = this.data.allSessions.slice();
+    let activeSession = this.data.activeSession;
+    if (session.status === 'live') activeSession = { ...session, startedAt: this.formatDateTime(session.startedAt) };
+    else {
+      if (activeSession && String(activeSession.id) === change.id) activeSession = null;
+      const index = allSessions.findIndex(item => String(item.id) === change.id);
+      if (index >= 0) allSessions[index] = session;
+      else allSessions.unshift(session);
+    }
+    this.setData({ activeSession, allSessions, groupedSessions: this.groupByMonth(allSessions), hasData: !!activeSession || allSessions.length > 0 });
+  }
+}));

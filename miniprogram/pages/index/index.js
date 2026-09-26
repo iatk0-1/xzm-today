@@ -1,10 +1,11 @@
+const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/index/index.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const { formatStock, hasStock, isProductSoldOut, isSkuSoldOut } = require('../../utils/stock');
 const app = getApp();
 
-Page({
+Page(pageSync.wrap({
   data: {
     // 1. 顶部大厂导航栏适配参数
     navTop: 0,
@@ -123,8 +124,7 @@ Page({
       return;
     }
 
-    // 从其他页面返回时刷新首页，商品、档口、标签一起更新；筛选条件和滚动位置保留。
-    this.refreshHomeData();
+    // 返回时仅同步变动商品，由 pageSync 按 ID 更新。
   },
 
   onUnload: function() {
@@ -1050,4 +1050,17 @@ bundleInputBlur(e) {
       imageUrl: ''
     };
   }
-});
+}, async function(changes) {
+  await pageSync.updateList(this, changes, {
+    entity: 'products', field: 'productList', url: id => '/products/' + id,
+    normalize: product => ({ ...product, soldOut: isProductSoldOut(product) }),
+    matches: product => product.status === 'on'
+      && (!this.data.selectedStall || (product.stallIds || []).some(id => String(id) === String(this.data.selectedStall)))
+      && (!this.data.selectedTag || (product.relateTagIds || []).some(id => String(id) === String(this.data.selectedTag)))
+  });
+  const byId = new Map(this.data.productList.map(item => [String(item.id), item]));
+  this.setData({
+    leftColumn: this.data.leftColumn.filter(item => byId.has(String(item.id))).map(item => byId.get(String(item.id))),
+    rightColumn: this.data.rightColumn.filter(item => byId.has(String(item.id))).map(item => byId.get(String(item.id)))
+  });
+}));

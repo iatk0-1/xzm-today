@@ -1772,7 +1772,11 @@ Page({
       if (editId) {
         // 编辑模式：调用更新接口
         wx.showLoading({ title: '保存修改...', mask: true });
-        await api.put(`/products/${editId}`, productData);
+        const updateRes = await api.put(`/products/${editId}`, productData);
+        const eventChannel = this.getOpenerEventChannel && this.getOpenerEventChannel();
+        if (eventChannel && eventChannel.emit) {
+          eventChannel.emit('productUpdated', updateRes.product || updateRes);
+        }
         wx.hideLoading();
       } else {
         // 创建模式：调用创建接口

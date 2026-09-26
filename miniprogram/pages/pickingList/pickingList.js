@@ -1,8 +1,9 @@
+const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/pickingList/pickingList.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page({
+Page(pageSync.wrap({
   data: {
     filterStatus: 'pending', // 'pending', 'ordered', 'all'
     recommendList: [],
@@ -35,11 +36,6 @@ Page({
   onLoad: function() {
     this.loadFilterOptions();
     this.loadRecommendations();
-  },
-
-  onShow: function() {
-    if (this.hasLoaded && !this.data.showRefundModal) this.loadRecommendations();
-    this.hasLoaded = true;
   },
 
   goToRelatedOrders: function(e) {
@@ -198,6 +194,7 @@ Page({
   },
 
   async executeRefunds(entries, alreadyBusy = false) {
+    const skuId = this.data.refundSku && this.data.refundSku.skuId;
     if (!alreadyBusy) this.setData({ refundBusy: true });
     const requested = entries.reduce((sum, entry) => sum + Number(entry.pendingQty || 0), 0);
     let completed = 0;
@@ -220,7 +217,7 @@ Page({
       message = err.message || '退款失败，已暂停后续订单';
     } finally {
       this.setData({ refundBusy: false, showRefundModal: false, refundOrders: [], refundSku: null });
-      await this.loadRecommendations();
+      await this.refreshSkuRecommendations([skuId]);
     }
     if (message) wx.showModal({ title: '退款未完成', content: `已成功退款 ${completed} 件，微信处理中 ${processing} 件，未完成 ${Math.max(requested - completed - processing, 0)} 件。${message}${processing > 0 ? '处理中订单请勿重复提交，系统会自动同步结果。' : ''}`, showCancel: false });
     else if (processing > 0) wx.showModal({ title: '退款处理中', content: `已成功退款 ${completed} 件，微信处理中 ${processing} 件。后续结果由系统自动同步，请勿重复提交。`, showCancel: false });
@@ -318,6 +315,23 @@ Page({
   },
 
   // 触底加载更多
+  refreshSkuRecommendations: async function(skuIds) {
+    const ids = [...new Set(skuIds.filter(id => id != null).map(String))];
+    for (const id of ids) {
+      if (!this.data.recommendList.some(item => String(item.skuId) === id)) continue;
+      const updated = await api.get(`/picking-list/recommend/skus/${id}`, { status: this.data.filterStatus });
+      const recommendList = this.data.recommendList.flatMap(item => String(item.skuId) !== id ? [item] : (updated ? [{
+        ...item, ...updated, selected: item.selected && Number(updated.recommendQty) > 0,
+        allQty: Number(updated.totalQty ?? updated.unshippedQty) || 0,
+        pendingShipQty: Number(updated.unshippedQty) || 0
+      }] : []));
+      this.setData({ recommendList, filteredList: recommendList });
+    }
+    this.updateSelectedInfo();
+    const selectable = this.data.filteredList.filter(item => Number(item.recommendQty) > 0);
+    this.setData({ allSelected: selectable.length > 0 && selectable.every(item => item.selected) });
+  },
+
   onReachBottom: function() {
     if (this.data.hasMore && !this.data.loading) {
       this.loadRecommendations(false);
@@ -523,12 +537,18 @@ Page({
 
       this.setData({ showOrderModal: false });
 
-      // 重新加载列表
-      this.loadRecommendations();
+      await this.refreshSkuRecommendations(selectedItems.map(item => item.skuId));
     } catch (err) {
       wx.hideLoading();
       console.error('报单失败:', err);
       wx.showToast({ title: err?.message || '报单失败', icon: 'none' });
     }
   }
-});
+}, async function(changes) {
+  const skuIds = changes.filter(item => item.entity === 'picking-skus').map(item => item.id);
+  for (const change of changes.filter(item => item.entity === 'orders')) {
+    const order = await api.get('/orders/' + change.id);
+    (order.items || []).forEach(item => skuIds.push(item.skuId));
+  }
+  await this.refreshSkuRecommendations(skuIds);
+}));

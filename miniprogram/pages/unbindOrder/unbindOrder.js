@@ -86,17 +86,7 @@ Page({
       await api.delete(`/shipments/${this.data.shipmentId}/orders/${orderId}`);
       wx.showToast({ title: '解绑成功', icon: 'success' });
 
-      // 刷新订单列表
-      await this.loadShipmentOrders();
-
-      // 通知上一页刷新
-      const pages = getCurrentPages();
-      if (pages.length > 1) {
-        const prevPage = pages[pages.length - 2];
-        if (prevPage && prevPage.loadOrders) {
-          prevPage.loadOrders();
-        }
-      }
+      this.setData({ orders: this.data.orders.filter(item => String(item.id) !== String(orderId)) });
     } catch (err) {
       wx.showModal({
         title: '解绑失败',

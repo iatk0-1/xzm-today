@@ -73,6 +73,14 @@ App({
       .then(function() {
         wx.hideLoading();
         wx.showToast({ title: '交易完成', icon: 'success' });
+        const pages = getCurrentPages();
+        const current = pages[pages.length - 1];
+        if (current && current.route === 'pages/orderDetail/orderDetail'
+            && String(current.orderId) === String(orderId)) {
+          current.loadOrderDetail(orderId);
+        } else if (current && current.route === 'pages/orderList/orderList') {
+          current.refreshOrder(orderId);
+        }
       })
       .catch(function(err) {
         wx.hideLoading();

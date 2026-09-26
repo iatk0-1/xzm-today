@@ -1,8 +1,9 @@
+const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/cart/cart.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page({
+Page(pageSync.wrap({
   data: {
     cartList: [],
     isAllSelected: true,
@@ -14,7 +15,7 @@ Page({
     MAX_SLIDE_OUT: 80  // 最大滑出距离（删除按钮宽度）
   },
 
-  onShow: function() {
+  onLoad: function() {
     this.loadCartData();
   },
 
@@ -335,4 +336,9 @@ Page({
       wx.showToast({ title: '删除失败', icon: 'none' });
     }
   }
-});
+}, async function(changes) {
+  if (changes.some(item => item.entity === 'cart-removed')) {
+    this.setData({ cartList: this.data.cartList.filter(item => !item.selected) });
+    this.calculateTotal();
+  }
+}));

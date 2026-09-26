@@ -82,13 +82,13 @@ Page({
       const newIds = Object.keys(grouped).filter(id => !loadedIds.includes(String(id)));
       const productList = reset
         ? Object.keys(grouped).map(id => grouped[id])
-        : existing.concat(newIds.map(id => grouped[id]));
+        : existing.map(product => grouped[product.id]).concat(newIds.map(id => grouped[id]));
       const hasMore = inventoryRes.hasNext !== undefined
         ? inventoryRes.hasNext
         : rows.length === pageSize;
 
       this.setData({
-        productList: reset ? productList : [...this.data.productList, ...productList],
+        productList,
         page: this.data.page + 1,
         hasMore: hasMore,
         loading: false
@@ -247,37 +247,10 @@ Page({
       wx.hideLoading();
       wx.showToast({ title: '操作成功', icon: 'success' });
       
-      // 刷新商品列表（更新所有 SKU 的库存）
-      await this.loadProducts();
-      
       // 刷新录入记录
       this.loadLedger(selectedSku.id);
-      
-      // 更新当前库存和 SKU 选择器中的库存
-      const inventoryRes = await api.get(`/sku-inventory/${selectedSku.id}`);
-      const newQty = inventoryRes.qty || 0;
-      
-      // 更新 selectedProduct 中对应 SKU 的 availableQty
-      const updatedSkus = this.data.selectedProduct.skus.map(sku => {
-        if (sku.id === selectedSku.id) {
-          return { ...sku, availableQty: newQty };
-        }
-        return sku;
-      });
-      
-      this.setData({
-        selectedProduct: {
-          ...this.data.selectedProduct,
-          skus: updatedSkus
-        },
-        selectedSku: {
-          ...selectedSku,
-          availableQty: newQty
-        },
-        currentQty: newQty,
-        inputQty: '',
-        note: ''
-      });
+      await this.refreshSku(selectedSku.id);
+      this.setData({ inputQty: '', note: '' });
     } catch (err) {
       wx.hideLoading();
       console.error('操作失败:', err);
@@ -305,13 +278,8 @@ Page({
             wx.hideLoading();
             wx.showToast({ title: '撤销成功', icon: 'success' });
             
-            // 刷新数据
-            this.loadProducts();
             this.loadLedger(item.skuId);
-            
-            // 更新当前库存
-            const inventoryRes = await api.get(`/sku-inventory/${item.skuId}`);
-            this.setData({ currentQty: inventoryRes.qty || 0 });
+            await this.refreshSku(item.skuId);
           } catch (err) {
             wx.hideLoading();
             console.error('撤销失败:', err);
@@ -320,6 +288,22 @@ Page({
         }
       }
     });
+  },
+
+  // 只同步本次操作的 SKU，保留列表分页和其余商品。
+  refreshSku: async function(skuId) {
+    const inventory = await api.get(`/sku-inventory/${skuId}`);
+    const update = sku => String(sku.id) === String(skuId)
+      ? { ...sku, availableQty: sku.unlimitedStock ? '无限' : (inventory.qty || 0) } : sku;
+    const productList = this.data.productList.map(product => ({ ...product, skus: product.skus.map(update) }));
+    const patch = { productList };
+    if (this.data.selectedProduct) patch.selectedProduct = { ...this.data.selectedProduct, skus: this.data.selectedProduct.skus.map(update) };
+    if (this.data.selectedSku && String(this.data.selectedSku.id) === String(skuId)) {
+      patch.selectedSku = update(this.data.selectedSku);
+      patch.currentQty = patch.selectedSku.availableQty;
+    }
+    this.setData(patch);
+    require('../../utils/pageSync').publish('picking-skus', skuId);
   },
 
   // 获取变动类型文本

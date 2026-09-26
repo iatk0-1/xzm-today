@@ -1,8 +1,9 @@
+const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/market/market.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page({
+Page(pageSync.wrap({
   data: {
     wishes: [],
     leftColumn: [],   // 左列心愿
@@ -34,9 +35,8 @@ Page({
     } else if (this._skipNextMarketRefresh) {
       // 从心愿详情返回时保留当前分页和滚动位置，不要重新加载第一页。
       this._skipNextMarketRefresh = false;
-    } else {
-      this.refreshMarketData();
     }
+    // 返回时由 pageSync 更新变动心愿，保留列表顺序和分页。
   },
 
   // 触底加载更多
@@ -333,4 +333,25 @@ Page({
       imageUrl: ''
     };
   }
-});
+}, async function(changes) {
+  for (const change of changes.filter(item => item.entity === 'wishes' && item.created && !item.removed)) {
+    if (this.data.wishes.some(item => String(item.id) === change.id)) continue;
+    const wish = await api.get('/wishes/' + change.id);
+    const images = wish.images && wish.images.length ? wish.images : (wish.image ? [wish.image] : []);
+    const item = { ...wish, images, image: wish.image || images[0] || '', title: wish.title || wish.content || '' };
+    const column = this.data.leftColumn.length <= this.data.rightColumn.length ? 'leftColumn' : 'rightColumn';
+    this.setData({ wishes: this.data.wishes.concat(item), [column]: this.data[column].concat(item) });
+  }
+  await pageSync.updateList(this, changes, {
+    entity: 'wishes', field: 'wishes', url: id => '/wishes/' + id,
+    normalize(wish) {
+      const images = wish.images && wish.images.length ? wish.images : (wish.image ? [wish.image] : []);
+      return { ...wish, images, image: wish.image || images[0] || '', title: wish.title || wish.content || '' };
+    }
+  });
+  const byId = new Map(this.data.wishes.map(item => [String(item.id), item]));
+  this.setData({
+    leftColumn: this.data.leftColumn.filter(item => byId.has(String(item.id))).map(item => byId.get(String(item.id))),
+    rightColumn: this.data.rightColumn.filter(item => byId.has(String(item.id))).map(item => byId.get(String(item.id)))
+  });
+}));

@@ -1,3 +1,4 @@
+const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/adminOrderManage/adminOrderManage.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -26,7 +27,7 @@ const STATUS_DISPLAY_MAP = {
   'cancelled': '已关闭'
 };
 
-Page({
+Page(pageSync.wrap({
   data: {
     pickingSkuId: '',
     pickingStatus: '',
@@ -266,6 +267,30 @@ Page({
     }
   },
 
+  refreshOrder: async function(id) {
+    if (this.data.pickingSkuId) {
+      if (!this.data.orders.some(item => String(item.id) === String(id))) return;
+      const entry = await api.get(`/picking-list/skus/${this.data.pickingSkuId}/orders/${id}`, { status: this.data.pickingStatus });
+      this.setData({ orders: this.data.orders.flatMap(item => String(item.id) !== String(id) ? [item] : (entry ? [{
+        ...item, ...entry.order, pickingPendingQty: entry.pendingQty, pickingOrderedQty: entry.orderedQty,
+        createdAtDisplay: this.formatTime(entry.order.createdAt),
+        items: (entry.order.items || []).map(goods => ({ ...goods, skuImageUrl: goods.productImage || '' }))
+      }] : [])) });
+      return;
+    }
+    await pageSync.updateList(this, [{ entity: 'orders', id: String(id) }], {
+      entity: 'orders', field: 'orders', url: id => '/admin/orders-manage/orders/' + id,
+      normalize: order => ({
+        ...order,
+        outTradeNo: order.outTradeNo || order.id,
+        createdAtDisplay: this.formatTime(order.createdAt),
+        items: (order.items || []).map(item => ({ ...item, skuImageUrl: item.productImage || '' }))
+      }),
+      matches: order => (!STATUS_MAP[this.data.currentTab] || order.status === STATUS_MAP[this.data.currentTab])
+        && (!this.data.pickingSkuId || order.status !== 'cancelled')
+    });
+  },
+
   // 滚动到底部加载下一页
   onScrollToLower: function() {
     this.loadOrders(false);
@@ -307,6 +332,7 @@ Page({
   cancelWaybill: async function(e) {
     const shipmentId = e.currentTarget.dataset.shipmentId;
     const orderNo = e.currentTarget.dataset.orderNo;
+    const orderId = e.currentTarget.dataset.orderId;
 
     wx.showModal({
       title: '取消运单',
@@ -318,9 +344,10 @@ Page({
           wx.showLoading({ title: '取消中...' });
           try {
             await api.post(`/admin/orders-manage/orders/shipments/${shipmentId}/cancel-waybill`);
+            pageSync.publish('orders', orderId);
             wx.hideLoading();
             wx.showToast({ title: '运单已取消', icon: 'success' });
-            this.loadOrders();
+            await this.refreshOrder(orderId);
           } catch (err) {
             wx.hideLoading();
             wx.showModal({
@@ -357,7 +384,7 @@ Page({
       await api.patch(`/admin/orders-manage/orders/${panel.orderId}/items/${panel.itemId}/admin-remark`, { remark: this.data.adminRemarkValue });
       wx.showToast({ title: '管理员备注已保存', icon: 'success' });
       this.closeAdminRemarkEditor();
-      this.loadOrders();
+      await this.refreshOrder(panel.orderId);
     } catch (err) { wx.showToast({ title: err.message || '保存失败', icon: 'none' }); }
     finally { wx.hideLoading(); }
   },
@@ -437,7 +464,7 @@ Page({
       });
       wx.showToast({ title: '订单已关闭', icon: 'success' });
       this.closeCancelOrderPanel();
-      this.loadOrders();
+      await this.refreshOrder(orderId);
     } catch (err) {
       wx.showToast({ title: err?.message || '操作失败', icon: 'none' });
     } finally {
@@ -508,4 +535,6 @@ Page({
       return String(raw);
     }
   }
-});
+}, async function(changes) {
+  for (const change of changes.filter(item => item.entity === 'orders')) await this.refreshOrder(change.id);
+}));

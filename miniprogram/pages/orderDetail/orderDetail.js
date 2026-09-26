@@ -1,3 +1,4 @@
+const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/orderDetail/orderDetail.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -6,7 +7,7 @@ const clipboard = require('../../utils/clipboard');
 // 支付超时时间（30 分钟）
 const PAYMENT_TIMEOUT_MINUTES = 30;
 
-Page({
+Page(pageSync.wrap({
   data: {
     order: null,
     isLoading: true,
@@ -34,13 +35,6 @@ Page({
       this.loadOrderDetail(options.id);
     } else {
       wx.showToast({ title: '订单参数丢失', icon: 'none' });
-    }
-  },
-
-  onShow: function() {
-    // 页面显示时重新加载订单详情（从发货页面返回时会触发）
-    if (this.orderId) {
-      this.loadOrderDetail(this.orderId);
     }
   },
 
@@ -512,4 +506,6 @@ Page({
       }
     });
   }
-});
+}, async function(changes) {
+  if (changes.some(item => item.entity === 'orders' && item.id === String(this.orderId))) await this.loadOrderDetail(this.orderId);
+}));

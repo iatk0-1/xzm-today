@@ -32,6 +32,26 @@ function createPage() {
   return page;
 }
 
+test('撤销单项保留分页和展开状态，仅修改对应批次计数', () => {
+  const page = createPage();
+  page.data.page = 4;
+  page.data.batchList = [{ id: '1', expanded: true, itemCount: 2, totalQty: 7, orderedCount: 2, cancelledCount: 0,
+    detailList: [{ id: '11', skuId: '5', qty: 3, status: 'ordered', selected: true },
+      { id: '12', skuId: '6', qty: 4, status: 'ordered', selected: true }] }];
+  page.updateCancelledOrders(['11']);
+  assert.equal(page.data.page, 4);
+  assert.equal(page.data.batchList[0].expanded, true);
+  assert.equal(page.data.batchList[0].totalQty, 4);
+  assert.equal(page.data.batchList[0].itemCount, 1);
+  assert.equal(page.data.batchList[0].selectedCount, 1);
+  assert.deepEqual(page.data.batchList[0].detailList.map(item => item.id), ['12']);
+  page.data.status = 'all';
+  page.updateCancelledOrders(['12']);
+  assert.equal(page.data.batchList[0].detailList[0].status, 'cancelled');
+  assert.equal(page.data.batchList[0].detailList[0].selected, false);
+  assert.equal(page.data.batchList[0].cancelledCount, 1);
+});
+
 test('批次可同时展开，勾选互不影响，搜索刷新后全部收起', async () => {
   requests.length = 0;
   responses.push(

@@ -136,16 +136,19 @@ test('下拉刷新：用原生刷新动画，不再弹全局 loading 遮罩', as
   assert.equal(wxCalls.hideLoading, 0);
 });
 
-test('页面重新显示：自动刷新商品、档口和标签', async () => {
+test('页面重新显示：保留当前商品分页，主动下拉才刷新', async () => {
   const page = createPage();
   page._hasLoadedHomeData = true;
+  page.data.page = 3;
+  page.data.productList = [makeProduct('old')];
   requestHandler = backendStub();
 
   page.onShow();
   await flush();
 
-  const urls = requestLog.map((item) => item.url).sort();
-  assert.deepEqual(urls, ['/products/query', '/stalls', '/tags']);
+  assert.deepEqual(requestLog, []);
+  assert.equal(page.data.page, 3);
+  assert.deepEqual(page.data.productList.map(item => item.id), ['old']);
 });
 
 test('首页首次初始化：page 从 1 开始时仍会发起三类查询', async () => {

@@ -1,9 +1,10 @@
+const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/liveRoomDetail/detail.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const { formatStock, hasStock } = require('../../utils/stock');
 
-Page({
+Page(pageSync.wrap({
   data: {
     sessionId: null,
     session: {},
@@ -53,10 +54,7 @@ Page({
   },
 
   onShow: function() {
-    // 页面显示时重新加载session 详情（包含商品列表）
-    if (this.data.sessionId) {
-      this.loadSessionDetail(this.data.sessionId);
-    }
+    this.checkAdmin();
   },
 
   // 检查管理员权限
@@ -236,10 +234,8 @@ Page({
             wx.hideLoading();
             wx.showToast({ title: '直播已结束', icon: 'success' });
 
-            // 等待后端数据同步
-            setTimeout(() => {
-              this.loadSessionDetail(this.data.sessionId);
-            }, 500);
+            const detail = await api.get(`/live-sessions/${this.data.sessionId}`);
+            this.setData({ session: { ...this.data.session, status: detail.status, endedAt: this.formatDateTime(detail.endedAt) }, canBuy: false });
           } catch (err) {
             wx.hideLoading();
             console.error('结束直播失败:', err);
@@ -552,7 +548,7 @@ Page({
             await api.delete(`/live-products/${product.id}`);
             wx.hideLoading();
             wx.showToast({ title: '已删除', icon: 'success' });
-            this.loadSessionDetail(this.data.sessionId);
+            this.setData({ products: this.data.products.filter(item => String(item.id) !== String(product.id)), filteredProducts: this.data.filteredProducts.filter(item => String(item.id) !== String(product.id)) });
           } catch (err) {
             wx.hideLoading();
             console.error('删除商品失败:', err);
@@ -665,4 +661,20 @@ Page({
       imageUrl: ''
     };
   },
-});
+}, async function(changes) {
+  changes.filter(item => item.entity === 'live-products' && item.product && String(item.sessionId) === String(this.data.sessionId))
+    .forEach(item => {
+      if (!this.data.products.some(product => String(product.id) === item.id)) {
+        const product = item.product;
+        const totalStock = (product.skuMatrix || []).some(sku => sku.unlimitedStock) ? 1000000000
+          : (product.skuMatrix || []).reduce((sum, sku) => sum + Number(sku.stock || 0), 0);
+        this.setData({ products: this.data.products.concat({ ...product, totalStock }) });
+      }
+    });
+  await pageSync.updateList(this, changes, {
+    entity: 'live-products', field: 'products', url: id => '/live-products/' + id,
+    normalize: product => ({ ...product, totalStock: (product.skuMatrix || []).some(sku => sku.unlimitedStock) ? 1000000000 : (product.skuMatrix || []).reduce((sum, sku) => sum + Number(sku.stock || 0), 0) })
+  });
+  const keyword = this.data.searchKeyword.trim().toLowerCase();
+  this.setData({ filteredProducts: this.data.products.filter(product => !keyword || String(product.name || '').toLowerCase().includes(keyword)) });
+}));

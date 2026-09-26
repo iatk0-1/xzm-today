@@ -34,10 +34,6 @@ Page({
 
   onLoad: function() {
     this.loadFilterOptions();
-  },
-
-  onShow: function() {
-    // 从商品详情页返回时重新拉取，确保上下架、编辑等变更立即反映在列表中。
     this.loadProducts();
   },
 
@@ -360,13 +356,13 @@ Page({
     wx.showLoading({ title: '处理中...' });
 
     try {
-      await api.patch(`/products/${id}/status`, { status: newStatus });
+      const result = await api.patch(`/products/${id}/status`, { status: newStatus });
+      this.updateVisibleProduct(result.product || result);
       wx.hideLoading();
       wx.showToast({
         title: newStatus === 'off' ? '已下架' : '已重新上架',
         icon: 'success'
       });
-      this.loadProducts();
     } catch (err) {
       wx.hideLoading();
       wx.showToast({ title: '操作失败', icon: 'none' });
@@ -500,6 +496,31 @@ Page({
     });
   },
 
+  productMatchesFilters: function(product) {
+    const { activeStatus, searchKeyword, selectedStall, selectedTag } = this.data;
+    if (activeStatus !== 'all' && product.status !== activeStatus) return false;
+    const keyword = searchKeyword.trim().toLowerCase();
+    if (keyword && !String(product.name || '').toLowerCase().includes(keyword)) return false;
+    if (selectedStall && !(product.stallIds || []).some(id => this.normalizeId(id) === this.normalizeId(selectedStall))) return false;
+    if (selectedTag && !(product.relateTagIds || []).some(id => this.normalizeId(id) === this.normalizeId(selectedTag))) return false;
+    return true;
+  },
+
+  updateVisibleProduct: function(updatedProduct) {
+    if (!updatedProduct || updatedProduct.id == null) return;
+    const productId = this.normalizeId(updatedProduct.id);
+    if (!this.data.products.some(item => this.normalizeId(item.id) === productId)) return;
+    const product = this.normalizeProduct(updatedProduct);
+    const stillVisible = this.productMatchesFilters(product);
+    const products = stillVisible
+      ? this.data.products.map(item => this.normalizeId(item.id) === productId ? product : item)
+      : this.data.products.filter(item => this.normalizeId(item.id) !== productId);
+    const selectedIds = stillVisible
+      ? this.data.selectedProductIds
+      : this.data.selectedProductIds.filter(id => this.normalizeId(id) !== productId);
+    this.refreshSelectionState(products, selectedIds);
+  },
+
   batchSetStatus: function(e) {
     const status = e.currentTarget.dataset.status;
     const selectedCount = this.data.selectedCount;
@@ -532,11 +553,13 @@ Page({
           productIds.forEach(id => {
             selectedMap[this.normalizeId(id)] = true;
           });
-          const products = this.data.products.map(item => ({
-            ...item,
-            status: selectedMap[this.normalizeId(item.id)] ? status : item.status,
-            selected: false
-          }));
+          const products = this.data.products
+            .map(item => ({
+              ...item,
+              status: selectedMap[this.normalizeId(item.id)] ? status : item.status,
+              selected: false
+            }))
+            .filter(item => this.productMatchesFilters(item));
 
           wx.hideLoading();
           this.setData({
@@ -578,7 +601,11 @@ Page({
             await api.delete(`/products/${id}`);
             wx.hideLoading();
             wx.showToast({ title: '删除成功', icon: 'success' });
-            this.loadProducts();
+            const productId = this.normalizeId(id);
+            this.refreshSelectionState(
+              this.data.products.filter(item => this.normalizeId(item.id) !== productId),
+              this.data.selectedProductIds.filter(itemId => this.normalizeId(itemId) !== productId)
+            );
           } catch (err) {
             wx.hideLoading();
             wx.showToast({ title: '删除失败', icon: 'none' });
@@ -596,7 +623,10 @@ Page({
 
   openProductEditor: function(id) {
     wx.navigateTo({
-      url: `/pages/admin/admin?editId=${id}`
+      url: `/pages/admin/admin?editId=${id}`,
+      events: {
+        productUpdated: product => this.updateVisibleProduct(product)
+      }
     });
   },
 

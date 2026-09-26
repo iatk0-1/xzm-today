@@ -14,7 +14,7 @@ const requestLog = [];
 const responses = [];
 const originalLoad = Module._load;
 Module._load = function (request, ...rest) {
-  if (request.endsWith('utils/api')) {
+  if (request.endsWith('utils/api') || (request === './api' && rest[0].filename.endsWith('pageSync.js'))) {
     return {
       get: async (url, params) => {
         requestLog.push({ url, params });
@@ -42,6 +42,26 @@ function createPage() {
   };
   return page;
 }
+
+test('售后详情操作返回仅同步当前售后单，状态不匹配时移除且保留页码', async () => {
+  requestLog.length = 0;
+  responses.push({ page: 1, total: 2, items: [{ id: '1', status: 'pending' }, { id: '2', status: 'pending' }] });
+  const page = createPage();
+  await page.onLoad({ status: 'pending' });
+  await new Promise(resolve => setImmediate(resolve));
+  page.data.page = 4;
+  requestLog.length = 0;
+  await page.onShow();
+  assert.equal(requestLog.length, 0);
+  responses.push({ id: '1', status: 'approved', orderDetail: { status: 'paid' } });
+  require('../../utils/pageSync').recordMutation('/after-sales/1/review', 'POST', {}, { orderId: '10' });
+  await page.onShow();
+  assert.deepEqual(requestLog.map(item => item.url), ['/after-sales/1']);
+  assert.deepEqual(page.data.afterSales.map(item => item.id), ['2']);
+  assert.equal(page.data.page, 4);
+  assert.equal(page.data.total, 1);
+  page.onUnload();
+});
 
 test('售后列表触底加载时请求下一页，而不是重复请求第一页', { concurrency: false }, async () => {
   requestLog.length = 0;

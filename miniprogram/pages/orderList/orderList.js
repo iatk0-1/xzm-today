@@ -1,3 +1,4 @@
+const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/orderList/orderList.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -27,7 +28,7 @@ const STATUS_DISPLAY_MAP = {
   'cancelled': '已关闭'
 };
 
-Page({
+Page(pageSync.wrap({
   data: {
     tabs: ['全部', '待付款', '备货中', '待发货', '部分发货', '已发货', '已完成', '退款/售后', '已关闭'],
     currentTab: '全部',
@@ -35,11 +36,13 @@ Page({
     isLoading: true
   },
 
-  onShow: function() {
-    // 从微信确认收货组件返回后刷新列表
-    if (this.data.orders.length > 0) {
-      this.loadOrders();
-    }
+  refreshOrder: async function(id) {
+    await pageSync.updateList(this, [{ entity: 'orders', id: String(id) }], {
+      entity: 'orders', field: 'orders', url: id => '/orders/' + id,
+      normalize: order => ({ ...order, statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status, createdAtDisplay: this.formatTime(order.createdAt) }),
+      matches: order => !STATUS_MAP[this.data.currentTab] || STATUS_MAP[this.data.currentTab] === 'after_sale'
+        || order.status === STATUS_MAP[this.data.currentTab]
+    });
   },
 
   onLoad: function(options) {
@@ -198,7 +201,7 @@ Page({
           .then(function() {
             wx.hideLoading();
             wx.showToast({ title: '交易完成', icon: 'success' });
-            self.loadOrders();
+            self.refreshOrder(orderId);
           })
           .catch(function(err) {
             wx.hideLoading();
@@ -231,7 +234,7 @@ Page({
           paySign: payRes.paySign,
           success: () => {
             wx.showToast({ title: '支付成功', icon: 'success' });
-            this.loadOrders();
+            this.refreshOrder(orderId);
           },
           fail: (err) => {
             if (err.errMsg !== 'requestPayment:fail cancel') {
@@ -260,7 +263,7 @@ Page({
             await api.post(`/orders/${orderId}/cancel`);
             wx.hideLoading();
             wx.showToast({ title: '订单已取消', icon: 'success' });
-            this.loadOrders();
+            this.refreshOrder(orderId);
           } catch (err) {
             wx.hideLoading();
             wx.showToast({ title: '操作失败', icon: 'none' });
@@ -269,4 +272,6 @@ Page({
       }
     });
   }
-});
+}, async function(changes) {
+  for (const change of changes.filter(item => item.entity === 'orders')) await this.refreshOrder(change.id);
+}));

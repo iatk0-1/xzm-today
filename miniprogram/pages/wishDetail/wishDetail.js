@@ -1,9 +1,10 @@
+const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/wishDetail/wishDetail.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const { createShareImage } = require('../../utils/shareImage');
 
-Page({
+Page(pageSync.wrap({
   data: {
     wish: { images: [] },
     wishId: null,
@@ -37,9 +38,6 @@ Page({
 
   onShow: function() {
     this.refreshShareFloatVisibility();
-    if (this.data.wishId) {
-      this.loadWishDetail();
-    }
   },
 
   // 加载心愿详情
@@ -335,4 +333,6 @@ Page({
     }
   },
 
-});
+}, async function(changes) {
+  if (changes.some(item => item.entity === 'wishes' && item.id === String(this.data.wishId) && !item.removed)) await this.loadWishDetail();
+}));

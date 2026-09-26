@@ -226,9 +226,14 @@ Page({
     wx.showLoading({ title: action === 'approve' ? '审批中...' : '处理中...' });
     try {
       const path = `/admin/orders-manage/change-requests/${id}/${action === 'approve' ? 'approve' : 'reject'}`;
-      await api.post(path, body || {});
+      const updated = await api.post(path, body || {});
       wx.showToast({ title: action === 'approve' ? '申请已通过' : '申请已拒绝', icon: 'success' });
-      await this.loadRequests(true);
+      const status = updated.status || (action === 'approve' ? 'approved' : 'rejected');
+      this.setData({ requests: this.data.requests.flatMap(item => {
+        if (String(item.id) !== String(id)) return [item];
+        if (STATUS_MAP[this.data.currentTab] && STATUS_MAP[this.data.currentTab] !== status) return [];
+        return [{ ...item, ...updated, status, statusText: status === 'approved' ? '已通过' : '已拒绝' }];
+      }) });
     } catch (err) {
       wx.showToast({ title: err.message || '操作失败', icon: 'none' });
     } finally {

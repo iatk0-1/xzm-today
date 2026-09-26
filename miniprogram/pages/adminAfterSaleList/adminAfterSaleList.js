@@ -59,7 +59,8 @@ const TYPE_DISPLAY = {
   'return_refund': '退货退款'
 };
 
-Page({
+const pageSync = require('../../utils/pageSync');
+Page(pageSync.wrap({
   data: {
     tabs: ['全部', '待审核', '已同意', '已拒绝', '已收货', '已退款', '已取消'],
     currentTab: '全部',
@@ -267,4 +268,21 @@ Page({
   copyOrderNo: function(e) {
     clipboard.copyText(e.currentTarget.dataset.orderno, '订单号');
   }
-});
+}, async function(changes) {
+  const beforeCount = this.data.afterSales.length;
+  await pageSync.updateList(this, changes, {
+    entity: 'after-sales', field: 'afterSales', url: id => '/after-sales/' + id,
+    normalize: item => ({
+      ...item,
+      orderStatus: item.orderDetail && item.orderDetail.status,
+      orderStatusDisplay: ORDER_STATUS_DISPLAY[item.orderDetail && item.orderDetail.status] || '-',
+      statusDisplay: STATUS_DISPLAY[item.status] || item.status,
+      typeDisplay: TYPE_DISPLAY[item.type] || item.type,
+      createdAtDisplay: this.formatDateTime(item.createdAt),
+      itemDisplay: `${item.items && item.items.length || item.totalQty || 0} 件商品`
+    }),
+    matches: item => (!this.data.currentStatus || item.status === this.data.currentStatus)
+      && (!this.data.currentType || item.type === this.data.currentType)
+  });
+  this.setData({ total: Math.max(0, this.data.total - beforeCount + this.data.afterSales.length) });
+}));

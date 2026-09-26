@@ -1,8 +1,9 @@
+const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/adminProductRecycleBin/adminProductRecycleBin.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page({
+Page(pageSync.wrap({
   data: {
     products: [],
     isLoading: true,
@@ -26,10 +27,10 @@ Page({
 
   onShow: function() {
     this.updateFilterPanelPosition();
-    this.resetAndLoad();
   },
 
   onLoad: function() {
+    this.resetAndLoad();
     // 弹层位置在页面布局完成后通过 filter-bar 的真实位置计算。
   },
 
@@ -297,12 +298,9 @@ Page({
             wx.showToast({ title: '恢复成功', icon: 'success' });
 
             // 从列表中移除该商品
-            const products = this.data.products.filter(p => p.id !== id);
+            const products = this.data.products.filter(p => String(p.id) !== String(id));
             this.setData({ products });
 
-            if (products.length === 0) {
-              this.resetAndLoad();
-            }
           } catch (err) {
             console.error('恢复失败:', err);
             wx.hideLoading();
@@ -312,4 +310,8 @@ Page({
       }
     });
   }
-});
+}, async function(changes) {
+  await pageSync.updateList(this, changes, {
+    entity: 'products', field: 'products', url: id => '/products/deleted/' + id
+  });
+}));

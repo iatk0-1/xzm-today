@@ -2,7 +2,8 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
-Page({
+const pageSync = require('../../utils/pageSync');
+Page(pageSync.wrap({
   data: {
     orderId: null,
     order: null,
@@ -198,6 +199,7 @@ Page({
         wx.showLoading({ title: '解绑中...' });
         try {
           await api.post(`/admin/orders-manage/orders/shipments/${shipmentId}/unbind`);
+          pageSync.publish('orders', this.data.orderId);
           wx.showToast({ title: '已解绑', icon: 'success' });
           this.loadOrderDetail();
         } catch (err) {
@@ -264,6 +266,7 @@ Page({
       await api.post(`/admin/orders-manage/orders/shipments/${shipment.id}/partial-unbind`, {
         items: items.map(item => ({ orderItemId: item.orderItemId, qty: item.qty }))
       });
+      pageSync.publish('orders', this.data.orderId);
       wx.showToast({ title: '已部分解绑', icon: 'success' });
       this.closePartialUnbindPanel();
       this.loadOrderDetail();
@@ -519,4 +522,6 @@ Page({
       url: `/pages/adminAfterSaleDetail/adminAfterSaleDetail?afterSaleId=${afterSaleId}`
     });
   }
-});
+}, async function(changes) {
+  if (changes.some(item => item.entity === 'orders' && item.id === String(this.data.orderId))) await this.loadOrderDetail();
+}));

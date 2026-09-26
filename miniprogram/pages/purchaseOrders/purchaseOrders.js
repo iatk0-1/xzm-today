@@ -302,8 +302,7 @@ Page({
             wx.hideLoading();
             wx.showToast({ title: '撤销成功', icon: 'success' });
 
-            // 重新加载列表，确保状态正确
-            this.loadBatches(true);
+            this.updateCancelledOrders([orderId]);
           } catch (err) {
             wx.hideLoading();
             console.error('撤销失败:', err);
@@ -335,17 +334,14 @@ Page({
           try {
             // 批量撤销选中的报单
             const selectedItems = batch.detailList.filter(i => i.selected);
-            const promises = selectedItems.map(item =>
-              api.delete(`/picking-list/order/${item.id}`)
-            );
-
-            await Promise.all(promises);
+            const results = await Promise.allSettled(selectedItems.map(item => api.delete(`/picking-list/order/${item.id}`)));
+            this.updateCancelledOrders(selectedItems.filter((item, index) => results[index].status === 'fulfilled').map(item => item.id));
+            const failed = results.find(result => result.status === 'rejected');
+            if (failed) throw failed.reason;
 
             wx.hideLoading();
             wx.showToast({ title: '批量撤销成功', icon: 'success' });
 
-            // 重新加载列表
-            this.loadBatches(true);
           } catch (err) {
             wx.hideLoading();
             console.error('批量撤销失败:', err);
@@ -354,6 +350,26 @@ Page({
         }
       }
     });
+  },
+
+  updateCancelledOrders: function(ids) {
+    const cancelled = new Set(ids.map(String));
+    const batchList = this.data.batchList.flatMap(batch => {
+      const changed = batch.detailList.filter(item => cancelled.has(String(item.id)));
+      changed.forEach(item => require('../../utils/pageSync').publish('picking-skus', item.skuId));
+      if (!changed.length) return [batch];
+      const keepCancelled = this.data.status === 'all' || this.data.status === 'cancelled';
+      const detailList = batch.detailList.flatMap(item => !cancelled.has(String(item.id)) ? [item]
+        : (keepCancelled ? [{ ...item, status: 'cancelled', selected: false }] : []));
+      if (!detailList.length) return [];
+      return [{ ...batch, detailList, selectedCount: detailList.filter(item => item.selected).length, allSelected: false,
+        itemCount: keepCancelled ? batch.itemCount : Math.max(0, Number(batch.itemCount) - changed.length),
+        totalQty: keepCancelled ? batch.totalQty : Math.max(0, Number(batch.totalQty) - changed.reduce((sum, item) => sum + Number(item.qty || 0), 0)),
+        orderedCount: Math.max(0, Number(batch.orderedCount) - changed.length),
+        cancelledCount: keepCancelled ? Number(batch.cancelledCount || 0) + changed.length : batch.cancelledCount
+      }];
+    });
+    this.setData({ batchList });
   },
 
   formatDate: function(date) {

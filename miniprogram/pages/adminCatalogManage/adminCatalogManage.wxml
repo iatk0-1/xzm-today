@@ -12,19 +12,21 @@
     <view class="add-btn" bindtap="createGroup">新增</view>
   </view>
 
-  <view class="loading" wx:if="{{loading}}">加载中...</view>
-  <view class="empty" wx:elif="{{groups.length === 0}}">暂无{{typeLabel}}</view>
-
   <scroll-view
     scroll-y
     class="list-scroll"
-    wx:else
+    refresher-enabled="{{dragIndex < 0 && !saving && !renaming && !deleting}}"
+    refresher-triggered="{{refreshing}}"
+    refresher-background="#f4f6f8"
+    bindrefresherrefresh="onRefresh"
     scroll-top="{{scrollTop}}"
     scroll-with-animation="{{false}}"
     bindscroll="onListScroll">
+    <view class="loading" wx:if="{{loading && groups.length === 0}}">加载中...</view>
+    <view class="empty" wx:elif="{{groups.length === 0}}">暂无{{typeLabel}}</view>
     <!-- 拖动排序：行摆哪儿由页面按手指算（写到 item.y），movable-view 只当定位容器用，
          手势在 drag-handle 上 catch 住，不让它自己再写一份位置 -->
-    <movable-area class="group-area" style="height: {{listHeight}}px;">
+    <movable-area wx:if="{{groups.length > 0}}" class="group-area" style="height: {{listHeight}}px;">
       <movable-view
         wx:for="{{groups}}"
         wx:key="id"

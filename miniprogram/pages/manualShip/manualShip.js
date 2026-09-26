@@ -446,11 +446,6 @@ Page({
   },
 
   goBack: function() {
-    const pages = getCurrentPages();
-    const prevPage = pages[pages.length - 2];
-    if (prevPage && prevPage.loadOrders) {
-      prevPage.loadOrders();
-    }
     wx.navigateBack();
   },
 });

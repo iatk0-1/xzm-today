@@ -246,7 +246,11 @@ async function requestWithRetry(options, retryState = {}) {
 }
 
 function request(options) {
-  return requestWithRetry(buildRequestOptions(options));
+  const requestOptions = buildRequestOptions(options);
+  return requestWithRetry(requestOptions).then(result => {
+    require('./pageSync').recordMutation(requestOptions.url, requestOptions.method, requestOptions.data, result);
+    return result;
+  });
 }
 
 function mapUrlToCosDir(url) {

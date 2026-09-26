@@ -1,3 +1,4 @@
+const pageSync = require('../../utils/pageSync');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
@@ -25,13 +26,14 @@ function pickDragTouch(e, identifier) {
   return null;
 }
 
-Page({
+Page(pageSync.wrap({
   data: {
     currentType: 'stall',
     typeLabel: '档口',
     groups: [],
     newName: '',
     loading: false,
+    refreshing: false,
     saving: false,
     renaming: false,
     renameVisible: false,
@@ -57,14 +59,26 @@ Page({
       if (!auth.isAdmin()) {
         wx.showToast({ title: '无权限', icon: 'none' });
         wx.navigateBack();
+        return;
       }
+      this.loadGroups();
     } catch (err) {
       wx.showToast({ title: '登录状态恢复失败', icon: 'none' });
     }
   },
 
-  onShow() {
-    this.loadGroups();
+  async onRefresh() {
+    if (this.data.refreshing) return;
+    if (this.data.loading || this.data.saving || this.data.renaming || this.data.deleting || this.data.dragIndex >= 0) {
+      this.setData({ refreshing: false });
+      return;
+    }
+    this.setData({ refreshing: true });
+    try {
+      await this.loadGroups();
+    } finally {
+      this.setData({ refreshing: false });
+    }
   },
 
   onUnload() {
@@ -88,8 +102,10 @@ Page({
   async loadGroups() {
     if (this.data.loading) return;
     this.setData({ loading: true });
+    const type = this.data.currentType;
     try {
       const groups = await api.get(this.resourcePath() + '/manage');
+      if (type !== this.data.currentType) return;
       const positioned = this.positionGroups(groups || []);
       this.setData({
         groups: positioned,
@@ -107,7 +123,7 @@ Page({
   switchType(e) {
     const type = e.currentTarget.dataset.type;
     if (type === this.data.currentType) return;
-    if (this.data.saving || this.data.renaming || this.data.renameVisible) {
+    if (this.data.loading || this.data.refreshing || this.data.saving || this.data.renaming || this.data.renameVisible) {
       wx.showToast({ title: '正在保存，请稍候', icon: 'none' });
       return;
     }
@@ -140,7 +156,17 @@ Page({
         title: result.created ? '新增成功' : (result.restored ? '已恢复' : '名称已存在'),
         icon: result.created || result.restored ? 'success' : 'none'
       });
-      await this.loadGroups();
+      const group = result.stall || result.tag || result;
+      if (group.id != null) {
+        const updated = await api.get(this.resourcePath() + '/' + group.id + '/manage');
+        const groups = this.data.groups.slice();
+        const index = groups.findIndex(item => String(item.id) === String(group.id));
+        if (index >= 0) groups[index] = updated;
+        else groups.push(updated);
+        groups.sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder) || Number(a.id) - Number(b.id));
+        const positioned = this.positionGroups(groups);
+        this.setData({ groups: positioned, listHeight: Math.max(positioned.length * ROW_HEIGHT, ROW_HEIGHT) });
+      }
     } catch (err) {
       wx.hideLoading();
       wx.showToast({ title: err.message || '新增失败', icon: 'none' });
@@ -529,7 +555,8 @@ Page({
       wx.hideLoading();
       this.setData({ deleting: false });
       wx.showToast({ title: '已删除', icon: 'success' });
-      await this.loadGroups();
+      const groups = this.positionGroups(this.data.groups.filter(item => String(item.id) !== String(id)));
+      this.setData({ groups, listHeight: Math.max(groups.length * ROW_HEIGHT, ROW_HEIGHT) });
     } catch (err) {
       wx.hideLoading();
       this.setData({ deleting: false });
@@ -555,4 +582,11 @@ Page({
         + '&id=' + item.id + '&name=' + encodeURIComponent(item.name)
     });
   }
-});
+}, async function(changes) {
+  await pageSync.updateList(this, changes, {
+    entity: this.data.currentType === 'stall' ? 'stalls' : 'tags', field: 'groups',
+    url: id => this.resourcePath() + '/' + id + '/manage'
+  });
+  const groups = this.positionGroups(this.data.groups);
+  this.setData({ groups, listHeight: Math.max(groups.length * ROW_HEIGHT, ROW_HEIGHT) });
+}));

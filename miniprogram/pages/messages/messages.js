@@ -1,7 +1,8 @@
+const pageSync = require('../../utils/pageSync');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page({
+Page(pageSync.wrap({
   data: {
     conversations: [],
     loading: false,
@@ -13,10 +14,10 @@ Page({
   onLoad() {
     const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
     this.setData({ statusBarHeight: info.statusBarHeight || 20 });
+    this.loadConversations();
   },
 
   onShow() {
-    this.loadConversations();
     this.startPolling();
   },
 
@@ -38,7 +39,19 @@ Page({
         latestMessageTime: this.formatTime(c.latestMessageAt),
         latestMessage: c.latestMessage || ''
       }));
-      this.setData({ conversations: list, loading: false });
+      if (this._hasLoadedConversations) {
+        const byId = new Map(list.map(item => [String(item.conversationId) + ':' + item.perspective, item]));
+        const currentKeys = new Set(this.data.conversations.map(item => String(item.conversationId) + ':' + item.perspective));
+        const next = this.data.conversations.flatMap(item => {
+          const updated = byId.get(String(item.conversationId) + ':' + item.perspective);
+          return updated ? [{ ...item, ...updated }] : [];
+        });
+        next.push(...list.filter(item => !currentKeys.has(String(item.conversationId) + ':' + item.perspective)));
+        this.setData({ conversations: next, loading: false });
+      } else {
+        this.setData({ conversations: list, loading: false });
+        this._hasLoadedConversations = true;
+      }
     } catch (err) {
       this.setData({ loading: false });
     }
@@ -110,11 +123,10 @@ Page({
           try {
             await api.delete('/conversations/' + id);
             // 乐观移除：先从本地列表中去掉该会话
-            const list = this.data.conversations.filter(c => c.conversationId !== id);
+            const list = this.data.conversations.filter(c => String(c.conversationId) !== String(id));
             this.setData({ conversations: list });
             wx.showToast({ title: '已删除', icon: 'success', duration: 1500 });
-            // 再从服务端拉一次确保同步
-            setTimeout(() => this.loadConversations(), 500);
+
           } catch (err) {
             console.error('删除失败', err);
             wx.showToast({ title: '删除失败', icon: 'none' });
@@ -155,4 +167,18 @@ Page({
       this._pollTimer = null;
     }
   }
-});
+}, async function(changes) {
+  for (const change of changes.filter(item => item.entity === 'conversations')) {
+    if (!this.data.conversations.some(item => String(item.conversationId) === change.id)) continue;
+    if (change.removed) {
+      this.setData({ conversations: this.data.conversations.filter(item => String(item.conversationId) !== change.id) });
+      continue;
+    }
+    const conversation = await api.get('/conversations/' + change.id);
+    this.setData({ conversations: this.data.conversations.map(item => String(item.conversationId) !== change.id ? item : {
+      ...item, latestMessage: conversation.latestMessage || '', latestMessageAt: conversation.latestMessageAt,
+      latestMessageTime: this.formatTime(conversation.latestMessageAt),
+      unreadCount: change.read && item.perspective === change.perspective ? 0 : item.unreadCount
+    }) });
+  }
+}));
