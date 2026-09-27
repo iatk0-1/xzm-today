@@ -100,6 +100,7 @@ test('下拉刷新保留筛选条件并从第一页重新查询', { concurrency:
   ];
   const page = createPage();
   page.data.selectedTag = '5';
+  page.data.searchKeyword = ' 华 ';
   await page.loadAllPendingItems();
   await page.loadNextPendingPage();
   wx.refreshStopped = false;
@@ -107,6 +108,7 @@ test('下拉刷新保留筛选条件并从第一页重新查询', { concurrency:
 
   assert.deepEqual(requests.map(request => request.params.page), [1, 2, 1]);
   assert.ok(requests.every(request => request.params.tagId === '5'));
+  assert.ok(requests.every(request => request.params.keyword === '华'));
   assert.deepEqual(page.data.orderGroups.map(group => group.orderId), ['30']);
   assert.equal(wx.refreshStopped, true);
 });
@@ -151,6 +153,7 @@ test('发货前校验逐页查询，跨页找到已选订单项', { concurrency:
     { content: [item('20', '201', '2026-09-02T08:00:00+08:00')], hasNext: false }
   ];
   const page = createPage();
+  page.data.searchKeyword = '其他商品';
   page.data.pendingShipItems = [{
     ...item('20', '201', '2026-09-02T08:00:00+08:00'),
     uniqueKey: '20_201_201', canShip: true, shipQty: 1
@@ -160,4 +163,42 @@ test('发货前校验逐页查询，跨页找到已选订单项', { concurrency:
   assert.deepEqual(requests.map(request => request.params.page), [1, 2]);
   assert.equal(page.data.pendingShipItems[0].canShip, true);
   assert.equal(page.data.pendingShipItems[0].shipQty, 1);
+  assert.ok(requests.every(request => request.params.keyword === undefined));
+});
+
+test('确认搜索后按关键词分页，清空搜索恢复其他筛选下的列表', { concurrency: false }, async () => {
+  requests.length = 0;
+  pages = [
+    { content: [item('10', '101', '2026-09-01T08:00:00+08:00')], hasNext: true },
+    { content: [item('20', '201', '2026-09-02T08:00:00+08:00')], hasNext: false },
+    { content: [], hasNext: false }
+  ];
+  const page = createPage();
+  page.data.searchKeyword = ' 华 ';
+  page.data.selectedStall = '8';
+  page.data.dateRange = { startDate: '2026-09-01', endDate: '2026-09-30' };
+  page.onSearchConfirm();
+  await page.pendingPagePromise;
+  // 尚未确认的新输入不应改变当前分页使用的关键词。
+  page.data.searchKeyword = '其他';
+  await page.loadNextPendingPage();
+  await page.onSearchInput({ detail: { value: '   ' } });
+
+  const filters = { stallId: '8', startDate: '2026-09-01', endDate: '2026-09-30' };
+  assert.deepEqual(requests.map(request => request.params), [
+    { ...filters, keyword: '华', page: 1 },
+    { ...filters, keyword: '华', page: 2 },
+    { ...filters, page: 1 }
+  ]);
+});
+
+test('已选商品的 SKU 条件和关键词同时传给待发货查询', { concurrency: false }, async () => {
+  requests.length = 0;
+  pages = [{ content: [], hasNext: false }];
+  const page = createPage();
+  page.data.searchKeyword = '华';
+  page.data.selectedProducts = [{ id: '1', skus: [{ id: '9' }] }];
+  await page.reloadPendingItems();
+
+  assert.deepEqual(requests[0].params, { keyword: '华', skuIds: '9', page: 1 });
 });

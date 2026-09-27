@@ -209,6 +209,10 @@ Page({
 
   getPendingFilterParams: function() {
     const params = {};
+    const keyword = this.data.searchKeyword.trim();
+    if (keyword) {
+      params.keyword = keyword;
+    }
     if (this.data.selectedStall) {
       params.stallId = this.data.selectedStall;
     }
@@ -336,7 +340,7 @@ Page({
     this.setData({ searchKeyword: keyword, searchDropdown: [], searchPage: 0, searchHasMore: false, searchLoading: false });
     if (this.searchTimer) clearTimeout(this.searchTimer);
     
-    if (!keyword) return;
+    if (!keyword) return this.reloadPendingItems();
     
     // 防抖：500ms 后搜索
     this.searchTimer = setTimeout(() => {
