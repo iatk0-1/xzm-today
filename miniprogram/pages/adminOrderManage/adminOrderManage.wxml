@@ -159,9 +159,6 @@
         </view>
 
         <view class="action-row" wx:if="{{!pickingSkuId}}">
-          <!-- 联系买家（所有状态） -->
-          <view class="btn-contact" catchtap="contactBuyer" data-id="{{item.id}}">联系</view>
-
           <!-- 待付款 -->
           <view class="btn-ghost" wx:if="{{item.status === 'pending'}}" catchtap="cancelOrder" data-id="{{item.id}}">关闭订单</view>
 

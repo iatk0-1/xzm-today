@@ -39,18 +39,13 @@ page { background-color: #f2f2f2; }
   gap: 12rpx;
   margin-top: 20rpx;
 }
-.contact-buyer-btn, .copy-recipient-btn {
+.copy-recipient-btn {
   flex: 1;
   padding: 14rpx 0;
   text-align: center;
   font-size: 26rpx;
   border-radius: 8rpx;
 }
-.contact-buyer-btn {
-  color: #111;
-  background: #f8f8f8;
-}
-.contact-buyer-btn:active { background: #eee; }
 .copy-recipient-btn {
   color: #576b95;
   background: #f5f7fa;

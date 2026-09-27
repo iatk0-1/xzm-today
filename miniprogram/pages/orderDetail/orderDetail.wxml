@@ -175,7 +175,11 @@
   </view>
 
   <view class="bottom-action-bar">
-    <button class="btn-ghost" open-type="contact">联系主理人</button>
+    <button class="btn-ghost" open-type="contact" bindcontact="handleCustomerServiceContact"
+      session-from="order:{{order.id}}" show-message-card="true"
+      send-message-title="{{customerServiceCard.title}}"
+      send-message-img="{{customerServiceCard.image}}"
+      send-message-path="/pages/orderDetail/orderDetail?id={{order.id}}&fromCustomerService=1">联系客服</button>
 
     <view class="btn-solid" wx:if="{{order.status === 'pending'}}" bindtap="payOrder">立即支付</view>
     <view id="cancel-order-btn" class="btn-ghost" wx:if="{{order.status === 'pending'}}" bindtap="cancelOrder">取消订单</view>

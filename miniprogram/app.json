@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/messages/messages",
     "pages/detail/detail",
     "pages/admin/admin",
     "pages/market/market",
@@ -39,8 +40,6 @@
     "pages/pickingList/pickingList",
     "pages/purchaseOrders/purchaseOrders",
     "pages/adminOrderManage/adminOrderManage",
-    "pages/messages/messages",
-    "pages/chat/chat",
     "pages/printer-login/authorize",
     "pages/adminSales/adminSales",
     "pages/adminSalesDetail/adminSalesDetail",

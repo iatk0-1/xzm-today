@@ -491,23 +491,6 @@ Page(pageSync.wrap({
     }
   },
 
-  async contactBuyer() {
-    const order = this.data.order;
-    if (!order || !order.id) return;
-    wx.showLoading({ title: '发起会话...' });
-    try {
-      const res = await api.post('/conversations/start-from-order', { orderId: order.id });
-      wx.navigateTo({
-        url: '/pages/chat/chat?conversationId=' + res.conversationId + '&perspective=seller'
-      });
-    } catch (err) {
-      console.error('start conversation failed:', err);
-      wx.showToast({ title: '发起会话失败', icon: 'none' });
-    } finally {
-      wx.hideLoading();
-    }
-  },
-
   viewShipmentTrace(e) {
     const shipmentId = e.currentTarget.dataset.id;
     const trace = this.data.logisticsTraceMap[shipmentId];

@@ -54,8 +54,8 @@
       <text>收货地址</text>
       <text class="arrow">></text>
     </view>
-    <button class="menu-item contact-btn" open-type="contact">
-      <text>联系主理人</text>
+    <button class="menu-item contact-btn" open-type="contact" bindcontact="handleCustomerServiceContact" session-from="page:user">
+      <text>联系客服</text>
       <text class="arrow">></text>
     </button>
     <view class="menu-item printers-entry" wx:if="{{isAdmin}}" bindtap="goToPrinters">
@@ -86,7 +86,7 @@
     <view class="tab-item admin-portal" wx:if="{{isAdmin}}" bindtap="goToAdmin">
       <view class="red-plus-btn">+</view>
     </view>
-    <view class="tab-item" bindtap="goToMessage">信息</view>
+    <view class="tab-item" bindtap="goToMessages">信息</view>
     <view class="tab-item active">我</view>
   </view>
 

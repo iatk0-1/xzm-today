@@ -3,6 +3,8 @@ const pageSync = require('../../utils/pageSync');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const customerServiceOrder = require('../../utils/customerServiceOrder');
+const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 
 // 状态映射（前端中文 -> 后端英文）
 const STATUS_MAP = {
@@ -39,7 +41,7 @@ Page(pageSync.wrap({
   refreshOrder: async function(id) {
     await pageSync.updateList(this, [{ entity: 'orders', id: String(id) }], {
       entity: 'orders', field: 'orders', url: id => '/orders/' + id,
-      normalize: order => ({ ...order, statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status, createdAtDisplay: this.formatTime(order.createdAt) }),
+      normalize: order => ({ ...order, statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status, createdAtDisplay: this.formatTime(order.createdAt), customerServiceCard: customerServiceOrder.orderCard(order) }),
       matches: order => !STATUS_MAP[this.data.currentTab] || STATUS_MAP[this.data.currentTab] === 'after_sale'
         || order.status === STATUS_MAP[this.data.currentTab]
     });
@@ -75,6 +77,13 @@ Page(pageSync.wrap({
     wx.navigateTo({
       url: `/pages/orderDetail/orderDetail?id=${id}`
     });
+  },
+
+  // 客服按钮位于可点击的订单卡片内，拦住 tap 冒泡。
+  stopCardTap: function() {},
+
+  handleCustomerServiceContact: function(e) {
+    customerServiceNavigation.openFromContact(e);
   },
 
   copyOrderNo: function(e) {
@@ -116,7 +125,8 @@ Page(pageSync.wrap({
       const orders = (res.content || res.items || []).map(order => ({
         ...order,
         statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status,
-        createdAtDisplay: this.formatTime(order.createdAt)
+        createdAtDisplay: this.formatTime(order.createdAt),
+        customerServiceCard: customerServiceOrder.orderCard(order)
       }));
 
       wx.hideLoading();

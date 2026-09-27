@@ -3,6 +3,7 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const { formatStock, hasStock, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
 const { createShareImage } = require('../../utils/shareImage');
+const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 
 Page({
   data: {
@@ -787,13 +788,8 @@ switchAuraTab(e) {
     }
   },
 
-  consultService: function() {
-    const product = this.data.product;
-    if (!product || !product.id) return;
-    const sellerId = product.sellerId || require('../../utils/config').SELLER_USER_ID;
-    wx.navigateTo({
-      url: '/pages/chat/chat?sellerId=' + sellerId + '&productId=' + product.id
-    });
+  handleCustomerServiceContact: function(e) {
+    customerServiceNavigation.openFromContact(e);
   },
 
   onShareAppMessage: function(res) {

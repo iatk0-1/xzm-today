@@ -2,6 +2,7 @@ const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/index/index.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const { formatStock, hasStock, isProductSoldOut, isSkuSoldOut } = require('../../utils/stock');
 const app = getApp();
 
@@ -506,7 +507,8 @@ Page(pageSync.wrap({
   goToMarket: function() { wx.reLaunch({ url: '/pages/market/market' }); },
   goToUser: function() { wx.reLaunch({ url: '/pages/user/user' }); },
   goToIndex: function() { wx.reLaunch({ url: '/pages/index/index' }); },
-  goToMessage: function() { wx.navigateTo({ url: '/pages/messages/messages' }); },
+  goToMessages: function() { wx.reLaunch({ url: '/pages/messages/messages' }); },
+  handleCustomerServiceContact: function(e) { customerServiceNavigation.openFromContact(e); },
   goToLiveRoom: function() { wx.navigateTo({ url: '/pages/liveRoomList/index' }); },
 
   // 老板专属入口

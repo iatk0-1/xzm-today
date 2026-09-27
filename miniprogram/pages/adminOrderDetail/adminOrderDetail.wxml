@@ -25,7 +25,6 @@
       <view class="detail-row">{{order.recipientAddress}}</view>
       <view class="address-actions">
         <view class="contact-buyer-btn" bindtap="openRecipientEditor" wx:if="{{order.status === 'pending' || order.status === 'stocking' || order.status === 'paid'}}">修改收件信息</view>
-        <view class="contact-buyer-btn" bindtap="contactBuyer">联系买家</view>
         <view class="copy-recipient-btn" catchtap="copyRecipientInfo">复制收货信息</view>
       </view>
     </view>

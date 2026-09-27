@@ -2,6 +2,7 @@ const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/market/market.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 
 Page(pageSync.wrap({
   data: {
@@ -289,8 +290,11 @@ Page(pageSync.wrap({
   goToUser: function() {
     wx.reLaunch({ url: '/pages/user/user' });
   },
-  goToMessage: function() {
-    wx.navigateTo({ url: '/pages/messages/messages' });
+  goToMessages: function() {
+    wx.reLaunch({ url: '/pages/messages/messages' });
+  },
+  handleCustomerServiceContact: function(e) {
+    customerServiceNavigation.openFromContact(e);
   },
   goToAdmin: function() {
     if (!this.data.isAdmin) {

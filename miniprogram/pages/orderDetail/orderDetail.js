@@ -4,6 +4,8 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const { getExpressName } = require('../../utils/expressCompany');
+const customerServiceOrder = require('../../utils/customerServiceOrder');
+const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 
 // 支付超时时间（30 分钟）
 const PAYMENT_TIMEOUT_MINUTES = 30;
@@ -22,6 +24,7 @@ Page(pageSync.wrap({
   },
 
   onLoad: function(options) {
+    this.fromCustomerService = options.fromCustomerService === '1';
     if (options.outTradeNo) {
       // 微信通知跳转：outTradeNo 即订单 ID
       var orderId = options.outTradeNo;
@@ -53,6 +56,11 @@ Page(pageSync.wrap({
 
     try {
       await auth.ensureAuthenticated({ silent: true });
+      if (this.fromCustomerService && auth.isAdmin()) {
+        wx.hideLoading();
+        wx.redirectTo({ url: `/pages/adminOrderDetail/adminOrderDetail?id=${orderId}` });
+        return;
+      }
       const res = await api.get(`/orders/${orderId}`);
       wx.hideLoading();
       // 附加格式化字段
@@ -71,7 +79,7 @@ Page(pageSync.wrap({
         });
       }
       
-      this.setData({ order: res, isLoading: false });
+      this.setData({ order: res, customerServiceCard: customerServiceOrder.orderCard(res), isLoading: false });
 
       // 加载售后记录
       this.loadAfterSaleRecords(orderId);
@@ -479,6 +487,10 @@ Page(pageSync.wrap({
     wx.navigateTo({
       url: `/pages/afterSaleApply/afterSaleApply?orderId=${this.data.order.id}`
     });
+  },
+
+  handleCustomerServiceContact: function(e) {
+    customerServiceNavigation.openFromContact(e);
   },
 
   viewAfterSaleDetail: function(e) {
