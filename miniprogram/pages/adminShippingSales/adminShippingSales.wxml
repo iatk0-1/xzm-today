@@ -1,0 +1,54 @@
+<view class="page">
+  <view class="summary">
+    <view class="summary-state" wx:if="{{overviewLoading}}">统计加载中...</view>
+    <view class="summary-state" wx:elif="{{overviewError}}" bindtap="loadOverview">统计加载失败，点击重试</view>
+    <view class="summary-row" wx:else>
+      <view class="summary-item"><text class="summary-number">{{overview.soldQty}}</text><text>售出</text></view>
+      <view class="summary-item"><text class="summary-number">{{overview.pendingQty}}</text><text>待发</text></view>
+      <view class="summary-item"><text class="summary-number">{{overview.shippedQty}}</text><text>已发</text></view>
+    </view>
+    <view class="summary-note">按下单时间统计有效订单；待发包含售后中的商品</view>
+  </view>
+
+  <view class="filters">
+    <view class="search-row">
+      <input class="search-input" placeholder="搜索商品、规格或尺码" value="{{keywordInput}}" bindinput="onKeywordInput" bindconfirm="onSearch" confirm-type="search" />
+      <view class="search-button" bindtap="onSearch">搜索</view>
+    </view>
+    <view class="date-row">
+      <picker class="date-picker" mode="date" value="{{startDate}}" end="{{endDate || today}}" bindchange="onStartDateChange"><view>开始：{{startDate || '不限'}}</view></picker>
+      <text class="date-separator">至</text>
+      <picker class="date-picker" mode="date" value="{{endDate}}" start="{{startDate}}" end="{{today}}" bindchange="onEndDateChange"><view>结束：{{endDate || '不限'}}</view></picker>
+      <text class="clear-date" wx:if="{{startDate || endDate}}" bindtap="clearDates">清除</text>
+    </view>
+  </view>
+
+  <scroll-view class="tabs" scroll-x="true">
+    <view class="tab {{status === item.key ? 'active' : ''}}" wx:for="{{tabs}}" wx:key="key" data-status="{{item.key}}" bindtap="switchTab">{{item.name}}</view>
+  </scroll-view>
+
+  <view class="list">
+    <view class="list-title">规格统计（{{total}}）</view>
+    <view class="card" wx:for="{{items}}" wx:key="skuId">
+      <image class="image" src="{{item.productImage || '/images/placeholder.png'}}" mode="aspectFill" />
+      <view class="card-content">
+        <view class="product-name">{{item.productName}}</view>
+        <view class="sku-name">{{item.skuSpec || '默认'}} / {{item.skuSize || '均码'}}</view>
+        <view class="quantities">
+          <text>售出 {{item.soldQty}}</text>
+          <text>待发 {{item.pendingQty}}</text>
+          <text>已发 {{item.shippedQty}}</text>
+        </view>
+        <view class="after-sales" wx:if="{{item.afterSaleLabels.length}}">
+          <text class="after-sale-label">售后</text>
+          <text class="after-sale-status" wx:for="{{item.afterSaleLabels}}" wx:for-item="label" wx:key="*this">{{label}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="message" wx:if="{{loading && items.length === 0}}">正在加载...</view>
+    <view class="message retry" wx:elif="{{loadError && items.length === 0}}" bindtap="retryItems">加载失败，点击重试</view>
+    <view class="message" wx:elif="{{!loading && items.length === 0}}">暂无统计数据</view>
+    <view class="message retry" wx:if="{{hasMore && !loading}}" bindtap="onReachBottom">加载更多</view>
+    <view class="message" wx:if="{{loading && items.length > 0}}">正在加载更多...</view>
+  </view>
+</view>

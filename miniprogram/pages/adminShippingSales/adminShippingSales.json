@@ -1,0 +1,5 @@
+{
+  "navigationBarTitleText": "售出数量统计",
+  "enablePullDownRefresh": true,
+  "onReachBottomDistance": 120
+}

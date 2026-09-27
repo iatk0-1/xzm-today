@@ -42,6 +42,7 @@
     "pages/adminOrderManage/adminOrderManage",
     "pages/printer-login/authorize",
     "pages/adminSales/adminSales",
+    "pages/adminShippingSales/adminShippingSales",
     "pages/adminSalesDetail/adminSalesDetail",
     "pages/manualShip/manualShip"
   ],

@@ -282,6 +282,10 @@ Page({
     });
   },
 
+  goToShippingSales: function() {
+    wx.navigateTo({ url: '/pages/adminShippingSales/adminShippingSales' });
+  },
+
   goToCatalogManage: function() {
     wx.navigateTo({
       url: '/pages/adminCatalogManage/adminCatalogManage'
