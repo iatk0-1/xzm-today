@@ -4,12 +4,19 @@ const Module = require('node:module');
 
 let config;
 let response = { hasContacted: false };
+let permission = { canServe: false };
+let sessions = [];
 const requests = [];
 global.Page = value => { config = value; };
 const originalLoad = Module._load;
 Module._load = function(request, ...rest) {
   if (request.endsWith('utils/api')) {
-    return { get: async url => { requests.push(url); return response; } };
+    return { get: async url => {
+      requests.push(url);
+      if (url === '/wechat/customer-service/me') return permission;
+      if (url === '/wechat/customer-service/sessions') return sessions;
+      return response;
+    } };
   }
   if (request.endsWith('utils/auth')) {
     return { isAdmin: () => false, ensureAuthenticated: async () => {} };
@@ -31,6 +38,7 @@ function createPage() {
 
 test('信息页只在客服收到用户消息后展示单张入口卡片', async () => {
   requests.length = 0;
+  permission = { canServe: false };
   const page = createPage();
   await page.loadContact();
   assert.equal(page.data.hasContacted, false);
@@ -39,7 +47,29 @@ test('信息页只在客服收到用户消息后展示单张入口卡片', async
   await page.loadContact();
   assert.equal(page.data.hasContacted, true);
   assert.deepEqual(requests, [
+    '/wechat/customer-service/me',
     '/wechat/customer-service/contact',
+    '/wechat/customer-service/me',
     '/wechat/customer-service/contact'
+  ]);
+});
+
+test('客服身份在信息页读取多条待处理会话，不读取用户客服卡片', async () => {
+  requests.length = 0;
+  permission = { canServe: true };
+  sessions = [
+    { id: 1, nickname: '甲', unreadCount: 2, lastContent: '你好' },
+    { id: 2, nickname: '乙', unreadCount: 1, lastContent: '订单咨询' }
+  ];
+  const page = createPage();
+
+  await page.loadContact();
+
+  assert.equal(page.data.canServe, true);
+  assert.equal(page.data.sessions.length, 2);
+  assert.deepEqual(page.data.sessions.map(item => item.unreadLabel), ['2', '1']);
+  assert.deepEqual(requests, [
+    '/wechat/customer-service/me',
+    '/wechat/customer-service/sessions'
   ]);
 });

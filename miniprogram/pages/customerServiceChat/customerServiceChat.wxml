@@ -1,0 +1,22 @@
+<view class="chat-page" style="padding-top: {{statusBarHeight}}px;">
+  <view class="nav-bar"><view class="nav-back" bindtap="goBack">←</view><view class="nav-title">{{session.nickname || '微信用户'}}</view><view wx:if="{{canClose}}" class="close-link" bindtap="close">结束会话</view></view>
+  <view class="customer-info" wx:if="{{session}}">
+    <image class="customer-avatar" src="{{session.avatarUrl || '/images/avatar.png'}}" mode="aspectFill"/>
+    <view><view>{{session.nickname || '微信用户'}}</view><view class="customer-phone">{{session.phone || '未留手机号'}} · {{session.status === 'pending' ? '待接入' : (session.status === 'active' ? '接待中' : '已结束')}}</view></view>
+  </view>
+  <scroll-view class="msg-list" scroll-y scroll-into-view="{{scrollToId}}" scroll-with-animation bindscrolltoupper="loadEarlier" upper-threshold="40">
+    <view wx:if="{{hasMore && messages.length}}" class="load-earlier" bindtap="loadEarlier">查看更早消息</view>
+    <view class="msg-empty" wx:if="{{!messages.length && !loading}}">暂无消息</view>
+    <view class="msg-item {{item.direction === 'staff' ? 'msg-right' : 'msg-left'}}" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
+      <view wx:if="{{item.messageType === 'miniprogrampage'}}" class="mini-card" bindtap="openMiniProgramCard" data-metadata="{{item.metadata}}"><image wx:if="{{item.mediaUrl}}" class="mini-thumb" src="{{item.mediaUrl}}" mode="aspectFill"/><view>{{item.metadata.Title || '小程序页面'}}</view><text class="card-link">查看详情 ›</text></view>
+      <view wx:else class="msg-bubble {{item.direction === 'staff' ? 'bubble-right' : 'bubble-left'}}">{{item.displayContent}}</view>
+      <image wx:if="{{item.messageType === 'image' && item.mediaUrl}}" class="msg-image" src="{{item.mediaUrl}}" mode="aspectFill" bindtap="previewImage" data-url="{{item.mediaUrl}}"/>
+      <view class="msg-meta">{{item.displayTime}} <text wx:if="{{item.status === 'sent'}}">已发送</text><text wx:if="{{item.status === 'failed'}}">发送失败</text><text wx:if="{{item.status === 'unknown'}}">发送结果待核对</text><text wx:if="{{item.status === 'pending'}}">发送中</text></view>
+      <view wx:if="{{item.status === 'failed' && canReply}}" class="retry-btn" bindtap="retry" data-id="{{item.id}}">重试发送</view>
+    </view>
+  </scroll-view>
+  <view class="quota-bar" wx:if="{{session}}">{{quotaText}}</view>
+  <view class="input-bar" wx:if="{{canReply}}"><input class="msg-input" maxlength="2000" value="{{inputText}}" placeholder="输入回复…" bindinput="onInput" confirm-type="send" bindconfirm="send"/><view class="btn-send" bindtap="send">发送</view></view>
+  <view class="input-bar action-bar" wx:elif="{{canClaim}}"><view class="claim-btn" bindtap="claim">接入会话后回复</view></view>
+  <view class="input-bar action-bar" wx:else><text>{{session.status === 'closed' ? '会话已结束，等待用户再次发送消息' : (canClose ? '等待用户再次发送消息以恢复回复额度' : '当前会话由其他客服接待')}}</text></view>
+</view>

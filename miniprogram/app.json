@@ -2,6 +2,9 @@
   "pages": [
     "pages/index/index",
     "pages/messages/messages",
+    "pages/customerServiceChat/customerServiceChat",
+    "pages/customerServiceStaff/customerServiceStaff",
+    "pages/customerServiceOrderDetail/customerServiceOrderDetail",
     "pages/detail/detail",
     "pages/admin/admin",
     "pages/market/market",

@@ -5,26 +5,40 @@
 }
 .nav-bar {
   display: flex; align-items: center; height: 44px;
-  padding: 0 16px; background: #fff; border-bottom: 1rpx solid #e5e5e5;
+  padding: 0 100px 0 16px; background: #fff; border-bottom: 1rpx solid #e5e5e5;
   flex-shrink: 0;
 }
 .nav-title { font-size: 16px; font-weight: bold; }
-.conv-list { flex: 1; overflow-y: auto; padding-bottom: 100rpx; }
+.staff-manage-link { margin-left: 12px; font-size: 12px; color: #5267cb; padding: 8px 0; white-space: nowrap; }
+.conv-list { flex: 1; width: 100%; overflow-y: auto; padding-bottom: 100rpx; box-sizing: border-box; }
 .conv-item {
-  display: flex; align-items: center; width: 100%; padding: 14px 16px;
-  border: 0; border-bottom: 1rpx solid #f0f0f0;
-  border-radius: 0; background: #fff; text-align: left;
-  font-size: inherit; line-height: normal; box-sizing: border-box;
+  position: relative; display: flex; align-items: center;
+  width: 100%; min-height: 78px; padding: 14px 16px;
+  border-bottom: 1rpx solid #f0f0f0;
+  background: #fff; box-sizing: border-box;
 }
-.conv-item::after { display: none; }
 .conv-item:active { background: #f5f5f5; }
 .conv-avatar-wrap { margin-right: 12px; flex-shrink: 0; }
 .conv-avatar { width: 48px; height: 48px; border-radius: 24px; background: #eee; }
 .conv-body { flex: 1; min-width: 0; }
-.conv-top { display: flex; align-items: center; margin-bottom: 4px; }
-.conv-name { font-size: 15px; color: #333; font-weight: 500; white-space: nowrap; }
-.conv-time { font-size: 11px; color: #bbb; margin-left: auto; white-space: nowrap; }
+.conv-top { display: flex; align-items: center; min-width: 0; margin-bottom: 6px; }
+.conv-name { max-width: 82px; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 15px; color: #333; white-space: nowrap; }
+.conv-role {
+  flex-shrink: 0; margin-left: 8px; padding: 1px 6px;
+  border: 1rpx solid #5f79ee; border-radius: 3px;
+  color: #5f79ee; font-size: 10px; line-height: 16px;
+}
+.role-pending { color: #df7a24; border-color: #dfac81; }
+.unread-badge { flex-shrink: 0; min-width: 18px; height: 18px; margin-left: 8px; padding: 0 3px; box-sizing: border-box; border-radius: 10px; background: #ed4545; color: #fff; text-align: center; line-height: 18px; font-size: 10px; }
+.claim-mini-btn { flex-shrink: 0; margin-left: 8px; padding: 5px 9px; border-radius: 14px; background: #1a1a1a; color: #fff; font-size: 11px; }
+.conv-time { flex-shrink: 0; margin-left: auto; padding-left: 5px; font-size: 10px; color: #bbb; white-space: nowrap; }
 .conv-preview { font-size: 13px; color: #999; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv-contact-button {
+  position: absolute; z-index: 1; top: 0; right: 0; bottom: 0; left: 0;
+  width: 100%; height: 100%; margin: 0; padding: 0;
+  border: 0; border-radius: 0; opacity: 0;
+}
+.conv-contact-button::after { display: none; }
 .conv-empty { text-align: center; color: #bbb; font-size: 14px; padding: 60px 0; }
 .bottom-tab-bar {
   position: fixed; bottom: 0; left: 0; width: 100%; height: 100rpx;
