@@ -31,12 +31,14 @@ Page({
   },
   onShow() {
     clearInterval(this._poll);
-    this.refresh();
+    // 返回会话页时即使最后一条消息没变，也重新触发定位。
+    this.setData({ scrollToId: '' });
+    this.refresh(false, true);
     this._poll = setInterval(() => this.refresh(true), 10000);
   },
   onHide() { clearInterval(this._poll); this._poll = null; if (this._audio) this._audio.stop(); },
   onUnload() { clearInterval(this._poll); this._poll = null; if (this._audio) this._audio.destroy(); },
-  async refresh(silent) {
+  async refresh(silent, scrollLatest = false) {
     if (!silent) this.setData({ loading: true });
     try {
       await auth.ensureAuthenticated({ silent: true });
@@ -61,7 +63,8 @@ Page({
         showTools: activeMine && valid ? this.data.showTools : false,
         showEmojis: activeMine && valid ? this.data.showEmojis : false,
         composerType: activeMine && valid ? this.data.composerType : '',
-        scrollToId: silent ? this.data.scrollToId : (formatted.length ? 'msg-' + formatted[formatted.length - 1].id : '') });
+        ...(scrollLatest && allMessages.length
+          ? { scrollToId: 'msg-' + allMessages[allMessages.length - 1].id } : {}) });
     } catch (err) {
       this.setData({ loading: false });
       if (!silent) wx.showToast({ title: (err && err.message) || '加载失败', icon: 'none' });

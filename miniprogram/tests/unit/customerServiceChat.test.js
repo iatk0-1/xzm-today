@@ -71,8 +71,10 @@ test('轮询新消息时保留已翻出的历史，翻页带上最早消息 ID',
 
   await page.refresh();
   assert.equal(page.data.hasMore, true);
+  assert.equal(page.data.scrollToId, '');
   await page.loadEarlier();
   assert.equal(page.data.messages[0].id, 50);
+  assert.equal(page.data.scrollToId, 'msg-51');
   assert.deepEqual(requests.at(-1), {
     url: '/wechat/customer-service/sessions/1/messages', data: { before: 51 }
   });
@@ -82,6 +84,26 @@ test('轮询新消息时保留已翻出的历史，翻页带上最早消息 ID',
   assert.equal(page.data.messages[0].id, 50);
   assert.equal(page.data.messages.at(-1).id, 101);
   assert.equal(page.data.messages.length, 52);
+  assert.equal(page.data.scrollToId, 'msg-51');
+});
+
+test('进入会话和发送回复定位最新，定时刷新不改变阅读位置', async () => {
+  session = activeSession(); posts.length = 0;
+  newest = [{ id: 201, direction: 'user', content: '历史消息' }];
+  const page = createPage();
+  await page.refresh(false, true);
+  assert.equal(page.data.scrollToId, 'msg-201');
+  page.setData({ scrollToId: 'msg-201' });
+  await page.refresh(true);
+  assert.equal(page.data.scrollToId, 'msg-201');
+  page.setData({ inputText: '客服回复' });
+  postResult = { id: 202, direction: 'staff', content: '客服回复', status: 'sent' };
+  await page.send();
+  assert.equal(page.data.scrollToId, 'msg-202');
+  newest = [...newest, { id: 202, direction: 'staff', content: '客服回复', status: 'sent' }];
+  await page.refresh(true);
+  assert.equal(page.data.scrollToId, 'msg-202');
+  postResult = {};
 });
 
 test('非当前接入客服只能看，不能向微信发送', async () => {

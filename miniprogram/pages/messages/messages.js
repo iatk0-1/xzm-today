@@ -1,6 +1,7 @@
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
+const customerServiceUnread = require('../../utils/customerServiceUnread');
 const { displayWechatEmoji } = require('../../utils/wechat-emoji');
 
 Page({
@@ -8,6 +9,10 @@ Page({
     hasContacted: false,
     firstMessageTime: '',
     latestStaffReplyAt: '',
+    contactUnreadCount: 0,
+    contactUnreadLabel: '0',
+    messageUnreadCount: 0,
+    messageUnreadLabel: '0',
     canServe: false,
     sessions: [],
     loading: true,
@@ -38,9 +43,29 @@ Page({
       await auth.ensureAuthenticated({ silent: true });
       const permission = await api.get('/wechat/customer-service/me');
       if (permission && permission.canServe) {
-        const sessions = await api.get('/wechat/customer-service/sessions');
+        // 管理员和客服也可能以用户身份咨询；两类会话各自展示。
+        const [sessionsResult, contactResult, unreadResult] = await Promise.allSettled([
+          api.get('/wechat/customer-service/sessions'),
+          api.get('/wechat/customer-service/contact'),
+          api.get('/wechat/customer-service/unread')
+        ]);
+        if (sessionsResult.status === 'rejected') throw sessionsResult.reason;
+        const sessions = sessionsResult.value;
+        const contact = contactResult.status === 'fulfilled' ? contactResult.value : null;
+        const contactUnreadCount = Math.max(0, Number(contact && contact.unreadCount) || 0);
+        const staffUnreadCount = (sessions || []).reduce((sum, session) => sum + (Number(session.unreadCount) || 0), 0);
+        const summary = unreadResult.status === 'fulfilled' ? unreadResult.value : null;
+        const totalUnread = summary && Number.isFinite(Number(summary.totalUnreadCount))
+          ? Math.max(0, Number(summary.totalUnreadCount)) : contactUnreadCount + staffUnreadCount;
         this.setData({
           canServe: true,
+          hasContacted: !!(contact && contact.hasContacted),
+          firstMessageTime: this.formatTime(contact && contact.firstMessageAt),
+          latestStaffReplyAt: this.formatTime(contact && contact.latestStaffReplyAt),
+          contactUnreadCount,
+          contactUnreadLabel: customerServiceUnread.label(contactUnreadCount),
+          messageUnreadCount: totalUnread,
+          messageUnreadLabel: customerServiceUnread.label(totalUnread),
           sessions: (sessions || []).map(s => ({ ...s,
             displayName: s.nickname || '微信用户',
             preview: displayWechatEmoji(s.lastContent) || '暂无消息',
@@ -52,11 +77,17 @@ Page({
         return;
       }
       const contact = await api.get('/wechat/customer-service/contact');
+      const contactUnreadCount = Math.max(0, Number(contact && contact.unreadCount) || 0);
       this.setData({
         canServe: false,
+        sessions: [],
         hasContacted: !!(contact && contact.hasContacted),
         firstMessageTime: this.formatTime(contact && contact.firstMessageAt),
         latestStaffReplyAt: this.formatTime(contact && contact.latestStaffReplyAt),
+        contactUnreadCount,
+        contactUnreadLabel: customerServiceUnread.label(contactUnreadCount),
+        messageUnreadCount: contactUnreadCount,
+        messageUnreadLabel: customerServiceUnread.label(contactUnreadCount),
         loading: false,
         refreshing: false
       });

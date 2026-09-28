@@ -3,10 +3,13 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const config = require('../../utils/config');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
+const customerServiceUnread = require('../../utils/customerServiceUnread');
 
 Page({
   data: {
     isAdmin: false,
+    messageUnreadCount: 0,
+    messageUnreadLabel: '0',
     navTop: 0,
     navHeight: 0,
     userInfo: null,
@@ -27,6 +30,7 @@ Page({
   },
 
   onShow: function() {
+    customerServiceUnread.start(this);
     // 每次显示页面时检查管理员状态
     this.checkAdmin();
     this.loadUserInfo();
@@ -221,6 +225,14 @@ Page({
   },
   goToMarket: function() {
     wx.reLaunch({ url: '/pages/market/market' });
+  },
+
+  onHide: function() {
+    customerServiceUnread.stop(this);
+  },
+
+  onUnload: function() {
+    customerServiceUnread.stop(this);
   },
   goToMessages: function() {
     wx.reLaunch({ url: '/pages/messages/messages' });

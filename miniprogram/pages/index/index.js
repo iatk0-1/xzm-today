@@ -3,6 +3,7 @@ const pageSync = require('../../utils/pageSync');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
+const customerServiceUnread = require('../../utils/customerServiceUnread');
 const { formatStock, hasStock, isProductSoldOut, isSkuSoldOut } = require('../../utils/stock');
 const app = getApp();
 
@@ -26,6 +27,8 @@ Page(pageSync.wrap({
 
     // 3. 商品与权限参数
     isAdmin: false,
+    messageUnreadCount: 0,
+    messageUnreadLabel: '0',
     productList: [],
     leftColumn: [],  // 左列商品
     rightColumn: [], // 右列商品
@@ -105,6 +108,7 @@ Page(pageSync.wrap({
   },
 
   onShow: function() {
+    customerServiceUnread.start(this);
     // 每次显示页面时检查管理员状态
     this.checkAdmin();
 
@@ -129,8 +133,13 @@ Page(pageSync.wrap({
   },
 
   onUnload: function() {
+    customerServiceUnread.stop(this);
     this._isInitializingHome = false;
     this._isRefreshingHome = false;
+  },
+
+  onHide: function() {
+    customerServiceUnread.stop(this);
   },
 
   hasLoadedHomeData: function() {

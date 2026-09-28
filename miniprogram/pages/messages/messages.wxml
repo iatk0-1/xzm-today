@@ -2,6 +2,19 @@
   <view class="nav-bar"><view class="nav-title">消息</view><view wx:if="{{canServe && isAdmin}}" class="staff-manage-link" bindtap="goStaffManage">客服管理</view></view>
 
   <scroll-view class="conv-list" scroll-y refresher-enabled bindrefresherrefresh="onRefresh" refresher-triggered="{{refreshing}}">
+    <view wx:if="{{hasContacted}}" class="conv-item">
+      <view class="conv-avatar-wrap"><image class="conv-avatar" src="/images/customer-service-teddy-bear.jpg" mode="aspectFill"/></view>
+      <view class="conv-body">
+        <view class="conv-top">
+          <text class="conv-name">现在买</text>
+          <text class="conv-role">我的咨询</text>
+          <text class="conv-time">{{latestStaffReplyAt || firstMessageTime}}</text>
+        </view>
+        <view class="conv-preview">{{latestStaffReplyAt ? '客服曾回复 · 点击查看' : '点击进入微信客服会话'}}</view>
+      </view>
+      <view wx:if="{{contactUnreadCount > 0}}" class="unread-badge">{{contactUnreadLabel}}</view>
+      <button class="conv-contact-button" open-type="contact" bindcontact="handleCustomerServiceContact" session-from="page:messages" aria-label="进入现在买客服会话"></button>
+    </view>
     <block wx:if="{{canServe}}">
       <view wx:for="{{sessions}}" wx:key="id" class="conv-item" bindtap="goSession" data-id="{{item.id}}">
         <view class="conv-avatar-wrap"><image class="conv-avatar" src="{{item.avatarUrl || '/images/avatar.png'}}" mode="aspectFill"/></view>
@@ -12,20 +25,8 @@
         <view wx:if="{{item.unreadCount > 0}}" class="unread-badge">{{item.unreadLabel}}</view>
         <view wx:if="{{item.status === 'pending'}}" class="claim-mini-btn" catchtap="claimSession" data-id="{{item.id}}">接入</view>
       </view>
-      <view class="conv-empty" wx:if="{{sessions.length === 0 && !loading}}">暂无客服会话</view>
+      <view class="conv-empty" wx:if="{{sessions.length === 0 && !hasContacted && !loading}}">暂无客服会话</view>
     </block>
-    <view wx:if="{{!canServe && hasContacted}}" class="conv-item">
-      <view class="conv-avatar-wrap"><image class="conv-avatar" src="/images/customer-service-teddy-bear.jpg" mode="aspectFill"/></view>
-      <view class="conv-body">
-        <view class="conv-top">
-          <text class="conv-name">现在买</text>
-          <text class="conv-role">客服</text>
-          <text class="conv-time">{{latestStaffReplyAt || firstMessageTime}}</text>
-        </view>
-        <view class="conv-preview">{{latestStaffReplyAt ? '客服曾回复 · 点击查看' : '点击进入微信客服会话'}}</view>
-      </view>
-      <button class="conv-contact-button" open-type="contact" bindcontact="handleCustomerServiceContact" session-from="page:messages" aria-label="进入现在买客服会话"></button>
-    </view>
     <view class="conv-empty" wx:if="{{!canServe && !hasContacted && !loading}}">
       <text>{{loadError ? '消息加载失败，下拉重试' : '暂无消息'}}</text>
     </view>
@@ -35,7 +36,7 @@
     <view class="tab-item" bindtap="goToIndex">首页</view>
     <view class="tab-item" bindtap="goToMarket">市集</view>
     <view class="tab-item admin-portal" wx:if="{{isAdmin}}" bindtap="goToAdmin"><view class="red-plus-btn">+</view></view>
-    <view class="tab-item active">信息</view>
+    <view class="tab-item active"><view class="message-tab-label">信息<text wx:if="{{messageUnreadCount > 0}}" class="message-tab-badge">{{messageUnreadLabel}}</text></view></view>
     <view class="tab-item" bindtap="goToUser">我</view>
   </view>
 </view>

@@ -44,6 +44,9 @@ Module._load = function (request, ...rest) {
   if (request.endsWith('utils/auth')) {
     return { ensureAuthenticated: async () => {}, isAdmin: () => false };
   }
+  if (request.endsWith('utils/customerServiceUnread')) {
+    return { start() {}, stop() {} };
+  }
   return originalLoad.call(this, request, ...rest);
 };
 

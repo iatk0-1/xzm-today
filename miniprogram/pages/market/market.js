@@ -3,6 +3,7 @@ const pageSync = require('../../utils/pageSync');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
+const customerServiceUnread = require('../../utils/customerServiceUnread');
 
 Page(pageSync.wrap({
   data: {
@@ -10,6 +11,8 @@ Page(pageSync.wrap({
     leftColumn: [],   // 左列心愿
     rightColumn: [],  // 右列心愿
     isAdmin: false,
+    messageUnreadCount: 0,
+    messageUnreadLabel: '0',
     // 分页参数
     page: 1,
     pageSize: 20,
@@ -27,6 +30,7 @@ Page(pageSync.wrap({
   },
 
   onShow: function() {
+    customerServiceUnread.start(this);
     this.checkAdmin();
     if (this._isRefreshingMarket) {
       return;
@@ -38,6 +42,14 @@ Page(pageSync.wrap({
       this._skipNextMarketRefresh = false;
     }
     // 返回时由 pageSync 更新变动心愿，保留列表顺序和分页。
+  },
+
+  onHide: function() {
+    customerServiceUnread.stop(this);
+  },
+
+  onUnload: function() {
+    customerServiceUnread.stop(this);
   },
 
   // 触底加载更多

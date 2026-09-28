@@ -86,7 +86,7 @@
     <view class="tab-item admin-portal" wx:if="{{isAdmin}}" bindtap="goToAdmin">
       <view class="red-plus-btn">+</view>
     </view>
-    <view class="tab-item" bindtap="goToMessages">信息</view>
+    <view class="tab-item" bindtap="goToMessages"><view class="message-tab-label">信息<text wx:if="{{messageUnreadCount > 0}}" class="message-tab-badge">{{messageUnreadLabel}}</text></view></view>
     <view class="tab-item" bindtap="goToUser">我</view>
   </view>
 
