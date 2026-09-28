@@ -1,23 +1,49 @@
 <view class="chat-page" style="padding-top: {{statusBarHeight}}px;">
-  <view class="nav-bar"><view class="nav-back" bindtap="goBack">←</view><view class="nav-title">{{session.nickname || '微信用户'}}</view><view wx:if="{{canClose}}" class="close-link" bindtap="close">结束会话</view></view>
+  <view class="nav-bar"><view class="nav-back" bindtap="goBack">←</view><view class="nav-title">{{session.nickname || '微信用户'}}</view></view>
   <view class="customer-info" wx:if="{{session}}">
     <image class="customer-avatar" src="{{session.avatarUrl || '/images/avatar.png'}}" mode="aspectFill"/>
-    <view><view>{{session.nickname || '微信用户'}}</view><view class="customer-phone">{{session.phone || '未留手机号'}} · {{session.status === 'pending' ? '待接入' : (session.status === 'active' ? '接待中' : '已结束')}}</view></view>
+    <view class="customer-summary"><view class="customer-name">{{session.nickname || '微信用户'}}</view><view class="customer-phone">{{session.phone || '未留手机号'}} · {{session.status === 'pending' ? '待接入' : (session.status === 'active' ? '接待中' : '已结束')}}</view></view>
+    <view wx:if="{{canClose}}" class="close-link" bindtap="close">结束对话</view>
   </view>
   <scroll-view class="msg-list" scroll-y scroll-into-view="{{scrollToId}}" scroll-with-animation bindscrolltoupper="loadEarlier" upper-threshold="40">
     <view wx:if="{{hasMore && messages.length}}" class="load-earlier" bindtap="loadEarlier">查看更早消息</view>
     <view class="msg-empty" wx:if="{{!messages.length && !loading}}">暂无消息</view>
     <view class="msg-item {{item.direction === 'staff' ? 'msg-right' : 'msg-left'}}" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
       <view wx:if="{{item.messageType === 'miniprogrampage'}}" class="mini-card" bindtap="openMiniProgramCard" data-metadata="{{item.metadata}}"><image wx:if="{{item.mediaUrl}}" class="mini-thumb" src="{{item.mediaUrl}}" mode="aspectFill"/><view>{{item.metadata.Title || '小程序页面'}}</view><text class="card-link">查看详情 ›</text></view>
+      <view wx:elif="{{item.messageType === 'link'}}" class="mini-card" bindtap="copyLink" data-url="{{item.metadata.Url}}"><image wx:if="{{item.mediaUrl}}" class="mini-thumb" src="{{item.mediaUrl}}" mode="aspectFill"/><view>{{item.metadata.Title || '图文链接'}}</view><view class="card-description">{{item.metadata.Description}}</view><text class="card-link">复制链接 ›</text></view>
+      <image wx:elif="{{item.messageType === 'image' && item.mediaUrl}}" class="msg-image" src="{{item.mediaUrl}}" mode="widthFix" bindtap="previewImage" data-url="{{item.mediaUrl}}"/>
+      <video wx:elif="{{item.messageType === 'video' && item.mediaUrl}}" class="msg-video" src="{{item.mediaUrl}}" poster="{{item.metadata.ThumbUrl}}" controls object-fit="contain"/>
+      <view wx:elif="{{item.messageType === 'voice' && item.mediaUrl}}" class="msg-bubble voice-bubble {{item.direction === 'staff' ? 'bubble-right' : 'bubble-left'}}" bindtap="playVoice" data-url="{{item.mediaUrl}}">▶ 点击播放语音</view>
       <view wx:else class="msg-bubble {{item.direction === 'staff' ? 'bubble-right' : 'bubble-left'}}">{{item.displayContent}}</view>
-      <image wx:if="{{item.messageType === 'image' && item.mediaUrl}}" class="msg-image" src="{{item.mediaUrl}}" mode="aspectFill" bindtap="previewImage" data-url="{{item.mediaUrl}}"/>
+      <view wx:if="{{item.messageType === 'miniprogrampage' && canReply}}" class="card-reply" bindtap="reuseCard" data-metadata="{{item.metadata}}" data-cover="{{item.mediaUrl}}">回复此卡片</view>
       <view class="msg-meta">{{item.displayTime}} <text wx:if="{{item.status === 'sent'}}">已发送</text><text wx:if="{{item.status === 'failed'}}">发送失败</text><text wx:if="{{item.status === 'unknown'}}">发送结果待核对</text><text wx:if="{{item.status === 'pending'}}">发送中</text></view>
       <view wx:if="{{item.status === 'failed' && item.errorMessage}}" class="msg-error">{{item.errorMessage}}</view>
       <view wx:if="{{item.status === 'failed' && canReply}}" class="retry-btn" bindtap="retry" data-id="{{item.id}}">重试发送</view>
     </view>
   </scroll-view>
   <view class="quota-bar" wx:if="{{session}}">{{quotaText}}</view>
-  <view class="input-bar" wx:if="{{canReply}}"><input class="msg-input" maxlength="2000" value="{{inputText}}" placeholder="输入回复…" bindinput="onInput" confirm-type="send" bindconfirm="send"/><view class="btn-send" bindtap="send">发送</view></view>
+  <view class="input-bar {{showTools ? 'tools-open' : ''}}" wx:if="{{canReply}}"><view class="btn-more {{sending ? 'disabled' : ''}}" bindtap="toggleTools">{{showTools ? '×' : '＋'}}</view><input class="msg-input" maxlength="2000" disabled="{{sending}}" value="{{inputText}}" placeholder="输入回复…" bindinput="onInput" confirm-type="send" bindconfirm="send"/><view class="btn-send {{sending ? 'disabled' : ''}}" bindtap="send">{{sending ? '发送中' : '发送'}}</view></view>
   <view class="input-bar action-bar" wx:elif="{{canClaim}}"><view class="claim-btn" bindtap="claim">接入会话后回复</view></view>
   <view class="input-bar action-bar" wx:else><text>{{session.status === 'closed' ? '会话已结束，等待用户再次发送消息' : (canClose ? '等待用户再次发送消息以恢复回复额度' : '当前会话由其他客服接待')}}</text></view>
+  <view wx:if="{{canReply && showTools}}" class="tools-panel">
+    <view class="tool" bindtap="chooseImage"><view class="tool-icon">▧</view><text>图片</text></view>
+    <view class="tool" bindtap="chooseVideo"><view class="tool-icon">▷</view><text>视频</text></view>
+    <view class="tool" bindtap="chooseVoice"><view class="tool-icon">♫</view><text>语音文件</text></view>
+    <view class="tool" bindtap="openComposer" data-type="link"><view class="tool-icon">↗</view><text>图文链接</text></view>
+    <view class="tool" bindtap="openComposer" data-type="miniprogrampage"><view class="tool-icon">▤</view><text>商品 / 订单</text></view>
+    <view class="tools-hint">单图不超过 2MB · 视频不超过 10MB · 语音仅 MP3/AMR，最长 60 秒</view>
+  </view>
+  <view wx:if="{{composerType}}" class="composer-mask" bindtap="closeComposer">
+    <view class="composer" catchtap="stopTap">
+      <view class="composer-heading"><text>{{composerType === 'link' ? '发送图文链接' : '发送小程序卡片'}}</text><text class="composer-close" bindtap="closeComposer">×</text></view>
+      <scroll-view scroll-y class="composer-fields">
+        <view wx:if="{{composerType === 'miniprogrampage'}}" class="kind-tabs"><view class="kind-tab {{draftPageKind === 'product' ? 'selected' : ''}}" bindtap="choosePageKind" data-kind="product">商品详情</view><view class="kind-tab {{draftPageKind === 'order' ? 'selected' : ''}}" bindtap="choosePageKind" data-kind="order">订单详情</view></view>
+        <view class="field-label">标题</view><input class="composer-input" maxlength="100" value="{{draftTitle}}" placeholder="填写卡片标题" data-field="draftTitle" bindinput="onDraftInput"/>
+        <block wx:if="{{composerType === 'link'}}"><view class="field-label">链接</view><input class="composer-input" maxlength="1024" value="{{draftUrl}}" placeholder="https://" data-field="draftUrl" bindinput="onDraftInput"/><view class="field-label">描述（选填）</view><input class="composer-input" maxlength="300" value="{{draftDescription}}" placeholder="填写链接描述" data-field="draftDescription" bindinput="onDraftInput"/></block>
+        <block wx:else><view class="field-label">{{draftPageKind === 'product' ? '商品编号' : '订单编号'}}</view><input class="composer-input" maxlength="20" type="number" value="{{draftTargetId}}" placeholder="填写编号后自动读取标题和封面" data-field="draftTargetId" bindinput="onDraftInput" bindblur="loadCardInfo"/><view wx:if="{{draftPageKind === 'order'}}" class="composer-hint">订单须属于当前用户，且已在本会话分享过。</view></block>
+        <view class="field-label">封面</view><view class="cover-picker" bindtap="chooseDraftCover"><image wx:if="{{draftThumbUrl}}" src="{{draftThumbUrl}}" mode="aspectFill"/><text wx:else>{{uploadingCover ? '上传中…' : '＋ 选择一张封面'}}</text></view>
+      </scroll-view>
+      <view class="composer-send {{sending || uploadingCover ? 'disabled' : ''}}" bindtap="sendCard">{{sending ? '发送中…' : '发送卡片'}}</view>
+    </view>
+  </view>
 </view>

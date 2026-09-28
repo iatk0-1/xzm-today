@@ -9,22 +9,33 @@ let newest = [];
 let earlier = [];
 const requests = [];
 const posts = [];
+const uploads = [];
+let imageOptions;
+let postResult = {};
 
 global.Page = config => { pageConfig = config; };
 global.wx = {
   getWindowInfo: () => ({ statusBarHeight: 20 }),
   showToast: () => {},
-  navigateBack: () => {}
+  navigateBack: () => {},
+  chooseImage: options => { imageOptions = options; }
 };
 const originalLoad = Module._load;
 Module._load = function(request, ...rest) {
+  if (request.endsWith('utils/cos-upload')) return {
+    uploadFile: async (path, dir, progress, format) => {
+      uploads.push({ path, dir, format });
+      return 'https://upload.example/xzm/chats/' + (format || 'image') + '.' + (format || 'jpg');
+    }
+  };
+  if (request.endsWith('utils/media')) return { compressImage: async path => ({ path }) };
   if (request.endsWith('utils/api')) return {
     get: async (url, data) => {
       requests.push({ url, data });
       if (url.endsWith('/messages')) return data && data.before ? earlier : newest;
       return session;
     },
-    post: async (url, data) => { posts.push({ url, data }); return {}; }
+    post: async (url, data) => { posts.push({ url, data }); return postResult; }
   };
   if (request.endsWith('utils/auth')) return {
     ensureAuthenticated: async () => {},
@@ -135,4 +146,69 @@ test('超过用户最后一条消息 48 小时，即使显示窗口未过期也�
   page.setData({ inputText: '迟来的回复' });
   await page.send();
   assert.equal(posts.length, 0);
+});
+
+test('图片入口只能选一张，并发送图片类型及上传后的地址', async () => {
+  session = activeSession(); newest = []; posts.length = 0; uploads.length = 0;
+  const page = createPage(); await page.refresh();
+  page.chooseImage();
+  assert.equal(imageOptions.count, 1);
+  await page.sendImage('/tmp/photo.jpg');
+  assert.deepEqual(uploads[0], { path: '/tmp/photo.jpg', dir: 'chats', format: undefined });
+  assert.deepEqual(posts.at(-1).data, {
+    type: 'image', mediaUrl: 'https://upload.example/xzm/chats/image.jpg'
+  });
+  assert.equal(page.data.sending, false);
+});
+
+test('视频上传视频和单张封面，再发送微信视频消息', async () => {
+  session = activeSession(); newest = []; posts.length = 0; uploads.length = 0;
+  const page = createPage(); await page.refresh();
+  await page.sendVideo({ tempFilePath: '/tmp/video.mp4', thumbTempFilePath: '/tmp/cover.jpg' });
+  assert.deepEqual(uploads.map(u => u.format), ['mp4', 'jpg']);
+  assert.deepEqual(posts.at(-1).data, {
+    type: 'video', mediaUrl: 'https://upload.example/xzm/chats/mp4.mp4',
+    thumbUrl: 'https://upload.example/xzm/chats/jpg.jpg', title: '客服视频'
+  });
+});
+
+test('商品和订单卡片保留字符串编号，并使用用户侧的详情路径', async () => {
+  session = activeSession(); newest = []; posts.length = 0;
+  const page = createPage(); await page.refresh();
+  page.setData({ composerType: 'miniprogrampage', draftPageKind: 'order',
+    draftTitle: '订单详情', draftTargetId: '317504652948017152',
+    draftThumbUrl: 'https://upload.example/xzm/chats/cover.jpg' });
+  await page.sendCard();
+  assert.equal(posts.at(-1).data.pagePath, 'pages/orderDetail/orderDetail?id=317504652948017152');
+  assert.equal(posts.at(-1).data.type, 'miniprogrampage');
+  assert.equal(page.data.composerType, '');
+});
+
+test('图文链接使用 link 类型，未接入客服不能发送媒体', async () => {
+  session = activeSession(); newest = []; posts.length = 0; uploads.length = 0;
+  const page = createPage(); await page.refresh();
+  page.setData({ composerType: 'link', draftTitle: '使用说明',
+    draftUrl: 'https://example.com/help', draftThumbUrl: 'https://upload.example/xzm/chats/cover.jpg' });
+  await page.sendCard();
+  assert.equal(posts.at(-1).data.type, 'link');
+  assert.equal(posts.at(-1).data.url, 'https://example.com/help');
+  page.setData({ canReply: false });
+  const sent = posts.length;
+  await page.sendImage('/tmp/a.jpg');
+  assert.equal(posts.length, sent);
+  assert.equal(uploads.length, 0);
+});
+
+test('重试较早的图片消息后更新原消息状态，轮询仍保留更新后的历史', async () => {
+  session = activeSession(); newest = [{ id: 100, direction: 'user', messageType: 'text', content: '新消息' }];
+  const page = createPage(); await page.refresh();
+  const image = { id: 1, direction: 'staff', messageType: 'image', status: 'failed',
+    mediaUrl: 'https://upload.example/xzm/chats/image.jpg', errorMessage: '发送失败' };
+  page.setData({ messages: [image, ...page.data.messages] });
+  postResult = { ...image, status: 'sent', errorMessage: null };
+  await page.retry({ currentTarget: { dataset: { id: 1 } } });
+  assert.equal(page.data.messages[0].status, 'sent');
+  assert.equal(page.data.messages[0].messageType, 'image');
+  assert.equal(page.data.messages[0].errorMessage, null);
+  postResult = {};
 });
