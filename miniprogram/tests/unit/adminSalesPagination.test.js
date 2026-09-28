@@ -157,9 +157,36 @@ test('销售页最近 1 天只查询当天，取消编辑不改已生效范围',
   assert.deepEqual(overviewRequests[0], { startDate: today, endDate: today });
   assert.deepEqual(filteredOverviewRequests[0], { startDate: today, endDate: today });
   assert.deepEqual(page.data.overview, {
-    soldQty: 25, totalAmount: 3316.25, afterSaleCount: 1, afterSaleAmount: 132.65
+    soldQty: 25, totalAmount: 3316.25, afterSaleCount: 1, afterSaleAmount: 132.65,
+    pendingReviewQty: 0
   });
 });
+
+test('部分退款待审核时保留售出数量，退款成功后更新售出数量和待审核件数',
+  { concurrency: false }, async () => {
+    requests.length = 0;
+    responses = [
+      Promise.resolve({ content: [{ productId: 1, soldQty: 2, pendingReviewQty: 1 }], totalElements: 1 }),
+      Promise.resolve({ content: [{ productId: 1, soldQty: 1, pendingReviewQty: 0 }], totalElements: 1 })
+    ];
+    overviewResponses = [
+      Promise.resolve({ soldQty: 2, pendingReviewQty: 1 }),
+      Promise.resolve({ soldQty: 1, pendingReviewQty: 0 })
+    ];
+    filteredOverviewResponses = [
+      Promise.resolve({ soldQty: 2, pendingReviewQty: 1 }),
+      Promise.resolve({ soldQty: 1, pendingReviewQty: 0 })
+    ];
+    const page = createPage();
+    await Promise.all([page.reloadFilteredData(), page.loadOverview()]);
+    assert.equal(page.data.overview.soldQty, 2);
+    assert.equal(page.data.filteredOverview.pendingReviewQty, 1);
+    assert.equal(page.data.products[0].pendingReviewQty, 1);
+    await Promise.all([page.reloadFilteredData(), page.loadOverview()]);
+    assert.equal(page.data.overview.soldQty, 1);
+    assert.equal(page.data.filteredOverview.pendingReviewQty, 0);
+    assert.equal(page.data.products[0].soldQty, 1);
+  });
 
 test('销售统计忽略日期切换前的旧结果', { concurrency: false }, async () => {
   overviewRequests.length = 0;

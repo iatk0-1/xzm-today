@@ -24,6 +24,7 @@
           <text class="stat-label">退款金额</text>
         </view>
       </view>
+      <text class="pending-review-tag" wx:if="{{overview.pendingReviewQty}}">待审核 {{overview.pendingReviewQty}} 件</text>
     </block>
   </view>
   <!-- 筛选区 -->
@@ -87,6 +88,7 @@
           <text class="stat-label">退款金额</text>
         </view>
       </view>
+      <text class="pending-review-tag" wx:if="{{filteredOverview.pendingReviewQty}}">待审核 {{filteredOverview.pendingReviewQty}} 件</text>
     </block>
   </view>
 
@@ -101,6 +103,7 @@
           <text class="product-qty">售出 {{item.soldQty || 0}} 件</text>
           <text class="product-amount">¥{{item.totalAmount || 0}}</text>
         </view>
+        <text class="pending-review-tag" wx:if="{{item.pendingReviewQty}}">待审核 {{item.pendingReviewQty}} 件</text>
       </view>
       <view class="product-arrow">></view>
     </view>

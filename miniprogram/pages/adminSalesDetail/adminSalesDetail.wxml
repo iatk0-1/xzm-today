@@ -26,6 +26,7 @@
         <text class="stat-label">退款金额</text>
       </view>
     </view>
+    <text class="pending-review-tag" wx:if="{{overview.pendingReviewQty}}">待审核 {{overview.pendingReviewQty}} 件</text>
   </view>
 
   <!-- 日期筛选 -->
@@ -43,6 +44,7 @@
     <view class="sku-row" wx:for="{{skus}}" wx:key="skuSpec">
       <view class="sku-info">
         <text class="sku-spec">{{item.skuSpec || '默认'}} / {{item.skuSize || '均码'}}</text>
+        <text class="pending-review-tag" wx:if="{{item.pendingReviewQty}}">待审核 {{item.pendingReviewQty}} 件</text>
       </view>
       <view class="sku-stats">
         <text class="sku-qty">x{{item.soldQty || 0}}</text>

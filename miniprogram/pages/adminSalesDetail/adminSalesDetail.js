@@ -7,7 +7,8 @@ Page({
     productId: null,
     productName: '',
     // 统计概览
-    overview: { soldItems: 0, soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleAmount: 0 },
+    overview: { soldItems: 0, soldQty: 0, totalAmount: 0, afterSaleCount: 0,
+      afterSaleAmount: 0, pendingReviewQty: 0 },
     // SKU 明细
     skus: [],
     skuTotal: 0,
@@ -64,7 +65,8 @@ Page({
         soldQty: res.soldQty || 0,
         totalAmount: res.totalAmount || 0,
         afterSaleCount: res.afterSaleCount || 0,
-        afterSaleAmount: res.afterSaleAmount || 0
+        afterSaleAmount: res.afterSaleAmount || 0,
+        pendingReviewQty: res.pendingReviewQty || 0
       }});
     }).catch(err => console.error('加载概览失败:', err));
   },

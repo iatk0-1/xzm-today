@@ -13,10 +13,10 @@ Page({
     loading: false,
     loadError: false,
     isRefreshing: false,
-    overview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleAmount: 0 },
+    overview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleAmount: 0, pendingReviewQty: 0 },
     overviewLoading: false,
     overviewError: false,
-    filteredOverview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleAmount: 0 },
+    filteredOverview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleAmount: 0, pendingReviewQty: 0 },
     filteredOverviewLoading: false,
     filteredOverviewError: false,
     // 筛选
@@ -98,7 +98,8 @@ Page({
         soldQty: res.soldQty || 0,
         totalAmount: res.totalAmount || 0,
         afterSaleCount: res.afterSaleCount || 0,
-        afterSaleAmount: res.afterSaleAmount || 0
+        afterSaleAmount: res.afterSaleAmount || 0,
+        pendingReviewQty: res.pendingReviewQty || 0
       } });
     }).catch(err => {
       if (requestId !== this.overviewRequestId) return;
@@ -119,7 +120,8 @@ Page({
         soldQty: res.soldQty || 0,
         totalAmount: res.totalAmount || 0,
         afterSaleCount: res.afterSaleCount || 0,
-        afterSaleAmount: res.afterSaleAmount || 0
+        afterSaleAmount: res.afterSaleAmount || 0,
+        pendingReviewQty: res.pendingReviewQty || 0
       } });
     }).catch(err => {
       if (requestId !== this.filteredOverviewRequestId) return;

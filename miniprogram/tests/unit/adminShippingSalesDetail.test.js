@@ -34,18 +34,18 @@ test('商品详情同一日期下加载概览、SKU 和关联订单，订单可�
   requests.length = 0; navigations.length = 0;
   responses = [
     Promise.resolve({ sold_qty: 8, pending_qty: 3, shipped_qty: 5,
-      after_sale_qty: 2, pending_review_qty: 1, refunded_qty: 1 }),
+      after_sale_qty: 1, pending_review_qty: 1 }),
     Promise.resolve({ content: [{ skuId: 9, soldQty: 8, pendingQty: 3, shippedQty: 5,
-      afterSaleQty: 2, pendingReviewQty: 1, refundedQty: 1 }], totalElements: 1 }),
+      afterSaleQty: 1, pendingReviewQty: 1 }], totalElements: 1 }),
     Promise.resolve({ content: [{ orderId: 42, status: 'paid', items: [] }], totalElements: 1 })
   ];
   const page = createPage();
   await page.onLoad({ productId: '7', productName: encodeURIComponent('裙子'),
     startDate: '2026-09-01', endDate: '2026-09-28' });
   assert.deepEqual(page.data.overview, { soldQty: 8, pendingQty: 3, shippedQty: 5,
-    afterSaleQty: 2, pendingReviewQty: 1, approvedQty: 0, receivedQty: 0, refundedQty: 1 });
+    afterSaleQty: 1, pendingReviewQty: 1 });
   assert.equal(page.data.skus[0].pendingReviewQty, 1);
-  assert.equal(page.data.skus[0].refundedQty, 1);
+  assert.equal(page.data.skus[0].afterSaleQty, 1);
   assert.equal(page.data.orders[0].statusDisplay, '待发货');
   assert.deepEqual(requests.map(r => r.url), [
     '/admin/sales/shipping/products/7/overview',
@@ -63,9 +63,9 @@ test('部分退款待审核和退款成功后的数量分别显示', async () =>
   requests.length = 0;
   responses = [
     Promise.resolve({ sold_qty: 2, pending_qty: 2, shipped_qty: 0,
-      after_sale_qty: 1, pending_review_qty: 1 }),
+      after_sale_qty: 0, pending_review_qty: 1 }),
     Promise.resolve({ content: [{ skuId: 9, soldQty: 2, pendingQty: 2, shippedQty: 0,
-      afterSaleQty: 1, pendingReviewQty: 1 }], totalElements: 1 }),
+      afterSaleQty: 0, pendingReviewQty: 1 }], totalElements: 1 }),
     Promise.resolve({ content: [], totalElements: 0 })
   ];
   const page = createPage();
@@ -73,25 +73,25 @@ test('部分退款待审核和退款成功后的数量分别显示', async () =>
   await page.loadAll();
   assert.equal(page.data.overview.soldQty, 2);
   assert.equal(page.data.overview.pendingQty, 2);
-  assert.equal(page.data.overview.afterSaleQty, 1);
+  assert.equal(page.data.overview.afterSaleQty, 0);
   assert.equal(page.data.overview.pendingReviewQty, 1);
   assert.equal(page.data.skus[0].pendingReviewQty, 1);
   page.onShow();
 
   responses = [
     Promise.resolve({ sold_qty: 1, pending_qty: 1, shipped_qty: 0,
-      after_sale_qty: 1, refunded_qty: 1 }),
+      after_sale_qty: 1, pending_review_qty: 0 }),
     Promise.resolve({ content: [{ skuId: 9, soldQty: 1, pendingQty: 1, shippedQty: 0,
-      afterSaleQty: 1, refundedQty: 1 }], totalElements: 1 }),
+      afterSaleQty: 1, pendingReviewQty: 0 }], totalElements: 1 }),
     Promise.resolve({ content: [], totalElements: 0 })
   ];
   await page.onShow();
   assert.equal(page.data.overview.soldQty, 1);
   assert.equal(page.data.overview.pendingQty, 1);
   assert.equal(page.data.overview.pendingReviewQty, 0);
-  assert.equal(page.data.overview.refundedQty, 1);
+  assert.equal(page.data.overview.afterSaleQty, 1);
   assert.equal(page.data.skus[0].soldQty, 1);
-  assert.equal(page.data.skus[0].refundedQty, 1);
+  assert.equal(page.data.skus[0].afterSaleQty, 1);
 });
 
 test('日期切换后的旧 SKU 响应不会覆盖新结果', async () => {

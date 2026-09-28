@@ -5,7 +5,7 @@ Page({
   data: {
     productId: '', productName: '',
     overview: { soldQty: 0, pendingQty: 0, shippedQty: 0,
-      afterSaleQty: 0, pendingReviewQty: 0, approvedQty: 0, receivedQty: 0, refundedQty: 0 },
+      afterSaleQty: 0, pendingReviewQty: 0 },
     overviewLoading: false, overviewError: false,
     skus: [], skuPage: 1, skuSize: 50, skuTotal: 0,
     skuLoading: false, skuError: false,
@@ -61,10 +61,7 @@ Page({
           pendingQty: Number(res.pending_qty) || 0,
           shippedQty: Number(res.shipped_qty) || 0,
           afterSaleQty: Number(res.after_sale_qty) || 0,
-          pendingReviewQty: Number(res.pending_review_qty) || 0,
-          approvedQty: Number(res.approved_qty) || 0,
-          receivedQty: Number(res.received_qty) || 0,
-          refundedQty: Number(res.refunded_qty) || 0
+          pendingReviewQty: Number(res.pending_review_qty) || 0
         } });
       }).catch(err => {
         if (id !== this.overviewRequestId) return;

@@ -4,10 +4,11 @@ const auth = require('../../utils/auth');
 Page({
   data: {
     keywordInput: '', keyword: '', startDate: '', endDate: '',
+    stallList: [], tagList: [], selectedStall: '', selectedTag: '',
     quickSelect: '', editingDateRange: { startDate: '', endDate: '', quickSelect: '' },
     showDateModal: false,
     today: '', overview: { soldQty: 0, pendingQty: 0, shippedQty: 0,
-      afterSaleQty: 0, pendingReviewQty: 0, approvedQty: 0, receivedQty: 0, refundedQty: 0 },
+      afterSaleQty: 0, pendingReviewQty: 0 },
     items: [], page: 1, size: 20, total: 0, hasMore: false,
     loading: false, loadError: false, overviewLoading: false, overviewError: false
   },
@@ -15,7 +16,9 @@ Page({
   onLoad() {
     const today = this.formatDate(new Date());
     this.setData({ today, startDate: today, endDate: today, quickSelect: '1day' });
-    return auth.ensureAuthenticated({ silent: true }).then(() => this.reload()).catch(err => {
+    return auth.ensureAuthenticated({ silent: true }).then(() => Promise.all([
+      this.loadStallList(), this.loadTagList(), this.reload()
+    ])).catch(err => {
       console.error('售出数量统计页认证失败:', err);
       wx.showToast({ title: '登录状态恢复失败，请重试', icon: 'none' });
     });
@@ -31,10 +34,24 @@ Page({
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   },
 
+  loadStallList() {
+    return api.get('/stalls/all').then(stalls => {
+      this.setData({ stallList: Array.isArray(stalls) ? stalls : [] });
+    }).catch(err => console.error('加载档口列表失败:', err));
+  },
+
+  loadTagList() {
+    return api.get('/tags/all').then(tags => {
+      this.setData({ tagList: Array.isArray(tags) ? tags : [] });
+    }).catch(err => console.error('加载标签列表失败:', err));
+  },
+
   params() {
-    const { keyword, startDate, endDate } = this.data;
+    const { keyword, selectedStall, selectedTag, startDate, endDate } = this.data;
     const params = {};
     if (keyword) params.keyword = keyword;
+    if (selectedStall !== '') params.stallId = selectedStall;
+    if (selectedTag !== '') params.tagId = selectedTag;
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
     return params;
@@ -55,10 +72,7 @@ Page({
         pendingQty: Number(res.pending_qty) || 0,
         shippedQty: Number(res.shipped_qty) || 0,
         afterSaleQty: Number(res.after_sale_qty) || 0,
-        pendingReviewQty: Number(res.pending_review_qty) || 0,
-        approvedQty: Number(res.approved_qty) || 0,
-        receivedQty: Number(res.received_qty) || 0,
-        refundedQty: Number(res.refunded_qty) || 0
+        pendingReviewQty: Number(res.pending_review_qty) || 0
       } });
     }).catch(err => {
       if (id !== this.overviewRequestId) return;
@@ -99,6 +113,14 @@ Page({
   onKeywordInput(e) { this.setData({ keywordInput: e.detail.value }); },
   onSearch() {
     this.setData({ keyword: this.data.keywordInput.trim() }, () => this.reload());
+  },
+  selectStall(e) {
+    const stallId = e.currentTarget.dataset.stall;
+    this.setData({ selectedStall: stallId === 'all' ? '' : stallId }, () => this.reload());
+  },
+  selectTag(e) {
+    const tagId = e.currentTarget.dataset.tag;
+    this.setData({ selectedTag: tagId === 'all' ? '' : tagId }, () => this.reload());
   },
   showDateRangeSelector() {
     this.setData({
@@ -154,6 +176,7 @@ Page({
   retryItems() { return this.loadItems(true); },
   onReachBottom() { return this.loadItems(false); },
   onPullDownRefresh() {
-    return Promise.resolve(this.reload()).finally(() => wx.stopPullDownRefresh());
+    return Promise.all([this.reload(), this.loadStallList(), this.loadTagList()])
+      .finally(() => wx.stopPullDownRefresh());
   }
 });

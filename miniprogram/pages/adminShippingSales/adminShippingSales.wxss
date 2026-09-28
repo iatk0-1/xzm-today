@@ -26,6 +26,14 @@ page { background-color: #f5f5f5; }
 .filter-options { display: inline-flex; align-items: center; gap: 12rpx; padding: 6rpx 2rpx; }
 .filter-tag { flex-shrink: 0; padding: 10rpx 24rpx; background: #f5f5f5; color: #666; font-size: 24rpx; line-height: 32rpx; border-radius: 12rpx; }
 .filter-tag.active { color: #1a1a1a; font-weight: 800; box-shadow: inset 0 -4rpx 0 #1a1a1a; }
+.filter-section { margin-bottom: 12rpx; }
+.filter-row { display: flex; align-items: center; min-height: 64rpx; }
+.filter-label { width: 64rpx; flex-shrink: 0; color: #333; font-size: 24rpx; font-weight: 600; }
+.filter-fixed-option { flex-shrink: 0; margin-right: 12rpx; }
+.filter-scroll { flex: 1; min-width: 0; white-space: nowrap; }
+.filter-options { display: inline-flex; align-items: center; gap: 12rpx; padding: 6rpx 2rpx; }
+.filter-tag { flex-shrink: 0; padding: 10rpx 24rpx; background: #f5f5f5; color: #666; font-size: 24rpx; line-height: 32rpx; border-radius: 12rpx; }
+.filter-tag.active { color: #1a1a1a; font-weight: 800; box-shadow: inset 0 -4rpx 0 #1a1a1a; }
 .date-filter { display: flex; align-items: center; gap: 12rpx; }
 .date-picker { flex: 1; height: 64rpx; background: #f5f5f5; border-radius: 8rpx; display: flex; align-items: center; justify-content: center; font-size: 24rpx; color: #666; }
 .clear-date { width: 40rpx; height: 40rpx; background: #f0f0f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28rpx; color: #999; }
