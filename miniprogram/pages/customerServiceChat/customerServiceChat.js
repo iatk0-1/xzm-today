@@ -3,6 +3,7 @@ const auth = require('../../utils/auth');
 const cosUpload = require('../../utils/cos-upload');
 const { compressImage } = require('../../utils/media');
 const config = require('../../utils/config');
+const { emojis, displayWechatEmoji } = require('../../utils/wechat-emoji');
 const supportedPages = ['pages/detail/detail', 'pages/orderDetail/orderDetail'];
 
 function formatMessage(m, formatTime) {
@@ -11,12 +12,13 @@ function formatMessage(m, formatTime) {
   const mediaUrl = typeof m.mediaUrl === 'string'
     ? m.mediaUrl.replace(/^http:\/\/mmbiz\.qpic\.cn\//i, 'https://mmbiz.qpic.cn/') : m.mediaUrl;
   return { ...m, mediaUrl, metadata, displayTime: formatTime(m.createdAt),
-    displayContent: m.content || '[' + m.messageType + ']' };
+    displayContent: displayWechatEmoji(m.content) || '[' + m.messageType + ']' };
 }
 
 Page({
   data: {
-    id: '', session: null, messages: [], inputText: '',
+    id: '', session: null, messages: [], inputText: '', inputCursor: -1,
+    emojis, showEmojis: false,
     quotaText: '', canReply: false, canClaim: false, canClose: false,
     statusBarHeight: 20, scrollToId: '', loading: true, hasMore: true,
     sending: false, showTools: false, composerType: '',
@@ -57,6 +59,7 @@ Page({
         hasMore: silent ? this.data.hasMore : formatted.length >= 50,
         canReply: !!(activeMine && valid), canClaim: session.status === 'pending', canClose: activeMine,
         showTools: activeMine && valid ? this.data.showTools : false,
+        showEmojis: activeMine && valid ? this.data.showEmojis : false,
         composerType: activeMine && valid ? this.data.composerType : '',
         scrollToId: silent ? this.data.scrollToId : (formatted.length ? 'msg-' + formatted[formatted.length - 1].id : '') });
     } catch (err) {
@@ -83,7 +86,25 @@ Page({
     const pad = n => String(n).padStart(2, '0');
     return pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
   },
-  onInput(e) { this.setData({ inputText: e.detail.value }); },
+  onInput(e) { this.setData({ inputText: e.detail.value, inputCursor: e.detail.cursor }); },
+  toggleEmojis() {
+    if (!this.data.canReply || this._sending) return;
+    this.setData({ showEmojis: !this.data.showEmojis, showTools: false });
+  },
+  insertEmoji(e) {
+    if (!this.data.canReply || this._sending) return;
+    const code = e.currentTarget.dataset.code;
+    if (!emojis.some(item => item.code === code)) return;
+    const text = this.data.inputText || '';
+    const position = this.data.inputCursor >= 0 && this.data.inputCursor <= text.length
+      ? this.data.inputCursor : text.length;
+    if (text.length + code.length > 2000) {
+      wx.showToast({ title: '回复不能超过 2000 字', icon: 'none' });
+      return;
+    }
+    this.setData({ inputText: text.slice(0, position) + code + text.slice(position),
+      inputCursor: position + code.length });
+  },
   previewImage(e) {
     const url = e.currentTarget.dataset.url;
     if (url) wx.previewImage({ urls: [url], current: url });
@@ -111,7 +132,8 @@ Page({
     if (url) wx.setClipboardData({ data: url });
   },
   toggleTools() {
-    if (this.data.canReply && !this._sending) this.setData({ showTools: !this.data.showTools });
+    if (this.data.canReply && !this._sending) this.setData({
+      showTools: !this.data.showTools, showEmojis: false });
   },
   chooseImage() {
     if (!this.data.canReply || this._sending) return;

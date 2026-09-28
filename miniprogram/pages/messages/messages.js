@@ -1,6 +1,7 @@
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
+const { displayWechatEmoji } = require('../../utils/wechat-emoji');
 
 Page({
   data: {
@@ -42,7 +43,7 @@ Page({
           canServe: true,
           sessions: (sessions || []).map(s => ({ ...s,
             displayName: s.nickname || '微信用户',
-            preview: s.lastContent || '暂无消息',
+            preview: displayWechatEmoji(s.lastContent) || '暂无消息',
             displayTime: this.formatTime(s.lastMessageAt).slice(5),
             unreadLabel: s.unreadCount > 99 ? '99+' : String(s.unreadCount || 0)
           })),

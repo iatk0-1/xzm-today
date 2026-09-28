@@ -229,3 +229,28 @@ test('微信回调的 HTTP 图片和卡片封面统一升级 HTTPS 以供真机�
   assert.equal(page.data.messages[0].mediaLoadFailed, true);
   assert.equal(page.data.messages[1].mediaLoadFailed, undefined);
 });
+
+test('微信表情代码在聊天中显示为可读表情，原始消息内容保持不变', async () => {
+  session = activeSession();
+  newest = [{ id: 301, direction: 'user', messageType: 'text',
+    content: '你好/:8-)[Doge][Sweats]，还有[未知]' }];
+  const page = createPage();
+  await page.refresh();
+  assert.equal(page.data.messages[0].content, '你好/:8-)[Doge][Sweats]，还有[未知]');
+  assert.equal(page.data.messages[0].displayContent, '你好😎🐶😓，还有[未知]');
+});
+
+test('表情选择器在光标位置插入微信代码并按原码发送', async () => {
+  session = activeSession(); newest = []; posts.length = 0;
+  const page = createPage();
+  await page.refresh();
+  page.onInput({ detail: { value: '你好世界', cursor: 2 } });
+  page.toggleEmojis();
+  assert.equal(page.data.showEmojis, true);
+  page.insertEmoji({ currentTarget: { dataset: { code: '[Doge]' } } });
+  assert.equal(page.data.inputText, '你好[Doge]世界');
+  page.insertEmoji({ currentTarget: { dataset: { code: '[unknown]' } } });
+  assert.equal(page.data.inputText, '你好[Doge]世界');
+  await page.send();
+  assert.equal(posts.at(-1).data.content, '你好[Doge]世界');
+});
