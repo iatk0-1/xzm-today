@@ -7,9 +7,9 @@
       <view class="stat-item"><text class="stat-val">{{overview.pendingQty}}</text><text class="stat-label">待发数量</text></view>
       <view class="stat-item"><text class="stat-val">{{overview.shippedQty}}</text><text class="stat-label">已发数量</text></view>
     </view>
-    <view class="after-sales" wx:if="{{overview.afterSaleQty || overview.pendingReviewQty}}">
-      <text class="after-sale-label" wx:if="{{overview.afterSaleQty}}">售后 {{overview.afterSaleQty}} 件</text>
-      <text class="after-sale-status" wx:if="{{overview.pendingReviewQty}}">待审核 {{overview.pendingReviewQty}} 件</text>
+    <view class="after-sales" wx:if="{{overview.afterSaleQty > 0 || overview.pendingReviewQty > 0}}">
+      <text class="after-sale-label" wx:if="{{overview.afterSaleQty > 0}}">售后 {{overview.afterSaleQty}} 件</text>
+      <text class="after-sale-status" wx:if="{{overview.pendingReviewQty > 0}}">待审核 {{overview.pendingReviewQty}} 件</text>
     </view>
     <view class="summary-note">按下单时间统计有效订单；待审核仍计入待发，退款成功后扣除未发数量</view>
   </view>
@@ -57,9 +57,9 @@
           <text>待发 {{item.pendingQty || 0}}</text>
           <text>已发 {{item.shippedQty || 0}}</text>
         </view>
-        <view class="after-sales" wx:if="{{item.afterSaleQty || item.pendingReviewQty}}">
-          <text class="after-sale-label" wx:if="{{item.afterSaleQty}}">售后 {{item.afterSaleQty}} 件</text>
-          <text class="after-sale-status" wx:if="{{item.pendingReviewQty}}">待审核 {{item.pendingReviewQty}} 件</text>
+        <view class="after-sales" wx:if="{{item.afterSaleQty > 0 || item.pendingReviewQty > 0}}">
+          <text class="after-sale-label" wx:if="{{item.afterSaleQty > 0}}">售后 {{item.afterSaleQty}} 件</text>
+          <text class="after-sale-status" wx:if="{{item.pendingReviewQty > 0}}">待审核 {{item.pendingReviewQty}} 件</text>
         </view>
       </view>
       <view class="product-arrow">›</view>
