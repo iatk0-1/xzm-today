@@ -27,11 +27,11 @@
   <view class="input-bar action-bar" wx:else><text>{{session.status === 'closed' ? '会话已结束，等待用户再次发送消息' : (canClose ? '等待用户再次发送消息以恢复回复额度' : '当前会话由其他客服接待')}}</text></view>
   <view wx:if="{{canReply && showTools}}" class="tools-panel">
     <view class="tool" bindtap="chooseImage"><view class="tool-icon">▧</view><text>图片</text></view>
-    <view class="tool" bindtap="chooseVideo"><view class="tool-icon">▷</view><text>视频</text></view>
+    <view class="tool" bindtap="chooseVideo"><view class="tool-icon">▷</view><text>视频链接</text></view>
     <view class="tool" bindtap="chooseVoice"><view class="tool-icon">♫</view><text>语音文件</text></view>
     <view class="tool" bindtap="openComposer" data-type="link"><view class="tool-icon">↗</view><text>图文链接</text></view>
     <view class="tool" bindtap="openComposer" data-type="miniprogrampage"><view class="tool-icon">▤</view><text>商品 / 订单</text></view>
-    <view class="tools-hint">单图不超过 2MB · 视频不超过 10MB · 语音仅 MP3/AMR，最长 60 秒</view>
+    <view class="tools-hint">单图不超过 2MB · 视频以链接卡片发送，不能超过 10MB · 语音仅 MP3/AMR，最长 60 秒</view>
   </view>
   <view wx:if="{{composerType}}" class="composer-mask" bindtap="closeComposer">
     <view class="composer" catchtap="stopTap">

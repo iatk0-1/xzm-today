@@ -161,7 +161,7 @@ test('图片入口只能选一张，并发送图片类型及上传后的地址',
   assert.equal(page.data.sending, false);
 });
 
-test('视频上传视频和单张封面，再发送微信视频消息', async () => {
+test('视频上传视频和单张封面，由后端转为微信客服可打开的链接卡片', async () => {
   session = activeSession(); newest = []; posts.length = 0; uploads.length = 0;
   const page = createPage(); await page.refresh();
   await page.sendVideo({ tempFilePath: '/tmp/video.mp4', thumbTempFilePath: '/tmp/cover.jpg' });
