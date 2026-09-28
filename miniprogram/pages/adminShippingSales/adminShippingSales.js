@@ -6,7 +6,8 @@ Page({
     keywordInput: '', keyword: '', startDate: '', endDate: '',
     quickSelect: '', editingDateRange: { startDate: '', endDate: '', quickSelect: '' },
     showDateModal: false,
-    today: '', overview: { soldQty: 0, pendingQty: 0, shippedQty: 0 },
+    today: '', overview: { soldQty: 0, pendingQty: 0, shippedQty: 0,
+      afterSaleQty: 0, pendingReviewQty: 0, approvedQty: 0, receivedQty: 0, refundedQty: 0 },
     items: [], page: 1, size: 20, total: 0, hasMore: false,
     loading: false, loadError: false, overviewLoading: false, overviewError: false
   },
@@ -18,6 +19,11 @@ Page({
       console.error('售出数量统计页认证失败:', err);
       wx.showToast({ title: '登录状态恢复失败，请重试', icon: 'none' });
     });
+  },
+
+  onShow() {
+    if (this._hasShown) return Promise.all([this.loadOverview(), this.loadItems(true, true)]);
+    this._hasShown = true;
   },
 
   formatDate(date) {
@@ -47,7 +53,12 @@ Page({
       this.setData({ overview: {
         soldQty: Number(res.sold_qty) || 0,
         pendingQty: Number(res.pending_qty) || 0,
-        shippedQty: Number(res.shipped_qty) || 0
+        shippedQty: Number(res.shipped_qty) || 0,
+        afterSaleQty: Number(res.after_sale_qty) || 0,
+        pendingReviewQty: Number(res.pending_review_qty) || 0,
+        approvedQty: Number(res.approved_qty) || 0,
+        receivedQty: Number(res.received_qty) || 0,
+        refundedQty: Number(res.refunded_qty) || 0
       } });
     }).catch(err => {
       if (id !== this.overviewRequestId) return;
@@ -58,12 +69,14 @@ Page({
     });
   },
 
-  loadItems(reset) {
+  loadItems(reset, preserveItems = false) {
     if (!reset && (this.data.loading || !this.data.hasMore)) return Promise.resolve();
     const id = reset ? (this.listRequestId || 0) + 1 : this.listRequestId;
     this.listRequestId = id;
     const page = reset ? 1 : this.data.page + 1;
-    if (reset) this.setData({ items: [], page: 1, total: 0, hasMore: false, loadError: false });
+    if (reset && !preserveItems) {
+      this.setData({ items: [], page: 1, total: 0, hasMore: false, loadError: false });
+    }
     this.setData({ loading: true });
     return api.get('/admin/sales/shipping/products', {
       ...this.params(), page, size: this.data.size

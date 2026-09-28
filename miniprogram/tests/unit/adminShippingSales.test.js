@@ -36,9 +36,11 @@ function page() {
 test('统计页默认按当天查询，并以商品为单位分页', async () => {
   requests.length = 0;
   replies = [
-    Promise.resolve({ sold_qty: 12, pending_qty: 7, shipped_qty: 5 }),
+    Promise.resolve({ sold_qty: 12, pending_qty: 7, shipped_qty: 5,
+      after_sale_qty: 1, pending_review_qty: 1 }),
     Promise.resolve({ content: [
-      { productId: 1, productName: '裙子', soldQty: 8, pendingQty: 3, shippedQty: 5 }
+      { productId: 1, productName: '裙子', soldQty: 8, pendingQty: 3,
+        shippedQty: 5, afterSaleQty: 1, pendingReviewQty: 1 }
     ], totalElements: 2 }),
     Promise.resolve({ content: [
       { productId: 2, productName: '衬衫', soldQty: 4, pendingQty: 4, shippedQty: 0 }
@@ -47,17 +49,30 @@ test('统计页默认按当天查询，并以商品为单位分页', async () =>
   const instance = page();
   await instance.onLoad();
   const today = instance.formatDate(new Date());
-  assert.deepEqual(instance.data.overview, { soldQty: 12, pendingQty: 7, shippedQty: 5 });
+  assert.deepEqual(instance.data.overview, { soldQty: 12, pendingQty: 7, shippedQty: 5,
+    afterSaleQty: 1, pendingReviewQty: 1, approvedQty: 0, receivedQty: 0, refundedQty: 0 });
   assert.equal(instance.data.quickSelect, '1day');
   assert.equal(requests[0].params.startDate, today);
   assert.equal(requests[1].url, '/admin/sales/shipping/products');
   assert.equal(requests[1].params.endDate, today);
   assert.equal(instance.data.items[0].productId, 1);
+  assert.equal(instance.data.items[0].afterSaleQty, 1);
+  assert.equal(instance.data.items[0].pendingReviewQty, 1);
   assert.equal(instance.data.hasMore, true);
   await instance.onReachBottom();
   assert.equal(requests[2].params.page, 2);
   assert.equal(instance.data.items.length, 2);
   assert.equal(instance.data.hasMore, false);
+  instance.onShow();
+  replies = [
+    Promise.resolve({ sold_qty: 11, pending_qty: 6, shipped_qty: 5,
+      after_sale_qty: 1, refunded_qty: 1 }),
+    Promise.resolve({ content: [{ productId: 1, productName: '裙子', soldQty: 7,
+      pendingQty: 2, shippedQty: 5, afterSaleQty: 1, refundedQty: 1 }], totalElements: 1 })
+  ];
+  await instance.onShow();
+  assert.equal(instance.data.overview.refundedQty, 1);
+  assert.equal(instance.data.items[0].soldQty, 7);
 });
 
 test('切换时间后丢弃旧商品列表响应，并把筛选范围带入详情', async () => {
