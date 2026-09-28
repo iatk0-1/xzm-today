@@ -36,11 +36,11 @@ Page({
       const activeMine = session.status === 'active' && String(session.assignedStaffId) === String(me.userId);
       const expires = session.replyExpiresAt ? new Date(session.replyExpiresAt) : null;
       const over48Hours = session.lastUserAt && Date.now() - new Date(session.lastUserAt).getTime() >= 48 * 60 * 60 * 1000;
-      const valid = !over48Hours && expires && expires.getTime() > Date.now() && session.remainingReplies > 0;
+      const valid = !over48Hours && expires && expires.getTime() > Date.now();
       const minutesLeft = valid ? Math.max(0, Math.ceil((expires.getTime() - Date.now()) / 60000)) : 0;
       const quotaText = valid
-        ? '预计剩余 ' + session.remainingReplies + ' 条 · 剩余 ' + Math.floor(minutesLeft / 60) + ' 小时 ' + (minutesLeft % 60) + ' 分钟 · 至 ' + this.formatTime(session.replyExpiresAt) + '（以微信返回为准）'
-        : (over48Hours ? '距用户最后一条消息已超过 48 小时，暂时无法发送；会话仍由当前客服接待' : '当前无可用回复额度，等待用户再次发送消息');
+        ? '预计剩余 ' + session.remainingReplies + ' 条 · 剩余 ' + Math.floor(minutesLeft / 60) + ' 小时 ' + (minutesLeft % 60) + ' 分钟 · 至 ' + this.formatTime(session.replyExpiresAt) + '（可尝试发送，以微信返回为准）'
+        : (over48Hours ? '距用户最后一条消息已超过 48 小时，暂时无法发送；会话仍由当前客服接待' : '可回复时间已过，等待用户再次发送消息');
       const formatted = (messages || []).map(m => formatMessage(m, raw => this.formatTime(raw)));
       const preserved = silent ? this.data.messages.filter(old => !formatted.some(next => next.id === old.id)) : [];
       const allMessages = [...preserved, ...formatted].sort((a, b) => Number(a.id) - Number(b.id));

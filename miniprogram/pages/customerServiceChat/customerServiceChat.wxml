@@ -12,6 +12,7 @@
       <view wx:else class="msg-bubble {{item.direction === 'staff' ? 'bubble-right' : 'bubble-left'}}">{{item.displayContent}}</view>
       <image wx:if="{{item.messageType === 'image' && item.mediaUrl}}" class="msg-image" src="{{item.mediaUrl}}" mode="aspectFill" bindtap="previewImage" data-url="{{item.mediaUrl}}"/>
       <view class="msg-meta">{{item.displayTime}} <text wx:if="{{item.status === 'sent'}}">已发送</text><text wx:if="{{item.status === 'failed'}}">发送失败</text><text wx:if="{{item.status === 'unknown'}}">发送结果待核对</text><text wx:if="{{item.status === 'pending'}}">发送中</text></view>
+      <view wx:if="{{item.status === 'failed' && item.errorMessage}}" class="msg-error">{{item.errorMessage}}</view>
       <view wx:if="{{item.status === 'failed' && canReply}}" class="retry-btn" bindtap="retry" data-id="{{item.id}}">重试发送</view>
     </view>
   </scroll-view>

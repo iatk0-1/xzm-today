@@ -88,6 +88,37 @@ test('非当前接入客服只能看，不能向微信发送', async () => {
   currentUserId = 20;
 });
 
+test('预计剩余零条仍允许发给微信判断，失败原因保留在消息列表', async () => {
+  posts.length = 0;
+  session = activeSession({ remainingReplies: 0 });
+  newest = [{ id: 102, direction: 'staff', status: 'failed',
+    content: '4', errorMessage: '微信客服回复条数已超出限制（错误码：45047）' }];
+  const page = createPage();
+
+  await page.refresh();
+  assert.equal(page.data.canReply, true);
+  assert.match(page.data.quotaText, /预计剩余 0 条/);
+  assert.equal(page.data.messages[0].errorMessage, '微信客服回复条数已超出限制（错误码：45047）');
+  page.setData({ inputText: '再试一次' });
+  await page.send();
+  assert.equal(posts.at(-1).url, '/wechat/customer-service/sessions/1/messages');
+});
+
+test('预计剩余条数仍有，但可回复时间已过时不能发送', async () => {
+  posts.length = 0;
+  session = activeSession({ remainingReplies: 5,
+    replyExpiresAt: new Date(Date.now() - 60_000).toISOString() });
+  newest = [];
+  const page = createPage();
+
+  await page.refresh();
+  assert.equal(page.data.canReply, false);
+  assert.match(page.data.quotaText, /可回复时间已过/);
+  page.setData({ inputText: '晚了' });
+  await page.send();
+  assert.equal(posts.length, 0);
+});
+
 test('超过用户最后一条消息 48 小时，即使显示窗口未过期也禁发', async () => {
   posts.length = 0;
   session = activeSession({
