@@ -212,3 +212,20 @@ test('重试较早的图片消息后更新原消息状态，轮询仍保留更�
   assert.equal(page.data.messages[0].errorMessage, null);
   postResult = {};
 });
+
+test('微信回调的 HTTP 图片和卡片封面统一升级 HTTPS 以供真机加载', async () => {
+  session = activeSession();
+  newest = [
+    { id: 201, direction: 'user', messageType: 'image',
+      mediaUrl: 'http://mmbiz.qpic.cn/mmbiz_jpg/a/0' },
+    { id: 202, direction: 'user', messageType: 'miniprogrampage',
+      mediaUrl: 'http://mmbiz.qpic.cn/sz_mmbiz_jpg/b/0' }
+  ];
+  const page = createPage();
+  await page.refresh();
+  assert.equal(page.data.messages[0].mediaUrl, 'https://mmbiz.qpic.cn/mmbiz_jpg/a/0');
+  assert.equal(page.data.messages[1].mediaUrl, 'https://mmbiz.qpic.cn/sz_mmbiz_jpg/b/0');
+  page.onMediaLoadError({ currentTarget: { dataset: { id: 201 } } });
+  assert.equal(page.data.messages[0].mediaLoadFailed, true);
+  assert.equal(page.data.messages[1].mediaLoadFailed, undefined);
+});

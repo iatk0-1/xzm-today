@@ -8,7 +8,10 @@ const supportedPages = ['pages/detail/detail', 'pages/orderDetail/orderDetail'];
 function formatMessage(m, formatTime) {
   let metadata = {};
   try { metadata = typeof m.metadata === 'string' ? JSON.parse(m.metadata) : (m.metadata || {}); } catch (err) {}
-  return { ...m, metadata, displayTime: formatTime(m.createdAt), displayContent: m.content || '[' + m.messageType + ']' };
+  const mediaUrl = typeof m.mediaUrl === 'string'
+    ? m.mediaUrl.replace(/^http:\/\/mmbiz\.qpic\.cn\//i, 'https://mmbiz.qpic.cn/') : m.mediaUrl;
+  return { ...m, mediaUrl, metadata, displayTime: formatTime(m.createdAt),
+    displayContent: m.content || '[' + m.messageType + ']' };
 }
 
 Page({
@@ -84,6 +87,13 @@ Page({
   previewImage(e) {
     const url = e.currentTarget.dataset.url;
     if (url) wx.previewImage({ urls: [url], current: url });
+  },
+  onMediaLoadError(e) {
+    const id = e.currentTarget.dataset.id;
+    this.setData({ messages: this.data.messages.map(message =>
+      String(message.id) === String(id) ? { ...message, mediaLoadFailed: true } : message) });
+    // 真机 image 组件与全屏预览可能走不同加载路径；不记录含签名的图片 URL。
+    console.warn('客服会话图片缩略图加载失败，消息ID=' + id);
   },
   playVoice(e) {
     const url = e.currentTarget.dataset.url;
