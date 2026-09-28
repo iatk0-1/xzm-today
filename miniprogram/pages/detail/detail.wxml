@@ -40,13 +40,14 @@
       </view>
     </view>
 
-    <button class="consult-section" open-type="contact" bindcontact="handleCustomerServiceContact" session-from="product:{{product.id}}" show-message-card="true" send-message-title="{{product.title}}" send-message-path="/pages/detail/detail?id={{product.id}}" send-message-img="{{product.image}}">
+    <view class="consult-section">
       <view class="consult-left">
         <image class="consult-icon" src="/images/icons/customer-service.svg" mode="aspectFit"></image>
         <text class="consult-label">咨询客服</text>
       </view>
       <text class="consult-arrow">›</text>
-    </button>
+      <button class="consult-contact-button" open-type="contact" bindcontact="handleCustomerServiceContact" session-from="product:{{product.id}}" show-message-card="true" send-message-title="{{product.title}}" send-message-path="/pages/detail/detail?id={{product.id}}" send-message-img="{{product.image}}"></button>
+    </view>
 
 <!-- 商品详情信息 -->
 <view class="aura-tabs-container" wx:if="{{product.description || product.fabricCare || product.sizeChartTip}}">
@@ -108,6 +109,9 @@
 
 <view class="share-float" wx:if="{{canShowShareFloat}}" style="left: {{shareFloatLeft}}px; top: {{shareFloatTop}}px;" catchtouchstart="startShareFloatDrag" catchtouchmove="moveShareFloat" catchtouchend="endShareFloatDrag">
   <text>分享</text>
+</view>
+<view class="share-float" wx:if="{{canShowShareFloat && product.id}}" style="left: {{editFloatLeft}}px; top: {{editFloatTop}}px;" catchtouchstart="startEditFloatDrag" catchtouchmove="moveEditFloat" catchtouchend="endEditFloatDrag">
+  <text>编辑</text>
 </view>
 
 <!-- 分享卡片专用画布：按图片数量生成单图、双图或三联图，不影响页面展示 -->

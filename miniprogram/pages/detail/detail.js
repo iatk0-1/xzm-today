@@ -42,6 +42,8 @@ Page({
     canShowShareFloat: false,
     shareFloatLeft: 0,
     shareFloatTop: 0,
+    editFloatLeft: 0,
+    editFloatTop: 0,
     // 套装子项选择
     bundleSelections: [],    // [{bundleGroupName, selectedColor, selectedSize, selectedSkuId, selectedPrice, selectedStock, selectedImage}]
     bundleAllSelected: false,
@@ -238,10 +240,14 @@ Page({
     var menuRect = wx.getMenuButtonBoundingClientRect ? wx.getMenuButtonBoundingClientRect() : null;
     var floatSize = 58;
     var top = menuRect ? menuRect.bottom + 12 : (sysInfo.statusBarHeight || 20) + 44 + 12;
+    var left = Math.max(0, windowWidth - floatSize - 18);
+    var shareTop = Math.max(0, Math.min(windowHeight - floatSize, top));
     this._shareWindow = { width: windowWidth, height: windowHeight };
     this.setData({
-      shareFloatLeft: Math.max(0, windowWidth - floatSize - 18),
-      shareFloatTop: Math.max(0, Math.min(windowHeight - floatSize, top))
+      shareFloatLeft: left,
+      shareFloatTop: shareTop,
+      editFloatLeft: left,
+      editFloatTop: Math.max(0, Math.min(windowHeight - floatSize, shareTop + floatSize + 8))
     });
   },
 
@@ -279,6 +285,41 @@ Page({
     if (drag && !drag.moved) {
       this.openShareTemplateSelector();
     }
+  },
+
+  startEditFloatDrag: function(e) {
+    var touch = e.touches && e.touches[0];
+    if (!touch) return;
+    this._editFloatDrag = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      left: this.data.editFloatLeft,
+      top: this.data.editFloatTop,
+      moved: false
+    };
+  },
+
+  moveEditFloat: function(e) {
+    var drag = this._editFloatDrag;
+    var touch = e.touches && e.touches[0];
+    if (!drag || !touch) return;
+    var deltaX = touch.clientX - drag.startX;
+    var deltaY = touch.clientY - drag.startY;
+    if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) drag.moved = true;
+    var windowInfo = this._shareWindow || { width: 375, height: 667 };
+    var size = 58;
+    this.setData({
+      editFloatLeft: Math.max(0, Math.min(windowInfo.width - size, drag.left + deltaX)),
+      editFloatTop: Math.max(0, Math.min(windowInfo.height - size, drag.top + deltaY))
+    });
+  },
+
+  endEditFloatDrag: function() {
+    var drag = this._editFloatDrag;
+    this._editFloatDrag = null;
+    if (!drag || drag.moved || !auth.isAdmin()) return;
+    var id = this.data.product.id;
+    if (id) wx.navigateTo({ url: '/pages/admin/admin?editId=' + encodeURIComponent(id) });
   },
 
   openShareTemplateSelector: function() {
