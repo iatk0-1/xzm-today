@@ -47,6 +47,7 @@
     "pages/adminSales/adminSales",
     "pages/adminShippingSales/adminShippingSales",
     "pages/adminSalesDetail/adminSalesDetail",
+    "pages/adminShippingSalesDetail/adminShippingSalesDetail",
     "pages/manualShip/manualShip"
   ],
   "window": {

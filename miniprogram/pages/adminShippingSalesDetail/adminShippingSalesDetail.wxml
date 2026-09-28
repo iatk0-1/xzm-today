@@ -1,0 +1,93 @@
+<view class="page-wrapper">
+  <view class="product-header"><text class="product-title">{{productName}}</text></view>
+  <view class="overview-card">
+    <view class="overview-status" wx:if="{{overviewLoading}}">统计加载中...</view>
+    <view class="overview-status" wx:elif="{{overviewError}}" bindtap="loadOverview">统计加载失败，点击重试</view>
+    <view class="stat-row" wx:else>
+      <view class="stat-item"><text class="stat-val">{{overview.soldQty}}</text><text class="stat-label">售出数量</text></view>
+      <view class="stat-item"><text class="stat-val">{{overview.pendingQty}}</text><text class="stat-label">待发数量</text></view>
+      <view class="stat-item"><text class="stat-val">{{overview.shippedQty}}</text><text class="stat-label">已发数量</text></view>
+    </view>
+  </view>
+  <view class="date-filter">
+    <view class="date-picker" bindtap="showDateRangeSelector">
+      <text wx:if="{{!startDate && !endDate}}">选择时间范围</text>
+      <text wx:else>{{startDate || '开始'}} - {{endDate || '结束'}}</text>
+    </view>
+    <view class="clear-date" wx:if="{{startDate || endDate}}" bindtap="clearDateRange">×</view>
+  </view>
+  <view class="section-card">
+    <view class="section-title">SKU 出货明细 ({{skuTotal}})</view>
+    <view class="sku-row" wx:for="{{skus}}" wx:key="skuId">
+      <view class="sku-info">
+        <text class="sku-spec">{{item.skuSpec || '默认'}} / {{item.skuSize || '均码'}}</text>
+        <view class="sku-quantities">
+          <text>售出 {{item.soldQty || 0}}</text>
+          <text>待发 {{item.pendingQty || 0}}</text>
+          <text>已发 {{item.shippedQty || 0}}</text>
+        </view>
+        <view class="after-sales" wx:if="{{item.afterSaleLabels.length}}">
+          <text class="after-sale-label">售后</text>
+          <text class="after-sale-status" wx:for="{{item.afterSaleLabels}}" wx:for-item="label" wx:key="*this">{{label}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="load-more" wx:if="{{skuLoading && skus.length > 0}}">正在加载更多...</view>
+    <view class="load-more" wx:elif="{{skus.length < skuTotal}}" bindtap="loadMoreSkus">加载更多 SKU</view>
+    <view class="empty-inner" wx:if="{{skuLoading && skus.length === 0}}">正在加载...</view>
+    <view class="empty-inner retry" wx:elif="{{skuError && skus.length === 0}}" bindtap="retrySkus">加载失败，点击重试</view>
+    <view class="empty-inner" wx:elif="{{skus.length === 0}}">暂无 SKU 数据</view>
+  </view>
+  <view class="section-card">
+    <view class="section-title">关联订单 ({{orderTotal}})</view>
+    <view class="order-card" wx:for="{{orders}}" wx:key="orderId" bindtap="goToOrder" data-id="{{item.orderId}}">
+      <view class="order-header">
+        <text class="order-no">{{item.outTradeNo || item.orderId}}</text>
+        <text class="order-status">{{item.statusDisplay}}</text>
+      </view>
+      <view class="order-items-list">
+        <view class="oi-row" wx:for="{{item.items}}" wx:key="orderItemId" wx:for-item="oi">
+          <image class="oi-img" src="{{oi.productImage || '/images/placeholder.png'}}" mode="aspectFill" />
+          <view class="oi-info">
+            <text class="oi-name">{{oi.productName}}</text>
+            <block wx:if="{{oi.bundleParsed && oi.bundleParsed.length > 0}}">
+              <text class="oi-spec" wx:for="{{oi.bundleParsed}}" wx:key="skuId" wx:for-item="sub">{{sub.bundleGroupName}} {{sub.color}}/{{sub.size}}</text>
+            </block>
+            <text class="oi-spec" wx:else>{{oi.skuSpec || '默认'}} / {{oi.skuSize || '均码'}} x{{oi.qty}}</text>
+          </view>
+          <text class="oi-price">¥{{oi.salePrice}}</text>
+        </view>
+      </view>
+      <view class="order-footer">
+        <text class="order-time">{{item.createdAtDisplay}}</text>
+        <text class="order-total">订单金额 ¥{{item.payAmount || 0}} ›</text>
+      </view>
+    </view>
+    <view class="load-more" wx:if="{{orderLoading && orders.length > 0}}">正在加载更多...</view>
+    <view class="load-more" wx:elif="{{orders.length < orderTotal}}" bindtap="loadMoreOrders">加载更多订单</view>
+    <view class="empty-inner" wx:if="{{orderLoading && orders.length === 0}}">正在加载...</view>
+    <view class="empty-inner retry" wx:elif="{{orderError && orders.length === 0}}" bindtap="retryOrders">加载失败，点击重试</view>
+    <view class="empty-inner" wx:elif="{{orders.length === 0}}">暂无关联订单</view>
+  </view>
+  <view class="modal" wx:if="{{showDateModal}}">
+    <view class="modal-mask" bindtap="closeDateModal"></view>
+    <view class="modal-content">
+      <view class="modal-title">选择时间范围</view>
+      <view class="quick-options">
+        <view class="quick-option {{editingDateRange.quickSelect === '1day' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="1day">最近 1 天</view>
+        <view class="quick-option {{editingDateRange.quickSelect === '7days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="7days">最近 7 天</view>
+        <view class="quick-option {{editingDateRange.quickSelect === '30days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="30days">最近 30 天</view>
+        <view class="quick-option {{editingDateRange.quickSelect === 'month' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="month">本月</view>
+      </view>
+      <view class="custom-section">
+        <view class="custom-title">自定义时间</view>
+        <picker mode="date" value="{{editingDateRange.startDate}}" end="{{editingDateRange.endDate || today}}" bindchange="onStartDateChange"><view class="date-picker-input">开始日期：{{editingDateRange.startDate || '选择'}}</view></picker>
+        <picker mode="date" value="{{editingDateRange.endDate}}" start="{{editingDateRange.startDate}}" end="{{today}}" bindchange="onEndDateChange"><view class="date-picker-input">结束日期：{{editingDateRange.endDate || '选择'}}</view></picker>
+      </view>
+      <view class="modal-footer">
+        <button class="modal-cancel" bindtap="closeDateModal">取消</button>
+        <button class="modal-confirm" bindtap="confirmDateRange">确定</button>
+      </view>
+    </view>
+  </view>
+</view>

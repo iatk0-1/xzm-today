@@ -17,7 +17,7 @@ function formatMessage(m, formatTime) {
 
 Page({
   data: {
-    id: '', session: null, messages: [], inputText: '', inputCursor: -1,
+    id: '', session: null, messages: [], inputText: '', inputCursor: -1, inputFocused: false,
     emojis, showEmojis: false,
     quotaText: '', canReply: false, canClaim: false, canClose: false,
     statusBarHeight: 20, scrollToId: '', loading: true, hasMore: true,
@@ -31,9 +31,10 @@ Page({
   },
   onShow() {
     clearInterval(this._poll);
-    // 返回会话页时即使最后一条消息没变，也重新触发定位。
-    this.setData({ scrollToId: '' });
-    this.refresh(false, true);
+    const firstShow = !this._hasShown;
+    this._hasShown = true;
+    if (!firstShow) this.setData({ scrollToId: '' });
+    this.refresh(false, firstShow);
     this._poll = setInterval(() => this.refresh(true), 10000);
   },
   onHide() { clearInterval(this._poll); this._poll = null; if (this._audio) this._audio.stop(); },
@@ -62,13 +63,17 @@ Page({
         canReply: !!(activeMine && valid), canClaim: session.status === 'pending', canClose: activeMine,
         showTools: activeMine && valid ? this.data.showTools : false,
         showEmojis: activeMine && valid ? this.data.showEmojis : false,
-        composerType: activeMine && valid ? this.data.composerType : '',
-        ...(scrollLatest && allMessages.length
-          ? { scrollToId: 'msg-' + allMessages[allMessages.length - 1].id } : {}) });
+        composerType: activeMine && valid ? this.data.composerType : '' }, () => {
+        if (scrollLatest && allMessages.length) this.scrollToBottom();
+      });
     } catch (err) {
       this.setData({ loading: false });
       if (!silent) wx.showToast({ title: (err && err.message) || '加载失败', icon: 'none' });
     }
+  },
+  scrollToBottom() {
+    // 等消息和底部操作栏渲染完成，再定位到列表末尾。
+    this.setData({ scrollToId: '' }, () => this.setData({ scrollToId: 'msg-bottom' }));
   },
   async loadEarlier() {
     if (this._loadingEarlier || !this.data.hasMore || !this.data.messages.length) return;
@@ -90,6 +95,13 @@ Page({
     return pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
   },
   onInput(e) { this.setData({ inputText: e.detail.value, inputCursor: e.detail.cursor }); },
+  onInputFocus() { this.setData({ inputFocused: true }); },
+  onInputBlur() { this.setData({ inputFocused: false }); },
+  hideInputKeyboard() {
+    if (!this.data.inputFocused) return;
+    this.setData({ inputFocused: false });
+    wx.hideKeyboard();
+  },
   toggleEmojis() {
     if (!this.data.canReply || this._sending) return;
     this.setData({ showEmojis: !this.data.showEmojis, showTools: false });
@@ -299,8 +311,12 @@ Page({
     if (page === 'pages/orderDetail/orderDetail') {
       const match = /(?:\?|&)id=(\d+)/.exec(raw);
       if (!match) { wx.showToast({ title: '订单链接缺少编号', icon: 'none' }); return; }
-      wx.navigateTo({ url: '/pages/customerServiceOrderDetail/customerServiceOrderDetail?sessionId='
-        + this.data.id + '&orderId=' + match[1] });
+      if (auth.isAdmin()) {
+        wx.navigateTo({ url: '/pages/adminOrderDetail/adminOrderDetail?id=' + match[1] });
+      } else {
+        wx.navigateTo({ url: '/pages/customerServiceOrderDetail/customerServiceOrderDetail?sessionId='
+          + this.data.id + '&orderId=' + match[1] });
+      }
       return;
     }
     wx.navigateTo({ url: '/' + raw.replace(/^\//, '') });
@@ -322,9 +338,12 @@ Page({
     } });
   },
   async send() {
-    const content = (this.data.inputText || '').trim();
+    const inputText = this.data.inputText || '';
+    const content = inputText.trim();
     if (!content) return;
-    await this.performSend(async () => ({ content }), () => this.setData({ inputText: '' }));
+    await this.performSend(async () => ({ content }), () => {
+      if (this.data.inputText === inputText) this.setData({ inputText: '' });
+    });
   },
   async performSend(buildPayload, onCreated) {
     if (!this.data.canReply || this._sending) return;
@@ -336,8 +355,8 @@ Page({
       if (onCreated) onCreated();
       if (message && message.id) {
         const formatted = formatMessage(message, raw => this.formatTime(raw));
-        this.setData({ messages: [...this.data.messages.filter(m => m.id !== message.id), formatted],
-          scrollToId: 'msg-' + message.id });
+        this.setData({ messages: [...this.data.messages.filter(m => m.id !== message.id), formatted] },
+          () => this.scrollToBottom());
       }
       await this.refresh(true);
     } catch (err) {

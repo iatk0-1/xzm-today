@@ -5,7 +5,7 @@
     <view class="customer-summary"><view class="customer-name">{{session.nickname || '微信用户'}}</view><view class="customer-phone">{{session.phone || '未留手机号'}} · {{session.status === 'pending' ? '待接入' : (session.status === 'active' ? '接待中' : '已结束')}}</view></view>
     <view wx:if="{{canClose}}" class="close-link" bindtap="close">结束对话</view>
   </view>
-  <scroll-view class="msg-list" scroll-y scroll-into-view="{{scrollToId}}" scroll-with-animation bindscrolltoupper="loadEarlier" upper-threshold="40">
+  <scroll-view class="msg-list" scroll-y scroll-into-view="{{scrollToId}}" scroll-with-animation bindscrolltoupper="loadEarlier" bindtap="hideInputKeyboard" bindtouchmove="hideInputKeyboard" upper-threshold="40">
     <view wx:if="{{hasMore && messages.length}}" class="load-earlier" bindtap="loadEarlier">查看更早消息</view>
     <view class="msg-empty" wx:if="{{!messages.length && !loading}}">暂无消息</view>
     <view class="msg-item {{item.direction === 'staff' ? 'msg-right' : 'msg-left'}}" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
@@ -20,9 +20,10 @@
       <view wx:if="{{item.status === 'failed' && item.errorMessage}}" class="msg-error">{{item.errorMessage}}</view>
       <view wx:if="{{item.status === 'failed' && canReply}}" class="retry-btn" bindtap="retry" data-id="{{item.id}}">重试发送</view>
     </view>
+    <view id="msg-bottom"></view>
   </scroll-view>
   <view class="quota-bar" wx:if="{{session}}">{{quotaText}}</view>
-  <view class="input-bar {{showTools || showEmojis ? 'tools-open' : ''}}" wx:if="{{canReply}}"><view class="btn-more {{sending ? 'disabled' : ''}}" bindtap="toggleTools">{{showTools ? '×' : '＋'}}</view><input class="msg-input" maxlength="2000" disabled="{{sending}}" value="{{inputText}}" cursor="{{inputCursor}}" placeholder="输入回复…" bindinput="onInput" confirm-type="send" bindconfirm="send"/><view class="btn-emoji {{showEmojis ? 'selected' : ''}} {{sending ? 'disabled' : ''}}" bindtap="toggleEmojis">☺</view><view class="btn-send {{sending ? 'disabled' : ''}}" bindtap="send">{{sending ? '发送中' : '发送'}}</view></view>
+  <view class="input-bar {{showTools || showEmojis ? 'tools-open' : ''}}" wx:if="{{canReply}}"><view class="btn-more {{sending ? 'disabled' : ''}}" bindtap="toggleTools">{{showTools ? '×' : '＋'}}</view><input class="msg-input" maxlength="2000" value="{{inputText}}" cursor="{{inputCursor}}" focus="{{inputFocused}}" placeholder="输入回复…" bindinput="onInput" bindfocus="onInputFocus" bindblur="onInputBlur" confirm-type="send" confirm-hold="{{true}}" hold-keyboard="{{true}}" bindconfirm="send"/><view class="btn-emoji {{showEmojis ? 'selected' : ''}} {{sending ? 'disabled' : ''}}" bindtap="toggleEmojis">☺</view><view class="btn-send {{sending ? 'disabled' : ''}}" bindtap="send">{{sending ? '发送中' : '发送'}}</view></view>
   <view class="input-bar action-bar" wx:elif="{{canClaim}}"><view class="claim-btn" bindtap="claim">接入会话后回复</view></view>
   <view class="input-bar action-bar" wx:else><text>{{session.status === 'closed' ? '会话已结束，等待用户再次发送消息' : (canClose ? '等待用户再次发送消息以恢复回复额度' : '当前会话由其他客服接待')}}</text></view>
   <view wx:if="{{canReply && showTools}}" class="tools-panel">

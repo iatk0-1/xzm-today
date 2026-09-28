@@ -4,6 +4,7 @@ const Module = require('node:module');
 
 let pageConfig;
 let currentUserId = 20;
+let currentUserIsAdmin = false;
 let session;
 let newest = [];
 let earlier = [];
@@ -12,11 +13,15 @@ const posts = [];
 const uploads = [];
 let imageOptions;
 let postResult = {};
+let keyboardHides = 0;
+const navigations = [];
 
 global.Page = config => { pageConfig = config; };
 global.wx = {
   getWindowInfo: () => ({ statusBarHeight: 20 }),
   showToast: () => {},
+  hideKeyboard: () => { keyboardHides++; },
+  navigateTo: options => { navigations.push(options.url); },
   navigateBack: () => {},
   chooseImage: options => { imageOptions = options; }
 };
@@ -39,7 +44,8 @@ Module._load = function(request, ...rest) {
   };
   if (request.endsWith('utils/auth')) return {
     ensureAuthenticated: async () => {},
-    getUserInfo: () => ({ userId: currentUserId })
+    getUserInfo: () => ({ userId: currentUserId }),
+    isAdmin: () => currentUserIsAdmin
   };
   return originalLoad.call(this, request, ...rest);
 };
@@ -49,7 +55,7 @@ Module._load = originalLoad;
 function createPage() {
   const page = Object.assign({}, pageConfig);
   page.data = Object.assign({}, pageConfig.data, { id: '1' });
-  page.setData = patch => Object.assign(page.data, patch);
+  page.setData = (patch, callback) => { Object.assign(page.data, patch); if (callback) callback(); };
   return page;
 }
 
@@ -87,23 +93,91 @@ test('轮询新消息时保留已翻出的历史，翻页带上最早消息 ID',
   assert.equal(page.data.scrollToId, 'msg-51');
 });
 
-test('进入会话和发送回复定位最新，定时刷新不改变阅读位置', async () => {
+test('首次进入和发送回复定位列表末尾，定时刷新不改变阅读位置', async () => {
   session = activeSession(); posts.length = 0;
   newest = [{ id: 201, direction: 'user', content: '历史消息' }];
   const page = createPage();
   await page.refresh(false, true);
-  assert.equal(page.data.scrollToId, 'msg-201');
+  assert.equal(page.data.scrollToId, 'msg-bottom');
   page.setData({ scrollToId: 'msg-201' });
   await page.refresh(true);
   assert.equal(page.data.scrollToId, 'msg-201');
   page.setData({ inputText: '客服回复' });
   postResult = { id: 202, direction: 'staff', content: '客服回复', status: 'sent' };
   await page.send();
-  assert.equal(page.data.scrollToId, 'msg-202');
+  assert.equal(page.data.scrollToId, 'msg-bottom');
   newest = [...newest, { id: 202, direction: 'staff', content: '客服回复', status: 'sent' }];
   await page.refresh(true);
-  assert.equal(page.data.scrollToId, 'msg-202');
+  assert.equal(page.data.scrollToId, 'msg-bottom');
   postResult = {};
+});
+
+test('从详情页返回聊天时刷新消息但保留当前阅读位置', async () => {
+  session = activeSession();
+  newest = [{ id: 301, direction: 'user', content: '旧消息' }];
+  const page = createPage();
+  page.onShow();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(page.data.scrollToId, 'msg-bottom');
+  page.onHide();
+  newest = [...newest, { id: 302, direction: 'user', content: '新消息' }];
+  page.onShow();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(page.data.messages.at(-1).id, 302);
+  assert.equal(page.data.scrollToId, '');
+  page.onHide();
+});
+
+test('发送后保持输入焦点，点击或滑动消息列表才收起键盘', async () => {
+  session = activeSession(); newest = []; posts.length = 0; keyboardHides = 0;
+  const page = createPage();
+  await page.refresh();
+  page.onInputFocus();
+  page.onInput({ detail: { value: '第一条', cursor: 3 } });
+  postResult = { id: 203, direction: 'staff', content: '第一条', status: 'sent' };
+  await page.send();
+  assert.equal(page.data.inputFocused, true);
+  assert.equal(page.data.inputText, '');
+  assert.equal(keyboardHides, 0);
+  page.hideInputKeyboard();
+  assert.equal(page.data.inputFocused, false);
+  assert.equal(keyboardHides, 1);
+  page.hideInputKeyboard();
+  assert.equal(keyboardHides, 1);
+  page.onInputFocus();
+  page.hideInputKeyboard();
+  assert.equal(keyboardHides, 2);
+  postResult = {};
+});
+
+test('发送途中继续输入的新内容不会被上一条消息清空', async () => {
+  session = activeSession(); newest = []; posts.length = 0;
+  const page = createPage();
+  await page.refresh();
+  page.setData({ inputText: '第一条' });
+  let finishPost;
+  postResult = new Promise(resolve => { finishPost = resolve; });
+  const sending = page.send();
+  page.onInput({ detail: { value: '第二条', cursor: 3 } });
+  finishPost({ id: 204, direction: 'staff', content: '第一条', status: 'sent' });
+  await sending;
+  assert.equal(posts.at(-1).data.content, '第一条');
+  assert.equal(page.data.inputText, '第二条');
+  postResult = {};
+});
+
+test('管理员打开订单卡片进入管理详情，普通客服进入客服详情，商品仍进入商品详情', () => {
+  const page = createPage();
+  navigations.length = 0;
+  const card = pagePath => ({ currentTarget: { dataset: { metadata: { PagePath: pagePath } } } });
+  currentUserIsAdmin = true;
+  page.openMiniProgramCard(card('pages/orderDetail/orderDetail?id=317504652948017152'));
+  assert.equal(navigations.at(-1), '/pages/adminOrderDetail/adminOrderDetail?id=317504652948017152');
+  page.openMiniProgramCard(card('pages/detail/detail?id=123'));
+  assert.equal(navigations.at(-1), '/pages/detail/detail?id=123');
+  currentUserIsAdmin = false;
+  page.openMiniProgramCard(card('pages/orderDetail/orderDetail?id=317504652948017152'));
+  assert.equal(navigations.at(-1), '/pages/customerServiceOrderDetail/customerServiceOrderDetail?sessionId=1&orderId=317504652948017152');
 });
 
 test('非当前接入客服只能看，不能向微信发送', async () => {

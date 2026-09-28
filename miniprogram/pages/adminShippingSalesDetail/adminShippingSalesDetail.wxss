@@ -1,0 +1,78 @@
+page { background-color: #f5f5f5; }
+.page-wrapper { padding: 16rpx; padding-bottom: 40rpx; }
+
+/* 商品名称 */
+.product-header { background: #fff; border-radius: 16rpx; padding: 28rpx 24rpx; margin-bottom: 16rpx; }
+.product-title { font-size: 34rpx; font-weight: 700; color: #1a1a1a; }
+
+/* 统计卡片 */
+.overview-card { background: #fff; border-radius: 16rpx; padding: 32rpx 24rpx; margin-bottom: 16rpx; }
+.stat-row { display: flex; margin-bottom: 20rpx; }
+.stat-row:last-child { margin-bottom: 0; }
+.stat-item { flex: 1; text-align: center; }
+.stat-val { display: block; font-size: 40rpx; font-weight: 700; color: #1a1a1a; font-family: "Times New Roman", Times, serif; }
+.stat-label { display: block; font-size: 24rpx; color: #999; margin-top: 4rpx; }
+
+/* 日期筛选 */
+.date-filter { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; display: flex; align-items: center; gap: 12rpx; }
+.date-picker { flex: 1; height: 64rpx; background: #f5f5f5; border-radius: 8rpx; display: flex; align-items: center; justify-content: center; font-size: 24rpx; color: #666; }
+.clear-date { width: 40rpx; height: 40rpx; background: #f0f0f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28rpx; color: #999; }
+
+/* 通用 section */
+.section-card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.section-title { font-size: 28rpx; font-weight: 600; color: #1a1a1a; margin-bottom: 16rpx; }
+
+/* SKU 行 */
+.sku-row { display: flex; align-items: center; justify-content: space-between; padding: 16rpx 0; border-bottom: 1rpx solid #f0f0f0; }
+.sku-row:last-child { border-bottom: none; }
+.sku-info { flex: 1; }
+.sku-spec { font-size: 26rpx; color: #333; }
+.sku-stats { display: flex; align-items: baseline; gap: 20rpx; }
+.sku-qty { font-size: 24rpx; color: #666; }
+.sku-amount { font-size: 28rpx; font-weight: 600; color: #1a1a1a; font-family: "Times New Roman", Times, serif; }
+
+/* 订单卡片 */
+.order-card { padding: 20rpx 0; border-bottom: 1rpx solid #f0f0f0; }
+.order-card:last-child { border-bottom: none; }
+.order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
+.order-no { font-size: 26rpx; color: #333; font-weight: 500; }
+.order-status { font-size: 24rpx; color: #666; background: #f5f5f5; padding: 2rpx 12rpx; border-radius: 6rpx; }
+
+/* 订单内明细列表 */
+.order-items-list { background: #fafafa; border-radius: 10rpx; padding: 12rpx 16rpx; margin-bottom: 12rpx; }
+.oi-row { display: flex; align-items: flex-start; padding: 10rpx 0; }
+.oi-row + .oi-row { border-top: 1rpx dashed #eee; }
+.oi-img { width: 64rpx; height: 64rpx; border-radius: 8rpx; background: #eee; flex-shrink: 0; margin-top: 2rpx; }
+.oi-info { flex: 1; margin-left: 14rpx; display: flex; flex-direction: column; gap: 4rpx; }
+.oi-name { font-size: 26rpx; color: #333; font-weight: 500; }
+.oi-spec { font-size: 23rpx; color: #888; }
+
+.oi-price { font-size: 26rpx; font-weight: 600; color: #1a1a1a; font-family: "Times New Roman", Times, serif; flex-shrink: 0; margin-left: 12rpx; margin-top: 2rpx; }
+
+.order-footer { display: flex; justify-content: space-between; align-items: center; }
+.order-time { font-size: 22rpx; color: #aaa; }
+.order-total { font-size: 26rpx; color: #333; font-weight: 500; }
+.load-more { text-align: center; padding: 24rpx 0; font-size: 26rpx; color: #1a1a1a; }
+.empty-inner { text-align: center; padding: 40rpx 0; font-size: 26rpx; color: #999; }
+.modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000; }
+.modal-mask { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.45); }
+.modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600rpx; max-height: 70vh; background: #fff; border-radius: 16rpx; overflow: hidden; display: flex; flex-direction: column; }
+.modal-title { padding: 28rpx; font-size: 30rpx; font-weight: 600; text-align: center; border-bottom: 1rpx solid #f0f0f0; }
+.quick-options { display: flex; flex-wrap: wrap; padding: 16rpx; gap: 12rpx; border-bottom: 1rpx solid #f0f0f0; }
+.quick-option { flex: 1 1 calc(50% - 6rpx); box-sizing: border-box; height: 64rpx; line-height: 64rpx; text-align: center; background: #f5f5f5; border-radius: 8rpx; font-size: 24rpx; color: #666; }
+.quick-option.selected { background: #1a1a1a; color: #fff; }
+.custom-section { padding: 24rpx 16rpx; }
+.custom-title { font-size: 24rpx; color: #999; margin-bottom: 16rpx; }
+.date-picker-input { height: 64rpx; background: #f5f5f5; border-radius: 8rpx; padding: 0 24rpx; display: flex; align-items: center; font-size: 26rpx; color: #333; margin-bottom: 12rpx; }
+.modal-footer { display: flex; border-top: 1rpx solid #f0f0f0; }
+.modal-cancel, .modal-confirm { flex: 1; height: 88rpx; line-height: 88rpx; font-size: 28rpx; border-radius: 0; padding: 0; border: none; }
+.modal-cancel { background: #f5f5f5; color: #666; border-right: 1rpx solid #f0f0f0; }
+.modal-confirm { background: #1a1a1a; color: #fff; }
+.overview-status { min-height: 100rpx; display: flex; align-items: center; justify-content: center; font-size: 26rpx; color: #999; }
+.sku-info { min-width: 0; }
+.sku-quantities { display: flex; flex-wrap: wrap; gap: 8rpx 20rpx; margin-top: 8rpx; font-size: 24rpx; color: #666; }
+.after-sales { display: flex; flex-wrap: wrap; gap: 8rpx; margin-top: 10rpx; align-items: center; }
+.after-sale-label, .after-sale-status { border-radius: 6rpx; padding: 3rpx 10rpx; font-size: 21rpx; }
+.after-sale-label { background: #fff0e4; color: #b45116; }
+.after-sale-status { background: #fff7f0; color: #a75523; }
+.retry { color: #333; }

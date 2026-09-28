@@ -253,8 +253,8 @@ test('列表滚动区尺寸：窗口高度减掉导航栏，档口/分类再多�
 
   page.setData({ currentMainTab: '档口' });
   page.updateListMetrics();
-  assert.equal(page.data.listTop, 50); // 100rpx 在 375 宽的屏上是 50px
-  assert.equal(page.data.listHeight, 650);
+  assert.equal(page.data.listTop, 44); // 88rpx 在 375 宽的屏上是 44px
+  assert.equal(page.data.listHeight, 656);
 
   page.setData({ currentMainTab: '上新' });
   page.updateListMetrics();
