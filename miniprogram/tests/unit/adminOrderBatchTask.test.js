@@ -197,3 +197,26 @@ test('关闭历史轮询后不会删除随后建立的新任务', { concurrency:
   assert.equal(p.batchTaskRunning, false);
   delete storage.admin_order_active_batch_task;
 });
+
+test('失败列表分页展示原因，加入时保留现有待发货项并过滤已发商品', { concurrency: false }, async () => {
+  const p = page();
+  p.data.pendingShipItems = [{ orderId: '9', orderItemId: '99', skuId: '999', shipQty: 1 }];
+  getHandler = async (url) => {
+    assert.equal(url, '/shipments/batch-tasks/failed-waybills');
+    return { hasNext: false, content: [{ groupId: 'g1', reason: '面单接口拒绝',
+      shippableItemIds: ['11'],
+      failedAt: '2026-09-29T12:00:00+08:00', items: [
+        { orderId: '1', orderItemId: '11', skuId: '111', orderNo: 'A1', unshippedQty: 2 },
+        { orderId: '2', orderItemId: '22', skuId: '222', orderNo: 'A2', unshippedQty: 0 }
+      ] }] };
+  };
+  p.openFailedWaybills();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(p.data.failedWaybillGroups[0].reason, '面单接口拒绝');
+  assert.equal(p.data.failedWaybillGroups[0].orders.length, 2);
+  p.addFailedWaybillsToPending();
+  assert.deepEqual(p.data.pendingShipItems.map(item => String(item.orderId)), ['9', '1']);
+  assert.equal(p.data.pendingShipItems[1].shipQty, 2);
+  assert.equal(p.data.showPendingShipList, true);
+  assert.equal(p.data.showFailedWaybills, false);
+});

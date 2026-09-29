@@ -123,11 +123,23 @@ page { background-color: #f2f2f2; }
 .pending-footer-actions .pending-clear { flex-shrink: 0; font-size: 24rpx; }
 .pending-batch-ship-btn { flex: 1; }
 
-/* 工具栏：物流 + 全选 + 批量发货 一行排列 */
+/* 发货工具栏固定两行，窄屏也不让按钮自行换行。 */
 .toolbar {
   background: #fff; border-radius: 16rpx; padding: 16rpx 20rpx; margin-bottom: 16rpx;
-  display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap;
+  display: flex; flex-direction: column; gap: 12rpx;
   width: 100%; max-width: 100%; box-sizing: border-box;
+}
+.toolbar-row { display: flex; align-items: center; gap: 12rpx; width: 100%; min-width: 0; box-sizing: border-box; }
+.toolbar-action-row .failed-ship-btn,
+.toolbar-action-row .batch-ship-btn,
+.toolbar-action-row .toolbar-history-entry {
+  flex: 1 1 0; width: 0; min-width: 0; margin: 0; box-sizing: border-box;
+  text-align: center; white-space: nowrap;
+}
+.toolbar-action-row .batch-ship-btn { padding: 0 4rpx; font-size: 24rpx; }
+.toolbar-action-row .failed-ship-btn { padding: 0 4rpx; }
+.toolbar-history-entry {
+  height: 64rpx; line-height: 64rpx; color: #1769aa; font-size: 24rpx;
 }
 .after-sale-alert {
   margin-bottom: 16rpx;
@@ -157,6 +169,13 @@ page { background-color: #f2f2f2; }
 
 .batch-ship-btn { height: 64rpx; line-height: 64rpx; background: #1a1a1a; color: #fff; font-size: 26rpx; border-radius: 8rpx; padding: 0 28rpx; flex-shrink: 0; }
 .batch-ship-btn[disabled] { background: #ccc; }
+.failed-ship-btn { height: 64rpx; line-height: 64rpx; margin: 0; padding: 0 18rpx; flex-shrink: 0; border: 1rpx solid #d32f2f; border-radius: 8rpx; background: #fff; color: #d32f2f; font-size: 24rpx; }
+.failed-waybill-head { display: flex; flex-direction: column; gap: 8rpx; padding: 18rpx 0; font-size: 22rpx; color: #888; }
+.failed-waybill-head .batch-progress-reason { color: #d32f2f; line-height: 1.5; overflow-wrap: anywhere; }
+.failed-unavailable { color: #999; font-size: 22rpx; }
+.failed-add-btn { margin: 0; background: #f5f5f5; color: #333; font-size: 24rpx; }
+.failed-all-btn { width: 100%; margin: 0; }
+.failed-list-empty { padding: 30rpx 0; text-align: center; color: #999; font-size: 24rpx; }
 
 .order-list-container { width: 100%; box-sizing: border-box; }
 .order-list { background: transparent; border-radius: 0; overflow: visible; width: 100%; max-width: 100%; padding-bottom: 16rpx; box-sizing: border-box; }

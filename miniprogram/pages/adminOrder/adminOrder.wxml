@@ -69,22 +69,80 @@
       </view>
     </view>
 
-    <!-- 工具栏：物流 + 全选 + 批量发货 -->
+    <!-- 工具栏：上排物流与全选，下排发货操作 -->
     <view class="toolbar">
-      <picker class="logistics-picker" range="{{logisticsAccounts}}" range-key="deliveryName" value="{{logisticsIndex}}" bindchange="onLogisticsChange">
-        <view class="picker-value">{{logisticsAccounts[logisticsIndex] ? logisticsAccounts[logisticsIndex].deliveryName : '选择物流'}} ▾</view>
-      </picker>
-      <text class="quota-info" wx:if="{{logisticsAccounts[logisticsIndex]}}">余 {{logisticsAccounts[logisticsIndex].quotaNum}}</text>
-      <view class="toolbar-spacer"></view>
-      <view class="checkbox-all {{allSelected ? 'checked' : ''}}" bindtap="toggleSelectAll">
-        <text wx:if="{{allSelected}}">✓</text>
+      <view class="toolbar-row toolbar-info-row">
+        <picker class="logistics-picker" range="{{logisticsAccounts}}" range-key="deliveryName" value="{{logisticsIndex}}" bindchange="onLogisticsChange">
+          <view class="picker-value">{{logisticsAccounts[logisticsIndex] ? logisticsAccounts[logisticsIndex].deliveryName : '选择物流'}} ▾</view>
+        </picker>
+        <text class="quota-info" wx:if="{{logisticsAccounts[logisticsIndex]}}">余 {{logisticsAccounts[logisticsIndex].quotaNum}}</text>
+        <view class="toolbar-spacer"></view>
+        <view class="checkbox-all {{allSelected ? 'checked' : ''}}" bindtap="toggleSelectAll">
+          <text wx:if="{{allSelected}}">✓</text>
+        </view>
+        <text class="select-all-text" bindtap="toggleSelectAll">{{selectingAll ? '正在加载全部...' : '全选'}}</text>
       </view>
-      <text class="select-all-text" bindtap="toggleSelectAll">{{selectingAll ? '正在加载全部...' : '全选'}}</text>
-      <button class="batch-ship-btn" bindtap="openPendingShipList" disabled="{{pendingShipItems.length === 0 || !logisticsAccounts[logisticsIndex]}}">
-        批量发货（{{pendingOrderCount}} 单）
-      </button>
-      <text class="batch-progress-entry" wx:if="{{batchProgress}}" bindtap="openBatchProgress">查看发货进度 {{batchProgress.completed}}/{{batchProgress.total}}</text>
-      <text class="batch-progress-entry" bindtap="openRecentBatchTasks">历史发货任务</text>
+      <view class="toolbar-row toolbar-action-row">
+        <button class="failed-ship-btn" bindtap="openFailedWaybills">失败列表</button>
+        <button class="batch-ship-btn" bindtap="openPendingShipList" disabled="{{pendingShipItems.length === 0 || !logisticsAccounts[logisticsIndex]}}">
+          批量发货（{{pendingOrderCount}} 单）
+        </button>
+        <view class="toolbar-history-entry" bindtap="openRecentBatchTasks">历史任务</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 创建面单失败历史：沿用待发货列表的订单与商品卡片，加入后继续原批量发货流程。 -->
+  <view class="pending-modal" wx:if="{{showFailedWaybills}}">
+    <view class="pending-modal-mask" bindtap="closeFailedWaybills" catchtouchmove="stopPendingShipEvent"></view>
+    <view class="pending-modal-content">
+      <view class="pending-modal-header">
+        <view class="pending-modal-title"><text>失败列表</text><text class="pending-modal-count">仅创建面单失败</text></view>
+        <text class="pending-modal-close" bindtap="closeFailedWaybills">关闭</text>
+      </view>
+      <scroll-view class="pending-modal-list" scroll-y="true" enable-flex="true" bindscrolltolower="loadFailedWaybills">
+        <view class="pending-order-group" wx:for="{{failedWaybillGroups}}" wx:key="groupId" wx:for-item="failure" wx:for-index="failureIndex">
+          <view class="failed-waybill-head">
+            <text>失败时间 {{failure.failedAtText}}</text>
+            <text class="batch-progress-reason">原因：{{failure.reason || '创建面单失败'}}</text>
+          </view>
+          <view wx:for="{{failure.orders}}" wx:key="orderId" wx:for-item="order">
+            <view class="order-header pending-order-header">
+              <view class="order-summary">
+                <text class="summary-chip" wx:if="{{order.adminSeqNo}}">序号 {{order.adminSeqNo}}</text>
+                <view class="summary-row">
+                  <view class="summary-main"><text class="summary-label">订单号</text><text class="order-no">{{order.orderNo}}</text></view>
+                  <text class="copy-link summary-action" catchtap="copyOrderNo" data-order-no="{{order.orderNo}}">复制</text>
+                  <text class="copy-link summary-action" catchtap="goToOrderDetail" data-order-id="{{order.orderId}}">查看详情</text>
+                </view>
+                <text class="order-date">{{order.createdAt}}</text>
+                <view class="summary-row recipient-row">
+                  <view class="summary-main recipient-main"><text class="summary-label">收件人</text><text class="recipient-name">{{order.recipientName}}</text><text class="recipient-phone">{{order.recipientPhone}}</text></view>
+                  <text class="copy-link summary-action" catchtap="copyRecipientInfo" data-name="{{order.recipientName}}" data-phone="{{order.recipientPhone}}" data-address="{{order.recipientAddress}}">复制</text>
+                </view>
+                <text class="recipient-address">{{order.recipientAddress}}</text>
+              </view>
+            </view>
+            <view class="order-items pending-order-items">
+              <view class="order-item pending-order-item" wx:for="{{order.items}}" wx:key="uniqueKey" wx:for-item="item">
+                <image class="item-image" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
+                <view class="item-info">
+                  <view class="item-name">{{item.productName}}</view>
+                  <view class="item-sku">{{item.skuSpec}} {{item.skuSize}}</view>
+                  <view class="item-qty">总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}</view>
+                  <view class="item-after-sale admin-remark-line" bindtap="editAdminRemark" data-item="{{item}}">管理员备注：{{item.adminRemark || '点击添加'}}</view>
+                  <view class="item-after-sale" wx:if="{{item.afterSaleQty > 0}}">{{item.afterSaleStatusText || '售后'}} {{item.afterSaleQty}} 件</view>
+                  <view class="failed-unavailable" wx:if="{{!item.canShip}}">当前无可发数量</view>
+                </view>
+              </view>
+            </view>
+          </view>
+          <view class="pending-actions"><button class="failed-add-btn" bindtap="addFailedWaybillsToPending" data-group-index="{{failureIndex}}">加入待发货列表</button></view>
+        </view>
+        <view class="failed-list-empty" wx:if="{{!failedWaybillLoading && failedWaybillGroups.length === 0}}">暂无创建面单失败记录</view>
+        <view class="failed-list-empty" wx:if="{{failedWaybillLoading}}">加载中...</view>
+      </scroll-view>
+      <view class="pending-modal-footer"><button class="batch-ship-btn failed-all-btn" bindtap="addFailedWaybillsToPending" disabled="{{failedWaybillGroups.length === 0}}">将已加载订单加入待发货列表</button></view>
     </view>
   </view>
 

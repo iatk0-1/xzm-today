@@ -50,7 +50,12 @@ Page({
     batchProgress: null,
     showBatchProgress: false,
     showRecentBatchTasks: false,
-    recentBatchTasks: []
+    recentBatchTasks: [],
+    showFailedWaybills: false,
+    failedWaybillGroups: [],
+    failedWaybillPage: 0,
+    failedWaybillHasMore: true,
+    failedWaybillLoading: false
   },
 
   onLoad: async function() {
@@ -1006,6 +1011,93 @@ Page({
       return;
     }
     this.setData({ showPendingShipList: true });
+  },
+
+  openFailedWaybills: function() {
+    this.failedWaybillRequestVersion = (this.failedWaybillRequestVersion || 0) + 1;
+    this.setData({ showFailedWaybills: true, failedWaybillGroups: [],
+      failedWaybillPage: 0, failedWaybillHasMore: true, failedWaybillLoading: false });
+    this.loadFailedWaybills();
+  },
+
+  closeFailedWaybills: function() {
+    this.failedWaybillRequestVersion = (this.failedWaybillRequestVersion || 0) + 1;
+    this.setData({ showFailedWaybills: false });
+  },
+
+  loadFailedWaybills: async function() {
+    if (this.data.failedWaybillLoading || !this.data.failedWaybillHasMore) return;
+    const page = this.data.failedWaybillPage + 1;
+    const version = this.failedWaybillRequestVersion;
+    this.setData({ failedWaybillLoading: true });
+    try {
+      const result = await api.get('/shipments/batch-tasks/failed-waybills', { page });
+      const groups = (result.content || []).map(group => {
+        const orderMap = new Map();
+        const shippableIds = new Set((group.shippableItemIds || []).map(String));
+        (group.items || []).forEach(item => {
+          const key = String(item.orderId);
+          if (!orderMap.has(key)) orderMap.set(key, {
+            orderId: item.orderId, orderNo: item.orderNo || item.orderId,
+            adminSeqNo: item.adminSeqNo || '', createdAt: this.formatDate(item.orderCreatedAt),
+            recipientName: item.recipientName, recipientPhone: item.recipientPhone,
+            recipientAddress: item.recipientAddress, items: []
+          });
+          orderMap.get(key).items.push({ ...item,
+            uniqueKey: this.getPendingItemKey(item),
+            canShip: shippableIds.has(String(item.orderItemId)) && Number(item.unshippedQty) > 0 });
+        });
+        return { ...group, failedAtText: this.formatDate(group.failedAt),
+          orders: Array.from(orderMap.values()) };
+      });
+      if (!this.data.showFailedWaybills || version !== this.failedWaybillRequestVersion) return;
+      this.setData({
+        failedWaybillGroups: this.data.failedWaybillGroups.concat(groups),
+        failedWaybillPage: page,
+        failedWaybillHasMore: Boolean(result.hasNext)
+      });
+    } catch (err) {
+      if (version === this.failedWaybillRequestVersion) {
+        wx.showToast({ title: err.message || '查询失败列表失败', icon: 'none' });
+      }
+    } finally {
+      if (version === this.failedWaybillRequestVersion) this.setData({ failedWaybillLoading: false });
+    }
+  },
+
+  addFailedWaybillsToPending: function(event) {
+    const selectedGroup = event && event.currentTarget && event.currentTarget.dataset.groupIndex;
+    const groups = selectedGroup === undefined
+      ? this.data.failedWaybillGroups : [this.data.failedWaybillGroups[Number(selectedGroup)]];
+    const existing = new Set(this.data.pendingShipItems.map(item => this.getPendingItemKey(item)));
+    const added = [];
+    groups.filter(Boolean).forEach(group => group.orders.forEach(order => order.items.forEach(item => {
+      const key = this.getPendingItemKey(item);
+      if (!item.canShip || existing.has(key)) return;
+      existing.add(key);
+      added.push({ ...item,
+        orderNo: order.orderNo, adminSeqNo: order.adminSeqNo,
+        createdAt: order.createdAt, orderCreatedAt: item.orderCreatedAt,
+        recipientName: order.recipientName, recipientPhone: order.recipientPhone,
+        recipientAddress: order.recipientAddress,
+        shipQty: Number(item.unshippedQty)
+      });
+    })));
+    if (!added.length && !this.data.pendingShipItems.length) {
+      wx.showToast({ title: '失败订单目前没有可发商品', icon: 'none' });
+      return;
+    }
+    const addedKeys = new Set(added.map(item => this.getPendingItemKey(item)));
+    const orderGroups = this.data.orderGroups.map(order => {
+      const items = order.items.map(item => addedKeys.has(this.getPendingItemKey(item))
+        ? { ...item, selected: true } : item);
+      const selectable = items.filter(item => item.canShip);
+      return { ...order, items, selected: selectable.length > 0 && selectable.every(item => item.selected) };
+    });
+    this.setData({ orderGroups, selectedItems: this.collectSelectedItems(orderGroups),
+      allSelected: this.isAllGroupsSelected(orderGroups), showFailedWaybills: false,
+      showPendingShipList: true });
+    this.updatePendingShipSummary(this.data.pendingShipItems.concat(added));
   },
 
   closePendingShipList: function() {
