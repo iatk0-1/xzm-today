@@ -6,6 +6,7 @@
   <!-- 筛选与发货操作区随页面滚动 -->
   <view class="admin-order-header">
     <view class="search-section">
+      <view class="search-dismiss-mask" wx:if="{{searchActive}}" bindtap="onSearchConfirm"></view>
       <view class="search-box">
         <view class="search-input-wrapper">
           <input class="search-input" placeholder="搜索商品名称" value="{{searchKeyword}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearchConfirm" focus="{{searchFocus}}" />
@@ -61,7 +62,7 @@
           <view class="selected-tag" wx:for="{{selectedProducts}}" wx:key="id" bindtap="openSkuSelector" data-product="{{item}}">
             {{item.name}}
             <text class="tag-count" wx:if="{{item.skuCount > 0}}">({{item.skuCount}}个 SKU)</text>
-            <text class="remove-btn" catchtap="removeProduct" data-id="{{item.id}}">×</text>
+            <view class="remove-btn" catchtap="removeProduct" data-id="{{item.id}}">×</view>
           </view>
         </view>
         <button class="clear-all" wx:if="{{selectedProducts.length > 0}}" bindtap="clearSelected">清空</button>

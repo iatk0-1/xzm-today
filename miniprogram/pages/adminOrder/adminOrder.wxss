@@ -10,7 +10,8 @@ page { background-color: #f2f2f2; }
 }
 .admin-order-header { width: 100%; min-width: 0; box-sizing: border-box; }
 .search-section { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; width: 100%; max-width: 100%; box-sizing: border-box; }
-.search-box { position: relative; }
+.search-dismiss-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 950; }
+.search-box { position: relative; z-index: 951; }
 .search-input-wrapper { display: flex; gap: 12rpx; margin-bottom: 16rpx; }
 .search-input { flex: 1; height: 72rpx; background: #f5f5f5; border-radius: 8rpx; padding: 0 24rpx; font-size: 28rpx; }
 .search-btn { width: 140rpx; height: 72rpx; line-height: 72rpx; background: #1a1a1a; color: #fff; font-size: 28rpx; border-radius: 8rpx; padding: 0; }
@@ -50,10 +51,11 @@ page { background-color: #f2f2f2; }
 .selected-products { margin-top: 16rpx; }
 .selected-title { font-size: 24rpx; color: #666; margin-bottom: 10rpx; }
 .selected-list { display: flex; flex-wrap: wrap; gap: 10rpx; }
-.selected-tag { background: #f5f5f5; padding: 10rpx 20rpx; border-radius: 8rpx; font-size: 24rpx; display: flex; align-items: center; gap: 8rpx; }
+.selected-tag { background: #f5f5f5; padding: 0 0 0 20rpx; min-height: 64rpx; border-radius: 8rpx; font-size: 24rpx; display: flex; align-items: center; gap: 8rpx; }
 .tag-count { color: #999; font-size: 20rpx; }
-.remove-btn { color: #d32f2f; font-size: 28rpx; margin-left: 6rpx; }
-.clear-all { margin-top: 12rpx; font-size: 24rpx; color: #999; background: none; border: none; padding: 0; height: auto; line-height: normal; }
+.remove-btn { width: 64rpx; min-height: 64rpx; align-self: stretch; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #d32f2f; font-size: 40rpx; line-height: 1; margin-left: 6rpx; }
+.clear-all { margin-top: 12rpx; font-size: 24rpx; color: #666; background: #f0f0f0; border: none; border-radius: 8rpx; padding: 0 24rpx; height: 64rpx; line-height: 64rpx; }
+.clear-all::after { border: none; }
 
 .pending-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000; overflow: hidden; }
 .pending-modal-mask { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, .48); }

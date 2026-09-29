@@ -8,6 +8,7 @@ Page({
   data: {
     searchKeyword: '',
     searchDropdown: [],  // 搜索下拉列表
+    searchActive: false,  // 正在输入或选择搜索商品
     searchFocus: false,  // 是否聚焦
     searchPage: 0,
     searchHasMore: false,
@@ -337,10 +338,14 @@ Page({
   onSearchInput: function(e) {
     const keyword = e.detail.value.trim();
     this.searchRequestVersion = (this.searchRequestVersion || 0) + 1;
-    this.setData({ searchKeyword: keyword, searchDropdown: [], searchPage: 0, searchHasMore: false, searchLoading: false });
+    this.setData({ searchKeyword: keyword, searchActive: Boolean(keyword), searchDropdown: [], searchPage: 0, searchHasMore: false, searchLoading: false });
     if (this.searchTimer) clearTimeout(this.searchTimer);
     
-    if (!keyword) return this.reloadPendingItems();
+    if (!keyword) {
+      // bindinput 的返回值会影响输入框内容，不能把异步查询结果返回给输入组件。
+      this.reloadPendingItems();
+      return;
+    }
     
     // 防抖：500ms 后搜索
     this.searchTimer = setTimeout(() => {
@@ -405,7 +410,7 @@ Page({
   onSearchConfirm: function() {
     if (this.searchTimer) clearTimeout(this.searchTimer);
     this.searchRequestVersion = (this.searchRequestVersion || 0) + 1;
-    this.setData({ searchDropdown: [], searchHasMore: false, searchLoading: false, searchFocus: false }, () => this.reloadPendingItems());
+    this.setData({ searchDropdown: [], searchHasMore: false, searchLoading: false, searchFocus: false, searchActive: false }, () => this.reloadPendingItems());
   },
 
   // 批量加载商品 SKU
@@ -461,7 +466,7 @@ Page({
       searchHasMore: false,
       searchLoading: false,
       searchKeyword: ''
-    });
+    }, () => this.onSearchConfirm());
   },
 
   // 点击下拉列表商品
@@ -571,6 +576,7 @@ Page({
       if (p.id === product.id) {
         return {
           ...p,
+          skus: product.skus,
           skuCount: selectedSkus.length,
           selectedSkus: selectedSkus
         };
@@ -581,7 +587,7 @@ Page({
     this.setData({
       selectedProducts,
       showSkuModal: false
-    });
+    }, () => this.onSearchConfirm());
   },
 
   // ==================== 加载订单明细 ====================

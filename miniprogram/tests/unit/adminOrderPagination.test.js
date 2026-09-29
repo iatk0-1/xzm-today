@@ -182,7 +182,10 @@ test('确认搜索后按关键词分页，清空搜索恢复其他筛选下的�
   // 尚未确认的新输入不应改变当前分页使用的关键词。
   page.data.searchKeyword = '其他';
   await page.loadNextPendingPage();
-  await page.onSearchInput({ detail: { value: '   ' } });
+  const inputResult = page.onSearchInput({ detail: { value: '' } });
+  assert.equal(inputResult, undefined);
+  assert.equal(page.data.searchKeyword, '');
+  await page.pendingPagePromise;
 
   const filters = { stallId: '8', startDate: '2026-09-01', endDate: '2026-09-30' };
   assert.deepEqual(requests.map(request => request.params), [
@@ -201,4 +204,61 @@ test('已选商品的 SKU 条件和关键词同时传给待发货查询', { conc
   await page.reloadPendingItems();
 
   assert.deepEqual(requests[0].params, { keyword: '华', skuIds: '9', page: 1 });
+});
+
+test('选中商品后清空输入并自动按商品 SKU 查询订单', { concurrency: false }, async () => {
+  requests.length = 0;
+  pages = [{ content: [], hasNext: false }];
+  const page = createPage();
+  page.data.searchKeyword = '羊毛';
+  page.data.searchActive = true;
+  page.data.searchDropdown = [{ id: '1', name: '羊毛衫' }];
+
+  page.onDropdownItemClick({ currentTarget: { dataset: {
+    product: { id: '1', name: '羊毛衫', skus: [{ id: '9' }] }
+  } } });
+  await page.pendingPagePromise;
+
+  assert.equal(page.data.searchKeyword, '');
+  assert.equal(page.data.searchActive, false);
+  assert.deepEqual(page.data.searchDropdown, []);
+  assert.deepEqual(requests.map(request => request.params), [{ skuIds: '9', page: 1 }]);
+});
+
+test('确定商品 SKU 后自动按已选 SKU 查询订单', { concurrency: false }, async () => {
+  requests.length = 0;
+  pages = [{ content: [], hasNext: false }];
+  const page = createPage();
+  page.data.selectedProducts = [{ id: '1', name: '羊毛衫', selectedSkus: [] }];
+  page.data.selectedProduct = { id: '1', skus: [
+    { id: '9', selected: true }, { id: '10', selected: false }
+  ] };
+  page.data.searchActive = true;
+  page.data.searchKeyword = '羊毛';
+  page.data.searchDropdown = [{ id: '1' }];
+
+  page.confirmSkuSelection();
+  await page.pendingPagePromise;
+
+  assert.equal(page.data.showSkuModal, false);
+  assert.equal(page.data.searchActive, false);
+  assert.deepEqual(page.data.searchDropdown, []);
+  assert.deepEqual(page.data.selectedProducts[0].selectedSkus.map(sku => sku.id), ['9']);
+  assert.deepEqual(requests.map(request => request.params), [{ keyword: '羊毛', skuIds: '9', page: 1 }]);
+});
+
+test('点搜索区域外收起下拉并按当前关键词查询', { concurrency: false }, async () => {
+  requests.length = 0;
+  pages = [{ content: [], hasNext: false }];
+  const page = createPage();
+  page.data.searchKeyword = '羊毛';
+  page.data.searchActive = true;
+  page.data.searchDropdown = [{ id: '1' }];
+
+  page.onSearchConfirm();
+  await page.pendingPagePromise;
+
+  assert.equal(page.data.searchActive, false);
+  assert.deepEqual(page.data.searchDropdown, []);
+  assert.deepEqual(requests.map(request => request.params), [{ keyword: '羊毛', page: 1 }]);
 });
