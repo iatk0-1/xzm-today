@@ -47,7 +47,7 @@ Page({
         userInfo: userInfo,
         avatarUrl: userInfo.avatarUrl || null,
         phone: userInfo.phone || null,
-        isPhoneBound: userInfo.isPhoneBound || false
+        isPhoneBound: !!userInfo.phone
       });
     } else {
       // 如果没有本地缓存，从后端获取
@@ -60,21 +60,20 @@ Page({
     try {
       await auth.ensureAuthenticated({ silent: true });
       const res = await api.get('/users/me');
-      const userInfo = auth.getUserInfo();
-      if (userInfo) {
-        userInfo.phone = res.phone;
-        userInfo.isPhoneBound = res.isPhoneBound;
-        userInfo.nickname = res.nickname;
-        userInfo.avatarUrl = res.avatarUrl;
-        userInfo.role = res.role || userInfo.role;
-        wx.setStorageSync(config.USER_INFO_KEY, userInfo);
-        this.setData({
-          userInfo: userInfo,
-          avatarUrl: res.avatarUrl || null,
-          phone: res.phone || null,
-          isPhoneBound: res.isPhoneBound || false
-        });
-      }
+      const userInfo = auth.getUserInfo() || {};
+      userInfo.phone = res.phone;
+      // 用户资料接口通过 phone 表示绑定状态，不依赖额外的状态字段。
+      userInfo.isPhoneBound = !!res.phone;
+      userInfo.nickname = res.nickname;
+      userInfo.avatarUrl = res.avatarUrl;
+      userInfo.role = res.role || userInfo.role;
+      wx.setStorageSync(config.USER_INFO_KEY, userInfo);
+      this.setData({
+        userInfo: userInfo,
+        avatarUrl: res.avatarUrl || null,
+        phone: res.phone || null,
+        isPhoneBound: userInfo.isPhoneBound
+      });
       this.checkAdmin();
     } catch (err) {
       console.error('刷新用户信息失败:', err);
