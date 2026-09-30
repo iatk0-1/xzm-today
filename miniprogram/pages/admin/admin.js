@@ -153,7 +153,7 @@ Page({
       this._draftType = 'create';
       this._relatedId = null;
       // 创建模式：恢复上次的档口选择（仅当天有效）
-      if (!auth.isStallManager()) this._loadLastStallSelection();
+      this._loadLastStallSelection();
       // 初始化默认 SKU（图片色 × 均码）
       this.generateSkuMatrix();
       // 检测是否有未完成的草稿
@@ -950,6 +950,7 @@ Page({
         String(today.getDate()).padStart(2, '0');
       wx.setStorageSync('last_stall_selection', {
         date: dateStr,
+        userId: (auth.getUserInfo() || {}).userId,
         stalls: this.data.selectedStalls
       });
     } catch (e) {
@@ -961,7 +962,10 @@ Page({
   _loadLastStallSelection: function() {
     try {
       var saved = wx.getStorageSync('last_stall_selection');
-      if (!saved || !saved.date || !saved.stalls) return;
+      if (!saved || !saved.date || !Array.isArray(saved.stalls)) return;
+      const userId = (auth.getUserInfo() || {}).userId;
+      // 兼容旧缓存；新缓存按账号校验，避免切换账号后串用选择。
+      if (saved.userId != null && String(saved.userId) !== String(userId)) return;
 
       var today = new Date();
       var dateStr = today.getFullYear() + '-' +
@@ -973,8 +977,14 @@ Page({
         return;
       }
 
-      if (saved.stalls.length > 0) {
-        this.setData({ selectedStalls: saved.stalls });
+      let stalls = saved.stalls;
+      if (auth.isStallManager()) {
+        // 使用当前分配名单里的资料，过滤已收回的档口并更新名称。
+        const selectedIds = new Set(stalls.filter(Boolean).map(stall => String(stall.id)));
+        stalls = (this.data.assignedStalls || []).filter(stall => selectedIds.has(String(stall.id)));
+      }
+      if (stalls.length > 0) {
+        this.setData({ selectedStalls: stalls });
       }
     } catch (e) {
       // ignore
@@ -1828,6 +1838,8 @@ Page({
         }
       }
 
+      // 发布成功时再记一次，确保从草稿恢复的档口也能用于下次发布。
+      if (!editId) this._saveLastStallSelection();
       // 成功后清除草稿并标记已提交（跳过退出拦截）
       this._submitted = true;
       // 解除退出拦截
