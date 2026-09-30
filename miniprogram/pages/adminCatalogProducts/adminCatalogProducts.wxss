@@ -50,11 +50,8 @@ page { height: 100vh; background: #f4f6f8; }
 .rename-cancel { color: #68737d; background: #f4f6f8; }
 .rename-save { color: #fff; background: #1f2933; }
 .manager-line { display: flex; justify-content: space-between; align-items: center; padding-top: 12rpx; font-size: 26rpx; color: #475569; }
-.manager-label { margin-top: 8rpx; color: #276749; font-size: 23rpx; }
-.manager-dialog { max-height: 75vh; overflow: hidden; }
-.manager-entry { display: flex; justify-content: space-between; gap: 20rpx; padding: 16rpx 0; border-bottom: 1rpx solid #e5e7eb; font-size: 27rpx; }
-.manager-remove { color: #c53030; }
-.manager-search { display: flex; gap: 12rpx; align-items: center; padding: 16rpx 0; }
-.manager-search input { flex: 1; min-width: 0; }
-.manager-search view { color: #2563eb; }
-.manager-results { max-height: 360rpx; }
+.manager-label { display: flex; align-items: center; gap: 12rpx; margin-top: 12rpx; }
+.owner-caption { color: #276749; font-size: 20rpx; flex-shrink: 0; }
+.owner-profile { flex: 1; min-width: 0; }
+.manager-profiles { width: 100%; height: 68rpx; margin-top: 10rpx; white-space: nowrap; }
+.manager-card { display: inline-block; width: 300rpx; padding-right: 24rpx; vertical-align: middle; box-sizing: border-box; }

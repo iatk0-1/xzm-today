@@ -15,8 +15,8 @@ global.setInterval = (fn) => {
 };
 global.clearInterval = (id) => { timers.delete(id); };
 
-// 跟 adminCatalogManage.wxss 对齐：.group-row 高 96px，.list-scroll 上下留白 16rpx / 24rpx
-const ROW_HEIGHT = 96;
+// 跟 adminCatalogManage.wxss 对齐：.group-row 高 132px，.list-scroll 上下留白 16rpx / 24rpx
+const ROW_HEIGHT = 132;
 const LIST = { top: 100, height: 400 };
 const PADDING_TOP = 8;
 const PADDING_BOTTOM = 16;
@@ -309,22 +309,24 @@ test('拖动开始时按滚动容器回传的真实位置对齐基准', () => {
 });
 
 test('手指在列表中间时不滚动，松手也不会乱动列表位置', () => {
-  const { page, view } = createPage(10, 200);
+  const initialScrollTop = PADDING_TOP + 4 * ROW_HEIGHT + ROW_HEIGHT / 2 - LIST.height / 2;
+  const { page, view } = createPage(10, initialScrollTop);
 
   startDrag(page, view, 4);
   moveFinger(page, view, rowViewportY(view, 4));
   assert.equal(page.autoScrollStep, 0);
 
   tick(page, 10);
-  assert.equal(view.scrollTop, 200, '中间区域不该滚动');
+  assert.equal(view.scrollTop, initialScrollTop, '中间区域不该滚动');
 
   page.onDragEnd();
-  assert.equal(view.scrollTop, 200, '这一趟本来就没滚过，松手也不该挪列表');
+  assert.equal(view.scrollTop, initialScrollTop, '这一趟本来就没滚过，松手也不该挪列表');
 });
 
 test('档口撑不满一屏时不会瞎滚，页面记账也不会跑偏', () => {
-  const { page, view } = createPage(3, 0);
-  assert.equal(view.maxScrollTop, 0, '三条档口撑不满一屏，本来就滚不动');
+  const count = Math.floor((LIST.height - 2 * (PADDING_TOP + PADDING_BOTTOM)) / ROW_HEIGHT);
+  const { page, view } = createPage(count, 0);
+  assert.equal(view.maxScrollTop, 0, '档口撑不满一屏，本来就滚不动');
 
   startDrag(page, view, 0);
   moveFinger(page, view, LIST.top + LIST.height - 2);

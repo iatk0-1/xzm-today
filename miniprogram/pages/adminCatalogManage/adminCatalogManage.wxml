@@ -69,9 +69,16 @@
             </view>
             <view class="group-meta">
               上架 {{item.onSaleProductCount}} / 全部 {{item.totalProductCount}}
-              <text wx:if="{{currentType === 'stall'}}"> · 负责人：{{item.managerNames || '未分配'}}</text>
               <text wx:if="{{item.hiddenReason === 'NO_ON_SALE_PRODUCT'}}" class="auto-hidden">无上架商品，暂不展示</text>
               <text wx:elif="{{item.hiddenReason === 'MANUAL'}}" class="manual-hidden">已手动隐藏</text>
+            </view>
+            <view wx:if="{{currentType === 'stall'}}" class="manager-summary">
+              <scroll-view wx:if="{{item.managers.length}}" scroll-x class="manager-profiles" catchtouchstart="noop" catchtouchmove="noop">
+                <view wx:for="{{item.managers}}" wx:for-item="manager" wx:key="id" class="manager-card">
+                  <manager-profile user="{{manager}}" compact />
+                </view>
+              </scroll-view>
+              <text wx:else class="manager-empty">负责人：未分配</text>
             </view>
             <view class="preview-row">
               <block wx:if="{{item.previewImages && item.previewImages.length}}">
@@ -105,4 +112,5 @@
       </view>
     </view>
   </view>
+  <stall-manager-picker visible="{{managerVisible}}" stall-id="{{managerStallId}}" stall-name="{{managerStallName}}" bindclose="closeManagerPicker" bindchanged="onManagersChanged" />
 </view>

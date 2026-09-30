@@ -9,6 +9,11 @@
       <text>负责人：{{managers.length ? managers.length + ' 人' : '未分配'}}</text>
       <view class="rename-btn" bindtap="openManagerPicker">分配负责人</view>
     </view>
+    <scroll-view wx:if="{{type === 'stall' && managers.length}}" scroll-x class="manager-profiles">
+      <view wx:for="{{managers}}" wx:key="id" class="manager-card">
+        <manager-profile user="{{item}}" compact />
+      </view>
+    </scroll-view>
   </view>
 
   <view class="scope-tabs">
@@ -38,7 +43,10 @@
       <image class="product-image" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill"></image>
       <view class="product-info">
         <view class="product-name">{{item.name}}</view>
-        <view wx:if="{{item.managerName}}" class="manager-label">负责人：{{item.managerName}}</view>
+        <view wx:if="{{item.managerOwner}}" class="manager-label">
+          <text class="owner-caption">负责人</text>
+          <manager-profile class="owner-profile" user="{{item.managerOwner}}" compact />
+        </view>
         <view class="product-meta">
           <text>¥ {{item.displayPrice || item.retailPrice}}</text>
           <text class="status {{item.status === 'on' ? 'on' : 'off'}}">{{item.status === 'on' ? '上架' : '下架'}}</text>
@@ -72,23 +80,5 @@
       </view>
     </view>
   </view>
-  <view class="rename-overlay" wx:if="{{managerVisible}}" catchtap="noop" catchtouchmove="noop">
-    <view class="rename-dialog manager-dialog">
-      <view class="rename-title">分配档口负责人</view>
-      <view wx:for="{{managers}}" wx:key="id" class="manager-entry">
-        <text>{{item.nickname || item.phone || item.id}}</text>
-        <text class="manager-remove" catchtap="removeManager" data-id="{{item.id}}">移除</text>
-      </view>
-      <view class="manager-search">
-        <input value="{{managerKeyword}}" placeholder="输入昵称、手机号或用户 ID" bindinput="onManagerKeyword" bindconfirm="searchManagerUsers" />
-        <view bindtap="searchManagerUsers">搜索</view>
-      </view>
-      <scroll-view scroll-y class="manager-results">
-        <view wx:for="{{managerCandidates}}" wx:key="id" class="manager-entry" catchtap="addManager" data-id="{{item.id}}">
-          <text>{{item.nickname || item.phone || item.id}}</text><text>添加</text>
-        </view>
-      </scroll-view>
-      <view class="rename-actions"><view class="rename-save" bindtap="closeManagerPicker">完成</view></view>
-    </view>
-  </view>
+  <stall-manager-picker visible="{{managerVisible}}" stall-id="{{groupId}}" stall-name="{{groupName}}" bindclose="closeManagerPicker" bindchanged="onManagersChanged" />
 </view>

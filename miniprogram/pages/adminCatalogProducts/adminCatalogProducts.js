@@ -22,10 +22,7 @@ Page({
     selectedCount: 0,
     allLoadedSelected: false,
     managerVisible: false,
-    managers: [],
-    managerKeyword: '',
-    managerCandidates: [],
-    managerBusy: false
+    managers: []
   },
 
   async onLoad(options) {
@@ -56,61 +53,29 @@ Page({
   },
 
   async loadManagers() {
+    const revision = this._managerRevision || 0;
     try {
       const managers = await api.get('/stall-managers/stalls/' + this.data.groupId);
+      if (revision !== (this._managerRevision || 0)) return;
       this.setData({ managers: managers || [] });
     } catch (err) {
+      if (revision !== (this._managerRevision || 0)) return;
       wx.showToast({ title: err.message || '加载负责人失败', icon: 'none' });
     }
   },
 
   openManagerPicker() {
     this.setData({ managerVisible: true });
-    this.loadManagers();
   },
 
   closeManagerPicker() {
-    this.setData({ managerVisible: false, managerKeyword: '', managerCandidates: [] });
+    this.setData({ managerVisible: false });
   },
 
-  onManagerKeyword(e) {
-    this.setData({ managerKeyword: e.detail.value });
-  },
-
-  async searchManagerUsers() {
-    const keyword = this.data.managerKeyword.trim();
-    if (keyword.length < 2) return wx.showToast({ title: '至少输入两个字或数字', icon: 'none' });
-    try {
-      const users = await api.get('/stall-managers/users', { keyword });
-      this.setData({ managerCandidates: users || [] });
-    } catch (err) {
-      wx.showToast({ title: err.message || '搜索用户失败', icon: 'none' });
-    }
-  },
-
-  async addManager(e) {
-    const user = this.data.managerCandidates.find(item => String(item.id) === String(e.currentTarget.dataset.id));
-    if (!user || this.data.managerBusy) return;
-    const managers = this.data.managers.concat(user).filter((item, index, all) =>
-      all.findIndex(other => String(other.id) === String(item.id)) === index);
-    await this.saveManagers(managers);
-  },
-
-  async removeManager(e) {
-    if (this.data.managerBusy) return;
-    await this.saveManagers(this.data.managers.filter(item => String(item.id) !== String(e.currentTarget.dataset.id)));
-  },
-
-  async saveManagers(managers) {
-    this.setData({ managerBusy: true });
-    try {
-      const saved = await api.put('/stall-managers/stalls/' + this.data.groupId, managers.map(item => item.id));
-      this.setData({ managers: saved || [] });
-      wx.showToast({ title: '负责人已更新', icon: 'success' });
-    } catch (err) {
-      wx.showToast({ title: err.message || '保存负责人失败', icon: 'none' });
-    } finally {
-      this.setData({ managerBusy: false });
+  onManagersChanged(e) {
+    if (String(e.detail.stallId) === String(this.data.groupId)) {
+      this._managerRevision = (this._managerRevision || 0) + 1;
+      this.setData({ managers: e.detail.managers });
     }
   },
 
@@ -218,8 +183,8 @@ Page({
         const owners = await api.get('/stall-managers/products/owners',
           { ids: list.map(item => item.id).join(',') }).catch(() => []);
         const ownerMap = {};
-        (owners || []).forEach(owner => { ownerMap[String(owner.productId)] = owner.nickname || owner.phone || String(owner.userId); });
-        list.forEach(item => { item.managerName = ownerMap[String(item.id)] || ''; });
+        (owners || []).forEach(owner => { ownerMap[String(owner.productId)] = owner; });
+        list.forEach(item => { item.managerOwner = ownerMap[String(item.id)] || null; });
       }
       const products = reset ? list : this.data.products.concat(list);
       this.setData({

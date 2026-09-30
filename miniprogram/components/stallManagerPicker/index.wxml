@@ -1,0 +1,30 @@
+<view wx:if="{{visible}}" class="overlay" catchtap="noop" catchtouchmove="noop">
+  <view class="dialog">
+    <view class="title">分配档口负责人</view>
+    <view class="stall-name">{{stallName}}</view>
+    <view class="section-title">已分配负责人（{{managers.length}}）</view>
+    <view wx:if="{{loading}}" class="hint">加载中...</view>
+    <view wx:elif="{{loadFailed}}" class="retry" bindtap="loadManagers">加载失败，点击重试</view>
+    <scroll-view wx:else scroll-y class="assigned-list">
+      <view wx:if="{{!managers.length}}" class="hint">暂未分配负责人</view>
+      <view wx:for="{{managers}}" wx:key="id" class="entry">
+        <manager-profile class="user-profile" user="{{item}}" />
+        <button class="action remove" disabled="{{saving}}" catchtap="removeManager" data-id="{{item.id}}">移除</button>
+      </view>
+    </scroll-view>
+    <view class="search-row">
+      <input value="{{keyword}}" placeholder="输入昵称、手机号或用户 ID" bindinput="onKeywordInput" bindconfirm="searchUsers" confirm-type="search" />
+      <button class="search-btn" loading="{{searching}}" bindtap="searchUsers">搜索</button>
+    </view>
+    <scroll-view scroll-y class="results">
+      <view wx:if="{{searching}}" class="hint">搜索中...</view>
+      <view wx:elif="{{searched && !candidates.length}}" class="hint">未找到匹配用户</view>
+      <view wx:elif="{{!searched}}" class="hint">搜索用户后可添加负责人</view>
+      <view wx:for="{{candidates}}" wx:key="id" class="entry">
+        <manager-profile class="user-profile" user="{{item}}" />
+        <button class="action" disabled="{{item.assigned || saving || loading || loadFailed}}" catchtap="addManager" data-id="{{item.id}}">{{item.assigned ? '已分配' : '添加'}}</button>
+      </view>
+    </scroll-view>
+    <button class="done" disabled="{{saving}}" bindtap="close">{{saving ? '保存中...' : '完成'}}</button>
+  </view>
+</view>

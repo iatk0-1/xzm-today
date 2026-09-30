@@ -2,5 +2,8 @@
   "navigationBarTitleText": "商品批量管理",
   "navigationBarBackgroundColor": "#ffffff",
   "navigationBarTextStyle": "black",
-  "usingComponents": {}
+  "usingComponents": {
+    "manager-profile": "../../components/managerProfile/index",
+    "stall-manager-picker": "../../components/stallManagerPicker/index"
+  }
 }

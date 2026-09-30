@@ -3,7 +3,7 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
 // 与 adminCatalogManage.wxss 中 .group-row 的高度保持一致，拖拽换位依赖该数值。
-const ROW_HEIGHT = 96;
+const ROW_HEIGHT = 132;
 // 与 adminCatalogManage.wxss 中 .row-delete 的宽度保持一致，左滑最多露出这么宽。
 const DELETE_WIDTH = 72;
 // 横向滑动判定阈值，避免手抖被误判成左滑。
@@ -44,7 +44,10 @@ Page(pageSync.wrap({
     dragY: 0,
     listHeight: ROW_HEIGHT,
     snap: true,
-    scrollTop: 0
+    scrollTop: 0,
+    managerVisible: false,
+    managerStallId: '',
+    managerStallName: ''
   },
 
   async onLoad() {
@@ -118,8 +121,8 @@ Page(pageSync.wrap({
         const assignments = await api.get('/stall-managers/assignments').catch(() => []);
         positioned = positioned.map(group => ({
           ...group,
-          managerNames: (assignments || []).filter(a => String(a.stallId) === String(group.id))
-            .map(a => a.nickname || a.phone || String(a.userId)).join('、')
+          managers: (assignments || []).filter(a => String(a.stallId) === String(group.id))
+            .map(a => ({ ...a, id: a.userId }))
         }));
       }
       this.setData({
@@ -176,7 +179,7 @@ Page(pageSync.wrap({
         const updated = await api.get(this.resourcePath() + '/' + group.id + '/manage');
         const groups = this.data.groups.slice();
         const index = groups.findIndex(item => String(item.id) === String(group.id));
-        if (index >= 0) groups[index] = updated;
+        if (index >= 0) groups[index] = { ...groups[index], ...updated };
         else groups.push(updated);
         groups.sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder) || Number(a.id) - Number(b.id));
         const positioned = this.positionGroups(groups);
@@ -602,9 +605,19 @@ Page(pageSync.wrap({
   openManagerAssignment(e) {
     const item = this.data.groups[Number(e.currentTarget.dataset.index)];
     if (!item || this.data.currentType !== 'stall') return;
-    this._openedProducts = true;
-    wx.navigateTo({ url: '/pages/adminCatalogProducts/adminCatalogProducts?type=stall&id=' + item.id
-      + '&name=' + encodeURIComponent(item.name) + '&assign=1' });
+    if (this.data.dragIndex >= 0 || this.rowMoved) return;
+    this.closeAllSwipe();
+    this.setData({ managerVisible: true, managerStallId: String(item.id), managerStallName: item.name });
+  },
+
+  closeManagerPicker() {
+    this.setData({ managerVisible: false });
+  },
+
+  onManagersChanged(e) {
+    const groups = this.data.groups.map(group => String(group.id) === String(e.detail.stallId)
+      ? { ...group, managers: e.detail.managers } : group);
+    this.setData({ groups });
   }
 }, async function(changes) {
   await pageSync.updateList(this, changes, {

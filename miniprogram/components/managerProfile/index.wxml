@@ -1,0 +1,7 @@
+<view class="profile {{compact ? 'compact' : ''}}">
+  <image class="avatar" src="{{user.avatarUrl && !avatarFailed ? user.avatarUrl : '/images/avatar.png'}}" mode="aspectFill" binderror="onAvatarError" />
+  <view class="info">
+    <view class="nickname">{{user.nickname || '微信用户'}}</view>
+    <view class="phone">{{user.phone || '未绑定手机号'}}</view>
+  </view>
+</view>
