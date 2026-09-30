@@ -18,6 +18,7 @@ Module._load = function(request, ...args) {
     get: async url => {
       requests.push(url);
       if (failRefresh) throw new Error('模拟刷新失败');
+      if (url === '/stall-managers/assignments') return [];
       return url.endsWith('/manage') && !url.match(/\/\d+\/manage$/) ? groupList : singleGroup;
     }
   };
@@ -45,18 +46,18 @@ test('档口管理返回时只同步变动的一行，下拉刷新才重查列�
   const page = createPage();
   await page.onLoad();
   await page.onShow();
-  assert.deepEqual(requests, ['/stalls/manage']);
+  assert.deepEqual(requests, ['/stalls/manage', '/stall-managers/assignments']);
   page.scrollTop = 200;
 
   pageSync.publish('stalls', 2);
   await page.onShow();
-  assert.deepEqual(requests, ['/stalls/manage', '/stalls/2/manage']);
+  assert.deepEqual(requests, ['/stalls/manage', '/stall-managers/assignments', '/stalls/2/manage']);
   assert.deepEqual(page.data.groups.map(item => item.name), ['一档口', '新二档口']);
   assert.equal(page.scrollTop, 200);
 
   groupList = [{ id: 1, name: '刷新后' }, singleGroup];
   await page.onRefresh();
-  assert.deepEqual(requests, ['/stalls/manage', '/stalls/2/manage', '/stalls/manage']);
+  assert.deepEqual(requests, ['/stalls/manage', '/stall-managers/assignments', '/stalls/2/manage', '/stalls/manage', '/stall-managers/assignments']);
   assert.equal(page.data.groups[0].name, '刷新后');
   assert.equal(page.data.refreshing, false);
   page.onUnload();

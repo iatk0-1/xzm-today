@@ -33,6 +33,7 @@ Page({
   },
 
   onLoad: function() {
+    this.setData({ isStallManager: auth.isStallManager() });
     this.loadFilterOptions();
     this.loadProducts();
   },
@@ -57,7 +58,7 @@ Page({
   loadFilterOptions: async function() {
     try {
       const [stalls, tags] = await Promise.all([
-        api.get('/stalls/all'),
+        api.get(auth.isStallManager() ? '/stall-managers/stalls/mine' : '/stalls/all'),
         api.get('/tags/all')
       ]);
       this.setData({
@@ -74,7 +75,8 @@ Page({
     const params = {
       status: this.data.activeStatus,
       page: this.data.page,
-      size: this.data.pageSize
+      size: this.data.pageSize,
+      manage: true
     };
     const keyword = this.data.searchKeyword.trim();
     if (keyword) params.keyword = keyword;
@@ -144,6 +146,15 @@ Page({
       const res = await api.get('/products/query', this.getQueryParams());
 
       let list = (res.content || []).map(item => this.normalizeProduct(item));
+      if (!this.data.isStallManager && list.length) {
+        const owners = await api.get('/stall-managers/products/owners',
+          { ids: list.map(item => item.id).join(',') }).catch(() => []);
+        const ownerMap = {};
+        (owners || []).forEach(owner => {
+          ownerMap[String(owner.productId)] = owner.nickname || owner.phone || String(owner.userId);
+        });
+        list.forEach(item => { item.managerName = ownerMap[String(item.id)] || ''; });
+      }
 
       const hasMore = res.hasNext !== undefined ? res.hasNext : list.length === pageSize;
       const products = reset ? list : [...this.data.products, ...list];

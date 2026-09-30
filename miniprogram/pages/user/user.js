@@ -8,6 +8,7 @@ const customerServiceUnread = require('../../utils/customerServiceUnread');
 Page({
   data: {
     isAdmin: false,
+    isStallManager: false,
     messageUnreadCount: 0,
     messageUnreadLabel: '0',
     navTop: 0,
@@ -34,6 +35,7 @@ Page({
     // 每次显示页面时检查管理员状态
     this.checkAdmin();
     this.loadUserInfo();
+    this.refreshUserInfoFromServer();
   },
 
   // 加载用户信息
@@ -64,6 +66,7 @@ Page({
         userInfo.isPhoneBound = res.isPhoneBound;
         userInfo.nickname = res.nickname;
         userInfo.avatarUrl = res.avatarUrl;
+        userInfo.role = res.role || userInfo.role;
         wx.setStorageSync(config.USER_INFO_KEY, userInfo);
         this.setData({
           userInfo: userInfo,
@@ -72,6 +75,7 @@ Page({
           isPhoneBound: res.isPhoneBound || false
         });
       }
+      this.checkAdmin();
     } catch (err) {
       console.error('刷新用户信息失败:', err);
     }
@@ -79,6 +83,7 @@ Page({
 
   // 检查是否为主理人
   checkAdmin: function() {
+    this.setData({ isStallManager: auth.isStallManager() });
     if (auth.isAdmin()) {
       this.setData({ isAdmin: true });
     } else {
@@ -242,14 +247,22 @@ Page({
   },
   // 老板专属入口
   goToAdmin: function() {
-    if (!this.data.isAdmin) {
+    if (!this.data.isAdmin && !this.data.isStallManager) {
       wx.showToast({ title: '无权限', icon: 'none' });
       return;
     }
+    const managerItems = ['发布新商品', '商品上下架管理', '拣货推荐', '销售数据'];
+    const adminItems = ['发布新商品', '商品上下架管理', '库存管理', '拣货推荐', '订单管理', '订单发货管理'];
     wx.showActionSheet({
-      itemList: ['发布新商品', '商品上下架管理', '库存管理', '拣货推荐', '订单管理', '订单发货管理'],
+      itemList: this.data.isAdmin ? adminItems : managerItems,
       itemColor: '#111111',
       success: (res) => {
+        if (!this.data.isAdmin) {
+          const pages = ['/pages/admin/admin', '/pages/adminProduct/adminProduct',
+            '/pages/pickingList/pickingList', '/pages/adminSales/adminSales'];
+          wx.navigateTo({ url: pages[res.tapIndex] });
+          return;
+        }
         if (res.tapIndex === 0) {
           wx.navigateTo({ url: '/pages/admin/admin' });
         } else if (res.tapIndex === 1) {

@@ -40,13 +40,16 @@ Page({
   },
 
   onLoad() {
+    this.setData({ isStallManager: auth.isStallManager() });
     const today = this.formatDate(new Date());
     this.setData({ today, startDate: today, endDate: today, quickSelect: '1day' });
     return auth.ensureAuthenticated({ silent: true })
       .then(() => {
-        this.loadStallList();
+        const stallsReady = this.loadStallList();
         this.loadTagList();
-        return Promise.all([this.reloadFilteredData(), this.loadOverview()]);
+        return stallsReady.then(() => Promise.all([
+          this.reloadFilteredData(), this.data.isStallManager ? Promise.resolve() : this.loadOverview()
+        ]));
       })
       .catch(err => {
         console.error('销售统计页认证恢复失败:', err);
@@ -55,8 +58,12 @@ Page({
   },
 
   loadStallList() {
-    return api.get('/stalls/all').then(stalls => {
-      this.setData({ stallList: Array.isArray(stalls) ? stalls : [] });
+    return api.get(this.data.isStallManager ? '/stall-managers/stalls/mine' : '/stalls/all').then(stalls => {
+      const list = Array.isArray(stalls) ? stalls : [];
+      const selectedStall = this.data.isStallManager && this.data.selectedStall
+        && !list.some(item => String(item.id) === String(this.data.selectedStall))
+        ? '' : this.data.selectedStall;
+      this.setData({ stallList: list, selectedStall });
     }).catch(err => console.error('加载档口列表失败:', err));
   },
 
@@ -86,6 +93,7 @@ Page({
   },
 
   loadOverview() {
+    if (this.data.isStallManager) return Promise.resolve();
     const requestId = (this.overviewRequestId || 0) + 1;
     this.overviewRequestId = requestId;
     const params = {};
@@ -253,7 +261,8 @@ Page({
   onListPullDownRefresh() {
     if (this.data.isRefreshing) return;
     this.setData({ isRefreshing: true });
-    return Promise.all([this.reloadFilteredData(), this.loadOverview(), this.loadStallList(), this.loadTagList()])
+    return Promise.all([this.loadStallList(), this.loadTagList()])
+      .then(() => Promise.all([this.reloadFilteredData(), this.loadOverview()]))
       .finally(() => this.setData({ isRefreshing: false }));
   },
 

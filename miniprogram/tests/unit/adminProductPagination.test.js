@@ -34,7 +34,7 @@ Module._load = function(request, ...args) {
       delete: async url => { deletedIds.push(url); }
     };
   }
-  if (request.endsWith('utils/auth')) return { ensureAuthenticated: async () => {} };
+  if (request.endsWith('utils/auth')) return { ensureAuthenticated: async () => {}, isStallManager: () => false };
   return originalLoad.call(this, request, ...args);
 };
 require('../../pages/adminProduct/adminProduct.js');

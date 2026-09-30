@@ -85,6 +85,13 @@ Page(pageSync.wrap({
     this.stopAutoScrollLoop();
   },
 
+  onShow() {
+    if (this._openedProducts) {
+      this._openedProducts = false;
+      this.loadGroups();
+    }
+  },
+
   noop() {},
 
   resourcePath(type = this.data.currentType) {
@@ -106,7 +113,15 @@ Page(pageSync.wrap({
     try {
       const groups = await api.get(this.resourcePath() + '/manage');
       if (type !== this.data.currentType) return;
-      const positioned = this.positionGroups(groups || []);
+      let positioned = this.positionGroups(groups || []);
+      if (type === 'stall') {
+        const assignments = await api.get('/stall-managers/assignments').catch(() => []);
+        positioned = positioned.map(group => ({
+          ...group,
+          managerNames: (assignments || []).filter(a => String(a.stallId) === String(group.id))
+            .map(a => a.nickname || a.phone || String(a.userId)).join('、')
+        }));
+      }
       this.setData({
         groups: positioned,
         listHeight: Math.max(positioned.length * ROW_HEIGHT, ROW_HEIGHT),
@@ -577,10 +592,19 @@ Page(pageSync.wrap({
     const index = Number(e.currentTarget.dataset.index);
     const item = this.data.groups[index];
     if (!item) return;
+    this._openedProducts = true;
     wx.navigateTo({
       url: '/pages/adminCatalogProducts/adminCatalogProducts?type=' + this.data.currentType
         + '&id=' + item.id + '&name=' + encodeURIComponent(item.name)
     });
+  },
+
+  openManagerAssignment(e) {
+    const item = this.data.groups[Number(e.currentTarget.dataset.index)];
+    if (!item || this.data.currentType !== 'stall') return;
+    this._openedProducts = true;
+    wx.navigateTo({ url: '/pages/adminCatalogProducts/adminCatalogProducts?type=stall&id=' + item.id
+      + '&name=' + encodeURIComponent(item.name) + '&assign=1' });
   }
 }, async function(changes) {
   await pageSync.updateList(this, changes, {

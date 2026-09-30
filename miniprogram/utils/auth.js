@@ -320,6 +320,11 @@ function isAdmin() {
   return userInfo && userInfo.role === 'admin';
 }
 
+function isStallManager() {
+  const userInfo = getUserInfo();
+  return !!(userInfo && userInfo.role === 'stall_manager');
+}
+
 /**
  * 检查手机号是否已绑定
  */
@@ -382,6 +387,7 @@ module.exports = {
   getUserInfo,
   getOpenid,
   isAdmin,
+  isStallManager,
   isPhoneBound,
   getPhoneBindErrorMessage,
   logout,

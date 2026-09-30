@@ -1,6 +1,6 @@
 <view class="page-wrapper">
   <!-- 销售数据统计 -->
-  <view class="overview-card">
+  <view class="overview-card" wx:if="{{!isStallManager}}">
     <view class="overview-status" wx:if="{{overviewLoading}}">统计加载中...</view>
     <view class="overview-status" wx:elif="{{overviewError}}" bindtap="loadOverview">统计加载失败，点击重试</view>
     <block wx:else>

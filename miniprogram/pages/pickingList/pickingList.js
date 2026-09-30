@@ -34,11 +34,13 @@ Page(pageSync.wrap({
   },
 
   onLoad: function() {
+    this.setData({ isStallManager: auth.isStallManager() });
     this.loadFilterOptions();
-    this.loadRecommendations();
+    if (!auth.isStallManager()) this.loadRecommendations();
   },
 
   goToRelatedOrders: function(e) {
+    if (this.data.isStallManager) return;
     const item = this.data.recommendList[Number(e.currentTarget.dataset.index)];
     if (!item) return;
     wx.navigateTo({
@@ -228,13 +230,17 @@ Page(pageSync.wrap({
   loadFilterOptions: async function() {
     try {
       const [stalls, tags] = await Promise.all([
-        api.get('/stalls/all'),
+        api.get(auth.isStallManager() ? '/stall-managers/stalls/mine' : '/stalls/all'),
         api.get('/tags/all')
       ]);
       this.setData({
         stallList: Array.isArray(stalls) ? stalls : [],
+        selectedStall: auth.isStallManager() && this.data.selectedStall
+          && !(stalls || []).some(item => String(item.id) === String(this.data.selectedStall))
+          ? '' : this.data.selectedStall,
         tagList: Array.isArray(tags) ? tags : []
       });
+      if (auth.isStallManager()) this.loadRecommendations();
     } catch (err) {
       console.error('加载档口和标签失败:', err);
       this.setData({ stallList: [], tagList: [] });

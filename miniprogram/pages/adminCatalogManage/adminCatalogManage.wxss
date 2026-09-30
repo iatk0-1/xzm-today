@@ -42,3 +42,4 @@ page { height: 100vh; background: #f4f6f8; }
 .rename-cancel, .rename-save { min-width: 120rpx; padding: 14rpx 20rpx; border-radius: 8rpx; text-align: center; font-size: 26rpx; box-sizing: border-box; }
 .rename-cancel { color: #68737d; background: #f4f6f8; }
 .rename-save { color: #fff; background: #1f2933; }
+.manager-action { color: #2563eb; font-size: 22rpx; padding: 4rpx 0; }

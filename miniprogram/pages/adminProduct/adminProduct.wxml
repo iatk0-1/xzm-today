@@ -6,7 +6,7 @@
       <view class="header-btn {{selectMode ? 'active' : ''}}" bindtap="toggleSelectMode">
         {{selectMode ? '退出多选' : '多选'}}
       </view>
-      <view class="recycle-bin-btn" bindtap="goToRecycleBin">
+      <view class="recycle-bin-btn" wx:if="{{!isStallManager}}" bindtap="goToRecycleBin">
         <text class="icon">🗑️</text>
         <text>回收站</text>
       </view>
@@ -66,8 +66,9 @@
         <image class="product-img" src="{{item.coverUrl}}" mode="aspectFill"></image>
         <view class="product-info">
           <view class="product-title">{{item.name}}</view>
+          <view class="manager-label" wx:if="{{item.managerName}}">档口负责人：{{item.managerName}}</view>
           <view class="product-price">¥ {{item.displayPrice || item.retailPrice}}</view>
-          <view class="relation-group" catchtap="onRelationTap" catchlongpress="onRelationLongPress" data-type="stall" data-product-id="{{item.id}}">
+          <view class="relation-group" wx:if="{{!isStallManager}}" catchtap="onRelationTap" catchlongpress="onRelationLongPress" data-type="stall" data-product-id="{{item.id}}">
             <text class="relation-label">档口</text>
             <view class="relation-list">
               <view class="tag stall-tag" wx:for="{{item.stallRelations}}" wx:for-item="relation" wx:key="id" catchlongpress="onRelationLongPress" data-type="stall" data-product-id="{{item.id}}">
@@ -77,7 +78,7 @@
             </view>
             <view class="relation-add" catchtap="openRelationPicker" data-type="stall" data-product-id="{{item.id}}">+</view>
           </view>
-          <view class="relation-group" catchtap="onRelationTap" catchlongpress="onRelationLongPress" data-type="tag" data-product-id="{{item.id}}">
+          <view class="relation-group" wx:if="{{!isStallManager}}" catchtap="onRelationTap" catchlongpress="onRelationLongPress" data-type="tag" data-product-id="{{item.id}}">
             <text class="relation-label">标签</text>
             <view class="relation-list">
               <view class="tag" wx:for="{{item.tagRelations}}" wx:for-item="relation" wx:key="id" catchlongpress="onRelationLongPress" data-type="tag" data-product-id="{{item.id}}">

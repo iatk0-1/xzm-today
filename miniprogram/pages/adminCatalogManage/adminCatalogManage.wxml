@@ -64,10 +64,12 @@
           <view class="group-main">
             <view class="group-name-row">
               <view class="group-name">{{item.name}}</view>
+              <view wx:if="{{currentType === 'stall'}}" class="manager-action" catchtap="openManagerAssignment" data-index="{{index}}">分配</view>
               <view class="rename-btn" catchtap="renameGroup" data-index="{{index}}">改名</view>
             </view>
             <view class="group-meta">
               上架 {{item.onSaleProductCount}} / 全部 {{item.totalProductCount}}
+              <text wx:if="{{currentType === 'stall'}}"> · 负责人：{{item.managerNames || '未分配'}}</text>
               <text wx:if="{{item.hiddenReason === 'NO_ON_SALE_PRODUCT'}}" class="auto-hidden">无上架商品，暂不展示</text>
               <text wx:elif="{{item.hiddenReason === 'MANUAL'}}" class="manual-hidden">已手动隐藏</text>
             </view>

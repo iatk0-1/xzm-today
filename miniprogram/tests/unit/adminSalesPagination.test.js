@@ -33,7 +33,7 @@ Module._load = function(request, ...args) {
       }
     };
   }
-  if (request.endsWith('utils/auth')) return { ensureAuthenticated: async () => {} };
+  if (request.endsWith('utils/auth')) return { ensureAuthenticated: async () => {}, isStallManager: () => false };
   return originalLoad.call(this, request, ...args);
 };
 require('../../pages/adminSales/adminSales.js');

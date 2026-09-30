@@ -117,11 +117,21 @@ Page({
       return;
     }
 
+    this.setData({ isStallManager: auth.isStallManager() });
+    if (auth.isStallManager()) {
+      try {
+        const stalls = await api.get('/stall-managers/stalls/mine');
+        this.setData({ assignedStalls: stalls || [], recentStalls: stalls || [] });
+      } catch (err) {
+        wx.showToast({ title: '加载负责档口失败', icon: 'none' });
+        return;
+      }
+    }
     let history = wx.getStorageSync('historyTags');
     if (history) this.setData({ historyTags: history });
     this.refreshGrid();
     // 加载历史档口和标签
-    this.loadRecentStallsAndTags();
+    if (!auth.isStallManager()) this.loadRecentStallsAndTags();
     // 加载尺码类型和尺码
     this.loadSizeCategories();
 
@@ -143,7 +153,7 @@ Page({
       this._draftType = 'create';
       this._relatedId = null;
       // 创建模式：恢复上次的档口选择（仅当天有效）
-      this._loadLastStallSelection();
+      if (!auth.isStallManager()) this._loadLastStallSelection();
       // 初始化默认 SKU（图片色 × 均码）
       this.generateSkuMatrix();
       // 检测是否有未完成的草稿
@@ -168,6 +178,7 @@ Page({
 
   // 加载历史档口和标签
   loadRecentStallsAndTags: async function() {
+    if (auth.isStallManager()) return;
     try {
       // 并行加载
       const [stallsRes, tagsRes] = await Promise.all([
@@ -271,9 +282,9 @@ Page({
       const relateTagIds = product.relateTagIds || [];
 
       if (stallIds.length > 0) {
-        const stallsRes = await api.get('/stalls/all');
+        const stallsRes = await api.get(auth.isStallManager() ? '/stall-managers/stalls/mine' : '/stalls/all');
         formData.selectedStalls = stallsRes
-          .filter(s => stallIds.includes(s.id))
+          .filter(s => stallIds.some(id => String(id) === String(s.id)))
           .map(s => ({ id: s.id, name: s.name }));
       }
 
@@ -491,9 +502,9 @@ Page({
       const relateTagIds = product.relateTagIds || [];
 
       if (stallIds.length > 0) {
-        const stallsRes = await api.get('/stalls/all');
+        const stallsRes = await api.get(auth.isStallManager() ? '/stall-managers/stalls/mine' : '/stalls/all');
         formData.selectedStalls = stallsRes
-          .filter(s => stallIds.includes(s.id))
+          .filter(s => stallIds.some(id => String(id) === String(s.id)))
           .map(s => ({ id: s.id, name: s.name }));
       }
 
@@ -884,6 +895,13 @@ Page({
   },
 
   searchStalls: async function(keyword) {
+    if (auth.isStallManager()) {
+      const matches = (this.data.assignedStalls || []).filter(s => s.name.includes(keyword.trim()));
+      const selectedIds = (this.data.selectedStalls || []).map(s => String(s.id));
+      this.setData({ stallSearchResults: matches.filter(s => !selectedIds.includes(String(s.id))),
+        showStallSearch: matches.length > 0, showStallCreate: false });
+      return;
+    }
     try {
       const res = await api.get(`/stalls/search?keyword=${encodeURIComponent(keyword)}`);
       // 过滤掉已选择的档口
@@ -1633,6 +1651,10 @@ Page({
     const hasMediaOrVideoCover = mediaList.length > 0 || (useVideoCover && videoUrl && videoThumbPath);
     if (!hasMediaOrVideoCover || !title || !hasSkus) {
       return wx.showToast({ title: '封面/名称/尺码颜色不能为空', icon: 'none' });
+    }
+    if (this.data.isStallManager && (!selectedStalls.length || selectedStalls.some(s =>
+      !(this.data.assignedStalls || []).some(a => String(a.id) === String(s.id))))) {
+      return wx.showToast({ title: '请选择已分配给您的档口', icon: 'none' });
     }
 
     // 计算价格范围

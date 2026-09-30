@@ -113,3 +113,4 @@ page { background-color: #f2f2f2; height: 100vh; display: flex; flex-direction: 
 .batch-btn.danger { flex: 1; color: #fff; background: #d32f2f; }
 .batch-btn.delete { flex: 1; color: #fff; background: #b71c1c; }
 .batch-btn.disabled { background: #c9ced6; color: #fff; }
+.manager-label { color: #276749; font-size: 23rpx; margin-top: 6rpx; }

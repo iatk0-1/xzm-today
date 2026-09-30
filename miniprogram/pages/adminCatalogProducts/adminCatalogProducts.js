@@ -20,7 +20,12 @@ Page({
     editName: '',
     selectedIds: [],
     selectedCount: 0,
-    allLoadedSelected: false
+    allLoadedSelected: false,
+    managerVisible: false,
+    managers: [],
+    managerKeyword: '',
+    managerCandidates: [],
+    managerBusy: false
   },
 
   async onLoad(options) {
@@ -37,6 +42,10 @@ Page({
         return;
       }
       this.loadProducts(true);
+      if (this.data.type === 'stall') {
+        this.loadManagers();
+        if (options.assign === '1') this.setData({ managerVisible: true });
+      }
     } catch (err) {
       wx.showToast({ title: '登录状态恢复失败', icon: 'none' });
     }
@@ -44,6 +53,65 @@ Page({
 
   resourcePath() {
     return this.data.type === 'stall' ? '/stalls' : '/tags';
+  },
+
+  async loadManagers() {
+    try {
+      const managers = await api.get('/stall-managers/stalls/' + this.data.groupId);
+      this.setData({ managers: managers || [] });
+    } catch (err) {
+      wx.showToast({ title: err.message || '加载负责人失败', icon: 'none' });
+    }
+  },
+
+  openManagerPicker() {
+    this.setData({ managerVisible: true });
+    this.loadManagers();
+  },
+
+  closeManagerPicker() {
+    this.setData({ managerVisible: false, managerKeyword: '', managerCandidates: [] });
+  },
+
+  onManagerKeyword(e) {
+    this.setData({ managerKeyword: e.detail.value });
+  },
+
+  async searchManagerUsers() {
+    const keyword = this.data.managerKeyword.trim();
+    if (keyword.length < 2) return wx.showToast({ title: '至少输入两个字或数字', icon: 'none' });
+    try {
+      const users = await api.get('/stall-managers/users', { keyword });
+      this.setData({ managerCandidates: users || [] });
+    } catch (err) {
+      wx.showToast({ title: err.message || '搜索用户失败', icon: 'none' });
+    }
+  },
+
+  async addManager(e) {
+    const user = this.data.managerCandidates.find(item => String(item.id) === String(e.currentTarget.dataset.id));
+    if (!user || this.data.managerBusy) return;
+    const managers = this.data.managers.concat(user).filter((item, index, all) =>
+      all.findIndex(other => String(other.id) === String(item.id)) === index);
+    await this.saveManagers(managers);
+  },
+
+  async removeManager(e) {
+    if (this.data.managerBusy) return;
+    await this.saveManagers(this.data.managers.filter(item => String(item.id) !== String(e.currentTarget.dataset.id)));
+  },
+
+  async saveManagers(managers) {
+    this.setData({ managerBusy: true });
+    try {
+      const saved = await api.put('/stall-managers/stalls/' + this.data.groupId, managers.map(item => item.id));
+      this.setData({ managers: saved || [] });
+      wx.showToast({ title: '负责人已更新', icon: 'success' });
+    } catch (err) {
+      wx.showToast({ title: err.message || '保存负责人失败', icon: 'none' });
+    } finally {
+      this.setData({ managerBusy: false });
+    }
   },
 
   noop() {},
@@ -146,6 +214,13 @@ Page({
         }
       );
       const list = (res.content || []).map(item => ({ ...item, selected: false }));
+      if (list.length) {
+        const owners = await api.get('/stall-managers/products/owners',
+          { ids: list.map(item => item.id).join(',') }).catch(() => []);
+        const ownerMap = {};
+        (owners || []).forEach(owner => { ownerMap[String(owner.productId)] = owner.nickname || owner.phone || String(owner.userId); });
+        list.forEach(item => { item.managerName = ownerMap[String(item.id)] || ''; });
+      }
       const products = reset ? list : this.data.products.concat(list);
       this.setData({
         products: this.applySelection(products),

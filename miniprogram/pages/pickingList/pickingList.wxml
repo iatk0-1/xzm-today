@@ -6,7 +6,7 @@
       <view class="header-title">拣货单推荐</view>
       <view class="header-subtitle">按 SKU 数量汇总生成报单数量</view>
     </view>
-    <button class="btn-history" bindtap="goToOrders">报单记录</button>
+    <button class="btn-history" wx:if="{{!isStallManager}}" bindtap="goToOrders">报单记录</button>
   </view>
 
   <!-- 顶部筛选栏 -->
@@ -53,7 +53,7 @@
   </view>
 
   <!-- 操作栏 -->
-  <view class="action-bar" wx:if="{{filterStatus === 'pending'}}">
+  <view class="action-bar" wx:if="{{filterStatus === 'pending' && !isStallManager}}">
     <view class="select-all" bindtap="toggleSelectAll">
       <view class="checkbox {{allSelected ? 'checked' : ''}}">
         <text wx:if="{{allSelected}}">✓</text>
@@ -70,7 +70,7 @@
   <!-- 推荐列表 -->
   <view class="recommend-list">
     <view class="recommend-item {{item.selected ? 'selected' : ''}} {{filterStatus === 'pending' && item.recommendQty > 0 ? 'has-refund' : ''}}" wx:for="{{recommendList}}" wx:key="skuId" bindtap="goToRelatedOrders" data-index="{{index}}">
-      <view class="item-checkbox" wx:if="{{filterStatus === 'pending' && item.recommendQty > 0}}">
+      <view class="item-checkbox" wx:if="{{filterStatus === 'pending' && item.recommendQty > 0 && !isStallManager}}">
         <view class="checkbox {{item.selected ? 'checked' : ''}}" catchtap="toggleSelect" data-index="{{index}}">
           <text wx:if="{{item.selected}}">✓</text>
         </view>
@@ -114,7 +114,7 @@
           </scroll-view>
         </view>
       </view>
-      <view class="item-refund-btn" wx:if="{{filterStatus === 'pending' && item.recommendQty > 0}}" catchtap="openRefundModal" data-index="{{index}}">退款</view>
+        <view class="item-refund-btn" wx:if="{{filterStatus === 'pending' && item.recommendQty > 0 && !isStallManager}}" catchtap="openRefundModal" data-index="{{index}}">退款</view>
     </view>
 
     <!-- 空状态 -->
