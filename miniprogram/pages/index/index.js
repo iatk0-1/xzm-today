@@ -2,6 +2,7 @@ const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/index/index.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const managementNavigation = require('../../utils/managementNavigation');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const customerServiceUnread = require('../../utils/customerServiceUnread');
 const { formatStock, hasStock, isProductSoldOut, isSkuSoldOut } = require('../../utils/stock');
@@ -27,6 +28,7 @@ Page(pageSync.wrap({
 
     // 3. 商品与权限参数
     isAdmin: false,
+    isStallManager: false,
     messageUnreadCount: 0,
     messageUnreadLabel: '0',
     productList: [],
@@ -432,7 +434,7 @@ Page(pageSync.wrap({
 
   // 检查管理员（使用本地 auth 模块）
   checkAdmin: function() {
-    this.setData({ isAdmin: !!auth.isAdmin() });
+    this.setData({ isAdmin: !!auth.isAdmin(), isStallManager: !!auth.isStallManager() });
   },
 
   // 小红书灵魂交互逻辑
@@ -522,29 +524,7 @@ Page(pageSync.wrap({
 
   // 老板专属入口
   goToAdmin: function() {
-    if (!this.data.isAdmin) {
-      wx.showToast({ title: '无权限', icon: 'none' });
-      return;
-    }
-    wx.showActionSheet({
-      itemList: ['发布新商品', '商品上下架管理', '库存管理', '拣货推荐', '订单管理', '订单发货管理'],
-      itemColor: '#111111',
-      success: (res) => {
-        if (res.tapIndex === 0) {
-          wx.navigateTo({ url: '/pages/admin/admin' });
-        } else if (res.tapIndex === 1) {
-          wx.navigateTo({ url: '/pages/adminProduct/adminProduct' });
-        } else if (res.tapIndex === 2) {
-          wx.navigateTo({ url: '/pages/skuInventory/skuInventory' });
-        } else if (res.tapIndex === 3) {
-          wx.navigateTo({ url: '/pages/pickingList/pickingList' });
-        } else if (res.tapIndex === 4) {
-          wx.navigateTo({ url: '/pages/adminOrderManage/adminOrderManage' });
-        } else if (res.tapIndex === 5) {
-          wx.navigateTo({ url: '/pages/adminOrder/adminOrder' });
-        }
-      }
-    });
+    managementNavigation.openManagementMenu();
   },
 
   // SKU 选规格与购物车逻辑

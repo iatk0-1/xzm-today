@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const managementNavigation = require('../../utils/managementNavigation');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const customerServiceUnread = require('../../utils/customerServiceUnread');
 const { displayWechatEmoji } = require('../../utils/wechat-emoji');
@@ -19,6 +20,7 @@ Page({
     refreshing: false,
     loadError: false,
     isAdmin: auth.isAdmin(),
+    isStallManager: auth.isStallManager(),
     statusBarHeight: 20
   },
 
@@ -29,7 +31,7 @@ Page({
 
   onShow() {
     clearInterval(this._poll);
-    this.setData({ isAdmin: auth.isAdmin() });
+    this.setData({ isAdmin: auth.isAdmin(), isStallManager: auth.isStallManager() });
     this.loadContact();
     this._poll = setInterval(() => this.loadContact(true), 10000);
   },
@@ -134,5 +136,11 @@ Page({
   goToIndex() { wx.reLaunch({ url: '/pages/index/index' }); },
   goToMarket() { wx.reLaunch({ url: '/pages/market/market' }); },
   goToUser() { wx.reLaunch({ url: '/pages/user/user' }); },
-  goToAdmin() { wx.reLaunch({ url: '/pages/admin/admin' }); }
+  goToAdmin() {
+    if (auth.isAdmin()) {
+      wx.reLaunch({ url: '/pages/admin/admin' });
+      return;
+    }
+    managementNavigation.openManagementMenu();
+  }
 });

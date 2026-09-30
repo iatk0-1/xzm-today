@@ -2,6 +2,7 @@ const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/market/market.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const managementNavigation = require('../../utils/managementNavigation');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const customerServiceUnread = require('../../utils/customerServiceUnread');
 
@@ -11,6 +12,7 @@ Page(pageSync.wrap({
     leftColumn: [],   // 左列心愿
     rightColumn: [],  // 右列心愿
     isAdmin: false,
+    isStallManager: false,
     messageUnreadCount: 0,
     messageUnreadLabel: '0',
     // 分页参数
@@ -96,6 +98,7 @@ Page(pageSync.wrap({
   },
 
   checkAdmin: function() {
+    this.setData({ isStallManager: !!auth.isStallManager() });
     if (auth.isAdmin()) {
       this.setData({ isAdmin: true });
     } else {
@@ -309,29 +312,7 @@ Page(pageSync.wrap({
     customerServiceNavigation.openFromContact(e);
   },
   goToAdmin: function() {
-    if (!this.data.isAdmin) {
-      wx.showToast({ title: '无权限', icon: 'none' });
-      return;
-    }
-    wx.showActionSheet({
-      itemList: ['发布新商品', '商品上下架管理', '库存管理', '拣货推荐', '订单管理', '售后管理'],
-      itemColor: '#111111',
-      success: (res) => {
-        if (res.tapIndex === 0) {
-          wx.navigateTo({ url: '/pages/admin/admin' });
-        } else if (res.tapIndex === 1) {
-          wx.navigateTo({ url: '/pages/adminProduct/adminProduct' });
-        } else if (res.tapIndex === 2) {
-          wx.navigateTo({ url: '/pages/skuInventory/skuInventory' });
-        } else if (res.tapIndex === 3) {
-          wx.navigateTo({ url: '/pages/pickingList/pickingList' });
-        } else if (res.tapIndex === 4) {
-          wx.navigateTo({ url: '/pages/adminOrderManage/adminOrderManage' });
-        } else if (res.tapIndex === 5) {
-          wx.navigateTo({ url: '/pages/adminAfterSaleList/adminAfterSaleList' });
-        }
-      }
-    });
+    managementNavigation.openManagementMenu({ afterSale: true });
   },
 
   onShareAppMessage: function() {

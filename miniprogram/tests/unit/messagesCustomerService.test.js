@@ -21,7 +21,7 @@ Module._load = function(request, ...rest) {
     } };
   }
   if (request.endsWith('utils/auth')) {
-    return { isAdmin: () => false, ensureAuthenticated: async () => {} };
+    return { isAdmin: () => false, isStallManager: () => false, ensureAuthenticated: async () => {} };
   }
   if (request.endsWith('utils/customerServiceNavigation')) {
     return { openFromContact: () => false };

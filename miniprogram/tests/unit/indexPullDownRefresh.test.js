@@ -42,7 +42,7 @@ Module._load = function (request, ...rest) {
     };
   }
   if (request.endsWith('utils/auth')) {
-    return { ensureAuthenticated: async () => {}, isAdmin: () => false };
+    return { ensureAuthenticated: async () => {}, isAdmin: () => false, isStallManager: () => false };
   }
   if (request.endsWith('utils/customerServiceUnread')) {
     return { start() {}, stop() {} };
