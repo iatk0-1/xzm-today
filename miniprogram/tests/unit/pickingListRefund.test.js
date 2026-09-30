@@ -60,6 +60,32 @@ test('待报退款只提交关联订单行的待报数量和金额', async () =>
   const result = await page().refundOneOrder(entry);
   assert.equal(result.status, 'success');
   assert.deepEqual(calls[0].body.items, [{ orderItemId: '200', qty: 2, refundAmount: '20.00' }]);
+  assert.equal(calls[0].url, '/picking-list/skus/9/orders/100/refunds');
+});
+
+test('负责人退款走当前 SKU 接口，不把同订单其他商品带进请求', async () => {
+  calls.length = 0;
+  preview = { availableRefundAmount: '20.00', items: [
+    { orderItemId: '200', availableQty: 2, salePrice: '10.00', availableRefundAmount: '20.00' }
+  ] };
+  refundResult = { status: 'success' };
+  const instance = page();
+  instance.data.isStallManager = true;
+  instance.data.refundReturnPurchaseOrder = true;
+  await instance.refundOneOrder(entry);
+  assert.equal(calls[0].url, '/picking-list/skus/9/orders/100/refunds');
+  assert.deepEqual(calls[0].body.items, [{ orderItemId: '200', qty: 2, refundAmount: '20.00' }]);
+  assert.equal(calls[0].body.returnPurchaseOrder, true);
+});
+
+test('负责人可见报单记录、报单选择及退款按钮', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const template = fs.readFileSync(path.join(__dirname, '../../pages/pickingList/pickingList.wxml'), 'utf8');
+  assert.match(template, /class="btn-history" bindtap="goToOrders"/);
+  assert.match(template, /class="action-bar" wx:if="\{\{filterStatus === 'pending'\}\}"/);
+  assert.equal(template.includes('!isStallManager'), false);
+  assert.match(template, /仅退当前商品的待报数量/);
 });
 
 test('可退数量不足时停止且不提交退款', async () => {

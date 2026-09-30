@@ -6,7 +6,7 @@
       <view class="header-title">拣货单推荐</view>
       <view class="header-subtitle">按 SKU 数量汇总生成报单数量</view>
     </view>
-    <button class="btn-history" wx:if="{{!isStallManager}}" bindtap="goToOrders">报单记录</button>
+    <button class="btn-history" bindtap="goToOrders">报单记录</button>
   </view>
 
   <!-- 顶部筛选栏 -->
@@ -53,7 +53,7 @@
   </view>
 
   <!-- 操作栏 -->
-  <view class="action-bar" wx:if="{{filterStatus === 'pending' && !isStallManager}}">
+  <view class="action-bar" wx:if="{{filterStatus === 'pending'}}">
     <view class="select-all" bindtap="toggleSelectAll">
       <view class="checkbox {{allSelected ? 'checked' : ''}}">
         <text wx:if="{{allSelected}}">✓</text>
@@ -70,7 +70,7 @@
   <!-- 推荐列表 -->
   <view class="recommend-list">
     <view class="recommend-item {{item.selected ? 'selected' : ''}} {{filterStatus === 'pending' && item.recommendQty > 0 ? 'has-refund' : ''}}" wx:for="{{recommendList}}" wx:key="skuId" bindtap="goToRelatedOrders" data-index="{{index}}">
-      <view class="item-checkbox" wx:if="{{filterStatus === 'pending' && item.recommendQty > 0 && !isStallManager}}">
+      <view class="item-checkbox" wx:if="{{filterStatus === 'pending' && item.recommendQty > 0}}">
         <view class="checkbox {{item.selected ? 'checked' : ''}}" catchtap="toggleSelect" data-index="{{index}}">
           <text wx:if="{{item.selected}}">✓</text>
         </view>
@@ -114,7 +114,7 @@
           </scroll-view>
         </view>
       </view>
-        <view class="item-refund-btn" wx:if="{{filterStatus === 'pending' && item.recommendQty > 0 && !isStallManager}}" catchtap="openRefundModal" data-index="{{index}}">退款</view>
+        <view class="item-refund-btn" wx:if="{{filterStatus === 'pending' && item.recommendQty > 0}}" catchtap="openRefundModal" data-index="{{index}}">退款</view>
     </view>
 
     <!-- 空状态 -->
@@ -158,12 +158,13 @@
             </view>
           </view>
           <view class="refund-order-bottom">
-            <text>该商品待报 {{item.pendingQty}} 件 · 实付款 ¥{{item.order.payAmount}}</text>
+            <text>该商品待报 {{item.pendingQty}} 件</text>
             <button class="refund-order-btn" catchtap="refundRelatedOrder" data-index="{{index}}" disabled="{{refundBusy}}">退款</button>
           </view>
         </view>
       </scroll-view>
       <view class="refund-modal-footer">
+        <view class="refund-return-choice">仅退当前商品的待报数量，订单内其他商品不受影响。</view>
         <checkbox-group bindchange="changeRefundReturnPurchaseOrder" class="refund-return-choice">
           <label><checkbox value="return" checked="{{refundReturnPurchaseOrder}}" />是否返回报单（默认不返回）</label>
         </checkbox-group>

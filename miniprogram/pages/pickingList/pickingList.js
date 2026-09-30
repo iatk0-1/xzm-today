@@ -5,6 +5,7 @@ const auth = require('../../utils/auth');
 
 Page(pageSync.wrap({
   data: {
+    isStallManager: false,
     filterStatus: 'pending', // 'pending', 'ordered', 'all'
     recommendList: [],
     loading: false,
@@ -111,7 +112,8 @@ Page(pageSync.wrap({
 
   async refundOneOrder(entry) {
     const orderId = entry.order.id;
-    const preview = await api.get(`/admin/orders-manage/orders/${orderId}/refund-preview`);
+    const refundBase = `/picking-list/skus/${this.data.refundSku.skuId}/orders/${orderId}`;
+    const preview = await api.get(`${refundBase}/refund-preview`);
     const availableById = new Map((preview.items || []).map(item => [String(item.orderItemId), item]));
     let remainingAmount = Math.round(Number(preview.availableRefundAmount || 0) * 100);
     const items = [];
@@ -132,7 +134,7 @@ Page(pageSync.wrap({
       remainingAmount -= amount;
     }
     if (!items.length) throw new Error('当前订单没有可退的待报商品');
-    return api.post(`/admin/orders-manage/orders/${orderId}/refunds`, {
+    return api.post(`${refundBase}/refunds`, {
       reason: '拣货单待报商品退款',
       note: `SKU ${this.data.refundSku.skuId} 待报数量退款`,
       returnPurchaseOrder: this.data.refundReturnPurchaseOrder,
