@@ -1,8 +1,9 @@
+const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/adminProduct/adminProduct.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page({
+Page(autoSearch.wrap({
   data: {
     products: [],
     isLoading: false,  // 初始为 false，允许首次加载
@@ -94,17 +95,13 @@ Page({
   onSearchInput: function(e) {
     const keyword = e.detail.value || '';
     this.setData({ searchKeyword: keyword });
-    if (this.searchTimer) clearTimeout(this.searchTimer);
-    this.searchTimer = setTimeout(() => this.loadProducts(), 450);
   },
 
   onSearchConfirm: function() {
-    if (this.searchTimer) clearTimeout(this.searchTimer);
     this.setData({ searchFocus: false }, () => this.loadProducts());
   },
 
   clearSearch: function() {
-    if (this.searchTimer) clearTimeout(this.searchTimer);
     this.setData({ searchKeyword: '', searchFocus: false }, () => this.loadProducts());
   },
 
@@ -647,4 +644,9 @@ Page({
       url: '/pages/adminProductRecycleBin/adminProductRecycleBin'
     });
   }
-});
+}, {
+  input: 'onSearchInput',
+  submit: 'onSearchConfirm',
+  field: 'searchKeyword',
+  automatic: 'loadProducts'
+}));

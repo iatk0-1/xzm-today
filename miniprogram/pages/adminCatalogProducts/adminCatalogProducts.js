@@ -1,7 +1,8 @@
+const autoSearch = require('../../utils/autoSearch');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page({
+Page(autoSearch.wrap({
   data: {
     type: 'stall',
     groupId: '',
@@ -299,4 +300,8 @@ Page({
       }
     });
   }
-});
+}, {
+  input: 'onKeywordInput',
+  submit: 'search',
+  field: 'keyword'
+}));

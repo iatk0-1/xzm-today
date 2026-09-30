@@ -1,3 +1,4 @@
+const autoSearch = require('../../utils/autoSearch');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/adminOrderManage/adminOrderManage.js
 const api = require('../../utils/api');
@@ -27,7 +28,7 @@ const STATUS_DISPLAY_MAP = {
   'cancelled': '已关闭'
 };
 
-Page(pageSync.wrap({
+Page(autoSearch.wrap(pageSync.wrap({
   data: {
     pickingSkuId: '',
     pickingStatus: '',
@@ -516,4 +517,8 @@ Page(pageSync.wrap({
   }
 }, async function(changes) {
   for (const change of changes.filter(item => item.entity === 'orders')) await this.refreshOrder(change.id);
+}), {
+  input: 'onSearchInput',
+  submit: 'onSearchConfirm',
+  field: 'searchKeyword'
 }));

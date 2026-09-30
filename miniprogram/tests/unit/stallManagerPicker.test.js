@@ -12,9 +12,10 @@ function loadConfig(file, api, wx = {}) {
       if (name.endsWith('/api')) return api;
       if (name.endsWith('/auth')) return { ensureAuthenticated: async () => {}, isAdmin: () => true };
       if (name.endsWith('/pageSync')) return { wrap: value => value };
+      if (name.endsWith('/autoSearch')) return require('../../utils/autoSearch');
       throw new Error('未模拟依赖：' + name);
     },
-    wx: { showToast() {}, ...wx }, console, setInterval, clearInterval
+    wx: { showToast() {}, ...wx }, console, setInterval, clearInterval, setTimeout, clearTimeout
   });
   return config;
 }

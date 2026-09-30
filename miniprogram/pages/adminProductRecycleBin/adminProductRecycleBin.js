@@ -1,9 +1,10 @@
+const autoSearch = require('../../utils/autoSearch');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/adminProductRecycleBin/adminProductRecycleBin.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page(pageSync.wrap({
+Page(autoSearch.wrap(pageSync.wrap({
   data: {
     products: [],
     isLoading: true,
@@ -314,4 +315,8 @@ Page(pageSync.wrap({
   await pageSync.updateList(this, changes, {
     entity: 'products', field: 'products', url: id => '/products/deleted/' + id
   });
+}), {
+  input: 'onSearchInput',
+  submit: 'onSearchConfirm',
+  field: 'searchKeyword'
 }));

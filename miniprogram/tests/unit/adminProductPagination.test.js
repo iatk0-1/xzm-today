@@ -54,6 +54,27 @@ function product(id, status = 'on', name = `商品${id}`) {
   return { id, status, name, stallIds: [], relateTagIds: [] };
 }
 
+test('商品加载期间输入关键词，加载完成后自动查询最新词并重置分页', { concurrency: false }, async () => {
+  let resolveFirst;
+  pages = [new Promise(resolve => { resolveFirst = resolve; }),
+    { content: [product(2, 'on', '棉袄')], hasNext: false }];
+  requests = [];
+  const page = createPage();
+  const firstLoad = page.loadProducts();
+  await new Promise(resolve => setImmediate(resolve));
+  page.onSearchInput({ detail: { value: '棉袄' } });
+  await new Promise(resolve => setTimeout(resolve, 370));
+  assert.equal(requests.length, 1);
+  resolveFirst({ content: [product(1)], hasNext: true });
+  await firstLoad;
+  await new Promise(resolve => setTimeout(resolve, 80));
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1].keyword, '棉袄');
+  assert.equal(requests[1].page, 1);
+  assert.deepEqual(page.data.products.map(item => item.id), [2]);
+  page.onUnload();
+});
+
 test('详情返回不重新请求，编辑成功只替换原商品并保留分页', { concurrency: false }, async () => {
   pages = [
     { content: [product(1)], hasNext: true },

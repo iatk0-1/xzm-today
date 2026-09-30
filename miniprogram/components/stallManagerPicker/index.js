@@ -12,6 +12,7 @@ Component({
   },
   observers: {
     'visible, stallId': function(visible, stallId) {
+      clearTimeout(this._searchTimer);
       if (visible && stallId) {
         if (this._activeStall === stallId) return;
         this._activeStall = stallId;
@@ -25,7 +26,10 @@ Component({
     }
   },
   lifetimes: {
-    detached() { this._session = (this._session || 0) + 1; }
+    detached() {
+      clearTimeout(this._searchTimer);
+      this._session = (this._session || 0) + 1;
+    }
   },
   methods: {
     noop() {},
@@ -50,13 +54,18 @@ Component({
       this.triggerEvent('close');
     },
     onKeywordInput(e) {
+      clearTimeout(this._searchTimer);
       this._search = (this._search || 0) + 1;
       this.setData({ keyword: e.detail.value, candidates: [], searching: false, searched: false });
+      if (e.detail.value.trim().length >= 2) {
+        this._searchTimer = setTimeout(() => this.searchUsers(), 350);
+      }
     },
     markAssigned(users, managers = this.data.managers) {
       return users.map(user => ({ ...user, assigned: managers.some(item => String(item.id) === String(user.id)) }));
     },
     async searchUsers() {
+      clearTimeout(this._searchTimer);
       const keyword = this.data.keyword.trim();
       if (keyword.length < 2) return wx.showToast({ title: '至少输入两个字或数字', icon: 'none' });
       const session = this._session;

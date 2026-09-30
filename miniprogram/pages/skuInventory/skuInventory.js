@@ -1,9 +1,10 @@
+const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/skuInventory/skuInventory.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const { formatStock } = require('../../utils/stock');
 
-Page({
+Page(autoSearch.wrap({
   data: {
     productList: [],
     loading: false,
@@ -328,4 +329,8 @@ Page({
       minute: '2-digit'
     });
   }
-});
+}, {
+  input: 'onKeywordInput',
+  submit: 'search',
+  field: 'keyword'
+}));

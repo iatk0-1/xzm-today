@@ -1,8 +1,9 @@
+const autoSearch = require('../../utils/autoSearch');
 // pages/adminSales/adminSales.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page({
+Page(autoSearch.wrap({
   data: {
     // 商品列表
     products: [],
@@ -301,4 +302,8 @@ Page({
       url: '/pages/adminSalesDetail/adminSalesDetail?' + params.join('&')
     });
   }
-});
+}, {
+  input: 'onSearchInput',
+  submit: 'onSearch',
+  field: 'searchInput'
+}));

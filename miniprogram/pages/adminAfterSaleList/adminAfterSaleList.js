@@ -1,3 +1,4 @@
+const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/adminAfterSaleList/adminAfterSaleList.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -60,7 +61,7 @@ const TYPE_DISPLAY = {
 };
 
 const pageSync = require('../../utils/pageSync');
-Page(pageSync.wrap({
+Page(autoSearch.wrap(pageSync.wrap({
   data: {
     tabs: ['全部', '待审核', '已同意', '已拒绝', '已收货', '已退款', '已取消'],
     currentTab: '全部',
@@ -285,4 +286,8 @@ Page(pageSync.wrap({
       && (!this.data.currentType || item.type === this.data.currentType)
   });
   this.setData({ total: Math.max(0, this.data.total - beforeCount + this.data.afterSales.length) });
+}), {
+  input: 'onSearchInput',
+  submit: 'doSearch',
+  field: 'searchKeyword'
 }));

@@ -1652,6 +1652,8 @@ Page({
   },
 
   onUnload: function() {
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchRequestVersion = (this.searchRequestVersion || 0) + 1;
     this.batchPageClosed = true;
     this.batchRunToken = (this.batchRunToken || 0) + 1;
   },

@@ -1,7 +1,8 @@
+const autoSearch = require('../../utils/autoSearch');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page({
+Page(autoSearch.wrap({
   data: {
     keywordInput: '', keyword: '', startDate: '', endDate: '',
     stallList: [], tagList: [], selectedStall: '', selectedTag: '',
@@ -179,4 +180,8 @@ Page({
     return Promise.all([this.reload(), this.loadStallList(), this.loadTagList()])
       .finally(() => wx.stopPullDownRefresh());
   }
-});
+}, {
+  input: 'onKeywordInput',
+  submit: 'onSearch',
+  field: 'keywordInput'
+}));

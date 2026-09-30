@@ -1,8 +1,9 @@
+const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/purchaseOrders/purchaseOrders.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page({
+Page(autoSearch.wrap({
   data: {
     status: 'ordered',
     batchList: [],
@@ -388,4 +389,8 @@ Page({
       minute: '2-digit'
     });
   }
-});
+}, {
+  input: 'onKeywordInput',
+  submit: 'search',
+  field: 'keyword'
+}));

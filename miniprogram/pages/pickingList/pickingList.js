@@ -1,9 +1,10 @@
+const autoSearch = require('../../utils/autoSearch');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/pickingList/pickingList.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
-Page(pageSync.wrap({
+Page(autoSearch.wrap(pageSync.wrap({
   data: {
     isStallManager: false,
     filterStatus: 'pending', // 'pending', 'ordered', 'all'
@@ -559,4 +560,8 @@ Page(pageSync.wrap({
     (order.items || []).forEach(item => skuIds.push(item.skuId));
   }
   await this.refreshSkuRecommendations(skuIds);
+}), {
+  input: 'onSkuKeywordInput',
+  submit: 'searchSku',
+  field: 'skuKeyword'
 }));

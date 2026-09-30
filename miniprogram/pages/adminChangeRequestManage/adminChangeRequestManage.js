@@ -1,3 +1,4 @@
+const autoSearch = require('../../utils/autoSearch');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
@@ -64,7 +65,7 @@ function buildRequestItemRemarks(request, orderItems) {
   });
 }
 
-Page({
+Page(autoSearch.wrap({
   data: {
     tabs: [
       { key: 'all', label: '全部' },
@@ -242,4 +243,8 @@ Page({
       wx.hideLoading();
     }
   }
-});
+}, {
+  input: 'onSearchInput',
+  submit: 'onSearchConfirm',
+  field: 'searchKeyword'
+}));
