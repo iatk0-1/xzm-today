@@ -15,7 +15,7 @@
           {{phoneBinding ? '绑定中...' : '未绑定手机号，点击去绑定'}}
         </button>
         <view class="role-row" wx:if="{{hasMultipleRoles}}">
-          <view class="user-tag">{{currentRoleLabel}}</view>
+          <view class="user-tag role-switch-btn" catchtap="switchRole">{{currentRoleLabel}}</view>
           <button size="mini" class="user-tag-btn role-switch-btn" catchtap="switchRole">切换</button>
         </view>
       </view>
