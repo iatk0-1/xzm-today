@@ -8,6 +8,8 @@ const customerServiceUnread = require('../../utils/customerServiceUnread');
 
 Page({
   data: {
+    currentRoleLabel: '普通用户',
+    availableRoles: [],
     isAdmin: false,
     isStallManager: false,
     messageUnreadCount: 0,
@@ -60,6 +62,8 @@ Page({
   refreshUserInfoFromServer: async function() {
     try {
       await auth.ensureAuthenticated({ silent: true });
+      const roles = await auth.loadAvailableRoles();
+      this.setData({ availableRoles: roles });
       const res = await api.get('/users/me');
       const userInfo = auth.getUserInfo() || {};
       userInfo.phone = res.phone;
@@ -67,7 +71,7 @@ Page({
       userInfo.isPhoneBound = !!res.phone;
       userInfo.nickname = res.nickname;
       userInfo.avatarUrl = res.avatarUrl;
-      userInfo.role = res.role || userInfo.role;
+      userInfo.role = userInfo.selectedRole || res.role || userInfo.role;
       wx.setStorageSync(config.USER_INFO_KEY, userInfo);
       this.setData({
         userInfo: userInfo,
@@ -83,11 +87,34 @@ Page({
 
   // 检查是否为主理人
   checkAdmin: function() {
-    this.setData({ isStallManager: auth.isStallManager() });
+    const info = auth.getUserInfo() || {};
+    this.setData({
+      currentRoleLabel: auth.ROLE_LABELS[info.role] || '普通用户',
+      isStallManager: auth.isStallManager()
+    });
     if (auth.isAdmin()) {
       this.setData({ isAdmin: true });
     } else {
       this.setData({ isAdmin: false });
+    }
+  },
+
+  switchRole: async function() {
+    try {
+      const roles = await auth.loadAvailableRoles();
+      this.checkAdmin();
+      wx.showActionSheet({
+        itemList: roles.map(role => auth.ROLE_LABELS[role]),
+        success: result => {
+          auth.selectRole(roles[result.tapIndex]);
+          this.checkAdmin();
+          this.loadUserInfo();
+          // 重新创建页面，清掉旧角色的列表、分页和管理页面栈。
+          wx.reLaunch({ url: '/pages/user/user' });
+        }
+      });
+    } catch (err) {
+      wx.showToast({ title: err.message || '获取可切换角色失败', icon: 'none' });
     }
   },
 

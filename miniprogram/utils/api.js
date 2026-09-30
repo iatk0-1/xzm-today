@@ -200,7 +200,8 @@ function buildHeaders(options) {
   const token = getToken();
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : ''
+    'Authorization': token ? `Bearer ${token}` : '',
+    'X-Active-Role': options.url === '/auth/roles' ? '' : (getStorage(config.USER_INFO_KEY).selectedRole || '')
   };
 
   if (options.idempotencyKey) {
@@ -279,6 +280,7 @@ function wxUploadFile(url, filePath, formData, idempotencyKey) {
       formData: formData,
       header: {
         'Authorization': token ? `Bearer ${token}` : '',
+        'X-Active-Role': getStorage(config.USER_INFO_KEY).selectedRole || '',
         'Idempotency-Key': idempotencyKey
       },
       success: resolve,

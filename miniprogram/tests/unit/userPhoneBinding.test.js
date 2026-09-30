@@ -8,7 +8,9 @@ function loadPage(cached, profile) {
   let page;
   let stored = cached;
   const auth = {
+    ROLE_LABELS: { user: '普通用户', stall_manager: '档口负责人', admin: '管理员' },
     getUserInfo: () => stored,
+    loadAvailableRoles: async () => [(stored && stored.role) || 'user'],
     ensureAuthenticated: async () => {},
     isAdmin: () => stored && stored.role === 'admin',
     isStallManager: () => false

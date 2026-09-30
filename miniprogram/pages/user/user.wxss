@@ -334,3 +334,21 @@ page {
   transform: translateY(-16rpx); 
   box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.2);
 }
+
+/* 当前角色和切换入口 */
+.role-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.role-switch-btn {
+  color: #1a1a1a;
+  background-color: #f0f0f0;
+}
+
+.role-switch-btn:active {
+  opacity: 0.7;
+}

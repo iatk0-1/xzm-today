@@ -175,3 +175,52 @@ test('Access Token 可用但用户资料不完整时补齐 /users/me', async () 
   assert.equal(env.store[config.USER_INFO_KEY].openid, 'openid-7');
   assert.equal(env.store[config.USER_INFO_KEY].isPhoneBound, true);
 });
+
+
+test('切换普通用户后，刷新凭证保留角色并携带所选角色', async () => {
+  const env = loadAuth({
+    storage: {
+      [config.USER_INFO_KEY]: { userId: 7, openid: 'openid-7', role: 'user', selectedRole: 'user', accountRole: 'admin', availableRoles: ['user', 'admin'] },
+      [config.REFRESH_TOKEN_KEY]: 'refresh-old'
+    },
+    requestHandler(options) {
+      if (options.url.endsWith('/auth/refresh')) return { statusCode: 200, data: loginSession({ role: 'admin' }) };
+      return { statusCode: 200, data: {} };
+    }
+  });
+  await env.auth.ensureAuthenticated();
+  assert.equal(env.auth.getUserInfo().role, 'user');
+  assert.equal(env.auth.isAdmin(), false);
+  const api = require('../../utils/api');
+  await api.get('/products/query');
+  assert.equal(env.requests.at(-1).header['X-Active-Role'], 'user');
+});
+
+test('可切换角色由服务端提供，不能切换未授予角色', async () => {
+  const env = loadAuth({
+    storage: {
+      [config.TOKEN_KEY]: 'access-valid',
+      [config.USER_INFO_KEY]: { userId: 7, openid: 'openid-7', role: 'stall_manager' }
+    },
+    requestHandler: () => ({ statusCode: 200, data: ['user', 'stall_manager'] })
+  });
+  await env.auth.loadAvailableRoles();
+  assert.throws(() => env.auth.selectRole('admin'), /不具备/);
+  env.auth.selectRole('user');
+  assert.equal(env.auth.isStallManager(), false);
+  env.auth.selectRole('stall_manager');
+  assert.equal(env.auth.isStallManager(), true);
+});
+
+test('负责人资格撤销后，获取角色列表恢复普通用户', async () => {
+  const env = loadAuth({
+    storage: {
+      [config.TOKEN_KEY]: 'access-valid',
+      [config.USER_INFO_KEY]: { userId: 7, openid: 'openid-7', role: 'stall_manager', selectedRole: 'stall_manager' }
+    },
+    requestHandler: () => ({ statusCode: 200, data: ['user'] })
+  });
+  await env.auth.loadAvailableRoles();
+  assert.equal(env.requests[0].header['X-Active-Role'], '');
+  assert.equal(env.auth.getUserInfo().role, 'user');
+});

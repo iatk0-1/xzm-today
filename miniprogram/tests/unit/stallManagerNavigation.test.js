@@ -10,6 +10,8 @@ function loadPage(name, role) {
   const navigations = [];
   const toasts = [];
   const auth = {
+    ROLE_LABELS: { user: '普通用户', stall_manager: '档口负责人', admin: '管理员' },
+    getUserInfo: () => ({ role }),
     isAdmin: () => role === 'admin',
     isStallManager: () => role === 'stall_manager'
   };

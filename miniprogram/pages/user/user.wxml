@@ -8,7 +8,10 @@
       </view>
       <view class="user-text" bindtap="goToEditProfile">
         <view class="nickname">{{userInfo.nickname || '微信用户'}}</view>
-        <view class="user-tag" wx:if="{{isStallManager}}">档口负责人</view>
+        <view class="role-row">
+          <view class="user-tag">当前角色：{{currentRoleLabel}}</view>
+          <button class="user-tag-btn role-switch-btn" catchtap="switchRole">切换角色</button>
+        </view>
         <!-- 已绑定手机号：显示手机号，点击可重新授权 -->
         <view class="user-tag" wx:if="{{isPhoneBound}}" catchtap="requestPhoneAuth">手机号：{{phone}}</view>
         <!-- 未绑定手机号：使用官方按钮直接触发授权 -->

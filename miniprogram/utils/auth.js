@@ -66,7 +66,8 @@ function mergeUserInfo(session) {
       : oldUserInfo.isPhoneBound,
     nickname: session.nickname || oldUserInfo.nickname,
     avatarUrl: session.avatarUrl || oldUserInfo.avatarUrl,
-    role: session.role || oldUserInfo.role
+    accountRole: session.role || oldUserInfo.accountRole || oldUserInfo.role,
+    role: oldUserInfo.selectedRole || session.role || oldUserInfo.role
   });
 
   try {
@@ -145,14 +146,18 @@ async function login(nickname = '', avatarUrl = '') {
     // 保存 token 和用户信息
     api.saveToken(res.accessToken, res.refreshToken, res);
 
+    const previous = getUserInfo();
+    const selectedRole = previous && previous.userId === res.userId ? previous.selectedRole : null;
     const userInfo = {
+      selectedRole: selectedRole,
+      accountRole: res.role,
       userId: res.userId,
       openid: res.openid || '',
       phone: res.phone,
       isPhoneBound: res.isPhoneBound,
       nickname: res.nickname,
       avatarUrl: res.avatarUrl,
-      role: res.role
+      role: selectedRole || res.role
     };
     wx.setStorageSync(config.USER_INFO_KEY, userInfo);
 
@@ -312,9 +317,29 @@ function getOpenid() {
   return userInfo ? userInfo.openid : null;
 }
 
-/**
- * 检查是否为管理员
- */
+// 账户可选角色由后端授予，role 表示当前浏览和操作身份。
+const ROLE_LABELS = { user: '普通用户', stall_manager: '档口负责人', admin: '管理员' };
+
+async function loadAvailableRoles() {
+  const roles = await api.get('/auth/roles');
+  const info = getUserInfo() || {};
+  info.availableRoles = roles;
+  if (!roles.includes(info.role)) {
+    info.role = 'user';
+    info.selectedRole = 'user';
+  }
+  wx.setStorageSync(config.USER_INFO_KEY, info);
+  return roles;
+}
+
+function selectRole(role) {
+  const info = getUserInfo();
+  if (!info || !(info.availableRoles || []).includes(role)) throw new Error('当前账户不具备所选角色');
+  info.role = role;
+  info.selectedRole = role;
+  wx.setStorageSync(config.USER_INFO_KEY, info);
+}
+
 function isAdmin() {
   const userInfo = getUserInfo();
   return userInfo && userInfo.role === 'admin';
@@ -377,6 +402,9 @@ function ensureLogin() {
 }
 
 module.exports = {
+  ROLE_LABELS,
+  loadAvailableRoles,
+  selectRole,
   login,
   bindPhone,
   refreshToken,
