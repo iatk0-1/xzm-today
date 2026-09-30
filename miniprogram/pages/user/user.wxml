@@ -8,16 +8,16 @@
       </view>
       <view class="user-text" bindtap="goToEditProfile">
         <view class="nickname">{{userInfo.nickname || '微信用户'}}</view>
-        <view class="role-row">
-          <view class="user-tag">当前角色：{{currentRoleLabel}}</view>
-          <button class="user-tag-btn role-switch-btn" catchtap="switchRole">切换角色</button>
-        </view>
         <!-- 已绑定手机号：显示手机号，点击可重新授权 -->
         <view class="user-tag" wx:if="{{isPhoneBound}}" catchtap="requestPhoneAuth">手机号：{{phone}}</view>
         <!-- 未绑定手机号：使用官方按钮直接触发授权 -->
         <button wx:else class="user-tag-btn unbound" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" catchtap="stopPropagation" disabled="{{phoneBinding}}">
           {{phoneBinding ? '绑定中...' : '未绑定手机号，点击去绑定'}}
         </button>
+        <view class="role-row" wx:if="{{hasMultipleRoles}}">
+          <view class="user-tag">{{currentRoleLabel}}</view>
+          <button size="mini" class="user-tag-btn role-switch-btn" catchtap="switchRole">切换</button>
+        </view>
       </view>
       <view class="edit-icon" bindtap="goToEditProfile">✏️</view>
     </view>

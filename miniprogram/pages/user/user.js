@@ -10,6 +10,7 @@ Page({
   data: {
     currentRoleLabel: '普通用户',
     availableRoles: [],
+    hasMultipleRoles: false,
     isAdmin: false,
     isStallManager: false,
     messageUnreadCount: 0,
@@ -63,7 +64,7 @@ Page({
     try {
       await auth.ensureAuthenticated({ silent: true });
       const roles = await auth.loadAvailableRoles();
-      this.setData({ availableRoles: roles });
+      this.setData({ availableRoles: roles, hasMultipleRoles: roles.some(role => role !== 'user') });
       const res = await api.get('/users/me');
       const userInfo = auth.getUserInfo() || {};
       userInfo.phone = res.phone;
@@ -102,6 +103,7 @@ Page({
   switchRole: async function() {
     try {
       const roles = await auth.loadAvailableRoles();
+      this.setData({ availableRoles: roles, hasMultipleRoles: roles.some(role => role !== 'user') });
       this.checkAdmin();
       wx.showActionSheet({
         itemList: roles.map(role => auth.ROLE_LABELS[role]),
