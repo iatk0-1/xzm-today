@@ -2,6 +2,7 @@ const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/adminProduct/adminProduct.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const { isProductSoldOut } = require('../../utils/stock');
 
 Page(autoSearch.wrap({
   data: {
@@ -176,6 +177,7 @@ Page(autoSearch.wrap({
   },
 
   normalizeProduct: function(item) {
+    item.soldOut = isProductSoldOut(item);
     if (item.createdAt) {
       const date = new Date(item.createdAt);
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -506,7 +508,9 @@ Page(autoSearch.wrap({
 
   productMatchesFilters: function(product) {
     const { activeStatus, searchKeyword, selectedStall, selectedTag } = this.data;
-    if (activeStatus !== 'all' && product.status !== activeStatus) return false;
+    if (activeStatus === 'sold_out') {
+      if (!isProductSoldOut(product)) return false;
+    } else if (activeStatus !== 'all' && product.status !== activeStatus) return false;
     const keyword = searchKeyword.trim().toLowerCase();
     if (keyword && !String(product.name || '').toLowerCase().includes(keyword)) return false;
     if (selectedStall && !(product.stallIds || []).some(id => this.normalizeId(id) === this.normalizeId(selectedStall))) return false;

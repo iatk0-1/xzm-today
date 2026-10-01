@@ -24,6 +24,7 @@
       <view class="status-tab {{activeStatus === 'all' ? 'active' : ''}}" bindtap="selectStatusTab" data-status="all">全部</view>
       <view class="status-tab {{activeStatus === 'on' ? 'active' : ''}}" bindtap="selectStatusTab" data-status="on">已上架</view>
       <view class="status-tab {{activeStatus === 'off' ? 'active' : ''}}" bindtap="selectStatusTab" data-status="off">已下架</view>
+      <view class="status-tab {{activeStatus === 'sold_out' ? 'active' : ''}}" bindtap="selectStatusTab" data-status="sold_out">已售罄</view>
     </scroll-view>
 
     <view class="filter-section">
@@ -89,9 +90,10 @@
             <view class="relation-add" catchtap="openRelationPicker" data-type="tag" data-product-id="{{item.id}}">+</view>
           </view>
           <view class="product-tags">
-            <text class="tag status-tag {{item.status === 'off' ? 'offline' : 'online'}}">
-              {{item.status === 'off' ? '已下架' : '售卖中'}}
+            <text class="tag status-tag {{item.status === 'off' ? 'offline' : (item.soldOut ? 'sold-out' : 'online')}}">
+              {{item.status === 'off' ? '已下架' : (item.soldOut ? '已售罄' : '售卖中')}}
             </text>
+            <text class="tag status-tag sold-out" wx:if="{{item.status === 'off' && item.soldOut}}">已售罄</text>
           </view>
         </view>
       </view>

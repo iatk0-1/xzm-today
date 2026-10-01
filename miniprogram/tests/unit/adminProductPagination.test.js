@@ -54,6 +54,34 @@ function product(id, status = 'on', name = `商品${id}`) {
   return { id, status, name, stallIds: [], relateTagIds: [] };
 }
 
+test('售罄筛选传给分页接口，补货后编辑商品会移出售罄列表', { concurrency: false }, async () => {
+  const soldOut = { ...product(1), skuMatrix: [{ stock: 0 }] };
+  const offSoldOut = { ...product(2, 'off'), skuMatrix: [{ stock: 0 }] };
+  pages = [{ content: [soldOut, offSoldOut], hasNext: false }];
+  requests = [];
+  const page = createPage();
+  page.data.activeStatus = 'sold_out';
+  await page.loadProducts();
+  assert.equal(requests[0].status, 'sold_out');
+  assert.equal(requests[0].page, 1);
+  assert.equal(page.data.products[0].soldOut, true);
+  assert.equal(page.productMatchesFilters(offSoldOut), true);
+  page.updateVisibleProduct({ ...soldOut, skuMatrix: [{ stock: 5 }] });
+  assert.deepEqual(page.data.products.map(item => item.id), [2]);
+});
+
+test('列表售罄标记沿用规格库存口径，有库存或无限库存都不算售罄', () => {
+  const page = createPage();
+  for (const [skuMatrix, expected] of [
+    [[{ stock: 0 }, { stock: 0 }], true],
+    [[{ stock: 0 }, { stock: 1 }], false],
+    [[{ stock: 0, unlimitedStock: true }], false],
+    [[], true]
+  ]) {
+    assert.equal(page.normalizeProduct({ ...product(1), skuMatrix }).soldOut, expected);
+  }
+});
+
 test('商品加载期间输入关键词，加载完成后自动查询最新词并重置分页', { concurrency: false }, async () => {
   let resolveFirst;
   pages = [new Promise(resolve => { resolveFirst = resolve; }),
