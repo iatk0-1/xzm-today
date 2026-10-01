@@ -20,6 +20,14 @@
     </view>
     <view class="filter-section">
       <view class="filter-row">
+        <text class="filter-label">状态</text>
+        <scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+          <view class="filter-options">
+            <view class="filter-tag {{selectedStatus === item.value ? 'active' : ''}}" wx:for="{{statusOptions}}" wx:key="value" bindtap="selectStatus" data-status="{{item.value}}">{{item.label}}</view>
+          </view>
+        </scroll-view>
+      </view>
+      <view class="filter-row">
         <text class="filter-label">档口</text>
         <view class="filter-fixed-option filter-tag {{selectedStall === '' ? 'active' : ''}}" bindtap="selectStall" data-stall="all">全部</view>
         <scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">

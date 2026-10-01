@@ -67,17 +67,39 @@ test('统计页默认按当天查询，并以商品为单位分页', async () =>
   assert.equal(requests[2].params.page, 2);
   assert.equal(instance.data.items.length, 2);
   assert.equal(instance.data.hasMore, false);
-  instance.onShow();
-  replies = [
-    Promise.resolve({ sold_qty: 11, pending_qty: 6, shipped_qty: 5,
-      after_sale_qty: 1, pending_review_qty: 0 }),
-    Promise.resolve({ content: [{ productId: 1, productName: '裙子', soldQty: 7,
-      pendingQty: 2, shippedQty: 5, afterSaleQty: 1, pendingReviewQty: 0 }], totalElements: 1 })
-  ];
-  await instance.onShow();
-  assert.equal(instance.data.overview.afterSaleQty, 1);
-  assert.equal(instance.data.overview.pendingReviewQty, 0);
-  assert.equal(instance.data.items[0].soldQty, 7);
+  const requestCount = requests.length;
+  const previousData = JSON.parse(JSON.stringify(instance.data));
+  instance.goToDetail({ currentTarget: { dataset: { item: instance.data.items[1] } } });
+  if (instance.onShow) await instance.onShow();
+  if (instance.onShow) await instance.onShow();
+  assert.equal(requests.length, requestCount, '从详情返回不应重新请求统计数据');
+  assert.equal(instance.data.page, 2);
+  assert.deepEqual(instance.data, previousData, '从详情返回应保留已加载的列表和筛选状态');
+});
+
+test('订单状态筛选同时用于汇总、商品列表和翻页，全部取消状态限制', async () => {
+  for (const status of ['stocking', 'paid', 'shipped', '']) {
+    requests.length = 0;
+    replies = [
+      Promise.resolve({ sold_qty: 2 }),
+      Promise.resolve({ content: [{ productId: 1 }], totalElements: 2 }),
+      Promise.resolve({ content: [{ productId: 2 }], totalElements: 2 })
+    ];
+    const instance = page();
+    instance.setData({ page: 3, selectedStatus: 'paid', selectedStall: 3, selectedTag: 5 });
+    instance.selectStatus({ currentTarget: { dataset: { status } } });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(instance.data.selectedStatus, status);
+    assert.equal(instance.data.page, 1);
+    await instance.onReachBottom();
+    assert.equal(requests.length, 3);
+    for (const request of requests) {
+      assert.equal(request.params.orderStatus, status || undefined);
+      assert.equal(request.params.stallId, 3);
+      assert.equal(request.params.tagId, 5);
+    }
+    assert.equal(requests[2].params.page, 2);
+  }
 });
 
 test('档口和标签筛选同时用于顶部汇总、商品列表和翻页', async () => {

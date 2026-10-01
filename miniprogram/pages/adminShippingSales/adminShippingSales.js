@@ -6,6 +6,10 @@ Page(autoSearch.wrap({
   data: {
     keywordInput: '', keyword: '', startDate: '', endDate: '',
     stallList: [], tagList: [], selectedStall: '', selectedTag: '',
+    selectedStatus: '', statusOptions: [
+      { value: '', label: '全部' }, { value: 'stocking', label: '备货中' },
+      { value: 'paid', label: '待发货' }, { value: 'shipped', label: '已发货' }
+    ],
     quickSelect: '', editingDateRange: { startDate: '', endDate: '', quickSelect: '' },
     showDateModal: false,
     today: '', overview: { soldQty: 0, pendingQty: 0, shippedQty: 0,
@@ -23,11 +27,6 @@ Page(autoSearch.wrap({
       console.error('售出数量统计页认证失败:', err);
       wx.showToast({ title: '登录状态恢复失败，请重试', icon: 'none' });
     });
-  },
-
-  onShow() {
-    if (this._hasShown) return Promise.all([this.loadOverview(), this.loadItems(true, true)]);
-    this._hasShown = true;
   },
 
   formatDate(date) {
@@ -48,11 +47,12 @@ Page(autoSearch.wrap({
   },
 
   params() {
-    const { keyword, selectedStall, selectedTag, startDate, endDate } = this.data;
+    const { keyword, selectedStall, selectedTag, selectedStatus, startDate, endDate } = this.data;
     const params = {};
     if (keyword) params.keyword = keyword;
     if (selectedStall !== '') params.stallId = selectedStall;
     if (selectedTag !== '') params.tagId = selectedTag;
+    if (selectedStatus) params.orderStatus = selectedStatus;
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
     return params;
@@ -122,6 +122,9 @@ Page(autoSearch.wrap({
   selectTag(e) {
     const tagId = e.currentTarget.dataset.tag;
     this.setData({ selectedTag: tagId === 'all' ? '' : tagId }, () => this.reload());
+  },
+  selectStatus(e) {
+    this.setData({ selectedStatus: e.currentTarget.dataset.status }, () => this.reload());
   },
   showDateRangeSelector() {
     this.setData({
