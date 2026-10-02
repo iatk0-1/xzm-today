@@ -320,5 +320,20 @@ Page({
     wx.navigateTo({
       url: '/pages/adminChangeRequestManage/adminChangeRequestManage'
     });
+  },
+
+  goToStallManagers: function() {
+    if (!auth.isAdmin()) return;
+    wx.navigateTo({ url: '/pages/stallManagers/stallManagers' });
+  },
+
+  goToPricingRules: function() {
+    if (!auth.isAdmin()) return;
+    wx.navigateTo({ url: '/pages/pricingRules/pricingRules' });
+  },
+
+  goToManagerIncome: function() {
+    if (!auth.isStallManager()) return;
+    wx.navigateTo({ url: '/pages/managerIncome/managerIncome' });
   }
 });

@@ -82,6 +82,18 @@
       <text>档口与标签管理</text>
       <text class="arrow">></text>
     </view>
+    <view class="menu-item manager-manage-entry" wx:if="{{isAdmin}}" bindtap="goToStallManagers">
+      <text>档口负责人管理</text>
+      <text class="arrow">></text>
+    </view>
+    <view class="menu-item pricing-rules-entry" wx:if="{{isAdmin}}" bindtap="goToPricingRules">
+      <text>计价规则管理</text>
+      <text class="arrow">></text>
+    </view>
+    <view class="menu-item manager-income-entry" wx:if="{{isStallManager}}" bindtap="goToManagerIncome">
+      <text>我的收入与提现</text>
+      <text class="arrow">></text>
+    </view>
     <view class="menu-item change-request-manage-entry" wx:if="{{isAdmin}}" bindtap="goToChangeRequestManage">
       <text>用户申请审批管理</text>
       <text class="arrow">></text>

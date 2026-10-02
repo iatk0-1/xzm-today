@@ -919,3 +919,8 @@ line-height: 88rpx; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; }
   font-size: 14px;
   padding: 30px 0;
 }
+
+.pricing-default-row { display:flex; gap:16rpx; }
+.pricing-default-row .input-box { flex:1; min-width:0; }
+.pricing-panel .muted { font-size:24rpx; color:#747a83; line-height:1.7; }
+.pricing-error { color:#b53a30; padding:16rpx 0; }

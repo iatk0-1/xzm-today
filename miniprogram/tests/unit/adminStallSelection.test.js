@@ -20,6 +20,9 @@ function setup({ manager = true, userId = 8, saved, assigned = [], failPublish =
     console: { log() {}, error() {}, warn() {} },
     setTimeout() {},
     require(name) {
+      // 本文件验证档口记忆；计价集成由managerFinancePricing.test.js独立覆盖。
+      if (name.endsWith('/productPricing')) return { integrateProductPricing() {} };
+      if (name.endsWith('/managerFinance')) return require('../../utils/managerFinance');
       if (name.endsWith('/auth')) return {
         ensureAuthenticated: async () => {}, isStallManager: () => manager,
         getUserInfo: () => ({ userId })
@@ -63,11 +66,11 @@ test('负责人再次发布自动恢复当天使用过且仍分配的档口，�
   assert.equal(page.data.selectedStalls[0].name, '新名称');
 });
 
-test('负责人可以恢复多个已使用档口，无历史或档口全被收回时保持未选择', async () => {
+test('历史多档口记忆只恢复一个有效档口，无历史或档口全被收回时保持未选择', async () => {
   const assigned = [{ id: 1, name: '一' }, { id: 2, name: '二' }];
   const { page } = setup({ assigned, saved: { date: today(), userId: 8, stalls: [{ id: 1 }, { id: '2' }] } });
   await page.onLoad({});
-  assert.equal(page.data.selectedStalls.length, 2);
+  assert.equal(page.data.selectedStalls.length, 1);
   for (const saved of [undefined, { date: today(), stalls: [{ id: 3 }] }]) {
     const { page: empty } = setup({ assigned, saved });
     await empty.onLoad({});
@@ -106,7 +109,8 @@ test('发布成功记录实际档口及账号，失败不覆盖上次记忆', as
       isStallManager: true, assignedStalls: [{ id: 2, name: '二档口' }],
       selectedStalls: [{ id: 2, name: '二档口' }],
       title: '测试商品', mediaList: [{ url: 'https://example.com/product.jpg' }],
-      skuList: [{ price: '10', stock: '5', color: '图片色', size: '均码' }]
+      costPrice: '5', pricingRuleId: '30',
+      skuList: [{ costPrice: '5', price: '10', stock: '5', color: '图片色', size: '均码' }]
     });
     await page.submitProduct();
     assert.equal(writeCount(), failPublish ? 0 : 1);

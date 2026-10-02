@@ -5,6 +5,8 @@ const config = require('../../utils/config');
 const stockUtils = require('../../utils/stock');
 const { compressImage, compressVideo } = require('../../utils/media');
 const draft = require('../../utils/draft');
+const { integrateProductPricing } = require('../../utils/productPricing');
+const finance = require('../../utils/managerFinance');
 
 
 // 拖拽网格配置
@@ -13,7 +15,7 @@ const COLUMNS = 3;
 const MAX_PRODUCT_IMAGES = 99;
 const MAX_MEDIA_PICK_COUNT = 20;
 
-Page({
+const pageDefinition = {
   data: {
     videoUrl: '',
     videoThumbPath: '',
@@ -64,10 +66,10 @@ Page({
     colors: ['图片色'],
     colorInput: '',
     skuList: [],
-    batchPrice: '',
+    batchCost: '',
     batchStock: '',
     batchImage: '',
-    quickPrice: '',
+    quickCost: '',
     quickStock: '',
     quickImage: '',
     // 与后端一致：达到该库存值时按无限库存展示。
@@ -140,7 +142,7 @@ Page({
       this._draftType = 'edit';
       this._relatedId = options.editId;
       this.setData({ editId: options.editId });
-      this.loadProductForEdit(options.editId);
+      await this.loadProductForEdit(options.editId);
     } else if (options && options.convertFromLiveProductId) {
       this._draftType = 'convert';
       this._relatedId = options.convertFromLiveProductId;
@@ -148,7 +150,7 @@ Page({
         convertFromLiveProductId: options.convertFromLiveProductId,
         sessionId: options.sessionId
       });
-      this.loadLiveProductForConvert(options.convertFromLiveProductId);
+      await this.loadLiveProductForConvert(options.convertFromLiveProductId);
     } else {
       this._draftType = 'create';
       this._relatedId = null;
@@ -199,7 +201,7 @@ Page({
   loadProductForEdit: async function(productId) {
     wx.showLoading({ title: '加载中...' });
     try {
-      const res = await api.get(`/products/${productId}`);
+      const res = await api.get(`/products/${productId}?manage=true`);
       console.log('商品详情响应:', res);
 
       // 后端返回格式：{ product: {...}, skus: [{id, spec, size, ...}] }
@@ -212,6 +214,7 @@ Page({
         color: sku.spec || '默认',
         size: sku.size || '均码',
         price: sku.retailPrice,
+        costPrice: sku.costPrice == null ? '' : String(sku.costPrice),
         stock: sku.unlimitedStock ? '' : sku.stockMain,
         soldMain: Number(sku.soldMain || 0),
         lockedMain: Number(sku.lockedMain || 0),
@@ -284,7 +287,7 @@ Page({
       if (stallIds.length > 0) {
         const stallsRes = await api.get(auth.isStallManager() ? '/stall-managers/stalls/mine' : '/stalls/all');
         formData.selectedStalls = stallsRes
-          .filter(s => stallIds.some(id => String(id) === String(s.id)))
+          .filter(s => stallIds.slice(0, 1).some(id => String(id) === String(s.id)))
           .map(s => ({ id: s.id, name: s.name }));
       }
 
@@ -371,6 +374,7 @@ Page({
           color: sku.color,
           size: sku.size,
           price: String(sku.price),
+          costPrice: sku.costPrice || '',
           stock: String(sku.stock),
           soldMain: sku.soldMain,
           lockedMain: sku.lockedMain,
@@ -395,10 +399,20 @@ Page({
         tagInput: ''
       });
 
+      this.setData({
+        costPrice: res.costPrice == null ? '' : String(res.costPrice),
+        pricingRuleId: res.pricingRuleId == null ? '' : String(res.pricingRuleId),
+        pricingRuleName: res.pricingRuleName || '',
+        pricingRuleVersion: res.pricingRuleVersion || '',
+        pricingRuleSegments: finance.segmentsWithLabels(res.pricingRuleSegments || []),
+        ruleSource: '商品已保存规则'
+      });
+
       // 套装商品：恢复 bundleGroups
       if (res.bundleGroups && res.bundleGroups.length > 0) {
         var bgs = res.bundleGroups.map(function(bg) {
           return {
+            id: bg.id,
             name: bg.name,
             colors: [...new Set((bg.skus || []).map(function(s) { return s.spec; }))],
             sizeOptions: sizeOptions.slice(),
@@ -409,7 +423,9 @@ Page({
                 color: sku.spec || '默认',
                 size: sku.size || '均码',
                 price: String(sku.retailPrice || ''),
-                stock: sku.unlimitedStock ? '' : String(sku.stockMain || ''),
+                costPrice: sku.costPrice == null ? '' : String(sku.costPrice),
+                bundleGroupId: bg.id,
+                stock: sku.unlimitedStock ? '' : String(sku.stockMain == null ? '' : sku.stockMain),
                 soldMain: Number(sku.soldMain || 0),
                 lockedMain: Number(sku.lockedMain || 0),
                 availableMain: sku.unlimitedStock
@@ -445,7 +461,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
     try {
       // 调用直播商品详情接口
-      const res = await api.get(`/live-products/${liveProductId}`);
+      const res = await api.get(`/products/${liveProductId}?manage=true`);
       console.log('直播商品详情:', res);
 
       const product = res.product || res;
@@ -457,6 +473,7 @@ Page({
         color: sku.spec || '默认',
         size: sku.size || '均码',
         price: sku.retailPrice,
+        costPrice: sku.costPrice == null ? '' : String(sku.costPrice),
         stock: sku.unlimitedStock ? '' : sku.stockMain,
         image: sku.imageUrl || '',
         sizeId: sku.sizeId || null // 保留 sizeId，使用相同的规格
@@ -504,7 +521,7 @@ Page({
       if (stallIds.length > 0) {
         const stallsRes = await api.get(auth.isStallManager() ? '/stall-managers/stalls/mine' : '/stalls/all');
         formData.selectedStalls = stallsRes
-          .filter(s => stallIds.some(id => String(id) === String(s.id)))
+          .filter(s => stallIds.slice(0, 1).some(id => String(id) === String(s.id)))
           .map(s => ({ id: s.id, name: s.name }));
       }
 
@@ -591,6 +608,7 @@ Page({
           color: sku.color,
           size: sku.size,
           price: String(sku.price),
+          costPrice: sku.costPrice || '',
           stock: String(sku.stock),
           image: sku.image || '',
           sizeId: sku.sizeId // 保留 sizeId
@@ -611,6 +629,30 @@ Page({
         colorInput: '',
         tagInput: ''
       });
+
+      this.setData({
+        costPrice: res.costPrice == null ? '' : String(res.costPrice),
+        pricingRuleId: res.pricingRuleId == null ? '' : String(res.pricingRuleId),
+        pricingRuleName: res.pricingRuleName || '', pricingRuleVersion: res.pricingRuleVersion || '',
+        pricingRuleSegments: finance.segmentsWithLabels(res.pricingRuleSegments || []),
+        ruleSource: '复制直播商品规则'
+      });
+      if (res.bundleGroups && res.bundleGroups.length) {
+        const groups = res.bundleGroups.map(group => ({
+          id: null, name: group.name,
+          colors: [...new Set((group.skus || []).map(sku => sku.spec || '图片色'))],
+          sizeOptions: sizeOptions.map(size => ({ ...size, selected: (group.skus || []).some(sku => sku.size === size.name) })),
+          skuList: (group.skus || []).map(sku => ({
+            skuId: null, sizeId: sku.sizeId || null, bundleGroupId: null,
+            color: sku.spec || '图片色', size: sku.size || '均码',
+            costPrice: sku.costPrice == null ? '' : String(sku.costPrice), price: String(sku.retailPrice || ''),
+            stock: sku.unlimitedStock ? '' : String(sku.stockMain == null ? '' : sku.stockMain),
+            image: sku.imageUrl || ''
+          }))
+        }));
+        this.setData({ isBundleMode: true, bundleGroups: groups, activeGroupIndex: 0 });
+        this.loadGroupState(0);
+      }
 
       this.refreshGrid(mediaList);
       wx.hideLoading();
@@ -865,7 +907,7 @@ Page({
     const exists = this.data.selectedStalls.find(s => s.id === item.id);
     if (!exists) {
       this.setData({
-        selectedStalls: [...this.data.selectedStalls, item]
+        selectedStalls: [item]
       });
       this._saveLastStallSelection();
     }
@@ -925,7 +967,7 @@ Page({
     const exists = this.data.selectedStalls.find(s => s.id === item.id);
     if (!exists) {
       this.setData({
-        selectedStalls: [...this.data.selectedStalls, item],
+        selectedStalls: [item],
         showStallSearch: false,
         showStallCreate: false,
         stallSearchKeyword: '',
@@ -984,7 +1026,7 @@ Page({
         stalls = (this.data.assignedStalls || []).filter(stall => selectedIds.has(String(stall.id)));
       }
       if (stalls.length > 0) {
-        this.setData({ selectedStalls: stalls });
+        this.setData({ selectedStalls: stalls.slice(0, 1) });
       }
     } catch (e) {
       // ignore
@@ -1049,7 +1091,7 @@ Page({
       // 添加到已选择列表
       const newItem = { id: res.stall.id, name: res.stall.name };
       this.setData({
-        selectedStalls: [...this.data.selectedStalls, newItem],
+        selectedStalls: [newItem],
         showStallSearch: false,
         showStallCreate: false,
         stallSearchKeyword: '',
@@ -1355,6 +1397,7 @@ Page({
           color: c,
           size: s,
           price: existItem ? existItem.price : '',
+          costPrice: existItem ? existItem.costPrice : this.data.costPrice,
           stock: existItem ? existItem.stock : '',
           soldMain: existItem ? Number(existItem.soldMain || 0) : 0,
           lockedMain: existItem ? Number(existItem.lockedMain || 0) : 0,
@@ -1378,6 +1421,7 @@ Page({
           color: oldItem.color,
           size: oldItem.size,
           price: oldItem.price,
+          costPrice: oldItem.costPrice,
           stock: oldItem.stock,
           soldMain: Number(oldItem.soldMain || 0),
           lockedMain: Number(oldItem.lockedMain || 0),
@@ -1398,7 +1442,7 @@ Page({
     const selectedSizes = sizeOptions.filter(s => s.selected).map(s => s.name);
 
     this.setData({
-      batchPrice: '',
+      batchCost: '',
       batchStock: '',
       batchImage: '',
       batchSelectedColors: colors.map(c => ({ name: c, selected: false })),
@@ -1461,9 +1505,9 @@ Page({
 
   confirmBatch() {
     this._markDirty();
-    const { batchPrice, batchStock, batchImage, batchSelectedColors, batchSelectedSizes, skuList } = this.data;
+    const { batchCost, batchStock, batchImage, batchSelectedColors, batchSelectedSizes, skuList } = this.data;
 
-    if (!batchPrice && !batchStock && !batchImage) {
+    if (!batchCost && !batchStock && !batchImage) {
       return wx.showToast({ title: '请输入值', icon: 'none' });
     }
 
@@ -1484,7 +1528,7 @@ Page({
         const nextStock = batchStock || item.stock;
         return {
           ...item,
-          price: batchPrice || item.price,
+          costPrice: batchCost || item.costPrice,
           stock: nextStock,
           availableMain: batchStock ? this.getExpectedAvailableStock(item, nextStock) : item.availableMain,
           image: batchImage || item.image
@@ -1668,7 +1712,7 @@ Page({
     }
 
     // 计算价格范围
-    let prices = skuList.map(item => Number(item.price)).filter(p => !isNaN(p) && p > 0);
+    let prices = (isBundle ? this.data.bundleGroups.reduce((all, group) => all.concat(group.skuList || []), []) : skuList).filter(item => !item._toBeRemoved).map(item => Number(item.price)).filter(p => !isNaN(p) && p > 0);
     if (prices.length === 0) {
       return wx.showToast({ title: '请填写正确的 SKU 价格', icon: 'none' });
     }
@@ -1686,7 +1730,7 @@ Page({
 
       // 2. 上传所有 SKU 图片
       wx.showLoading({ title: '上传 SKU 图片...', mask: true });
-      const skuImageMap = await this.uploadSkuImages(skuList);
+      const skuImageMap = await this.uploadSkuImages(skuList.filter(sku => !sku._toBeRemoved));
 
       // 2.5. 上传视频（如果有）
       let uploadedVideoUrl = null;
@@ -1724,7 +1768,7 @@ Page({
       console.log('提交前 skuList:', JSON.stringify(skuList));
       console.log('editId:', editId);
       const skus = skuList.filter(sku => !sku._toBeRemoved).map((sku, index) => {
-        const stockStr = sku.stock ? String(sku.stock).trim() : '';
+        const stockStr = String(sku.stock == null ? '' : sku.stock).trim();
         const isUnlimited = stockStr === '';
         const stockNum = isUnlimited ? 0 : (Number(stockStr) || 0);
         if (!isUnlimited && stockNum > 999999999) {
@@ -1736,6 +1780,7 @@ Page({
           size: sku.size || '均码',
           barcode: '',
           retailPrice: Number(sku.price),
+          costPrice: finance.money(sku.costPrice || this.data.costPrice),
           stockMain: stockNum,
           isUnlimitedStock: isUnlimited,
           imageUrl: skuImageMap[index] || null,
@@ -1755,6 +1800,8 @@ Page({
       // 4. 构造商品请求数据
       const productData = {
         name: title,
+        costPrice: finance.money(this.data.costPrice),
+        pricingRuleId: String(this.data.pricingRuleId),
         coverUrl: coverUrl,
         bannerImages: bannerImages,
         stallIds: selectedStalls.map(s => s.id),
@@ -1780,14 +1827,26 @@ Page({
       // 套装模式：构建 bundleGroups 数据
       if (this.data.isBundleMode && this.data.bundleGroups.length > 0) {
         this.saveActiveGroupState();
-        var bundleGroupsData = this.data.bundleGroups.map(function(bg, gi) {
+        const uploadedGroups = [];
+        for (const group of this.data.bundleGroups) {
+          const rows = (group.skuList || []).filter(sku => !sku._toBeRemoved);
+          const images = await this.uploadSkuImages(rows);
+          uploadedGroups.push({ ...group, skuList: rows.map((sku, index) => ({ ...sku, image: images[index] || null })) });
+        }
+        var defaultCost = this.data.costPrice;
+        var bundleGroupsData = uploadedGroups.map(function(bg, gi) {
           var bgSkus = (bg.skuList || []).filter(function(s) { return !s._toBeRemoved; }).map(function(sku) {
-            var s = String(sku.stock || '').trim();
+            var s = String(sku.stock == null ? '' : sku.stock).trim();
+            if (s && (!/^\d+$/.test(s) || Number(s) > 999999999)) throw new Error('库存必须为0到999999999的整数');
             return {
               spec: sku.color || '默认',
               size: sku.size || '均码',
               barcode: '',
               retailPrice: Number(sku.price) || 0,
+              costPrice: finance.money(sku.costPrice || defaultCost),
+              id: editId ? sku.skuId : undefined,
+              bundleGroupId: editId ? bg.id : undefined,
+              imageUrl: sku.image || null,
               stockMain: s === '' ? 0 : (Number(s) || 0),
               isUnlimitedStock: s === '',
               sizeId: sku.sizeId || null
@@ -1796,7 +1855,8 @@ Page({
           return { name: bg.name || ('子项' + (gi + 1)), sortOrder: gi, skus: bgSkus };
         });
         productData.bundleGroups = bundleGroupsData;
-        productData.skus = [];  // 套装模式下顶层 skus 为空
+        productData.skus = editId ? bundleGroupsData.reduce(function(all, group) { return all.concat(group.skus); }, []) : [];
+        if (editId) productData.bundleGroups = undefined;
       }
 
       console.log('提交商品数据:', JSON.stringify(productData));
@@ -1971,7 +2031,7 @@ Page({
   // ====== 核心重构：一键填充 + 状态自动重置 ======
   applyQuickFillAll: function() {
     this._markDirty();
-    const { skuList, quickPrice, quickStock, quickImage } = this.data;
+    const { skuList, quickCost, quickStock, quickImage } = this.data;
 
     if (!skuList || skuList.length === 0) {
       wx.showToast({ title: '请先添加规格', icon: 'none' });
@@ -1979,7 +2039,7 @@ Page({
     }
 
     // 检查是否有任何输入，避免空填充
-    if (quickPrice === '' && quickStock === '' && quickImage === '') {
+    if (quickCost === '' && quickStock === '' && quickImage === '') {
       wx.showToast({ title: '请填写填充内容', icon: 'none' });
       return;
     }
@@ -1989,7 +2049,7 @@ Page({
       const nextStock = quickStock !== '' ? quickStock : sku.stock;
       return {
         ...sku,
-        price: quickPrice !== '' ? quickPrice : sku.price,
+        costPrice: quickCost !== '' ? quickCost : sku.costPrice,
         stock: nextStock,
         availableMain: quickStock !== '' ? this.getExpectedAvailableStock(sku, nextStock) : sku.availableMain,
         image: quickImage !== '' ? quickImage : sku.image
@@ -1999,7 +2059,7 @@ Page({
     // 🚀 关键修改：在 setData 中同步清空控制台输入源
     this.setData({
       skuList: newList,
-      quickPrice: '',    // 填充后自动清空价格
+      quickCost: '',    // 填充后自动清空价格
       quickStock: '',    // 填充后自动清空库存
       quickImage: ''     // 填充后自动清空图片
     }, () => {
@@ -2414,6 +2474,11 @@ Page({
     var data = this.data;
     return {
       title: data.title,
+      costPrice: data.costPrice,
+      pricingRuleId: data.pricingRuleId,
+      pricingRuleName: data.pricingRuleName,
+      pricingRuleVersion: data.pricingRuleVersion,
+      pricingRuleSegments: data.pricingRuleSegments,
       videoUrl: data.videoUrl || '',
       videoThumbPath: data.videoThumbPath || '',
       useVideoCover: data.useVideoCover || false,
@@ -2435,7 +2500,7 @@ Page({
       skuList: data.skuList.map(function(sku) {
         return {
           skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size,
-          price: sku.price, stock: sku.stock,
+          price: sku.price, costPrice: sku.costPrice, bundleGroupId: sku.bundleGroupId, stock: sku.stock,
           soldMain: Number(sku.soldMain || 0),
           lockedMain: Number(sku.lockedMain || 0),
           availableMain: Number(sku.availableMain || 0),
@@ -2449,7 +2514,8 @@ Page({
       activeGroupIndex: data.activeGroupIndex,
       bundleGroups: (data.bundleGroups || []).map(function(bg) {
         return {
-          name: bg.name,
+          id: bg.id,
+            name: bg.name,
           colors: bg.colors,
           sizeOptions: bg.sizeOptions,
           sizeCategoryId: bg.sizeCategoryId,
@@ -2457,7 +2523,7 @@ Page({
           skuList: (bg.skuList || []).map(function(sku) {
             return {
               skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size,
-              price: sku.price, stock: sku.stock,
+              price: sku.price, costPrice: sku.costPrice, bundleGroupId: sku.bundleGroupId, stock: sku.stock,
               soldMain: Number(sku.soldMain || 0),
               lockedMain: Number(sku.lockedMain || 0),
               availableMain: Number(sku.availableMain || 0),
@@ -2562,7 +2628,7 @@ Page({
       mediaList: mediaList,
       lookbookImgs: safeGet(draftData, 'lookbookImgs', []),
       detailImgs: safeGet(draftData, 'detailImgs', []),
-      selectedStalls: safeGet(draftData, 'selectedStalls', []),
+      selectedStalls: safeGet(draftData, 'selectedStalls', []).slice(0, 1),
       selectedTags: safeGet(draftData, 'selectedTags', []),
       currentSizeCategoryId: safeGet(draftData, 'currentSizeCategoryId', data.currentSizeCategoryId),
       currentSizeCategoryName: safeGet(draftData, 'currentSizeCategoryName', data.currentSizeCategoryName),
@@ -2668,4 +2734,6 @@ Page({
     if (urls.length === 0) return this.previewImageSafe('', []);
     this.previewImageSafe(urls[index], urls);
   },
-});
+};
+integrateProductPricing(pageDefinition);
+Page(pageDefinition);

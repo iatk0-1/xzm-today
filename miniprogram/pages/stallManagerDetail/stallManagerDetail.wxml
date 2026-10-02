@@ -1,0 +1,237 @@
+<view class="page">
+  <view class="card" wx:if="{{profile}}">
+    <view class="title">{{profile.nickname || userId}} <text class="badge">{{profile.active ? '激活' : '下线'}}</text>
+</view>
+    <view class="muted">ID {{userId}} · {{profile.phone || '未绑定手机'}}</view>
+  </view>
+  <scroll-view class="tabs" scroll-x>
+    <view class="tab {{tab === 'profile' ? 'active' : ''}}" data-tab="profile" bindtap="changeTab">档口与状态</view>
+    <view class="tab {{tab === 'products' ? 'active' : ''}}" data-tab="products" bindtap="changeTab">商品佣金</view>
+    <view class="tab {{tab === 'records' ? 'active' : ''}}" data-tab="records" bindtap="changeTab">收入与线下付款</view>
+    <view class="tab {{tab === 'history' ? 'active' : ''}}" data-tab="history" bindtap="changeTab">历史核对</view>
+    <view class="tab {{tab === 'settlements' ? 'active' : ''}}" data-tab="settlements" bindtap="changeTab">线下记录</view>
+    <view class="tab {{tab === 'withdrawals' ? 'active' : ''}}" data-tab="withdrawals" bindtap="changeTab">历史商家转账</view>
+    <view class="tab {{tab === 'eligibility' ? 'active' : ''}}" data-tab="eligibility" bindtap="changeTab">逐交易结算资格</view>
+    <view class="tab {{tab === 'sharing' ? 'active' : ''}}" data-tab="sharing" bindtap="changeTab">负责人提现分账记录</view>
+    <view class="tab {{tab === 'audit' ? 'active' : ''}}" data-tab="audit" bindtap="changeTab">财务审计</view>
+  </scroll-view>
+  <view class="error" wx:if="{{error}}">{{error}}</view>
+
+  <view class="card" wx:if="{{tab === 'profile'}}">
+    <view class="title">分配档口（可多选）</view>
+    <checkbox-group bindchange="assignmentChange">
+      <label class="choice" wx:for="{{stalls}}" wx:key="id">
+        <checkbox value="{{item.id}}" checked="{{item.selected}}" />{{item.name}}
+      </label>
+    </checkbox-group>
+    <textarea placeholder="档口分配或负责人上下线原因（必填）" value="{{reason}}" data-field="reason" bindinput="input" />
+    <button class="primary" disabled="{{busy}}" bindtap="saveAssignments">保存档口分配</button>
+    <button disabled="{{busy}}" bindtap="toggleActive">{{profile.active ? '负责人下线' : '重新激活负责人'}}</button>
+    <view class="muted">下线期间新订单不计佣；历史佣金继续完成结算，订单完成后由本人点击提现，按原微信交易分账。</view>
+    <view class="title">本人分账接收关系</view>
+    <view class="muted">{{receiver.registered ? '已登记' : '尚未登记'}} · {{receiver.relationType}} {{receiver.customRelation}}</view>
+    <view class="muted">{{receiver.reason}} · {{receiver.updatedAt}}</view>
+    <view class="muted">管理员核实负责人本人与商户的实际关系后登记。收款身份使用本人小程序登录身份，不能默认认定为员工。</view>
+    <picker range="{{receiverTypes}}" range-key="label" bindchange="receiverTypeChange"><view class="choice">{{receiverTypeLabel}}</view></picker>
+    <input wx:if="{{receiverRelationType === 'CUSTOM'}}" placeholder="自定义实际关系（最多10个字符）" value="{{customRelation}}" data-field="customRelation" bindinput="input" />
+    <textarea placeholder="关系核验依据（必填）" value="{{receiverReason}}" data-field="receiverReason" bindinput="input" />
+    <view class="row"><switch checked="{{receiverVerified}}" bindchange="receiverVerification" /><text>已核实本人实际关系</text></view>
+    <button class="primary" disabled="{{busy}}" bindtap="saveReceiver">核实并登记分账接收关系</button>
+  </view>
+
+  <view wx:if="{{tab === 'products'}}">
+    <view class="card">
+      <input placeholder="商品名称" value="{{keyword}}" data-field="keyword" bindinput="input" />
+      <input placeholder="档口ID（选填）" value="{{stallFilter}}" data-field="stallFilter" bindinput="input" />
+      <input placeholder="上下架筛选：on / off（选填）" value="{{filterStatus}}" data-field="filterStatus" bindinput="input" />
+      <input placeholder="佣金配置筛选：yes / no（选填）" value="{{commissionFilter}}" data-field="commissionFilter" bindinput="input" />
+      <view class="row">
+<button bindtap="search">筛选</button>
+<button disabled="{{busy}}" bindtap="selectFiltered">选择全部筛选结果</button>
+</view>
+      <view>已选 {{selectedProducts.length}} 件 · 结果 {{totalElements}} 件</view>
+      <input type="digit" placeholder="每件佣金（允许0，全部SKU统一）" value="{{unitCommission}}" data-field="unitCommission" bindinput="input" />
+      <button class="primary" disabled="{{busy}}" bindtap="setCommission">批量设置佣金</button>
+    </view>
+    <checkbox-group bindchange="productChange">
+      <label class="card choice" wx:for="{{rows}}" wx:key="productId">
+        <checkbox value="{{item.productId}}" checked="{{item.selected}}" />{{item.name}}
+        <view class="muted">{{item.stallName}} · {{item.status === 'on' ? '在售' : '下架'}} · 每件佣金 {{item.unitCommission === null ? '未设置' : '¥' + item.unitCommission}}</view>
+      </label>
+    </checkbox-group>
+  </view>
+
+  <view wx:if="{{tab === 'records' || tab === 'sharing' || tab === 'eligibility'}}" class="card">
+    <view class="title">收入账户</view>
+    <view class="grid">
+      <view>
+<view class="label">预计收入</view>
+<view class="metric">¥{{income.estimatedIncome || '0.00'}}</view>
+</view>
+      <view>
+<view class="label">待完成佣金</view>
+<view class="metric">¥{{income.pendingIncome || '0.00'}}</view>
+</view>
+      <view>
+<view class="label">累计完成佣金</view>
+<view class="metric">¥{{income.completedIncome || '0.00'}}</view>
+</view>
+      <view>
+<view class="label">历史转账 / 线下已付</view>
+<view>¥{{income.legacyTransferSettled || '0.00'}} / ¥{{income.offlineSettled || '0.00'}}</view>
+</view>
+      <view>
+<view class="label">历史转账占用</view>
+<view>¥{{income.legacyTransferHeld || '0.00'}}</view>
+</view>
+      <view>
+<view class="label">售后暂缓</view>
+<view>¥{{income.afterSaleFrozen || '0.00'}}</view>
+</view>
+      <view>
+<view class="label">可提现</view>
+<view class="metric">¥{{income.manualWithdrawalAvailable || '0.00'}}</view>
+</view>
+      <view>
+<view class="label">线下可结算余额</view>
+<view class="metric">¥{{income.settleableIncome || '0.00'}}</view>
+</view>
+    </view>
+    <view class="muted" wx:if="{{income.debtAmount > 0}}">待抵扣 ¥{{income.debtAmount}}，后续收入先抵扣。</view>
+    <view class="error" wx:if="{{!income.profitSharingEnabled}}">分账提现功能未开启。未结算佣金继续保留，已有分账单可查询。</view>
+    <view>分账已到账 ¥{{income.profitSharingSettled || '0.00'}} · 分账占用 ¥{{income.profitSharingHeld || '0.00'}}</view>
+    <view>待线下结算 / 暂不可提现 ¥{{income.profitSharingUnavailable || '0.00'}}</view>
+    <view class="muted">微信分账按原交易资格、剩余额度和期限执行；历史非分账、过期或模拟支付佣金可人工核对并登记线下付款。</view>
+    <view class="muted" wx:for="{{income.profitSharingReasons}}" wx:key="orderId">订单 {{item.orderId}}：{{item.reason}}</view>
+  </view>
+
+  <view wx:if="{{tab === 'records'}}">
+    <view class="card">
+      <input placeholder="状态筛选：COMPLETED / PENDING（空为全部）" value="{{filterStatus}}" data-field="filterStatus" bindinput="input" />
+      <button bindtap="search">刷新明细</button>
+      <view class="muted">在已完成明细填写本次付款金额，系统统一登记线下实际付款。</view>
+    </view>
+    <view class="card" wx:for="{{rows}}" wx:key="id">
+      <view>{{item.productName}} · {{item.qty}} 件</view>
+      <view class="muted">订单 {{item.orderId}} · {{item.status === 'SETTLED' ? '已结算' : (item.status === 'COMPLETED' ? '已完成' : '待完成')}} · 每件 ¥{{item.unitCommission}}</view>
+      <view>有效佣金 ¥{{item.commissionAmount}} · 现金已付 ¥{{item.settledAmount}} · 退款欠款抵扣 ¥{{item.debtOffsetAmount || '0.00'}}
+    <view class="muted" wx:if="{{item.debtRecoveredAmount > 0}}">本条旧佣金欠款已追回 ¥{{item.debtRecoveredAmount}}（抵扣后续佣金，不是新付款）</view></view>
+      <view class="muted">本条可结算 ¥{{item.availableSettlement || '0.00'}} · 售后暂缓 ¥{{item.afterSaleFrozen || '0.00'}}</view>
+      <input wx:if="{{item.status === 'COMPLETED' && item.availableSettlement > 0}}" type="digit" placeholder="此明细本次线下付款金额" value="{{allocations[item.id]}}" data-id="{{item.id}}" bindinput="allocationInput" />
+    </view>
+    <view class="card">
+      <view class="title">登记线下付款 · ¥{{settlementTotal}}</view>
+      <input placeholder="实际付款时间，如 2026-10-02T09:00:00+08:00" value="{{paidAt}}" data-field="paidAt" bindinput="input" />
+      <input placeholder="付款方式，如银行转账" value="{{paymentMethod}}" data-field="paymentMethod" bindinput="input" />
+      <textarea placeholder="付款凭证号或凭证说明（必填）" value="{{voucher}}" data-field="voucher" bindinput="input" />
+      <textarea placeholder="结算说明（必填）" value="{{settlementReason}}" data-field="settlementReason" bindinput="input" />
+      <button class="primary" disabled="{{busy}}" bindtap="settleOffline">确认已经付款并录入</button>
+    </view>
+  </view>
+
+  <view wx:if="{{tab === 'history'}}">
+    <view class="card muted">历史应付确认与已付款登记分开。缺创建人须明确确认；缺任职历史须补时间及证据。套装须核对完整子件ID和实际套数，不能按子件数量猜测。</view>
+    <view class="card" wx:for="{{rows}}" wx:key="orderItemId">
+      <view>{{item.bundleProductName || item.productName}} {{item.bundleGroupName}} · {{item.qty}} 件</view>
+      <view class="muted">订单 {{item.orderId}} · 明细 {{item.orderItemId}}</view>
+      <view class="muted">下单 {{item.createdAt}} · {{item.creatorUserId ? '创建人 ' + item.creatorUserId : '创建人缺失'}}</view>
+      <view>{{item.status === 'UNCONFIRMED' ? '待核对' : (item.status === 'EXCLUDED' ? '已确认不计佣' : '已确认计佣')}}</view>
+      <button wx:if="{{item.status === 'UNCONFIRMED'}}" data-index="{{index}}" bindtap="openHistory">核对并确认</button>
+    </view>
+  </view>
+
+  <view wx:if="{{tab === 'settlements'}}">
+    <view class="card">
+<textarea placeholder="冲正原因（冲正前填写）" value="{{settlementReason}}" data-field="settlementReason" bindinput="input" />
+</view>
+    <view class="card" wx:for="{{rows}}" wx:key="id">
+      <view>¥{{item.amount}} · {{item.paymentMethod || item.payment_method}}</view>
+      <view class="muted">{{item.paidAt || item.paid_at}} · {{item.voucher}} · {{item.reason}}</view>
+      <view class="muted">{{item.reversed ? '已冲正' : '有效结算记录'}}</view>
+      <button wx:if="{{!item.reversed}}" disabled="{{busy}}" data-id="{{item.id}}" bindtap="reverseSettlement">冲正错误登记</button>
+    </view>
+  </view>
+
+  <view wx:if="{{tab === 'eligibility'}}" class="card" wx:for="{{rows}}" wx:key="orderId">
+    <view>订单 {{item.orderId}} · {{item.eligible ? '具备本人提现资格' : '当前不可提现'}}</view>
+    <view class="muted">微信支付交易号 {{item.transactionId || '无真实微信支付交易'}}</view>
+    <view>本单佣金 ¥{{item.commissionAmount}} · 可分账 ¥{{item.availableAmount}}</view>
+    <view class="muted">分账截止 {{item.deadline || '不适用'}}</view>
+    <view class="error" wx:if="{{item.blockedReason}}">{{item.blockedReason}}</view>
+  </view>
+  <view wx:if="{{tab === 'sharing'}}" class="card" wx:for="{{rows}}" wx:key="id">
+    <view>¥{{item.amount}} · {{item.statusLabel}}</view>
+    <view class="muted">订单 {{item.orderId}} · 微信支付交易 {{item.transactionId}}</view>
+    <view class="muted">分账单 {{item.outOrderNo}} · 接收结果 {{item.receiverResult || '待查询'}}</view>
+    <view class="muted">{{item.updatedAt || item.createdAt}} · {{item.reason}}</view>
+    <button disabled="{{busy}}" data-id="{{item.id}}" bindtap="querySharing">查询原分账单</button>
+    <button wx:if="{{item.status !== 'SUCCESS' && item.status !== 'CLOSED'}}" disabled="{{busy}}" data-id="{{item.id}}" data-channel="PROFIT_SHARING" bindtap="openReconciliation">原交易分账账单人工核验</button>
+  </view>
+
+  <view wx:if="{{tab === 'withdrawals'}}">
+    <view class="card muted">异常原单先核对微信商户账单。只有确定已付款或确定未付款才能人工关闭，不能因超时或查不到直接释放。</view>
+    <view class="card" wx:for="{{rows}}" wx:key="id">
+      <view>¥{{item.amount}} · {{item.statusLabel}}</view>
+      <view class="muted">{{item.createdAt}} · {{item.reason}}</view>
+      <button wx:if="{{item.status !== 'SUCCESS' && item.status !== 'FAIL' && item.status !== 'CANCELLED'}}" data-id="{{item.id}}" bindtap="openReconciliation">商户账单人工核验</button>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{tab === 'audit'}}" wx:for="{{rows}}" wx:key="id">
+    <view>{{item.action}} · ¥{{item.amount}}</view>
+    <view class="muted">{{item.reason}} · {{item.createdAt || item.created_at}} · 操作人 {{item.operatorId || item.createdBy || item.created_by}}</view>
+  </view>
+  <view class="muted" wx:if="{{tab !== 'profile'}}">{{rows.length ? (hasNext ? '上拉加载更多' : '已加载全部') : '暂无记录'}}</view>
+
+  <view class="overlay" wx:if="{{historyForm}}">
+    <scroll-view class="modal" scroll-y>
+      <view class="title">历史记录核对</view>
+      <view class="error" wx:if="{{error}}">{{error}}</view>
+      <view>{{historyForm.productName}} · 下单 {{historyForm.createdAt}}</view>
+      <view class="row">确认计佣<switch checked="{{historyForm.eligible}}" bindchange="historyEligible" />
+</view>
+      <view wx:if="{{historyForm.eligible}}">
+        <view class="row">确认由本负责人创建<switch checked="{{historyForm.creatorConfirmed}}" bindchange="creatorConfirmation" />
+</view>
+        <input type="digit" placeholder="历史每件佣金（允许0）" value="{{historyForm.unitCommission}}" data-field="unitCommission" bindinput="historyInput" />
+        <view class="muted">填写经核实的任职区间，时间格式带时区；结束留空表示仍有效。</view>
+        <input placeholder="档口分配开始，如 2026-09-01T00:00:00+08:00" value="{{historyForm.assignmentStartedAt}}" data-field="assignmentStartedAt" bindinput="historyInput" />
+        <input placeholder="档口分配结束（可留空）" value="{{historyForm.assignmentEndedAt}}" data-field="assignmentEndedAt" bindinput="historyInput" />
+        <input placeholder="负责人激活开始，如 2026-09-01T00:00:00+08:00" value="{{historyForm.activeStartedAt}}" data-field="activeStartedAt" bindinput="historyInput" />
+        <input placeholder="负责人激活结束（可留空）" value="{{historyForm.activeEndedAt}}" data-field="activeEndedAt" bindinput="historyInput" />
+      </view>
+      <view wx:if="{{historyForm.isBundle || historyForm.bundleProductName}}">
+        <input type="number" placeholder="经核对的实际售出套数（正整数）" value="{{historyForm.saleUnits}}" data-field="saleUnits" bindinput="historyInput" />
+        <textarea placeholder="同订单同套装完整子件明细ID，逗号分隔" value="{{historyForm.memberIds}}" data-field="memberIds" bindinput="historyInput" />
+      </view>
+      <textarea placeholder="创建人、任职、历史佣金依据；不计佣时填写原因" value="{{historyForm.reason}}" data-field="reason" bindinput="historyInput" />
+      <button class="primary" disabled="{{busy}}" bindtap="confirmHistory">确认核对结果</button>
+      <button bindtap="closeHistory">关闭</button>
+    </scroll-view>
+  </view>
+
+  <view class="overlay" wx:if="{{reconciliation}}">
+    <scroll-view class="modal" scroll-y>
+      <view class="title">{{reconciliationKind === 'PROFIT_SHARING' ? '原交易分账接收结果核验' : '历史商家转账原单账单核验'}}</view>
+      <view class="error" wx:if="{{error}}">{{error}}</view>
+      <view class="muted">本地商户单号 {{reconciliation.outOrderNo || reconciliation.merchantBillNo}}</view>
+      <view class="muted">本地收款OpenID {{reconciliation.openId}}</view>
+      <view>金额 ¥{{reconciliation.amount}} · {{reconciliation.status}}</view>
+      <radio-group bindchange="reconciliationState">
+        <label class="choice">
+<radio value="SUCCESS" checked="{{reconciliationStatus === 'SUCCESS'}}" />账单确认已付款</label>
+        <label class="choice">
+<radio value="{{reconciliationKind === 'PROFIT_SHARING' ? 'CLOSED' : 'CANCELLED'}}" checked="{{reconciliationStatus === 'CANCELLED' || reconciliationStatus === 'CLOSED'}}" />账单确认未付款</label>
+      </radio-group>
+      <view class="muted" wx:if="{{reconciliationKind === 'PROFIT_SHARING'}}">原支付交易 {{reconciliation.transactionId}}；须核验指定接收人结果。超时、404、顶层FINISHED不证明该接收人未收款。</view>
+      <input wx:if="{{reconciliationKind === 'PROFIT_SHARING'}}" placeholder="根据账单填写原支付交易号" value="{{verifiedTransactionId}}" data-field="verifiedTransactionId" bindinput="input" />
+      <input placeholder="根据账单填写商户单号" value="{{verifiedMerchantBillNo}}" data-field="verifiedMerchantBillNo" bindinput="input" />
+      <input placeholder="根据账单填写收款OpenID" value="{{verifiedOpenId}}" data-field="verifiedOpenId" bindinput="input" />
+      <input type="digit" placeholder="根据账单填写金额" value="{{verifiedAmount}}" data-field="verifiedAmount" bindinput="input" />
+      <textarea placeholder="微信商户账单凭证及核验依据（必填）" value="{{proof}}" data-field="proof" bindinput="input" />
+      <textarea placeholder="人工核验原因（必填）" value="{{reconciliationReason}}" data-field="reconciliationReason" bindinput="input" />
+      <button class="primary" disabled="{{busy}}" bindtap="reconcileWithdrawal">登记核验终态</button>
+      <button bindtap="closeReconciliation">关闭</button>
+    </scroll-view>
+  </view>
+</view>

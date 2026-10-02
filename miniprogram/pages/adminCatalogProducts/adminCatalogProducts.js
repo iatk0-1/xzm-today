@@ -22,7 +22,6 @@ Page(autoSearch.wrap({
     selectedIds: [],
     selectedCount: 0,
     allLoadedSelected: false,
-    managerVisible: false,
     managers: []
   },
 
@@ -42,7 +41,6 @@ Page(autoSearch.wrap({
       this.loadProducts(true);
       if (this.data.type === 'stall') {
         this.loadManagers();
-        if (options.assign === '1') this.setData({ managerVisible: true });
       }
     } catch (err) {
       wx.showToast({ title: '登录状态恢复失败', icon: 'none' });
@@ -65,19 +63,11 @@ Page(autoSearch.wrap({
     }
   },
 
-  openManagerPicker() {
-    this.setData({ managerVisible: true });
-  },
-
-  closeManagerPicker() {
-    this.setData({ managerVisible: false });
-  },
-
-  onManagersChanged(e) {
-    if (String(e.detail.stallId) === String(this.data.groupId)) {
-      this._managerRevision = (this._managerRevision || 0) + 1;
-      this.setData({ managers: e.detail.managers });
-    }
+  openPricingRule() {
+    wx.navigateTo({
+      url: '/pages/pricingRules/pricingRules?stallId=' + encodeURIComponent(String(this.data.groupId))
+        + '&stallName=' + encodeURIComponent(this.data.groupName)
+    });
   },
 
   noop() {},
@@ -207,6 +197,7 @@ Page(autoSearch.wrap({
   },
 
   switchScope(e) {
+    if (this.data.type === 'stall') return;
     const scope = e.currentTarget.dataset.scope;
     if (scope === this.data.scope) return;
     this.setData({ scope }, () => this.loadProducts(true));
@@ -231,6 +222,10 @@ Page(autoSearch.wrap({
   },
 
   toggleProduct(e) {
+    if (this.data.type === 'stall') {
+      wx.navigateTo({ url: '/pages/admin/admin?editId=' + encodeURIComponent(String(e.currentTarget.dataset.id)) });
+      return;
+    }
     const id = this.normalizeId(e.currentTarget.dataset.id);
     const selectedIds = this.data.selectedIds.slice();
     const index = selectedIds.indexOf(id);
@@ -257,6 +252,10 @@ Page(autoSearch.wrap({
   },
 
   submitBatch() {
+    if (this.data.type === 'stall') {
+      wx.showToast({ title: '请进入商品编辑页修改档口和计价规则', icon: 'none' });
+      return;
+    }
     if (this.data.selectedCount === 0 || this.data.operating) {
       wx.showToast({ title: '请先选择商品', icon: 'none' });
       return;

@@ -45,9 +45,7 @@ Page(pageSync.wrap({
     listHeight: ROW_HEIGHT,
     snap: true,
     scrollTop: 0,
-    managerVisible: false,
-    managerStallId: '',
-    managerStallName: ''
+    pricingStallId: ''
   },
 
   async onLoad() {
@@ -602,22 +600,16 @@ Page(pageSync.wrap({
     });
   },
 
-  openManagerAssignment(e) {
+  openPricingRule(e) {
     const item = this.data.groups[Number(e.currentTarget.dataset.index)];
     if (!item || this.data.currentType !== 'stall') return;
     if (this.data.dragIndex >= 0 || this.rowMoved) return;
     this.closeAllSwipe();
-    this.setData({ managerVisible: true, managerStallId: String(item.id), managerStallName: item.name });
-  },
-
-  closeManagerPicker() {
-    this.setData({ managerVisible: false });
-  },
-
-  onManagersChanged(e) {
-    const groups = this.data.groups.map(group => String(group.id) === String(e.detail.stallId)
-      ? { ...group, managers: e.detail.managers } : group);
-    this.setData({ groups });
+    this._openedProducts = true;
+    wx.navigateTo({
+      url: '/pages/pricingRules/pricingRules?stallId=' + encodeURIComponent(String(item.id))
+        + '&stallName=' + encodeURIComponent(item.name)
+    });
   }
 }, async function(changes) {
   await pageSync.updateList(this, changes, {

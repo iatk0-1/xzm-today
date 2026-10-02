@@ -1,0 +1,24 @@
+<view class="page">
+<view class="card">
+<view class="title">档口负责人</view>
+<input value="{{keyword}}" bindinput="input" placeholder="昵称、手机号、用户 ID" bindconfirm="search"/>
+<view class="row">
+<button bindtap="search">搜索负责人</button>
+<button class="primary" bindtap="searchUsers">搜索用户并新增</button>
+</view>
+</view>
+<view class="error" wx:if="{{error}}">{{error}}</view>
+<view class="card" wx:if="{{adding}}">
+<view class="title">选择已有小程序用户</view>
+<view wx:for="{{users}}" wx:key="userId" class="choice" data-id="{{item.userId || item.id}}" bindtap="add">{{item.nickname || '未设置昵称'}} · {{item.phone || '未绑定手机'}}<view class="muted">{{item.userId || item.id}}</view>
+</view>
+<view wx:if="{{!users.length}}" class="muted">没有匹配用户</view>
+</view>
+<view class="card" wx:for="{{managers}}" wx:key="userId" data-id="{{item.userId}}" bindtap="open">
+<view class="title">{{item.nickname || item.userId}} <text class="badge">{{item.active ? '激活' : '下线'}}</text>
+</view>
+<view>{{item.phone}}</view>
+<view class="muted">档口 {{item.stallNames}} · 商品 {{item.productCount || 0}} 件</view>
+</view>
+<view class="muted">{{loading ? '加载中…' : (hasNext ? '上拉加载更多' : '已加载全部')}}</view>
+</view>

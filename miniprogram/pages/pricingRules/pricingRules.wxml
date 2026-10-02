@@ -1,0 +1,52 @@
+<view class="page">
+<view class="error" wx:if="{{error}}">{{error}}</view>
+<view wx:if="{{!editing}}">
+<view class="card">
+<view class="title">{{stallId ? '为档口分配规则：' + stallName : '计价规则管理'}}</view>
+<button class="primary" bindtap="newRule">新增计价规则</button>
+<button wx:if="{{stallId}}" bindtap="assign">解除档口规则</button>
+</view>
+<view class="card" wx:for="{{rules}}" wx:key="id">
+<view class="title">{{item.name}} · v{{item.currentVersion}}</view>
+<view class="muted">{{item.enabled ? '启用' : '停用'}}</view>
+<button bindtap="edit" data-index="{{index}}">编辑并创建新版本</button>
+<button wx:if="{{stallId && item.enabled}}" class="primary" bindtap="assign" data-id="{{item.id}}">分配给当前档口</button>
+</view>
+</view>
+<view wx:else>
+<view class="card">
+<input placeholder="规则名称" value="{{name}}" data-field="name" bindinput="input"/>
+<view class="row">启用<switch checked="{{enabled}}" bindchange="enabled"/>
+</view>
+<view class="muted">覆盖所有大于零的成本。点击右边界切换包含关系，相邻区间自动互补。</view>
+</view>
+<view class="card" wx:for="{{segments}}" wx:key="index">
+<view class="row">
+<text>{{item.lower}}</text>
+<text class="tab" data-index="{{index}}" data-side="left" bindtap="toggle">{{item.lowerInclusive ? '≤' : '<'}}</text>
+<text>x</text>
+<text class="tab" wx:if="{{item.upper !== null}}" bindtap="toggle" data-index="{{index}}">{{item.upperInclusive ? '≤' : '<'}} {{item.upper}} ⇄</text>
+<text wx:else>无上限</text>
+</view>
+<view class="expression" bindtap="selectSegment" data-index="{{index}}">{{item.formula || '点击选中后使用计算器'}} {{activeIndex === index ? '◀' : ''}}</view>
+<button wx:if="{{item.upper !== null}}" bindtap="updateBoundary" data-index="{{index}}">用下方分界点更新此边界</button>
+<button wx:if="{{index > 0}}" bindtap="merge" data-index="{{index}}">合并至上一段</button>
+</view>
+<view class="card">
+<input type="digit" placeholder="区间分界点（大于零）" value="{{boundary}}" bindinput="boundaryInput"/>
+<button bindtap="addSegment">在末段新增分界点</button>
+<view class="grid">
+<view class="key" wx:for="{{keys}}" wx:key="*this" data-key="{{item}}" bindtap="key">{{item}}</view>
+</view>
+<view class="row">
+<button bindtap="backspace">退格</button>
+<button bindtap="clear">清空公式</button>
+</view>
+<input type="digit" placeholder="试算成本 x" value="{{trialCost}}" data-field="trialCost" bindinput="input"/>
+<button bindtap="preview">后端试算</button>
+<view class="amount" wx:if="{{trialPrice}}">售价 ¥{{trialPrice}}</view>
+<button class="primary" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存规则版本</button>
+<button bindtap="close">返回列表</button>
+</view>
+</view>
+</view>

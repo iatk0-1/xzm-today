@@ -36,28 +36,23 @@ function open(config, picker, stallId) {
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const event = id => ({ currentTarget: { dataset: { id } } });
 
-test('列表分配直接打开本页弹窗，保存后原位更新负责人完整资料', async () => {
-  let navigations = 0;
+test('档口列表保留负责人资料，分配操作迁出，计价入口正确关联档口', async () => {
+  const navigations = [];
   const user = { userId: 8, stallId: 1, nickname: '负责人', phone: '13800000000', avatarUrl: 'https://example.com/avatar.jpg' };
   const config = loadConfig('pages/adminCatalogManage/adminCatalogManage.js', {
     get: async url => url === '/stall-managers/assignments' ? [user] : [{ id: 1, name: '一档口' }]
-  }, { navigateTo() { navigations += 1; } });
+  }, { navigateTo(options) { navigations.push(options.url); } });
   const page = createInstance(config);
   await page.loadGroups();
   assert.equal(page.data.groups[0].managers[0].avatarUrl, user.avatarUrl);
   assert.equal(page.data.groups[0].managers[0].id, 8);
-  page.openManagerAssignment({ currentTarget: { dataset: { index: 0 } } });
-  assert.equal(navigations, 0);
-  assert.equal(page._openedProducts, undefined);
-  assert.equal(page.data.managerVisible, true);
-  assert.equal(page.data.managerStallId, '1');
-  const managers = [{ id: 9, nickname: '新负责人', phone: '13900000000', avatarUrl: 'new.jpg' }];
-  page.onManagersChanged({ detail: { stallId: '1', managers } });
-  assert.equal(page.data.groups[0].managers, managers);
+  assert.equal(page.openManagerAssignment, undefined);
+  page.openPricingRule({ currentTarget: { dataset: { index: 0 } } });
+  assert.equal(navigations[0], '/pages/pricingRules/pricingRules?stallId=1&stallName=' + encodeURIComponent('一档口'));
+  assert.equal(page._openedProducts, true);
   assert.equal(page.data.groups[0].y, 0);
-  page.closeManagerPicker();
   page.openProducts({ currentTarget: { dataset: { index: 0 } } });
-  assert.equal(navigations, 1);
+  assert.equal(navigations.length, 2);
 });
 
 test('添加和移除保留其他负责人，已分配用户不能重复添加', async () => {
@@ -166,17 +161,20 @@ test('详情页商品保留负责人头像、昵称、手机号', async () => {
   assert.equal(page.data.products[0].managerOwner, owner);
 });
 
-test('详情页旧的负责人加载请求不会盖掉刚保存的分配', async () => {
-  let resolveLoad;
+test('档口商品详情不能批量挪档口，点击商品进入受计价规则约束的编辑页', async () => {
+  const navigations = [];
+  const writes = [];
   const config = loadConfig('pages/adminCatalogProducts/adminCatalogProducts.js', {
-    get: () => new Promise(resolve => { resolveLoad = resolve; })
-  });
+    get: async () => [], patch: async (...args) => writes.push(args)
+  }, { navigateTo(options) { navigations.push(options.url); } });
   const page = createInstance(config);
   page.data.groupId = '11';
-  const loading = page.loadManagers();
-  const managers = [{ id: 2, nickname: '新负责人', phone: '13900000000', avatarUrl: 'new.jpg' }];
-  page.onManagersChanged({ detail: { stallId: '11', managers } });
-  resolveLoad([{ id: 1, nickname: '原负责人' }]);
-  await loading;
-  assert.equal(page.data.managers, managers);
+  page.data.selectedCount = 1;
+  page.data.selectedIds = ['999999999999999999'];
+  page.submitBatch();
+  assert.equal(writes.length, 0);
+  page.toggleProduct(event('999999999999999999'));
+  assert.equal(navigations[0], '/pages/admin/admin?editId=999999999999999999');
+  page.switchScope({ currentTarget: { dataset: { scope: 'excluded' } } });
+  assert.equal(page.data.scope, 'included');
 });

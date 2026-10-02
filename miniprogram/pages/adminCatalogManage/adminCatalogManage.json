@@ -3,7 +3,6 @@
   "navigationBarBackgroundColor": "#ffffff",
   "navigationBarTextStyle": "black",
   "usingComponents": {
-    "manager-profile": "../../components/managerProfile/index",
-    "stall-manager-picker": "../../components/stallManagerPicker/index"
+    "manager-profile": "../../components/managerProfile/index"
   }
 }

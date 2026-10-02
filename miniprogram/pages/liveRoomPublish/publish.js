@@ -4,6 +4,8 @@ const auth = require('../../utils/auth');
 const config = require('../../utils/config');
 const { compressImage, compressVideo } = require('../../utils/media');
 const draft = require('../../utils/draft');
+const finance = require('../../utils/managerFinance');
+const { integrateProductPricing } = require('../../utils/productPricing');
 
 // 统一把请求异常转成能看懂的文案，避免 TypeError 被 JSON.stringify 成 "{}"
 function formatRequestError(err) {
@@ -27,7 +29,7 @@ const COLUMNS = 3;
 const MAX_PRODUCT_IMAGES = 99;
 const MAX_MEDIA_PICK_COUNT = 20;
 
-Page({
+const pageDefinition = {
   data: {
     sessionId: null,
     productId: null,   // 编辑模式：已有商品 ID
@@ -67,10 +69,10 @@ Page({
     colors: [],
     colorInput: '',
     skuList: [],
-    batchPrice: '',
+    batchCost: '',
     batchStock: '',
     batchImage: '',
-    quickPrice: '',
+    quickCost: '',
     quickStock: '',
     quickImage: '',
 
@@ -86,6 +88,8 @@ Page({
 
   async onLoad(options) {
     await auth.ensureAuthenticated({ silent: true });
+    this.setData({ isStallManager: auth.isStallManager() && !auth.isAdmin() });
+    await Promise.all([this.loadRecentStallsAndTags(), this.loadSizeCategories()]);
     if (options.sessionId) {
       this.setData({ sessionId: options.sessionId });
     } else {
@@ -95,7 +99,7 @@ Page({
 
     if (options.productId) {
       this.setData({ productId: options.productId, editMode: true });
-      this.loadProductForEdit(options.productId);
+      await this.loadProductForEdit(options.productId);
     } else {
       // 创建模式：检测是否有未完成的草稿
       this.checkDraft();
@@ -122,7 +126,7 @@ Page({
   loadProductForEdit: async function(productId) {
     wx.showLoading({ title: '加载商品...' });
     try {
-      const res = await api.get(`/live-products/${productId}`);
+      const res = await api.get(`/products/${productId}?manage=true`);
       const product = res.product || res;
       const skus = res.skus || [];
 
@@ -160,7 +164,8 @@ Page({
         color: sku.spec || sku.color || '图片色',
         size: sku.size || '均码',
         price: String(sku.retailPrice || ''),
-        stock: sku.unlimitedStock ? '' : String(sku.stockMain || ''),
+        costPrice: sku.costPrice == null ? '' : String(sku.costPrice),
+        stock: sku.unlimitedStock ? '' : String(sku.stockMain == null ? '' : sku.stockMain),
         image: sku.imageUrl || ''
       }));
 
@@ -181,7 +186,8 @@ Page({
 
       // 如果后端没返回详情，从 ID 推测（用最近使用的记录做默认）
       if (selectedStalls.length === 0 && stallIds.length > 0) {
-        selectedStalls = stallIds.map(id => this.data.recentStalls.find(s => s.id === id)).filter(Boolean);
+        const stalls = await api.get(this.data.isStallManager ? '/stall-managers/stalls/mine' : '/stalls/all');
+        selectedStalls = (stalls || []).filter(stall => String(stall.id) === String(stallIds[0]));
       }
       if (selectedTags.length === 0 && tagIds.length > 0) {
         selectedTags = tagIds.map(id => this.data.recentTags.find(t => t.id === id)).filter(Boolean);
@@ -193,10 +199,32 @@ Page({
         colors: finalColors,
         colorInput: '',
         skuList: skuList,
-        selectedStalls: selectedStalls,
+        selectedStalls: selectedStalls.slice(0, 1),
+        costPrice: res.costPrice == null ? '' : String(res.costPrice),
+        pricingRuleId: res.pricingRuleId == null ? '' : String(res.pricingRuleId),
+        pricingRuleName: res.pricingRuleName || '',
+        pricingRuleVersion: res.pricingRuleVersion || '',
+        pricingRuleSegments: finance.segmentsWithLabels(res.pricingRuleSegments || []),
         selectedTags: selectedTags,
       });
 
+      if (res.bundleGroups && res.bundleGroups.length) {
+        const groups = res.bundleGroups.map(group => {
+          const rows = (group.skus || []).map(sku => ({
+            skuId: sku.id || null, sizeId: sku.sizeId || null,
+            color: sku.spec || sku.color || '图片色', size: sku.size || '均码',
+            costPrice: sku.costPrice == null ? '' : String(sku.costPrice),
+            price: String(sku.retailPrice || ''),
+            stock: sku.unlimitedStock ? '' : String(sku.stockMain == null ? '' : sku.stockMain),
+            image: sku.imageUrl || ''
+          }));
+          return { name: group.name, skuList: rows,
+            colors: [...new Set(rows.map(row => row.color))],
+            sizeOptions: this.data.sizeOptions.map(size => ({ ...size, selected: rows.some(row => row.size === size.name) })) };
+        });
+        this.setData({ isBundleMode: true, bundleGroups: groups, activeGroupIndex: 0 });
+        this.loadGroupState(0);
+      }
       this.refreshGrid(mediaList);
       wx.hideLoading();
       this.checkDraft();
@@ -409,7 +437,7 @@ Page({
     const exists = this.data.selectedStalls.find(s => s.id === item.id);
     if (!exists) {
       this.setData({
-        selectedStalls: [...this.data.selectedStalls, item],
+        selectedStalls: [item],
         showStallSearch: false,
         showStallCreate: false,
         stallSearchKeyword: '',
@@ -428,7 +456,7 @@ Page({
     const exists = this.data.selectedStalls.find(s => s.id === item.id);
     if (!exists) {
       this.setData({
-        selectedStalls: [...this.data.selectedStalls, item]
+        selectedStalls: [item]
       });
     }
   },
@@ -491,6 +519,7 @@ Page({
   },
 
   createStall: async function() {
+    if (this.data.isStallManager) return;
     const name = this.data.stallSearchKeyword.trim();
     if (!name) return;
 
@@ -502,7 +531,7 @@ Page({
 
       const newItem = { id: res.stall.id, name: res.stall.name };
       this.setData({
-        selectedStalls: [...this.data.selectedStalls, newItem],
+        selectedStalls: [newItem],
         showStallSearch: false,
         showStallCreate: false,
         stallSearchKeyword: '',
@@ -741,6 +770,7 @@ Page({
           color: c,
           size: s,
           price: existItem ? existItem.price : '',
+          costPrice: existItem ? existItem.costPrice : this.data.costPrice,
           stock: existItem ? existItem.stock : '',
           image: existItem ? (existItem.image || '') : ''
         });
@@ -756,7 +786,7 @@ Page({
     const selectedSizes = sizeOptions.filter(s => s.selected).map(s => s.name);
 
     this.setData({
-      batchPrice: '',
+      batchCost: '',
       batchStock: '',
       batchImage: '',
       batchSelectedColors: colors.map(c => ({ name: c, selected: false })),
@@ -800,9 +830,9 @@ Page({
   },
 
   confirmBatch() {
-    const { batchPrice, batchStock, batchImage, batchSelectedColors, batchSelectedSizes, skuList } = this.data;
+    const { batchCost, batchStock, batchImage, batchSelectedColors, batchSelectedSizes, skuList } = this.data;
 
-    if (!batchPrice && !batchStock && !batchImage) {
+    if (!batchCost && !batchStock && !batchImage) {
       return wx.showToast({ title: '请输入值', icon: 'none' });
     }
 
@@ -820,7 +850,7 @@ Page({
       if (colorMatch && sizeMatch) {
         return {
           ...item,
-          price: batchPrice || item.price,
+          costPrice: batchCost || item.costPrice,
           stock: batchStock || item.stock,
           image: batchImage || item.image
         };
@@ -901,15 +931,15 @@ Page({
   },
 
   applyQuickFillAll() {
-    const { quickPrice, quickStock, quickImage, skuList } = this.data;
+    const { quickCost, quickStock, quickImage, skuList } = this.data;
 
-    if (!quickPrice && !quickStock && !quickImage) {
-      return wx.showToast({ title: '请输入价格、库存或选择图片', icon: 'none' });
+    if (!quickCost && !quickStock && !quickImage) {
+      return wx.showToast({ title: '请输入成本、库存或选择图片', icon: 'none' });
     }
 
     const newList = skuList.map(item => ({
       ...item,
-      price: quickPrice || item.price,
+      costPrice: quickCost || item.costPrice,
       stock: quickStock !== '' ? quickStock : item.stock,
       image: quickImage || item.image
     }));
@@ -933,9 +963,10 @@ Page({
       return wx.showToast({ title: '首图/名称/尺码颜色不能为空', icon: 'none' });
     }
 
-    let prices = skuList.map(item => Number(item.price)).filter(p => !isNaN(p) && p > 0);
+    const pricingSkus = this.data.isBundleMode ? this.data.bundleGroups.flatMap(group => group.skuList || []) : skuList;
+    let prices = pricingSkus.map(item => Number(item.price)).filter(p => !isNaN(p) && p > 0);
     if (prices.length === 0) {
-      return wx.showToast({ title: '请填写正确的 SKU 价格', icon: 'none' });
+      return wx.showToast({ title: '请检查 SKU 成本与计价规则', icon: 'none' });
     }
     let minPrice = Math.min(...prices);
     let maxPrice = Math.max(...prices);
@@ -965,6 +996,7 @@ Page({
           size: sku.size || '均码',
           barcode: '',
           retailPrice: Number(sku.price),
+          costPrice: finance.money(sku.costPrice),
           stockMain: stockNum,
           isUnlimitedStock: isUnlimited,
           imageUrl: skuImageMap[index] || null,
@@ -974,6 +1006,8 @@ Page({
 
       const productData = {
         name: title,
+        costPrice: finance.money(this.data.costPrice),
+        pricingRuleId: String(this.data.pricingRuleId),
         coverUrl: uploadedMediaUrls[0],
         bannerImages: uploadedMediaUrls.slice(1),
         stallIds: selectedStalls.map(s => s.id),
@@ -988,13 +1022,29 @@ Page({
 
       if (this.data.isBundleMode && this.data.bundleGroups.length > 0) {
         this.saveActiveGroupState();
-        productData.bundleGroups = this.data.bundleGroups.map(function(bg, gi) {
-          return { name: bg.name || ('子项' + (gi + 1)), sortOrder: gi, skus: (bg.skuList || []).filter(function(s) { return !s._toBeRemoved; }).map(function(sku) { var s = String(sku.stock || '').trim(); return { spec: sku.color || '默认', size: sku.size || '均码', barcode: '', retailPrice: Number(sku.price) || 0, stockMain: s === '' ? 0 : (Number(s) || 0), isUnlimitedStock: s === '', sizeId: sku.sizeId || null }; }) };
+        const uploadGroups = [];
+        for (const group of this.data.bundleGroups) {
+          const rows = (group.skuList || []).filter(sku => !sku._toBeRemoved);
+          const imageMap = await this.uploadSkuImages(rows);
+          uploadGroups.push({ ...group, skuList: rows.map((sku, index) => ({ ...sku, image: imageMap[index] || null })) });
+        }
+        productData.bundleGroups = uploadGroups.map(function(bg, gi) {
+          return {
+            name: bg.name || ('子项' + (gi + 1)), sortOrder: gi,
+            skus: (bg.skuList || []).filter(sku => !sku._toBeRemoved).map(sku => {
+              const stock = String(sku.stock == null ? '' : sku.stock).trim();
+              if (stock && (!/^\d+$/.test(stock) || Number(stock) > 999999999)) throw new Error('库存必须为0到999999999的整数');
+              return { spec: sku.color || '默认', size: sku.size || '均码', barcode: '',
+                costPrice: finance.money(sku.costPrice), retailPrice: Number(sku.price),
+                stockMain: stock === '' ? 0 : Number(stock), isUnlimitedStock: stock === '',
+                imageUrl: sku.image || null, sizeId: sku.sizeId || null };
+            })
+          };
         });
         productData.skus = [];
       }
 
-      console.log('提交商品数据:', JSON.stringify(productData));
+
 
       const { editMode, productId } = this.data;
 
@@ -1166,6 +1216,8 @@ Page({
     if (this.data.isBundleMode && this.data.activeGroupIndex >= 0) this.saveActiveGroupState();
   },
 
+  _markDirty() { this.enableExitConfirm(); },
+
   // ================= 草稿功能 =================
 
   // 草稿类型/关联 ID：后端一个账号只存一份草稿，靠这两个字段区分场景
@@ -1183,6 +1235,9 @@ Page({
     var data = this.data;
     return {
       title: data.title,
+      costPrice: data.costPrice, pricingRuleId: data.pricingRuleId,
+      pricingRuleName: data.pricingRuleName, pricingRuleVersion: data.pricingRuleVersion,
+      pricingRuleSegments: data.pricingRuleSegments,
       mediaList: data.mediaList,
       selectedStalls: data.selectedStalls,
       selectedTags: data.selectedTags,
@@ -1191,7 +1246,7 @@ Page({
       sizeOptions: data.sizeOptions,
       colors: data.colors,
       skuList: data.skuList.map(function(sku) {
-        return { skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size, price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved };
+        return { skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size, costPrice: sku.costPrice, price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved };
       }),
       displayPrice: data.displayPrice,
       isBundleMode: data.isBundleMode,
@@ -1200,7 +1255,7 @@ Page({
         return {
           name: bg.name, colors: bg.colors, sizeOptions: bg.sizeOptions,
           skuList: (bg.skuList || []).map(function(sku) {
-            return { skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size, price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved };
+            return { skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size, costPrice: sku.costPrice, price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved };
           })
         };
       })
@@ -1283,7 +1338,7 @@ Page({
     var restored = {
       title: d.title || '',
       mediaList: mediaList,
-      selectedStalls: d.selectedStalls || [],
+      selectedStalls: (d.selectedStalls || []).slice(0, 1),
       selectedTags: d.selectedTags || [],
       currentSizeCategoryId: d.currentSizeCategoryId || data.currentSizeCategoryId,
       currentSizeCategoryName: d.currentSizeCategoryName || data.currentSizeCategoryName,
@@ -1350,4 +1405,6 @@ Page({
       message: '表单内容未保存，确定离开吗？'
     });
   },
-});
+};
+integrateProductPricing(pageDefinition);
+Page(pageDefinition);

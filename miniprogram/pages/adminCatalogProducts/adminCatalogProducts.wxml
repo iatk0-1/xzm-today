@@ -7,7 +7,7 @@
     </view>
     <view wx:if="{{type === 'stall'}}" class="manager-line">
       <text>负责人：{{managers.length ? managers.length + ' 人' : '未分配'}}</text>
-      <view class="rename-btn" bindtap="openManagerPicker">分配负责人</view>
+      <view class="rename-btn" bindtap="openPricingRule">档口计价规则</view>
     </view>
     <scroll-view wx:if="{{type === 'stall' && managers.length}}" scroll-x class="manager-profiles">
       <view wx:for="{{managers}}" wx:key="id" class="manager-card">
@@ -16,7 +16,7 @@
     </scroll-view>
   </view>
 
-  <view class="scope-tabs">
+  <view class="scope-tabs" wx:if="{{type === 'tag'}}">
     <view class="scope-tab {{scope === 'included' ? 'active' : ''}}" bindtap="switchScope" data-scope="included">已添加商品</view>
     <view class="scope-tab {{scope === 'excluded' ? 'active' : ''}}" bindtap="switchScope" data-scope="excluded">添加商品</view>
   </view>
@@ -39,7 +39,7 @@
       {{scope === 'included' ? '暂无已添加商品' : '暂无可添加商品'}}
     </view>
     <view class="product-row {{item.selected ? 'selected' : ''}}" wx:for="{{products}}" wx:key="id" bindtap="toggleProduct" data-id="{{item.id}}">
-      <view class="checkbox {{item.selected ? 'checked' : ''}}"><text wx:if="{{item.selected}}">✓</text></view>
+      <view wx:if="{{type === 'tag'}}" class="checkbox {{item.selected ? 'checked' : ''}}"><text wx:if="{{item.selected}}">✓</text></view>
       <image class="product-image" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill"></image>
       <view class="product-info">
         <view class="product-name">{{item.name}}</view>
@@ -57,7 +57,7 @@
     <view class="loading-more" wx:elif="{{products.length > 0 && !hasMore}}">没有更多了</view>
   </scroll-view>
 
-  <view class="batch-bar">
+  <view class="batch-bar" wx:if="{{type === 'tag'}}">
     <view class="selection-line">
       <text>已选 {{selectedCount}} 个</text>
       <view class="selection-actions">
@@ -80,5 +80,4 @@
       </view>
     </view>
   </view>
-  <stall-manager-picker visible="{{managerVisible}}" stall-id="{{groupId}}" stall-name="{{groupName}}" bindclose="closeManagerPicker" bindchanged="onManagersChanged" />
 </view>

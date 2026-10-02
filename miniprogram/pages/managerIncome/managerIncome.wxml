@@ -1,0 +1,94 @@
+<view class="page">
+  <view class="card">
+    <view class="title">我的收入与提现</view>
+    <view class="muted" wx:if="{{profile && !profile.active}}">负责人已下线，历史佣金按原归属继续结算。</view>
+    <view class="label">预计收入</view>
+    <view class="amount">¥{{income.estimatedIncome || '0.00'}}</view>
+    <view class="grid">
+      <view><view class="label">待完成佣金</view><view>¥{{income.pendingIncome || '0.00'}}</view></view>
+      <view><view class="label">累计完成佣金</view><view>¥{{income.completedIncome || '0.00'}}</view></view>
+      <view><view class="label">可提现</view><view>¥{{income.manualWithdrawalAvailable || '0.00'}}</view></view>
+      <view><view class="label">待线下结算 / 暂不可提现</view><view>¥{{income.profitSharingUnavailable || '0.00'}}</view></view>
+      <view><view class="label">分账已到账</view><view>¥{{income.profitSharingSettled || '0.00'}}</view></view>
+      <view><view class="label">分账处理中占用</view><view>¥{{income.profitSharingHeld || '0.00'}}</view></view>
+      <view><view class="label">线下已结算</view><view>¥{{income.offlineSettled || '0.00'}}</view></view>
+      <view><view class="label">线下可结算余额</view><view>¥{{income.settleableIncome || '0.00'}}</view></view>
+      <view><view class="label">历史商家转账已付</view><view>¥{{income.legacyTransferSettled || '0.00'}}</view></view>
+      <view><view class="label">历史转账处理中占用</view><view>¥{{income.legacyTransferHeld || '0.00'}}</view></view>
+      <view><view class="label">售后暂缓金额</view><view>¥{{income.afterSaleFrozen || '0.00'}}</view></view>
+    </view>
+    <view class="muted" wx:if="{{income.debtAmount > 0}}">待抵扣 ¥{{income.debtAmount}}，后续收入先抵扣。</view>
+    <view class="error" wx:if="{{!income.profitSharingEnabled}}">分账提现功能未开启。已有分账单可继续查询，未结算佣金保留在收入账户。</view>
+    <view class="muted">订单完成后需本人点击提现，系统按原微信支付交易分账到本人微信零钱。默认提现全部当前合格未付佣金，不支持填写任意金额或变更收款账号。微信额度和期限由服务端核验。</view>
+    <view class="muted">历史非分账订单、已过期限或模拟支付的佣金不能通过微信分账提现，可由管理员核对并登记线下付款。</view>
+    <view class="muted" wx:for="{{income.profitSharingReasons}}" wx:key="orderId">订单 {{item.orderId}}：{{item.reason}}</view>
+  </view>
+  <view class="error" wx:if="{{error}}">{{error}}</view>
+  <view class="card">
+    <view class="title">提现全部当前合格佣金</view>
+    <view class="amount">¥{{income.manualWithdrawalAvailable || '0.00'}}</view>
+    <view class="muted">已下线负责人仍可提取原归属历史佣金。超过30天、历史非分账或其它不合格佣金保留，由管理员登记线下结算。</view>
+    <button wx:if="{{!pendingRequestKey}}" class="primary" loading="{{busy}}" disabled="{{busy || !income.profitSharingEnabled || income.manualWithdrawalAvailable <= 0}}" bindtap="withdrawAll">确认提现全部合格佣金</button>
+    <view wx:if="{{pendingRequestKey}}" class="muted">原申请编号 {{pendingRequestKey}}。结果不明确时继续查询，不会生成新申请。</view>
+    <button wx:if="{{pendingRequestKey}}" disabled="{{busy}}" bindtap="queryRequest">查询原提现申请</button>
+    <button wx:if="{{pendingRequestKey && requestMissing}}" disabled="{{busy}}" bindtap="withdrawAll">使用同一申请编号重试提交</button>
+    <view wx:if="{{requestUncertain}}" class="error">提交或查询结果暂不确定。原申请编号已保留，请继续核对原申请。</view>
+  </view>
+  <view class="card" wx:if="{{currentRequest}}">
+    <view class="title">本次提现 · {{currentRequest.statusLabel}}</view>
+    <view class="muted">申请 {{currentRequest.id}} · {{currentRequest.requestKey}}</view>
+    <view>申请快照 ¥{{currentRequest.requestedAmount}} · 服务端已到账 ¥{{currentRequest.settledAmount}}</view>
+    <view>处理中 ¥{{currentRequest.heldAmount}} · 快照未到账 ¥{{currentRequest.unpaidAmount}}</view>
+    <view class="muted">快照未到账是原申请金额与已到账的差额，含后来退款、售后或欠款抵扣的调整，不代表仍然应付。实际未结算佣金以上方收入账本为准；逐单查看原因。</view>
+    <view class="card" wx:for="{{currentRequest.items}}" wx:key="id">
+      <view>订单 {{item.orderId}} · {{item.statusLabel}}</view>
+      <view class="muted">原微信交易 {{item.transactionId}} · 截止 {{item.deadline}}</view>
+      <view>快照 ¥{{item.snapshotAmount}} · 已到账 ¥{{item.settledAmount}} · 占用 ¥{{item.heldAmount}} · 快照未到账 ¥{{item.unpaidAmount}}</view>
+      <view class="muted">{{item.reason}} · 分账单 {{item.outOrderNo}}</view>
+    </view>
+    <button disabled="{{busy}}" data-id="{{currentRequest.id}}" bindtap="queryRequest">查询本次提现结果</button>
+  </view>
+
+  <scroll-view class="tabs" scroll-x>
+    <view class="tab {{tab === 'requests' ? 'active' : ''}}" data-tab="requests" bindtap="changeTab">提现申请记录</view>
+    <view class="tab {{tab === 'records' ? 'active' : ''}}" data-tab="records" bindtap="changeTab">佣金明细</view>
+    <view class="tab {{tab === 'eligibility' ? 'active' : ''}}" data-tab="eligibility" bindtap="changeTab">逐交易结算资格</view>
+    <view class="tab {{tab === 'sharing' ? 'active' : ''}}" data-tab="sharing" bindtap="changeTab">分账付款记录</view>
+    <view class="tab {{tab === 'withdrawals' ? 'active' : ''}}" data-tab="withdrawals" bindtap="changeTab">历史商家转账</view>
+  </scroll-view>
+  <view wx:if="{{tab === 'requests'}}" class="card" wx:for="{{rows}}" wx:key="id">
+    <view>申请 {{item.id}} · {{item.statusLabel}}</view>
+    <view>快照 ¥{{item.requestedAmount}} · 已到账 ¥{{item.settledAmount}} · 处理中 ¥{{item.heldAmount}} · 快照未到账 ¥{{item.unpaidAmount}}</view>
+    <view class="muted">{{item.createdAt}} · {{item.requestKey}}</view>
+    <button disabled="{{busy}}" data-id="{{item.id}}" bindtap="queryRequest">查看逐订单结果</button>
+  </view>
+  <view wx:if="{{tab === 'records'}}" class="card" wx:for="{{rows}}" wx:key="id">
+    <view>{{item.productName}} · {{item.qty}} 件</view>
+    <view class="muted">订单 {{item.orderId}} · {{item.status === 'PENDING' ? '待完成' : (item.status === 'SETTLED' ? '已结清' : '已完成')}}</view>
+    <view>佣金 ¥{{item.commissionAmount}} · 现金已付 ¥{{item.settledAmount}} · 退款欠款抵扣 ¥{{item.debtOffsetAmount || '0.00'}}
+    <view class="muted" wx:if="{{item.debtRecoveredAmount > 0}}">本条旧佣金欠款已追回 ¥{{item.debtRecoveredAmount}}（抵扣后续佣金，不是新付款）</view></view>
+    <view class="muted">每件 ¥{{item.unitCommission}} · 售后暂缓 ¥{{item.afterSaleFrozen || '0.00'}} · {{item.createdAt}}</view>
+  </view>
+  <view wx:if="{{tab === 'eligibility'}}" class="card" wx:for="{{rows}}" wx:key="orderId">
+    <view>订单 {{item.orderId}} · {{item.eligible ? '具备微信分账提现资格' : '当前不可微信提现'}}</view>
+    <view class="muted">微信支付交易号 {{item.transactionId || '无真实微信支付交易'}}</view>
+    <view>本单佣金 ¥{{item.commissionAmount}} · 可分账 ¥{{item.availableAmount}}</view>
+    <view class="muted">分账截止 {{item.deadline || '不适用'}}</view>
+    <view class="error" wx:if="{{item.blockedReason}}">{{item.blockedReason}}</view>
+  </view>
+  <view wx:if="{{tab === 'sharing'}}" class="card" wx:for="{{rows}}" wx:key="id">
+    <view>¥{{item.amount}} · {{item.statusLabel}}</view>
+    <view class="muted">订单 {{item.orderId}} · 微信交易 {{item.transactionId}}</view>
+    <view class="muted">分账单 {{item.outOrderNo}} · 接收结果 {{item.receiverResult || '待查询'}}</view>
+    <view class="muted">{{item.updatedAt || item.createdAt}} · {{item.reason}}</view>
+    <button disabled="{{busy}}" data-id="{{item.id}}" data-channel="PROFIT_SHARING" bindtap="query">查询原分账单</button>
+  </view>
+  <view wx:if="{{tab === 'withdrawals'}}" class="card" wx:for="{{rows}}" wx:key="id">
+    <view>历史商家转账 ¥{{item.amount}} · {{item.statusLabel}}</view>
+    <view class="muted">{{item.createdAt}} · {{item.reason}}</view>
+    <view class="muted">仅处理已有原单；异常旧单请联系管理员核对商户账单。</view>
+    <button wx:if="{{item.status === 'WAIT_USER_CONFIRM'}}" disabled="{{busy}}" data-id="{{item.id}}" bindtap="confirmLegacyTransfer">确认这笔历史转账收款</button>
+    <button disabled="{{busy}}" data-id="{{item.id}}" data-channel="LEGACY_TRANSFER" bindtap="query">查询原转账单</button>
+  </view>
+  <view class="muted">{{loading ? '加载中…' : (hasNext ? '上拉加载更多' : (rows.length ? '已加载全部' : '暂无记录'))}}</view>
+</view>

@@ -142,3 +142,10 @@ page { background-color: #f7f8fa; padding-bottom: 40px; }
 .batch-image-preview { width: 60px; height: 60px; border-radius: 4px; position: relative; overflow: visible; }
 .batch-image { width: 100%; height: 100%; border-radius: 4px; display: block; }
 .batch-image-del { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; background: #111111; color: #ffffff; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 10px; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+.pricing-panel .muted { font-size:24rpx; color:#747a83; line-height:1.7; }
+.pricing-error { color:#b53a30; padding:16rpx 0; }
+
+.pricing-panel { padding:24rpx; background:#f2f6fa; border-radius:16rpx; }
+.pricing-default-row { display:flex; gap:16rpx; }
+.pricing-default-row input { flex:1; min-width:0; }
