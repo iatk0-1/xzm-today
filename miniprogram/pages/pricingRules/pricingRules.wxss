@@ -45,3 +45,12 @@ button.calculator-done { margin: 0; padding: 0 24rpx; background: #18212b; color
 .key { padding: 20rpx 0; text-align: center; background: #e9eef3; border-radius: 8rpx; font-size: 30rpx; }
 .key:active { background: #d6dee7; }
 .key-action { font-size: 26rpx; }
+.rule-status-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 12rpx 0 20rpx; }
+.rule-status { display: flex; align-items: center; gap: 12rpx; font-size: 28rpx; }
+button.rule-delete { margin: 0; padding: 0 20rpx; line-height: 2.4; color: #b3261e; font-size: 26rpx; background: #fff0ee; }
+.rule-preview { padding: 16rpx 20rpx; background: #f4f6f8; border-radius: 8rpx; }
+.rule-preview-line { display: flex; align-items: flex-start; gap: 20rpx; padding: 6rpx 0; font-size: 27rpx; line-height: 1.6; }
+.rule-preview-label { flex-shrink: 0; color: #667788; }
+.rule-preview-value { min-width: 0; word-break: break-all; }
+.rule-actions { display: flex; gap: 16rpx; margin-top: 16rpx; }
+.rule-actions button { flex: 1; margin: 0; }

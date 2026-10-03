@@ -9,6 +9,7 @@ Page({
     trialCost: '', trialPrice: '', calculatorOpen: false,
     formulaCursor: 0, formulaCells: [],
     editingBoundary: '', boundaryValue: '', boundaryError: '', error: '', saving: false,
+    ruleBusy: '',
     stallId: '', stallName: ''
   },
 
@@ -30,9 +31,57 @@ Page({
     if (!this._authorized) return;
     try {
       const rules = await api.get('/pricing-rules', { includeDisabled: true });
-      this.setData({ rules, error: '' });
+      this.setData({ rules: this.ruleRows(rules), error: '' });
     } catch (error) {
       this.fail(error);
+    }
+  },
+
+  ruleRows(rules) {
+    return (rules || []).filter(rule => !rule.deleted).map(rule => {
+      const first = finance.segmentsWithLabels(rule.segments)[0];
+      return { ...rule,
+        firstCondition: first ? first.label + (first.upper == null ? ' 无上限' : '') : '暂无条件公式',
+        firstFormula: first ? first.formula : '暂无价格公式'
+      };
+    });
+  },
+
+  async changeRuleStatus(event) {
+    if (!this._authorized || this.data.ruleBusy) return;
+    const rule = this.data.rules[Number(event.currentTarget.dataset.index)];
+    if (!rule) return;
+    const id = String(rule.id);
+    const enabled = !!event.detail.value;
+    this.setData({ ruleBusy: id, error: '',
+      rules: this.data.rules.map(item => String(item.id) === id ? { ...item, enabled } : item)
+    });
+    try {
+      const updated = await api.put('/pricing-rules/' + id + '/enabled', { enabled });
+      this.setData({ rules: this.ruleRows(this.data.rules.map(item => String(item.id) === id ? updated : item)) });
+    } catch (error) {
+      this.setData({ rules: this.data.rules.map(item => String(item.id) === id ? { ...item, enabled: rule.enabled } : item) });
+      this.fail(error);
+    } finally {
+      this.setData({ ruleBusy: '' });
+    }
+  },
+
+  async deleteRule(event) {
+    if (!this._authorized || this.data.ruleBusy) return;
+    const rule = this.data.rules[Number(event.currentTarget.dataset.index)];
+    if (!rule) return;
+    const id = String(rule.id);
+    this.setData({ ruleBusy: id });
+    try {
+      if (!await finance.confirmAction('删除计价规则', '删除后不再显示，也不能用于新增商品或新分配档口。已分配的档口和已使用的商品会保留。确定删除“' + rule.name + '”吗？')) return;
+      await api.delete('/pricing-rules/' + id);
+      this.setData({ rules: this.data.rules.filter(item => String(item.id) !== id), error: '' });
+      wx.showToast({ title: '计价规则已删除' });
+    } catch (error) {
+      this.fail(error);
+    } finally {
+      this.setData({ ruleBusy: '' });
     }
   },
 

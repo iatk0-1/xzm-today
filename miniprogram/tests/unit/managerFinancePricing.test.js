@@ -5,13 +5,14 @@ const path = require('node:path');
 const vm = require('node:vm');
 const finance = require('../../utils/managerFinance');
 
-function pageHarness(file, { get, post, put, manager = false } = {}) {
+function pageHarness(file, { get, post, put, del, manager = false } = {}) {
   let definition;
   const calls = [];
   const api = {
     get: async (url, data) => { calls.push({ method: 'get', url, data }); return get ? get(url, data) : {}; },
     post: async (url, data) => { calls.push({ method: 'post', url, data }); return post ? post(url, data) : {}; },
     put: async (url, data) => { calls.push({ method: 'put', url, data }); return put ? put(url, data) : {}; },
+    delete: async url => { calls.push({ method: 'delete', url }); return del ? del(url) : {}; },
     request: async options => { calls.push({ method: options.method.toLowerCase(), url: options.url, data: options.data, idempotencyKey: options.idempotencyKey }); return post ? post(options.url, options.data) : {}; }
   };
   const storage = new Map();
@@ -430,6 +431,99 @@ test('保存先应用正在编辑的边界再检查重名，重名时不丢失�
   assert.equal(page.data.segments[0].upper, 100);
   assert.equal(page.data.error, '规则名称已存在，请换个名称后再保存');
   assert.equal(calls.length, 0);
+});
+
+test('规则列表只显示未删除规则和第一段公式，无上限有明确标识', async () => {
+  const { page } = pageHarness('../../pages/pricingRules/pricingRules.js', { get: async () => [
+    { id: '1', enabled: true, segments: [
+      { lower: 0, upper: 100, lowerInclusive: false, upperInclusive: true, formula: 'x+5' },
+      { lower: 100, upper: null, lowerInclusive: false, formula: 'x+10' }
+    ] },
+    { id: '2', enabled: false, segments: [{ lower: 0, upper: null, lowerInclusive: false, formula: 'x' }] },
+    { id: '3', deleted: true, segments: [] }
+  ] });
+  await page.load();
+  assert.equal(page.data.rules.length, 2);
+  assert.equal(page.data.rules[0].firstCondition, '0 < x ≤ 100');
+  assert.equal(page.data.rules[0].firstFormula, 'x+5');
+  assert.equal(page.data.rules[1].firstCondition, '0 < x 无上限');
+});
+
+test('列表状态开关调用专用接口，失败恢复开关，重复点击只请求一次', async () => {
+  let reject;
+  const { page, calls } = pageHarness('../../pages/pricingRules/pricingRules.js', {
+    put: () => new Promise((_, fail) => { reject = fail; })
+  });
+  page.setData({ rules: [{ id: '1', enabled: true, currentVersion: 2, segments: [] }] });
+  const event = { currentTarget: { dataset: { index: 0 } }, detail: { value: false } };
+  const pending = page.changeRuleStatus(event);
+  assert.equal(page.data.rules[0].enabled, false);
+  await page.changeRuleStatus(event);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, '/pricing-rules/1/enabled');
+  assert.equal(calls[0].data.enabled, false);
+  reject(new Error('状态更新失败'));
+  await pending;
+  assert.equal(page.data.rules[0].enabled, true);
+  assert.equal(page.data.rules[0].currentVersion, 2);
+  assert.equal(page.data.ruleBusy, '');
+  assert.equal(page.data.error, '状态更新失败');
+});
+
+test('规则逻辑删除确认后调用接口并移出列表，取消或失败保留规则', async () => {
+  const { page, wx, calls } = pageHarness('../../pages/pricingRules/pricingRules.js');
+  page.setData({ rules: [{ id: '1', name: '基础规则' }, { id: '2', name: '另一规则' }] });
+  const event = { currentTarget: { dataset: { index: 0 } } };
+  wx.showModal = options => options.success({ confirm: false });
+  await page.deleteRule(event);
+  assert.equal(calls.length, 0);
+  assert.equal(page.data.rules.length, 2);
+  wx.showModal = options => options.success({ confirm: true });
+  await page.deleteRule(event);
+  assert.equal(calls[0].method, 'delete');
+  assert.equal(calls[0].url, '/pricing-rules/1');
+  assert.equal(page.data.rules.length, 1);
+  assert.equal(page.data.rules[0].id, '2');
+  assert.equal(page.data.ruleBusy, '');
+  const failed = pageHarness('../../pages/pricingRules/pricingRules.js', { del: async () => { throw new Error('删除失败'); } });
+  failed.page.setData({ rules: [{ id: '1', name: '基础规则' }] });
+  await failed.page.deleteRule(event);
+  assert.equal(failed.page.data.rules.length, 1);
+  assert.equal(failed.page.data.error, '删除失败');
+});
+
+test('已有商品可以保留禁用或删除规则的原版本，复制或换档口不能复用', async () => {
+  for (const deleted of [false, true]) {
+    const historical = [{ lower: 0, upper: null, lowerInclusive: false, formula: 'x+5' }];
+    const rule = { id: '30', enabled: false, deleted, currentVersion: 2, segments: [{ formula: 'x+50' }] };
+    const { page } = pageHarness('../../pages/admin/admin.js', { get: async () => ({
+      product: { stallIds: ['2'] }, pricingRuleId: '30', pricingRuleVersion: 1, pricingRuleSegments: historical
+    }) });
+    page.setData({ editId: '10', selectedStalls: [{ id: '2' }] });
+    assert.equal(await page.useExistingPricing(rule), true);
+    assert.equal(page.data.pricingRuleVersion, 1);
+    assert.equal(page.data.pricingRuleSegments[0].formula, 'x+5');
+    page.setData({ selectedStalls: [{ id: '3' }] });
+    assert.equal(await page.useExistingPricing(rule), false);
+    page.setData({ editId: null, selectedStalls: [{ id: '2' }] });
+    assert.equal(await page.useExistingPricing(rule), false);
+  }
+});
+
+test('禁用或删除规则不进入新增商品选项，新增提交前拦住失效规则', async () => {
+  for (const deleted of [false, true]) {
+    const unavailable = { id: '30', enabled: !deleted ? false : true, deleted, segments: [{ formula: 'x' }] };
+    const { page, calls } = pageHarness('../../pages/admin/admin.js', { get: async url =>
+      url === '/pricing-rules' ? [unavailable, { id: '40', enabled: true, segments: [] }] : unavailable
+    });
+    await page.loadPricingChoices();
+    assert.equal(page.data.pricingRules.length, 1);
+    assert.equal(page.data.pricingRules[0].id, '40');
+    page.setData({ selectedStalls: [{ id: '2' }], pricingRuleId: '30' });
+    await page.submitProduct();
+    assert.match(page.data.pricingError, /不能用于新增/);
+    assert.equal(calls.filter(call => call.method !== 'get').length, 0);
+  }
 });
 
 test('负责人列表第一页为1，只有后续页追加', async () => {

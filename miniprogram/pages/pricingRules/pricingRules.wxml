@@ -8,9 +8,18 @@
 </view>
 <view class="card" wx:for="{{rules}}" wx:key="id">
 <view class="title">{{item.name}} · v{{item.currentVersion}}</view>
-<view class="muted">{{item.enabled ? '启用' : '停用'}}</view>
-<button bindtap="edit" data-index="{{index}}">编辑</button>
-<button bindtap="copy" data-index="{{index}}">复制</button>
+<view class="rule-status-row">
+<view class="rule-status"><text>状态</text><switch checked="{{item.enabled}}" disabled="{{!!ruleBusy}}" bindchange="changeRuleStatus" data-index="{{index}}"/><text class="muted">{{item.enabled ? '启用' : '禁用'}}</text></view>
+<button class="rule-delete" bindtap="deleteRule" data-index="{{index}}" disabled="{{!!ruleBusy}}">删除</button>
+</view>
+<view class="rule-preview">
+<view class="rule-preview-line"><text class="rule-preview-label">条件公式</text><text class="rule-preview-value">{{item.firstCondition}}</text></view>
+<view class="rule-preview-line"><text class="rule-preview-label">价格公式</text><text class="rule-preview-value">{{item.firstFormula}}</text></view>
+</view>
+<view class="rule-actions">
+<button bindtap="edit" data-index="{{index}}" disabled="{{!!ruleBusy}}">编辑</button>
+<button bindtap="copy" data-index="{{index}}" disabled="{{!!ruleBusy}}">复制</button>
+</view>
 <button wx:if="{{stallId && item.enabled}}" class="primary" bindtap="assign" data-id="{{item.id}}">分配给当前档口</button>
 </view>
 </view>

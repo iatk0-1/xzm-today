@@ -12,7 +12,21 @@ function integrateProductPricing(page) {
 
   page.loadPricingChoices = async function() {
     const rules = await api.get('/pricing-rules');
-    this.setData({ pricingRules: (rules || []).filter(rule => rule.enabled) });
+    this.setData({ pricingRules: (rules || []).filter(rule => rule.enabled && !rule.deleted) });
+  };
+
+  page.useExistingPricing = async function(rule, token) {
+    const productId = this.data.editId || (this.data.editMode && this.data.productId);
+    if (!productId || !rule) return false;
+    const existing = await api.get('/products/' + encodeURIComponent(String(productId)) + '?manage=true');
+    if (token !== undefined && token !== this._ruleToken) return false;
+    const previousStalls = ((existing.product || {}).stallIds || []).map(String);
+    const currentStalls = this.data.selectedStalls.map(stall => String(stall.id));
+    if (String(existing.pricingRuleId) !== String(rule.id)
+      || previousStalls.join(',') !== currentStalls.join(',')) return false;
+    this.showRule({ ...rule, currentVersion: existing.pricingRuleVersion,
+      segments: existing.pricingRuleSegments }, '已有商品使用的规则');
+    return true;
   };
 
   page.showRule = function(rule, source) {
@@ -36,10 +50,15 @@ function integrateProductPricing(page) {
     try {
       const rule = await api.get('/stalls/' + encodeURIComponent(String(stall.id)) + '/pricing-rule');
       if (token !== this._ruleToken) return;
-      if (rule && rule.enabled) this.showRule(rule, '档口：' + stall.name);
-      else if (this.data.isStallManager) {
-        this.showRule(null, '');
-        this.setData({ pricingError: '该档口未分配启用的计价规则，请联系管理员' });
+      if (rule && rule.enabled && !rule.deleted) this.showRule(rule, '档口：' + stall.name);
+      else {
+        const preserved = await this.useExistingPricing(rule, token);
+        if (token !== this._ruleToken) return;
+        if (!preserved) {
+          this.showRule(null, '');
+          this.setData({ pricingError: '该档口的计价规则未启用或已删除，不能用于新增商品，请联系管理员' });
+          return;
+        }
       }
       await this.recalculatePricing(false);
     } catch (error) {
@@ -244,8 +263,9 @@ function integrateProductPricing(page) {
       if (this.data.isStallManager) await this.useStallPricing();
       else {
         const current = await api.get('/pricing-rules/' + encodeURIComponent(this.data.pricingRuleId));
-        if (!current.enabled) throw new Error('所选计价规则已经停用，请更换');
-        this.showRule(current, this.data.ruleSource);
+        if (!current.enabled || current.deleted) {
+          if (!await this.useExistingPricing(current)) throw new Error('所选计价规则已禁用或删除，不能用于新增商品或变更规则');
+        } else this.showRule(current, this.data.ruleSource);
       }
       await this.recalculatePricing(true);
       await originalSubmit.call(this);
