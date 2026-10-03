@@ -1,1 +1,47 @@
-page{background:#f4f6f8;color:#18212b}.page{padding:24rpx 24rpx 80rpx}.card{background:white;border-radius:16rpx;padding:24rpx;margin-bottom:20rpx}.title{font-size:34rpx;font-weight:600;margin-bottom:20rpx}.row{display:flex;align-items:center;gap:16rpx;margin:16rpx 0;flex-wrap:wrap}.field,input,textarea{background:#f4f6f8;padding:18rpx;border-radius:8rpx;margin:12rpx 0;box-sizing:border-box}input{min-height:72rpx;flex:1}textarea{width:100%}.muted{color:#667788;font-size:25rpx;line-height:1.7}.amount{font-size:40rpx;font-weight:600}.badge{padding:6rpx 14rpx;background:#e9eef3;border-radius:8rpx}.danger{color:#b3261e}button{margin:12rpx 0;font-size:28rpx}button.primary{background:#18212b;color:white}.tabs{display:flex;flex-wrap:wrap;gap:12rpx}.tab{padding:16rpx;background:#e9eef3;border-radius:8rpx}.tab.active{background:#18212b;color:white}.list-item{border-bottom:1rpx solid #e9eef3;padding:18rpx 0}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10rpx}.key{padding:24rpx;text-align:center;background:#e9eef3;border-radius:8rpx}.expression{padding:24rpx;background:#f4f6f8;min-height:45rpx;word-break:break-all;font-size:34rpx}.small{font-size:24rpx}.error{padding:20rpx;color:#b3261e;background:#fff0ee}.choice{padding:18rpx;border-bottom:1rpx solid #eee}.selected{background:#e4f1e9}
+page {
+  background: #f4f6f8;
+  color: #18212b;
+}
+.page { padding: 24rpx 24rpx 80rpx; }
+.card { background: white; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.title { font-size: 34rpx; font-weight: 600; margin-bottom: 20rpx; }
+.row { display: flex; align-items: center; gap: 16rpx; margin: 16rpx 0; flex-wrap: wrap; }
+input { background: #f4f6f8; padding: 18rpx; border-radius: 8rpx; margin: 12rpx 0; box-sizing: border-box; min-height: 72rpx; }
+.muted { color: #667788; font-size: 25rpx; line-height: 1.7; }
+.amount { font-size: 40rpx; font-weight: 600; }
+button { margin: 12rpx 0; font-size: 28rpx; }
+button.primary { background: #18212b; color: white; }
+.field-label { color: #667788; font-size: 24rpx; margin-bottom: 12rpx; }
+.condition-row { display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap; margin-bottom: 24rpx; }
+.boundary-value, .boundary-symbol, .boundary-fixed { font-size: 28rpx; }
+.boundary-value, .boundary-symbol { background: #e9eef3; border-radius: 8rpx; padding: 14rpx 16rpx; }
+.boundary-value { word-break: break-all; }
+.boundary-symbol { min-width: 32rpx; text-align: center; }
+.boundary-fixed { padding: 14rpx 0; }
+.boundary-unlimited { color: #667788; }
+.condition-variable { font-size: 30rpx; padding: 0 4rpx; }
+input.boundary-input { flex: none; width: 220rpx; min-height: 64rpx; margin: 0; padding: 14rpx 16rpx; font-size: 28rpx; border: 2rpx solid #18212b; }
+.boundary-error { color: #b3261e; font-size: 25rpx; margin: 12rpx 0 20rpx; }
+.expression { padding: 20rpx; background: #f4f6f8; min-height: 80rpx; box-sizing: border-box; border: 2rpx solid transparent; border-radius: 8rpx; word-break: break-all; font-size: 32rpx; }
+.expression-active { border-color: #18212b; }
+.expression-placeholder { color: #8994a0; font-size: 28rpx; }
+.error { padding: 20rpx; color: #b3261e; background: #fff0ee; }
+.calculator-overlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; }
+.calculator-mask { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0, 0, 0, .4); }
+.calculator-sheet { position: absolute; right: 0; bottom: 0; left: 0; background: white; border-radius: 24rpx 24rpx 0 0; padding: 24rpx; padding-bottom: calc(24rpx + env(safe-area-inset-bottom)); }
+.calculator-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
+.calculator-title { font-size: 32rpx; font-weight: 600; }
+button.calculator-done { margin: 0; padding: 0 24rpx; background: #18212b; color: white; font-size: 26rpx; line-height: 2.4; }
+.calculator-expression { height: 110rpx; box-sizing: border-box; padding: 16rpx 20rpx; margin: 16rpx 0 20rpx; border-radius: 8rpx; background: #f4f6f8; font-size: 34rpx; word-break: break-all; }
+.formula-editor { min-height: 76rpx; line-height: 48rpx; }
+.formula-character { display: inline-block; position: relative; vertical-align: top; min-width: .65em; height: 48rpx; text-align: center; font-family: monospace; white-space: pre; }
+.formula-end { min-width: 16rpx; }
+.formula-caret { position: absolute; left: -1rpx; top: 6rpx; width: 3rpx; height: 36rpx; background: #18212b; pointer-events: none; }
+.cursor-controls { display: flex; gap: 10rpx; margin-bottom: 16rpx; }
+.cursor-control { flex: 1; padding: 12rpx 0; border-radius: 8rpx; background: #f4f6f8; text-align: center; font-size: 24rpx; }
+.cursor-control:active { background: #d6dee7; }
+.cursor-disabled { color: #8994a0; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10rpx; }
+.key { padding: 20rpx 0; text-align: center; background: #e9eef3; border-radius: 8rpx; font-size: 30rpx; }
+.key:active { background: #d6dee7; }
+.key-action { font-size: 26rpx; }

@@ -9,7 +9,8 @@
 <view class="card" wx:for="{{rules}}" wx:key="id">
 <view class="title">{{item.name}} · v{{item.currentVersion}}</view>
 <view class="muted">{{item.enabled ? '启用' : '停用'}}</view>
-<button bindtap="edit" data-index="{{index}}">编辑并创建新版本</button>
+<button bindtap="edit" data-index="{{index}}">编辑</button>
+<button bindtap="copy" data-index="{{index}}">复制</button>
 <button wx:if="{{stallId && item.enabled}}" class="primary" bindtap="assign" data-id="{{item.id}}">分配给当前档口</button>
 </view>
 </view>
@@ -18,35 +19,68 @@
 <input placeholder="规则名称" value="{{name}}" data-field="name" bindinput="input"/>
 <view class="row">启用<switch checked="{{enabled}}" bindchange="enabled"/>
 </view>
-<view class="muted">覆盖所有大于零的成本。点击右边界切换包含关系，相邻区间自动互补。</view>
+<view class="muted">覆盖所有大于零的成本。点击符号切换包含关系，点击数字修改边界。将“无上限”改为数字后自动新增下一段，并复制当前价格公式。</view>
 </view>
 <view class="card" wx:for="{{segments}}" wx:key="index">
-<view class="row">
-<text>{{item.lower}}</text>
-<text class="tab" data-index="{{index}}" data-side="left" bindtap="toggle">{{item.lowerInclusive ? '≤' : '<'}}</text>
-<text>x</text>
-<text class="tab" wx:if="{{item.upper !== null}}" bindtap="toggle" data-index="{{index}}">{{item.upperInclusive ? '≤' : '<'}} {{item.upper}} ⇄</text>
-<text wx:else>无上限</text>
+<view class="field-label">条件公式</view>
+<view class="condition-row">
+<input wx:if="{{editingBoundary === index + ':left'}}" class="boundary-input" type="digit" value="{{boundaryValue}}" focus="{{true}}" maxlength="12" confirm-type="done" data-boundary="{{index + ':left'}}" bindinput="boundaryInput" bindblur="updateBoundary" bindconfirm="updateBoundary"/>
+<text wx:elif="{{index > 0}}" class="boundary-value" data-index="{{index}}" data-side="left" bindtap="editBoundary">{{item.lower}}</text>
+<text wx:else class="boundary-fixed">{{item.lower}}</text>
+<text wx:if="{{index > 0}}" class="boundary-symbol" data-index="{{index}}" data-side="left" bindtap="toggle">{{item.lowerInclusive ? '≤' : '<'}}</text>
+<text wx:else class="boundary-fixed">{{item.lowerInclusive ? '≤' : '<'}}</text>
+<text class="condition-variable">x</text>
+<text wx:if="{{item.upper !== null}}" class="boundary-symbol" bindtap="toggle" data-index="{{index}}" data-side="right">{{item.upperInclusive ? '≤' : '<'}}</text>
+<input wx:if="{{editingBoundary === index + ':right'}}" class="boundary-input" type="digit" value="{{boundaryValue}}" placeholder="无上限" focus="{{true}}" maxlength="12" confirm-type="done" data-boundary="{{index + ':right'}}" bindinput="boundaryInput" bindblur="updateBoundary" bindconfirm="updateBoundary"/>
+<text wx:else class="boundary-value {{item.upper === null ? 'boundary-unlimited' : ''}}" data-index="{{index}}" data-side="right" bindtap="editBoundary">{{item.upper === null ? '无上限' : item.upper}}</text>
 </view>
-<view class="expression" bindtap="selectSegment" data-index="{{index}}">{{item.formula || '点击选中后使用计算器'}} {{activeIndex === index ? '◀' : ''}}</view>
-<button wx:if="{{item.upper !== null}}" bindtap="updateBoundary" data-index="{{index}}">用下方分界点更新此边界</button>
+<view wx:if="{{boundaryError && (editingBoundary === index + ':left' || editingBoundary === index + ':right')}}" class="boundary-error">{{boundaryError}}</view>
+<view class="field-label">价格公式</view>
+<view class="expression {{calculatorOpen && activeIndex === index ? 'expression-active' : ''}}" bindtap="openCalculator" data-index="{{index}}">
+<text class="{{item.formula ? '' : 'expression-placeholder'}}">{{item.formula || '点击输入价格公式'}}</text>
+</view>
 <button wx:if="{{index > 0}}" bindtap="merge" data-index="{{index}}">合并至上一段</button>
 </view>
 <view class="card">
-<input type="digit" placeholder="区间分界点（大于零）" value="{{boundary}}" bindinput="boundaryInput"/>
-<button bindtap="addSegment">在末段新增分界点</button>
-<view class="grid">
-<view class="key" wx:for="{{keys}}" wx:key="*this" data-key="{{item}}" bindtap="key">{{item}}</view>
-</view>
-<view class="row">
-<button bindtap="backspace">退格</button>
-<button bindtap="clear">清空公式</button>
-</view>
 <input type="digit" placeholder="试算成本 x" value="{{trialCost}}" data-field="trialCost" bindinput="input"/>
 <button bindtap="preview">后端试算</button>
 <view class="amount" wx:if="{{trialPrice}}">售价 ¥{{trialPrice}}</view>
 <button class="primary" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存规则版本</button>
 <button bindtap="close">返回列表</button>
+</view>
+</view>
+<view wx:if="{{editing && calculatorOpen}}" class="calculator-overlay" catchtouchmove="noop">
+<view class="calculator-mask" bindtap="closeCalculator"></view>
+<view class="calculator-sheet" catchtap="noop">
+<view class="calculator-header">
+<view class="calculator-title">第 {{activeIndex + 1}} 段价格公式</view>
+<button class="calculator-done" bindtap="closeCalculator">完成</button>
+</view>
+<view class="muted">x 表示成本，点击公式定位光标，再用按键编辑</view>
+<scroll-view class="calculator-expression" scroll-y="{{true}}" scroll-into-view="{{'formula-char-' + formulaCursor}}">
+<view class="formula-editor" bindtap="formulaEnd">
+<view wx:for="{{formulaCells}}" wx:key="index" id="formula-char-{{item.index}}" class="formula-character" data-cursor="{{item.index}}" catchtap="selectFormulaCursor">
+<view wx:if="{{formulaCursor === item.index}}" class="formula-caret"></view>
+<text>{{item.character}}</text>
+</view>
+<view id="formula-char-{{formulaCells.length}}" class="formula-character formula-end" data-cursor="{{formulaCells.length}}" catchtap="selectFormulaCursor">
+<view wx:if="{{formulaCursor === formulaCells.length}}" class="formula-caret"></view>
+</view>
+<text wx:if="{{!formulaCells.length}}" class="expression-placeholder">请输入价格公式</text>
+</view>
+</scroll-view>
+<view class="cursor-controls">
+<view class="cursor-control" data-position="start" bindtap="moveFormulaCursor">开头</view>
+<view class="cursor-control {{formulaCursor === 0 ? 'cursor-disabled' : ''}}" data-offset="-1" bindtap="moveFormulaCursor">◀ 左移</view>
+<view class="cursor-control {{formulaCursor === formulaCells.length ? 'cursor-disabled' : ''}}" data-offset="1" bindtap="moveFormulaCursor">右移 ▶</view>
+<view class="cursor-control" data-position="end" bindtap="moveFormulaCursor">末尾</view>
+</view>
+<view wx:if="{{error}}" class="boundary-error">{{error}}</view>
+<view class="grid">
+<view class="key" wx:for="{{keys}}" wx:key="*this" data-key="{{item}}" bindtap="key">{{item}}</view>
+<view class="key key-action" bindtap="backspace">退格</view>
+<view class="key key-action" bindtap="clear">清空</view>
+</view>
 </view>
 </view>
 </view>

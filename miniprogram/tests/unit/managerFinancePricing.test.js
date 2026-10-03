@@ -97,6 +97,341 @@ test('分账状态独立于历史转账，未知或处理中不能视为到账',
   assert.equal(typeof finance.confirmTransfer, 'undefined');
 });
 
+function pricingEvent(index, side, value) {
+  return {
+    currentTarget: { dataset: { index, side, boundary: index + ':' + side } },
+    detail: { value }
+  };
+}
+
+function enterPricingBoundary(page, index, side, value) {
+  page.editBoundary(pricingEvent(index, side));
+  page.boundaryInput(pricingEvent(index, side, value));
+  page.updateBoundary(pricingEvent(index, side));
+}
+
+test('计价公式点击后才打开计算器，关闭保留公式且再次打开可编辑另一段', () => {
+  const { page } = pageHarness('../../pages/pricingRules/pricingRules.js');
+  page.newRule();
+  assert.equal(page.data.calculatorOpen, false);
+  enterPricingBoundary(page, 0, 'right', '100');
+  page.openCalculator(pricingEvent(1));
+  assert.equal(page.data.calculatorOpen, true);
+  assert.equal(page.data.activeIndex, 1);
+  for (const key of ['×', '2', '+', '1', '÷', '2']) {
+    page.key({ currentTarget: { dataset: { key } } });
+  }
+  assert.equal(page.data.segments[1].formula, 'x*2+1/2');
+  assert.equal(page.data.segments[0].formula, 'x');
+  page.backspace();
+  assert.equal(page.data.segments[1].formula, 'x*2+1/');
+  page.closeCalculator();
+  assert.equal(page.data.calculatorOpen, false);
+  assert.equal(page.data.segments[1].formula, 'x*2+1/');
+  page.openCalculator(pricingEvent(0));
+  page.clear();
+  assert.equal(page.data.segments[0].formula, '');
+  assert.equal(page.data.segments[1].formula, 'x*2+1/');
+});
+
+test('无上限改为数字自动接上下一段并复制公式，确认后的失焦不会重复新增', () => {
+  const { page } = pageHarness('../../pages/pricingRules/pricingRules.js');
+  page.newRule();
+  page.openCalculator(pricingEvent(0));
+  page.key({ currentTarget: { dataset: { key: '+' } } });
+  page.key({ currentTarget: { dataset: { key: '5' } } });
+  page.closeCalculator();
+  page.data.trialPrice = '旧试算';
+  page.editBoundary(pricingEvent(0, 'right'));
+  page.boundaryInput(pricingEvent(0, 'right', '100.50'));
+  assert.equal(page.data.segments.length, 1);
+  page.updateBoundary(pricingEvent(0, 'right'));
+  page.updateBoundary(pricingEvent(0, 'right'));
+  assert.equal(page.data.segments.length, 2);
+  assert.equal(page.data.segments[0].upper, 100.5);
+  assert.equal(page.data.segments[0].upperInclusive, true);
+  assert.equal(page.data.segments[1].lower, 100.5);
+  assert.equal(page.data.segments[1].lowerInclusive, false);
+  assert.equal(page.data.segments[1].upper, null);
+  assert.equal(page.data.segments[1].formula, 'x+5');
+  assert.equal(page.data.editingBoundary, '');
+  assert.equal(page.data.trialPrice, '');
+  assert.equal(page.data.calculatorOpen, false);
+  enterPricingBoundary(page, 1, 'right', '200');
+  assert.equal(page.data.segments.length, 3);
+  assert.equal(page.data.segments[2].lower, 200);
+  assert.equal(page.data.segments[2].upper, null);
+  assert.equal(page.data.segments[2].formula, 'x+5');
+});
+
+test('价格公式可在中间插入，退格仅删除光标前的字符，连续编辑不跳到末尾', () => {
+  const { page } = pageHarness('../../pages/pricingRules/pricingRules.js');
+  page.newRule();
+  page.data.segments[0].formula = '(x+15)/0.98';
+  page.openCalculator(pricingEvent(0));
+  page.selectFormulaCursor({ currentTarget: { dataset: { cursor: 4 } }, detail: {} });
+  page.backspace();
+  assert.equal(page.data.segments[0].formula, '(x+5)/0.98');
+  assert.equal(page.data.formulaCursor, 3);
+  page.key({ currentTarget: { dataset: { key: '8' } } });
+  assert.equal(page.data.segments[0].formula, '(x+85)/0.98');
+  assert.equal(page.data.formulaCursor, 4);
+  page.key({ currentTarget: { dataset: { key: '0' } } });
+  assert.equal(page.data.segments[0].formula, '(x+805)/0.98');
+  assert.equal(page.data.formulaCursor, 5);
+  assert.equal(page.data.formulaCells.map(item => item.character).join(''), '(x+805)/0.98');
+});
+
+test('公式光标支持开头末尾和左右微调，开头退格不删末尾，清空后可继续输入', () => {
+  const { page } = pageHarness('../../pages/pricingRules/pricingRules.js');
+  page.newRule();
+  page.data.segments[0].formula = 'x+5';
+  page.openCalculator(pricingEvent(0));
+  page.moveFormulaCursor({ currentTarget: { dataset: { position: 'start' } } });
+  page.backspace();
+  assert.equal(page.data.segments[0].formula, 'x+5');
+  assert.equal(page.data.formulaCursor, 0);
+  page.moveFormulaCursor({ currentTarget: { dataset: { offset: -1 } } });
+  assert.equal(page.data.formulaCursor, 0);
+  page.key({ currentTarget: { dataset: { key: '(' } } });
+  assert.equal(page.data.segments[0].formula, '(x+5');
+  page.moveFormulaCursor({ currentTarget: { dataset: { offset: 1 } } });
+  assert.equal(page.data.formulaCursor, 2);
+  page.moveFormulaCursor({ currentTarget: { dataset: { offset: -1 } } });
+  assert.equal(page.data.formulaCursor, 1);
+  page.moveFormulaCursor({ currentTarget: { dataset: { position: 'end' } } });
+  page.moveFormulaCursor({ currentTarget: { dataset: { offset: 1 } } });
+  assert.equal(page.data.formulaCursor, 4);
+  page.key({ currentTarget: { dataset: { key: ')' } } });
+  assert.equal(page.data.segments[0].formula, '(x+5)');
+  page.clear();
+  assert.equal(page.data.formulaCursor, 0);
+  assert.equal(page.data.formulaCells.length, 0);
+  page.key({ currentTarget: { dataset: { key: 'x' } } });
+  assert.equal(page.data.segments[0].formula, 'x');
+  assert.equal(page.data.formulaCursor, 1);
+});
+
+test('点击公式字符左右半边定位到字符前后，过期测量结果不会覆盖后续光标', () => {
+  const { page, wx } = pageHarness('../../pages/pricingRules/pricingRules.js');
+  const measurements = [];
+  wx.createSelectorQuery = () => {
+    const query = {
+      select(selector) { this.selector = selector; return this; },
+      boundingClientRect(callback) { measurements.push({ selector: this.selector, callback }); return this; },
+      exec() {}
+    };
+    return query;
+  };
+  const tap = x => page.selectFormulaCursor({
+    currentTarget: { dataset: { cursor: 1 } }, detail: { x }
+  });
+  page.newRule();
+  page.data.segments[0].formula = 'x+5';
+  page.openCalculator(pricingEvent(0));
+  tap(102);
+  assert.equal(measurements[0].selector, '#formula-char-1');
+  measurements[0].callback({ left: 100, width: 10 });
+  assert.equal(page.data.formulaCursor, 1);
+  tap(108);
+  measurements[1].callback({ left: 100, width: 10 });
+  assert.equal(page.data.formulaCursor, 2);
+  tap(102);
+  page.formulaEnd();
+  measurements[2].callback({ left: 100, width: 10 });
+  assert.equal(page.data.formulaCursor, 3);
+  tap(102);
+  page.key({ currentTarget: { dataset: { key: '0' } } });
+  measurements[3].callback({ left: 100, width: 10 });
+  assert.equal(page.data.segments[0].formula, 'x+50');
+  assert.equal(page.data.formulaCursor, 4);
+  tap(102);
+  page.closeCalculator();
+  measurements[4].callback({ left: 100, width: 10 });
+  assert.equal(page.data.formulaCursor, 4);
+});
+
+test('换段打开公式重置光标和显示内容，超出长度限制时保留原公式及光标', () => {
+  const { page } = pageHarness('../../pages/pricingRules/pricingRules.js');
+  page.newRule();
+  enterPricingBoundary(page, 0, 'right', '100');
+  page.data.segments[0].formula = 'x+5';
+  page.data.segments[1].formula = 'x*2';
+  page.openCalculator(pricingEvent(0));
+  page.setFormulaCursor(1);
+  page.closeCalculator();
+  page.openCalculator(pricingEvent(1));
+  assert.equal(page.data.formulaCursor, 3);
+  assert.equal(page.data.formulaCells.map(item => item.character).join(''), 'x*2');
+  page.data.segments[1].formula = 'x'.repeat(512);
+  page.openCalculator(pricingEvent(1));
+  page.setFormulaCursor(10);
+  page.key({ currentTarget: { dataset: { key: '+' } } });
+  assert.equal(page.data.segments[1].formula.length, 512);
+  assert.equal(page.data.formulaCursor, 10);
+  assert.match(page.data.error, /512/);
+  page.backspace();
+  assert.equal(page.data.segments[1].formula.length, 511);
+  assert.equal(page.data.formulaCursor, 9);
+  assert.equal(page.data.segments[0].formula, 'x+5');
+});
+
+test('从左右两侧原地修改同一边界同步相邻区间，符号点击只变包含关系', () => {
+  const { page } = pageHarness('../../pages/pricingRules/pricingRules.js');
+  page.newRule();
+  enterPricingBoundary(page, 0, 'right', '100');
+  enterPricingBoundary(page, 1, 'right', '200');
+  enterPricingBoundary(page, 0, 'right', '80.25');
+  assert.equal(page.data.segments[0].upper, 80.25);
+  assert.equal(page.data.segments[1].lower, 80.25);
+  enterPricingBoundary(page, 1, 'left', '90.50');
+  assert.equal(page.data.segments[0].upper, 90.5);
+  assert.equal(page.data.segments[1].lower, 90.5);
+  assert.equal(page.data.segments[1].upper, 200);
+  assert.equal(page.data.segments.length, 3);
+  page.toggle(pricingEvent(0, 'right'));
+  assert.equal(page.data.segments[0].upperInclusive, false);
+  assert.equal(page.data.segments[1].lowerInclusive, true);
+  page.toggle(pricingEvent(1, 'left'));
+  assert.equal(page.data.segments[0].upperInclusive, true);
+  assert.equal(page.data.segments[1].lowerInclusive, false);
+  assert.equal(page.data.segments[0].upper, 90.5);
+  assert.equal(page.data.segments[1].lower, 90.5);
+  assert.equal(page.data.segments[0].lowerInclusive, false);
+});
+
+test('无上限未输入数字保持原样，非法边界保留原区间并阻止保存及试算', async () => {
+  const { page, calls } = pageHarness('../../pages/pricingRules/pricingRules.js');
+  page.newRule();
+  enterPricingBoundary(page, 0, 'right', '');
+  assert.equal(page.data.segments.length, 1);
+  assert.equal(page.data.segments[0].upper, null);
+  assert.equal(page.data.boundaryError, '');
+  enterPricingBoundary(page, 0, 'right', '100');
+  page.data.name = '边界校验';
+  page.data.trialCost = '20';
+  for (const value of ['0', '99', '100', '-1', 'abc', '100.001']) {
+    enterPricingBoundary(page, 1, 'right', value);
+    assert.equal(page.data.segments.length, 2);
+    assert.equal(page.data.segments[1].upper, null);
+    assert.ok(page.data.boundaryError);
+    await page.preview();
+    await page.save();
+  }
+  assert.equal(calls.length, 0);
+  enterPricingBoundary(page, 1, 'right', '200');
+  assert.equal(page.data.boundaryError, '');
+  for (const value of ['0', '200', '201', '']) {
+    enterPricingBoundary(page, 0, 'right', value);
+    assert.equal(page.data.segments[0].upper, 100);
+    assert.equal(page.data.segments[1].lower, 100);
+    assert.equal(page.data.segments.length, 3);
+    assert.ok(page.data.boundaryError);
+  }
+});
+
+test('自动新增区间遵守100段上限，达到上限仍能修改已有边界', () => {
+  const { page } = pageHarness('../../pages/pricingRules/pricingRules.js');
+  page.newRule();
+  for (let index = 0; index < 99; index++) {
+    enterPricingBoundary(page, index, 'right', String((index + 1) * 10));
+  }
+  enterPricingBoundary(page, 99, 'right', '1000');
+  assert.equal(page.data.segments.length, 100);
+  assert.equal(page.data.segments[99].upper, null);
+  assert.match(page.data.boundaryError, /最多100/);
+  page.boundaryInput(pricingEvent(99, 'right', ''));
+  page.updateBoundary(pricingEvent(99, 'right'));
+  enterPricingBoundary(page, 98, 'right', '995');
+  assert.equal(page.data.segments[98].upper, 995);
+  assert.equal(page.data.segments[99].lower, 995);
+});
+
+test('保存和试算先应用正在编辑的边界，请求只包含原有区间字段', async () => {
+  for (const method of ['save', 'preview']) {
+    const { page, calls } = pageHarness('../../pages/pricingRules/pricingRules.js', {
+      get: async () => [], post: async () => ({ price: '15.00' })
+    });
+    page.newRule();
+    page.data.name = '原地编辑规则';
+    page.data.trialCost = '10';
+    page.editBoundary(pricingEvent(0, 'right'));
+    page.boundaryInput(pricingEvent(0, 'right', '100'));
+    await page[method]();
+    const request = calls.find(call => call.method === 'post');
+    assert.equal(request.url, method === 'save' ? '/pricing-rules' : '/pricing-rules/preview');
+    assert.equal(request.data.segments.length, 2);
+    assert.equal(request.data.segments[0].upper, 100);
+    assert.equal(request.data.segments[1].lower, 100);
+    assert.deepEqual(Object.keys(request.data.segments[0]).sort(),
+      ['formula', 'lower', 'lowerInclusive', 'upper', 'upperInclusive']);
+  }
+});
+
+test('列表编辑进入原规则，复制进入新建并完整复制规则数据', () => {
+  const { page } = pageHarness('../../pages/pricingRules/pricingRules.js');
+  const rule = {
+    id: '77', name: '基础规则', enabled: false, currentVersion: 3,
+    segments: [
+      { lower: 0, upper: 100, lowerInclusive: false, upperInclusive: true, formula: '(x+15)/0.98' },
+      { lower: 100, upper: null, lowerInclusive: false, upperInclusive: false, formula: 'x+25' }
+    ]
+  };
+  page.setData({ rules: [rule] });
+  page.edit({ currentTarget: { dataset: { index: 0 } } });
+  assert.equal(page.data.id, '77');
+  assert.equal(page.data.name, '基础规则');
+  assert.equal(page.data.enabled, false);
+  assert.equal(page.data.segments[0].formula, '(x+15)/0.98');
+  page.copy({ currentTarget: { dataset: { index: 0 } } });
+  assert.equal(page.data.id, '');
+  assert.equal(page.data.name, '基础规则');
+  assert.equal(page.data.enabled, false);
+  assert.equal(page.data.segments.length, 2);
+  assert.equal(page.data.segments[1].upper, null);
+  assert.equal(page.data.segments[1].formula, 'x+25');
+  assert.equal(page.data.segments[0].label, '0 < x ≤ 100');
+  assert.notEqual(page.data.segments, rule.segments);
+  assert.notEqual(page.data.segments[0], rule.segments[0]);
+});
+
+test('新增或复制保存时不允许重名，编辑原规则保留原名，重名时不发请求', async () => {
+  const { page, calls } = pageHarness('../../pages/pricingRules/pricingRules.js', {
+    get: async () => [], post: async () => ({})
+  });
+  page.setData({
+    rules: [{ id: '1', name: '基础规则', enabled: true, segments: [] }],
+    name: '基础规则', segments: [{ lower: 0, upper: null, lowerInclusive: false, upperInclusive: false, formula: 'x' }],
+    editing: true, id: '',
+  });
+  await page.save();
+  assert.equal(calls.length, 0);
+  assert.equal(page.data.error, '规则名称已存在，请换个名称后再保存');
+  page.setData({ id: '1', error: '' });
+  await page.save();
+  assert.equal(calls.filter(call => call.method === 'put').length, 1);
+  page.setData({ id: '', name: ' 新规则 ' });
+  await page.save();
+  assert.equal(calls.filter(call => call.method === 'post').length, 1);
+  assert.equal(calls.find(call => call.method === 'post').data.name, '新规则');
+});
+
+test('保存先应用正在编辑的边界再检查重名，重名时不丢失用户边界输入', async () => {
+  const { page, calls } = pageHarness('../../pages/pricingRules/pricingRules.js');
+  page.setData({
+    rules: [{ id: '1', name: '基础规则', enabled: true, segments: [] }],
+    name: '基础规则', editing: true, id: '',
+    segments: [{ lower: 0, upper: null, lowerInclusive: false, upperInclusive: false, formula: 'x' }]
+  });
+  page.editBoundary({ currentTarget: { dataset: { index: 0, side: 'right', boundary: '0:right' } } });
+  page.boundaryInput({ currentTarget: { dataset: { boundary: '0:right' } }, detail: { value: '100' } });
+  await page.save();
+  assert.equal(page.data.segments.length, 2);
+  assert.equal(page.data.segments[0].upper, 100);
+  assert.equal(page.data.error, '规则名称已存在，请换个名称后再保存');
+  assert.equal(calls.length, 0);
+});
+
 test('负责人列表第一页为1，只有后续页追加', async () => {
   const { page, calls } = pageHarness('../../pages/stallManagers/stallManagers.js', {
     get: async (_, params) => ({ content: [{ userId: String(params.page) }], totalPages: 2 })
