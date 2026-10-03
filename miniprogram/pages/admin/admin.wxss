@@ -113,11 +113,12 @@ page { background-color: #f2f2f2; padding-bottom: 160rpx; /* 将原本的60rpx�
   background: #fff; padding: 24rpx; border-radius: 16rpx; margin-bottom: 16rpx;
 }
 
-/* 单行控制台：强制不换行，间距极小化以容纳 5 元素 */
-.sku-console-row { 
-  display: flex; align-items: center; justify-content: space-between; 
-  gap: 5px; margin-bottom: 20px; width: 100%; box-sizing: border-box; 
+/* 输入项单独一行，操作按钮并排靠右放在下一行。 */
+.sku-console-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 5px; margin-bottom: 6px; width: 100%; box-sizing: border-box;
 }
+.sku-console-actions { display:flex; justify-content:flex-end; align-items:center; gap:5px; margin-bottom:20px; }
 
 /* 输入框：采用 flex 弹性分配空间 */
 .console-input {
@@ -161,8 +162,6 @@ page { background-color: #f2f2f2; padding-bottom: 160rpx; /* 将原本的60rpx�
   padding: 8px 0; border-bottom: 1px solid #f9f9f9; 
 }
 
-.sku-console-admin { flex-wrap:wrap; }
-.sku-console-admin .console-input { flex:1 1 25%; }
 .minimal-sku-row:last-child { border-bottom: none; }
 .sku-main-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 

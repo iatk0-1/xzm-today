@@ -63,7 +63,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     const token = (this._ruleToken || 0) + 1;
     this._ruleToken = token;
     if (!stall) {
-      if (this.data.isStallManager) this.showRule(null, '');
+      // 不选档口时使用当前明确选择的规则，负责人仍按成本计价。
       return;
     }
     try {
@@ -90,11 +90,11 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   };
 
   page.choosePricingRule = async function(event) {
-    if (this.data.isStallManager) return;
+    if (this.data.isStallManager && this.data.selectedStalls.length) return;
     const rule = this.data.pricingRules[Number(event.detail.value)];
     if (!rule) return;
     this._ruleToken = (this._ruleToken || 0) + 1;
-    this.showRule(rule.id === '' ? null : rule, '管理员选择');
+    this.showRule(rule.id === '' ? null : rule, this.data.isStallManager ? '手动选择' : '管理员选择');
     this._markDirty();
     if (!this.canManuallyPrice()) await this.recalculatePricing(false);
   };
@@ -130,7 +130,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     });
   };
 
-  page.recalculatePricing = async function(strict, skuOnly = false) {
+  page.recalculatePricing = async function(strict, skuOnly = false, targets = null) {
     const sequence = (this._pricingSequence || 0) + 1;
     this._pricingSequence = sequence;
     if (this.data.isBundleMode) this.saveActiveGroupState();
@@ -149,7 +149,10 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
         return cache.get(amount);
       };
       let updatedCount = 0;
-      const updateSku = async sku => {
+      const shouldUpdate = (groupIndex, skuIndex) => !targets
+        || (groupIndex === targets.groupIndex && targets.skuIndexes.includes(skuIndex));
+      const updateSku = async (sku, skuIndex, groupIndex) => {
+        if (!shouldUpdate(groupIndex, skuIndex)) return { ...sku };
         if (sku._toBeRemoved) return { ...sku };
         if (!strict && String(sku.costPrice == null ? '' : sku.costPrice).trim() === '') return { ...sku };
         const cost = finance.money(sku.costPrice || defaultCost);
@@ -168,17 +171,18 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
       let skuList;
       let bundleGroups = this.data.bundleGroups;
       if (this.data.isBundleMode) {
-        bundleGroups = await Promise.all(bundleGroups.map(async group => ({
-          ...group, skuList: await Promise.all((group.skuList || []).map(updateSku))
+        bundleGroups = await Promise.all(bundleGroups.map(async (group, groupIndex) => ({
+          ...group, skuList: await Promise.all((group.skuList || []).map((sku, index) => updateSku(sku, index, groupIndex)))
         })));
         skuList = this.data.activeGroupIndex >= 0
           ? bundleGroups[this.data.activeGroupIndex].skuList : this.data.skuList;
       } else {
-        skuList = await Promise.all(this.data.skuList.map(updateSku));
+        skuList = await Promise.all(this.data.skuList.map((sku, index) => updateSku(sku, index, -1)));
       }
       if (sequence === this._pricingSequence) {
         // 预览请求返回时只合并计价字段，保留等待期间编辑的库存、图片等资料。
-        const mergePrices = (current, calculated) => current.map((sku, index) => {
+        const mergePrices = (current, calculated, groupIndex) => current.map((sku, index) => {
+          if (!shouldUpdate(groupIndex, index)) return sku;
           if (sku._toBeRemoved || (!strict && String(sku.costPrice == null ? '' : sku.costPrice).trim() === '')) return sku;
           const priced = calculated[index];
           return priced ? { ...sku, costPrice: priced.costPrice, price: priced.price } : sku;
@@ -186,11 +190,11 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
         if (this.data.isBundleMode) {
           bundleGroups = this.data.bundleGroups.map((group, index) => ({
             ...group,
-            skuList: mergePrices(index === this.data.activeGroupIndex ? this.data.skuList : (group.skuList || []), bundleGroups[index].skuList)
+            skuList: mergePrices(index === this.data.activeGroupIndex ? this.data.skuList : (group.skuList || []), bundleGroups[index].skuList, index)
           }));
           skuList = this.data.activeGroupIndex >= 0
             ? bundleGroups[this.data.activeGroupIndex].skuList : this.data.skuList;
-        } else skuList = mergePrices(this.data.skuList, skuList);
+        } else skuList = mergePrices(this.data.skuList, skuList, -1);
         this.setData({ skuList, bundleGroups, defaultPrice, pricingError: '' });
         return { updatedCount };
       }
@@ -283,7 +287,10 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   const originalRemove = page.removeStall;
   page.removeStall = function(event) {
     originalRemove.call(this, event);
-    if (this.data.isStallManager) this.showRule(null, '');
+    this._ruleToken = (this._ruleToken || 0) + 1;
+    if (this.data.isStallManager && !this.data.selectedStalls.length) {
+      this.setData({ ruleSource: this.data.pricingRuleId ? '未选择档口，使用当前规则' : '' });
+    }
   };
 
   const originalInput = page.onSkuInput;
@@ -307,9 +314,35 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     if (!page[name]) return;
     const original = page[name];
     page[name] = function(...args) {
-      original.apply(this, args);
+      // 填充前记录输入；一键填充会在完成后清空控制台。
+      const manual = this.canManuallyPrice();
+      const cost = name === 'applyQuickFillAll' ? this.data.quickCost : this.data.batchCost;
+      const price = name === 'applyQuickFillAll' ? this.data.quickPrice : this.data.batchPrice;
+      const selectedColors = (this.data.batchSelectedColors || []).filter(item => item.selected).map(item => item.name);
+      const selectedSizes = (this.data.batchSelectedSizes || []).filter(item => item.selected).map(item => item.name);
+      const skuIndexes = this.data.skuList.reduce((indexes, sku, index) => {
+        const matches = name === 'applyQuickFillAll' || (name === 'confirmBatch'
+          && (!selectedColors.length || selectedColors.includes(sku.color))
+          && (!selectedSizes.length || selectedSizes.includes(sku.size)));
+        if (matches && !sku._toBeRemoved) indexes.push(index);
+        return indexes;
+      }, []);
+      const applied = original.apply(this, args);
       this._afterBundleSkuChange();
       this.schedulePricing();
+      if (!manual || !applied || name === 'generateSkuMatrix' || !skuIndexes.length
+        || String(cost == null ? '' : cost).trim() === '' || String(price == null ? '' : price).trim() !== '') return applied;
+      if (!this.data.pricingRuleId || !this.data.pricingRuleSegments.length) {
+        wx.showToast({ title: '已填充成本，请选择计价规则或手动填写售价', icon: 'none' });
+        return applied;
+      }
+      return this.recalculatePricing(false, true, {
+        groupIndex: this.data.isBundleMode ? this.data.activeGroupIndex : -1, skuIndexes
+      }).then(result => {
+        if (result) wx.showToast({ title: '已按规则更新' + result.updatedCount + '条SKU售价', icon: 'none' });
+        else if (this.data.pricingError) wx.showToast({ title: this.data.pricingError, icon: 'none' });
+        return result;
+      });
     };
   });
 
@@ -329,10 +362,14 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   const originalSubmit = page.submitProduct;
   page.submitProduct = async function() {
     if (this._pricingSubmitting) return;
+    if (this.canManuallyPrice() && this.data.pricingBusy) {
+      wx.showToast({ title: '正在计算售价，请稍后保存', icon: 'none' });
+      return;
+    }
     this._pricingSubmitting = true;
     try {
       if (this.data.managerInactive) throw new Error('负责人已下线，不能保存商品');
-      if (this.data.selectedStalls.length !== 1) throw new Error('商品必须且只能选择一个档口');
+      if (this.data.selectedStalls.length > 1) throw new Error('商品最多只能选择一个档口');
       if (this.canManuallyPrice()) {
         this.cancelPricing();
         if (this.data.isBundleMode) this.saveActiveGroupState();
@@ -347,8 +384,9 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
         await originalSubmit.call(this);
         return;
       }
-      if (this.data.isStallManager) await this.useStallPricing();
+      if (this.data.isStallManager && this.data.selectedStalls.length) await this.useStallPricing();
       else {
+        if (!this.data.pricingRuleId) throw new Error('请选择有效计价规则');
         const current = await api.get('/pricing-rules/' + encodeURIComponent(this.data.pricingRuleId));
         if (!current.enabled || current.deleted) {
           if (!await this.useExistingPricing(current)) throw new Error('所选计价规则已禁用或删除，不能用于新增商品或变更规则');

@@ -136,7 +136,7 @@
   </view>
 
   <view class="form-group pricing-panel">
-    <picker wx:if="{{!isStallManager}}" range="{{pricingRules}}" range-key="name" bindchange="choosePricingRule">
+    <picker wx:if="{{!isStallManager || !selectedStalls.length}}" range="{{pricingRules}}" range-key="name" bindchange="choosePricingRule">
       <view class="pricing-rule-heading">
         <view class="label">计价规则：{{pricingRuleName || '未选择'}}</view>
         <text class="pricing-rule-arrow">›</text>
@@ -153,7 +153,7 @@
   <view class="sku-matrix-section" wx:if="{{skuList.length > 0}}">
     <view class="label">SKU 明细</view>
 
-    <view class="sku-console-row {{isAdmin ? 'sku-console-admin' : ''}}">
+    <view class="sku-console-row">
       <input class="console-input" type="digit" placeholder="批量成本" model:value="{{quickCost}}" />
       <input wx:if="{{isAdmin}}" class="console-input" type="digit" placeholder="批量价格" model:value="{{quickPrice}}" />
       <input class="console-input" type="number" placeholder="全部库存" model:value="{{quickStock}}" />
@@ -163,7 +163,9 @@
         <view wx:if="{{quickImage}}" class="console-img-del" catchtap="removeQuickImage">×</view>
         <text wx:else class="icon-camera">📷</text>
       </view>
-      
+
+    </view>
+    <view class="sku-console-actions">
       <view class="btn-quick-fill" bindtap="applyQuickFillAll">一键填充</view>
       <view class="btn-advanced-batch" bindtap="applyBatch">批量设置</view>
     </view>
@@ -190,12 +192,15 @@
               <input class="mini-input stock-input" type="number" placeholder="无限" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" maxlength="9" />
             </view>
 
-            <view class="mini-img-upload" bindtap="uploadSkuImage" data-index="{{index}}">
-              <image wx:if="{{item.image && item.image !== ''}}" src="{{item.image}}" mode="aspectFill" catchtap="previewSkuImage" data-index="{{index}}"></image>
-              <text wx:elif="{{item.image === ''}}" class="img-lost-text">丢失</text>
-              <text class="icon-plus" wx:else>+</text>
-              <view wx:if="{{item.image && item.image !== ''}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
-              <view wx:elif="{{item.image === ''}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
+            <view class="mini-field">
+              <text class="mini-field-label">图片</text>
+              <view class="mini-img-upload" bindtap="uploadSkuImage" data-index="{{index}}">
+                <image wx:if="{{item.image && item.image !== ''}}" src="{{item.image}}" mode="aspectFill" catchtap="previewSkuImage" data-index="{{index}}"></image>
+                <text wx:elif="{{item.image === ''}}" class="img-lost-text">丢失</text>
+                <text class="icon-plus" wx:else>+</text>
+                <view wx:if="{{item.image && item.image !== ''}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
+                <view wx:elif="{{item.image === ''}}" class="mini-img-del" catchtap="removeSkuImage" data-index="{{index}}">×</view>
+              </view>
             </view>
           </view>
         </view>
@@ -213,7 +218,7 @@
   <!-- 所属档口 -->
   <view class="form-group stall-section" style="position: relative; z-index: 100;">
     <view class="label-with-edit">
-      <view class="label">所属档口 (仅选一个)</view>
+      <view class="label">所属档口 (可不选，最多一个)</view>
       <view class="edit-btn" wx:if="{{!isStallManager}}" bindtap="openStallManageModal">编辑</view>
     </view>
     <view class="tags-display">

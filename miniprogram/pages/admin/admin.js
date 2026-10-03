@@ -1544,6 +1544,7 @@ const pageDefinition = {
 
     this.setData({ skuList: newList, showBatchModal: false });
     wx.showToast({ title: '批量设置成功', icon: 'success' });
+    return true;
   },
 
   onSkuInput(e) {
@@ -1711,8 +1712,8 @@ const pageDefinition = {
     if (!hasMediaOrVideoCover || !title || !hasSkus) {
       return wx.showToast({ title: '封面/名称/尺码颜色不能为空', icon: 'none' });
     }
-    if (this.data.isStallManager && (!selectedStalls.length || selectedStalls.some(s =>
-      !(this.data.assignedStalls || []).some(a => String(a.id) === String(s.id))))) {
+    if (this.data.isStallManager && selectedStalls.some(s =>
+      !(this.data.assignedStalls || []).some(a => String(a.id) === String(s.id)))) {
       return wx.showToast({ title: '请选择已分配给您的档口', icon: 'none' });
     }
 
@@ -2074,6 +2075,7 @@ const pageDefinition = {
     }, () => {
       wx.showToast({ title: '已同步至明细', icon: 'success' });
     });
+    return true;
   },
 
   // ================= 档口/标签管理弹窗 =================
