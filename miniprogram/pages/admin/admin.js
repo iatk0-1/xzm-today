@@ -67,9 +67,11 @@ const pageDefinition = {
     colorInput: '',
     skuList: [],
     batchCost: '',
+    batchPrice: '',
     batchStock: '',
     batchImage: '',
     quickCost: '',
+    quickPrice: '',
     quickStock: '',
     quickImage: '',
     // 与后端一致：达到该库存值时按无限库存展示。
@@ -1443,6 +1445,7 @@ const pageDefinition = {
 
     this.setData({
       batchCost: '',
+      batchPrice: '',
       batchStock: '',
       batchImage: '',
       batchSelectedColors: colors.map(c => ({ name: c, selected: false })),
@@ -1506,8 +1509,9 @@ const pageDefinition = {
   confirmBatch() {
     this._markDirty();
     const { batchCost, batchStock, batchImage, batchSelectedColors, batchSelectedSizes, skuList } = this.data;
+    const batchPrice = this.canManuallyPrice() ? this.data.batchPrice : '';
 
-    if (!batchCost && !batchStock && !batchImage) {
+    if (!batchCost && !batchPrice && !batchStock && !batchImage) {
       return wx.showToast({ title: '请输入值', icon: 'none' });
     }
 
@@ -1529,6 +1533,7 @@ const pageDefinition = {
         return {
           ...item,
           costPrice: batchCost || item.costPrice,
+          price: batchPrice !== '' ? batchPrice : item.price,
           stock: nextStock,
           availableMain: batchStock ? this.getExpectedAvailableStock(item, nextStock) : item.availableMain,
           image: batchImage || item.image
@@ -1780,7 +1785,7 @@ const pageDefinition = {
           size: sku.size || '均码',
           barcode: '',
           retailPrice: Number(sku.price),
-          costPrice: finance.money(sku.costPrice || this.data.costPrice),
+          costPrice: this.productCost(sku.costPrice || this.data.costPrice),
           stockMain: stockNum,
           isUnlimitedStock: isUnlimited,
           imageUrl: skuImageMap[index] || null,
@@ -1800,8 +1805,8 @@ const pageDefinition = {
       // 4. 构造商品请求数据
       const productData = {
         name: title,
-        costPrice: finance.money(this.data.costPrice),
-        pricingRuleId: String(this.data.pricingRuleId),
+        costPrice: this.productCost(this.data.costPrice),
+        pricingRuleId: this.data.pricingRuleId ? String(this.data.pricingRuleId) : null,
         coverUrl: coverUrl,
         bannerImages: bannerImages,
         stallIds: selectedStalls.map(s => s.id),
@@ -1834,6 +1839,7 @@ const pageDefinition = {
           uploadedGroups.push({ ...group, skuList: rows.map((sku, index) => ({ ...sku, image: images[index] || null })) });
         }
         var defaultCost = this.data.costPrice;
+        const productCost = value => this.productCost(value);
         var bundleGroupsData = uploadedGroups.map(function(bg, gi) {
           var bgSkus = (bg.skuList || []).filter(function(s) { return !s._toBeRemoved; }).map(function(sku) {
             var s = String(sku.stock == null ? '' : sku.stock).trim();
@@ -1843,7 +1849,7 @@ const pageDefinition = {
               size: sku.size || '均码',
               barcode: '',
               retailPrice: Number(sku.price) || 0,
-              costPrice: finance.money(sku.costPrice || defaultCost),
+              costPrice: productCost(sku.costPrice || defaultCost),
               id: editId ? sku.skuId : undefined,
               bundleGroupId: editId ? bg.id : undefined,
               imageUrl: sku.image || null,
@@ -2032,6 +2038,7 @@ const pageDefinition = {
   applyQuickFillAll: function() {
     this._markDirty();
     const { skuList, quickCost, quickStock, quickImage } = this.data;
+    const quickPrice = this.canManuallyPrice() ? this.data.quickPrice : '';
 
     if (!skuList || skuList.length === 0) {
       wx.showToast({ title: '请先添加规格', icon: 'none' });
@@ -2039,7 +2046,7 @@ const pageDefinition = {
     }
 
     // 检查是否有任何输入，避免空填充
-    if (quickCost === '' && quickStock === '' && quickImage === '') {
+    if (quickCost === '' && quickPrice === '' && quickStock === '' && quickImage === '') {
       wx.showToast({ title: '请填写填充内容', icon: 'none' });
       return;
     }
@@ -2050,6 +2057,7 @@ const pageDefinition = {
       return {
         ...sku,
         costPrice: quickCost !== '' ? quickCost : sku.costPrice,
+        price: quickPrice !== '' ? quickPrice : sku.price,
         stock: nextStock,
         availableMain: quickStock !== '' ? this.getExpectedAvailableStock(sku, nextStock) : sku.availableMain,
         image: quickImage !== '' ? quickImage : sku.image
@@ -2059,7 +2067,8 @@ const pageDefinition = {
     // 🚀 关键修改：在 setData 中同步清空控制台输入源
     this.setData({
       skuList: newList,
-      quickCost: '',    // 填充后自动清空价格
+      quickCost: '',
+      quickPrice: '',    // 填充后自动清空价格
       quickStock: '',    // 填充后自动清空库存
       quickImage: ''     // 填充后自动清空图片
     }, () => {
@@ -2735,5 +2744,5 @@ const pageDefinition = {
     this.previewImageSafe(urls[index], urls);
   },
 };
-integrateProductPricing(pageDefinition);
+integrateProductPricing(pageDefinition, { allowAdminManualPricing: true });
 Page(pageDefinition);

@@ -21,7 +21,10 @@ function setup({ manager = true, userId = 8, saved, assigned = [], failPublish =
     setTimeout() {},
     require(name) {
       // 本文件验证档口记忆；计价集成由managerFinancePricing.test.js独立覆盖。
-      if (name.endsWith('/productPricing')) return { integrateProductPricing() {} };
+      if (name.endsWith('/productPricing')) return { integrateProductPricing(page) {
+        page.canManuallyPrice = () => !manager;
+        page.productCost = value => require('../../utils/managerFinance').money(value);
+      } };
       if (name.endsWith('/managerFinance')) return require('../../utils/managerFinance');
       if (name.endsWith('/auth')) return {
         ensureAuthenticated: async () => {}, isStallManager: () => manager,

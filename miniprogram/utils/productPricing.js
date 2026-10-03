@@ -2,17 +2,35 @@ const api = require('./api');
 const auth = require('./auth');
 const finance = require('./managerFinance');
 
-function integrateProductPricing(page) {
+function integrateProductPricing(page, { allowAdminManualPricing = false } = {}) {
   Object.assign(page.data, {
     costPrice: '', defaultPrice: '', quickCost: '', batchCost: '',
+    isAdmin: false,
     pricingRules: [], pricingRuleId: '', pricingRuleName: '',
     pricingRuleVersion: '', pricingRuleSegments: [], ruleSource: '',
     pricingError: '', pricingBusy: false, managerInactive: false
   });
 
+  page.canManuallyPrice = function() {
+    return allowAdminManualPricing && auth.isAdmin() && !this.data.isStallManager;
+  };
+
+  page.cancelPricing = function() {
+    if (this._pricingTimer) clearTimeout(this._pricingTimer);
+    this._pricingSequence = (this._pricingSequence || 0) + 1;
+    this.setData({ pricingBusy: false });
+  };
+
+  page.productCost = function(value) {
+    if (this.canManuallyPrice() && String(value == null ? '' : value).trim() === '') return null;
+    return finance.money(value);
+  };
+
   page.loadPricingChoices = async function() {
     const rules = await api.get('/pricing-rules');
-    this.setData({ pricingRules: (rules || []).filter(rule => rule.enabled && !rule.deleted) });
+    const choices = (rules || []).filter(rule => rule.enabled && !rule.deleted);
+    if (this.canManuallyPrice()) choices.unshift({ id: '', name: '未选择', segments: [] });
+    this.setData({ pricingRules: choices });
   };
 
   page.useExistingPricing = async function(rule, token) {
@@ -30,6 +48,7 @@ function integrateProductPricing(page) {
   };
 
   page.showRule = function(rule, source) {
+    if (this.canManuallyPrice()) this.cancelPricing();
     this.setData({
       pricingRuleId: rule ? String(rule.id) : '',
       pricingRuleName: rule ? rule.name : '',
@@ -56,11 +75,12 @@ function integrateProductPricing(page) {
         if (token !== this._ruleToken) return;
         if (!preserved) {
           this.showRule(null, '');
+          if (this.canManuallyPrice()) return;
           this.setData({ pricingError: '该档口的计价规则未启用或已删除，不能用于新增商品，请联系管理员' });
           return;
         }
       }
-      await this.recalculatePricing(false);
+      if (!this.canManuallyPrice()) await this.recalculatePricing(false);
     } catch (error) {
       if (token === this._ruleToken) {
         this.showRule(null, '');
@@ -74,9 +94,9 @@ function integrateProductPricing(page) {
     const rule = this.data.pricingRules[Number(event.detail.value)];
     if (!rule) return;
     this._ruleToken = (this._ruleToken || 0) + 1;
-    this.showRule(rule, '管理员选择');
+    this.showRule(rule.id === '' ? null : rule, '管理员选择');
     this._markDirty();
-    await this.recalculatePricing(false);
+    if (!this.canManuallyPrice()) await this.recalculatePricing(false);
   };
 
   page.onCostInput = function(event) {
@@ -86,18 +106,38 @@ function integrateProductPricing(page) {
   };
 
   page.schedulePricing = function() {
+    if (this.canManuallyPrice()) {
+      this.cancelPricing();
+      return;
+    }
     if (this._pricingTimer) clearTimeout(this._pricingTimer);
     this._pricingSequence = (this._pricingSequence || 0) + 1;
     this._pricingTimer = setTimeout(() => this.recalculatePricing(false), 350);
   };
 
-  page.recalculatePricing = async function(strict) {
+  page.applyPricingRule = async function() {
+    if (this.data.pricingBusy) return;
+    if (this._pricingTimer) clearTimeout(this._pricingTimer);
+    const result = await this.recalculatePricing(false, true);
+    if (!result) {
+      if (this.data.pricingError) wx.showToast({ title: this.data.pricingError, icon: 'none' });
+      return;
+    }
+    if (result.updatedCount > 0) this._markDirty();
+    wx.showToast({
+      title: result.updatedCount > 0 ? '已更新' + result.updatedCount + '条SKU售价' : '请先填写SKU成本',
+      icon: 'none'
+    });
+  };
+
+  page.recalculatePricing = async function(strict, skuOnly = false) {
     const sequence = (this._pricingSequence || 0) + 1;
     this._pricingSequence = sequence;
     if (this.data.isBundleMode) this.saveActiveGroupState();
     try {
       if (!this.data.pricingRuleId || !this.data.pricingRuleSegments.length) throw new Error('请选择有效计价规则');
-      const defaultCost = finance.money(this.data.costPrice);
+      // 编辑预览允许默认成本为空；保存时仍按原有要求完整校验。
+      const defaultCost = strict ? finance.money(this.data.costPrice) : null;
       const segments = this.data.pricingRuleSegments.map(({ label, ...segment }) => segment);
       this.setData({ pricingBusy: true });
       const cache = new Map();
@@ -108,12 +148,23 @@ function integrateProductPricing(page) {
         }
         return cache.get(amount);
       };
+      let updatedCount = 0;
       const updateSku = async sku => {
         if (sku._toBeRemoved) return { ...sku };
+        if (!strict && String(sku.costPrice == null ? '' : sku.costPrice).trim() === '') return { ...sku };
         const cost = finance.money(sku.costPrice || defaultCost);
-        return { ...sku, costPrice: cost, price: await price(cost) };
+        const retailPrice = await price(cost);
+        updatedCount += 1;
+        return { ...sku, costPrice: cost, price: retailPrice };
       };
-      const defaultPrice = await price(defaultCost);
+      let defaultPrice = skuOnly ? this.data.defaultPrice : '';
+      if (strict) defaultPrice = await price(defaultCost);
+      else if (!skuOnly) {
+        // 默认成本的输入状态不应阻挡已经填写成本的SKU计价。
+        let previewCost;
+        try { previewCost = finance.money(this.data.costPrice); } catch (_) { /* 等待默认成本输入完整 */ }
+        if (previewCost) defaultPrice = await price(previewCost);
+      }
       let skuList;
       let bundleGroups = this.data.bundleGroups;
       if (this.data.isBundleMode) {
@@ -126,7 +177,22 @@ function integrateProductPricing(page) {
         skuList = await Promise.all(this.data.skuList.map(updateSku));
       }
       if (sequence === this._pricingSequence) {
+        // 预览请求返回时只合并计价字段，保留等待期间编辑的库存、图片等资料。
+        const mergePrices = (current, calculated) => current.map((sku, index) => {
+          if (sku._toBeRemoved || (!strict && String(sku.costPrice == null ? '' : sku.costPrice).trim() === '')) return sku;
+          const priced = calculated[index];
+          return priced ? { ...sku, costPrice: priced.costPrice, price: priced.price } : sku;
+        });
+        if (this.data.isBundleMode) {
+          bundleGroups = this.data.bundleGroups.map((group, index) => ({
+            ...group,
+            skuList: mergePrices(index === this.data.activeGroupIndex ? this.data.skuList : (group.skuList || []), bundleGroups[index].skuList)
+          }));
+          skuList = this.data.activeGroupIndex >= 0
+            ? bundleGroups[this.data.activeGroupIndex].skuList : this.data.skuList;
+        } else skuList = mergePrices(this.data.skuList, skuList);
         this.setData({ skuList, bundleGroups, defaultPrice, pricingError: '' });
+        return { updatedCount };
       }
     } catch (error) {
       if (sequence === this._pricingSequence) this.setData({ pricingError: error.message || '成本计价失败' });
@@ -139,6 +205,7 @@ function integrateProductPricing(page) {
   const originalOnLoad = page.onLoad;
   page.onLoad = async function(options) {
     await originalOnLoad.call(this, options);
+    this.setData({ isAdmin: auth.isAdmin() });
     try {
       if (this.data.isStallManager) {
         const profile = await api.get('/stall-managers/mine');
@@ -165,7 +232,7 @@ function integrateProductPricing(page) {
   page.loadProductForEdit = async function(id) {
     await originalLoad.call(this, id);
     if (this.data.isStallManager) await this.useStallPricing();
-    else await this.recalculatePricing(false);
+    else if (!this.canManuallyPrice()) await this.recalculatePricing(false);
   };
 
   if (page.loadLiveProductForConvert) {
@@ -173,7 +240,7 @@ function integrateProductPricing(page) {
     page.loadLiveProductForConvert = async function(id) {
       await originalConvert.call(this, id);
       if (this.data.isStallManager) await this.useStallPricing();
-      else await this.recalculatePricing(false);
+      else if (!this.canManuallyPrice()) await this.recalculatePricing(false);
     };
   }
 
@@ -221,9 +288,15 @@ function integrateProductPricing(page) {
 
   const originalInput = page.onSkuInput;
   page.onSkuInput = function(event) {
-    if (event.currentTarget.dataset.field === 'price') return;
+    const field = event.currentTarget.dataset.field;
+    if (field === 'price' && !this.canManuallyPrice()) return;
     originalInput.call(this, event);
-    if (event.currentTarget.dataset.field === 'costPrice') {
+    if (this.canManuallyPrice()) {
+      if (field === 'price' || field === 'costPrice') this.cancelPricing();
+      this._afterBundleSkuChange();
+      return;
+    }
+    if (field === 'costPrice') {
       this.setData({ ['skuList[' + event.currentTarget.dataset.index + '].price']: '' });
       this._afterBundleSkuChange();
       this.schedulePricing();
@@ -260,6 +333,20 @@ function integrateProductPricing(page) {
     try {
       if (this.data.managerInactive) throw new Error('负责人已下线，不能保存商品');
       if (this.data.selectedStalls.length !== 1) throw new Error('商品必须且只能选择一个档口');
+      if (this.canManuallyPrice()) {
+        this.cancelPricing();
+        if (this.data.isBundleMode) this.saveActiveGroupState();
+        const skus = this.data.isBundleMode
+          ? this.data.bundleGroups.reduce((all, group) => all.concat(group.skuList || []), []) : this.data.skuList;
+        this.productCost(this.data.costPrice);
+        skus.filter(sku => !sku._toBeRemoved).forEach(sku => {
+          try { finance.money(sku.price); } catch (_) { throw new Error('请填写正确的SKU售价，须大于零且最多两位小数'); }
+          this.productCost(sku.costPrice || this.data.costPrice);
+        });
+        this.setData({ pricingError: '' });
+        await originalSubmit.call(this);
+        return;
+      }
       if (this.data.isStallManager) await this.useStallPricing();
       else {
         const current = await api.get('/pricing-rules/' + encodeURIComponent(this.data.pricingRuleId));

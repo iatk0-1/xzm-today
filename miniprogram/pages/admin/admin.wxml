@@ -130,22 +130,22 @@
     </view>
   </view>
 
+  <view class="form-group pricing-default-panel">
+    <view class="label">新 SKU 默认成本</view>
+    <input class="input-box" type="digit" placeholder="{{isAdmin ? '默认成本（可选，大于0）' : '默认成本（必填，大于0）'}}" value="{{costPrice}}" bindinput="onCostInput" />
+  </view>
+
   <view class="form-group pricing-panel">
-    <view class="label">商品默认成本与自动售价</view>
-    <view class="pricing-default-row">
-      <input class="input-box" type="digit" placeholder="默认成本（大于0）" value="{{costPrice}}" bindinput="onCostInput" />
-      <input class="input-box" placeholder="规则自动售价" value="{{defaultPrice}}" disabled />
-    </view>
-    <view class="muted">默认成本用于新SKU，已有SKU通过一键填充或批量设置成本更新。</view>
-    <view class="label">计价规则：{{pricingRuleName || '尚未选择'}} {{pricingRuleVersion ? 'v' + pricingRuleVersion : ''}}</view>
-    <view>{{ruleSource}}</view>
     <picker wx:if="{{!isStallManager}}" range="{{pricingRules}}" range-key="name" bindchange="choosePricingRule">
-      <view class="switch-size-btn">选择其他计价规则</view>
+      <view class="pricing-rule-heading">
+        <view class="label">计价规则：{{pricingRuleName || '未选择'}}</view>
+        <text class="pricing-rule-arrow">›</text>
+      </view>
     </picker>
-    <view wx:else class="muted">负责人必须使用所属档口规则，售价自动计算。</view>
-    <view wx:for="{{pricingRuleSegments}}" wx:key="index">{{item.label}}：{{item.formula}}</view>
+    <view wx:else class="label">计价规则：{{pricingRuleName || '未选择'}}</view>
+    <view class="pricing-rule-segment" wx:for="{{pricingRuleSegments}}" wx:key="index">{{item.label}}：{{item.formula}}</view>
+    <button class="pricing-apply-btn" bindtap="applyPricingRule" loading="{{pricingBusy}}" disabled="{{pricingBusy || !pricingRuleId || !pricingRuleSegments.length}}">一键应用</button>
     <view class="pricing-error" wx:if="{{pricingError}}">{{pricingError}}</view>
-    <view class="muted" wx:if="{{pricingBusy}}">正在计算价格…</view>
   </view>
 
   <view wx:if="{{editId && isBundleMode}}" class="header-hint">已有套装保留分组结构，可编辑各SKU成本、规格和库存；调整分组请先复制为新商品。</view>
@@ -153,8 +153,9 @@
   <view class="sku-matrix-section" wx:if="{{skuList.length > 0}}">
     <view class="label">SKU 明细</view>
 
-    <view class="sku-console-row">
+    <view class="sku-console-row {{isAdmin ? 'sku-console-admin' : ''}}">
       <input class="console-input" type="digit" placeholder="批量成本" model:value="{{quickCost}}" />
+      <input wx:if="{{isAdmin}}" class="console-input" type="digit" placeholder="批量价格" model:value="{{quickPrice}}" />
       <input class="console-input" type="number" placeholder="全部库存" model:value="{{quickStock}}" />
       
       <view class="console-img-btn" bindtap="chooseQuickImage">
@@ -182,7 +183,7 @@
             </view>
             <view class="mini-field">
               <text class="mini-field-label">价格</text>
-              <input class="mini-input" type="digit" placeholder="0.00" value="{{item.price}}" disabled />
+              <input class="mini-input" type="digit" placeholder="0.00" value="{{item.price}}" disabled="{{!isAdmin}}" bindinput="onSkuInput" data-index="{{index}}" data-field="price" />
             </view>
             <view class="mini-field stock-field">
               <text class="mini-field-label">全部库存</text>
@@ -419,6 +420,7 @@
       
       <view class="batch-inputs-row">
         <input class="batch-input-wide" type="digit" placeholder="成本 (可选)" value="{{batchCost}}" bindinput="onInput" data-field="batchCost" />
+        <input wx:if="{{isAdmin}}" class="batch-input-wide" type="digit" placeholder="价格 (可选)" value="{{batchPrice}}" bindinput="onInput" data-field="batchPrice" />
         <input class="batch-input-wide" type="number" placeholder="全部库存 (可选)" value="{{batchStock}}" bindinput="onInput" data-field="batchStock" />
       </view>
       
