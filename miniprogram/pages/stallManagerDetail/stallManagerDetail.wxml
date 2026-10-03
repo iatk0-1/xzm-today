@@ -1,8 +1,29 @@
 <view class="page">
   <view class="card" wx:if="{{profile}}">
-    <view class="title">{{profile.nickname || userId}} <text class="badge">{{profile.active ? '激活' : '下线'}}</text>
-</view>
+    <view class="profile-heading">
+      <view class="title profile-name">{{profile.nickname || userId}}</view>
+      <view class="active-control"><text>{{profile.active ? '上线' : '下线'}}</text><switch checked="{{activeChecked}}" disabled="{{busy}}" color="#173e33" bindchange="toggleActive" /></view>
+    </view>
     <view class="muted">ID {{userId}} · {{profile.phone || '未绑定手机'}}</view>
+  </view>
+  <view class="assignment-overlay" wx:if="{{assignmentVisible}}" catchtap="closeAssignments" catchtouchmove="noop">
+    <view class="assignment-dialog" catchtap="noop">
+      <view class="title">分配新档口</view>
+      <view class="muted">可多选，点击分配后立即保存</view>
+      <view class="error" wx:if="{{error}}">{{error}}</view>
+      <scroll-view class="assignment-options" scroll-y>
+        <checkbox-group bindchange="assignmentChange">
+          <label class="choice" wx:for="{{availableStalls}}" wx:key="id">
+            <checkbox value="{{item.id}}" checked="{{item.selected}}" disabled="{{busy}}" color="#173e33" />{{item.name}}
+          </label>
+        </checkbox-group>
+        <view class="assignment-empty" wx:if="{{!availableStalls.length}}">所有档口均已分配给该负责人</view>
+      </scroll-view>
+      <view class="assignment-actions">
+        <button disabled="{{busy}}" bindtap="closeAssignments">取消</button>
+        <button class="primary" disabled="{{busy || !newAssignmentIds.length}}" bindtap="addAssignments">{{busy ? '分配中...' : '分配所选档口'}}</button>
+      </view>
+    </view>
   </view>
   <scroll-view class="tabs" scroll-x>
     <view class="tab {{tab === 'profile' ? 'active' : ''}}" data-tab="profile" bindtap="changeTab">档口与状态</view>
@@ -18,15 +39,31 @@
   <view class="error" wx:if="{{error}}">{{error}}</view>
 
   <view class="card" wx:if="{{tab === 'profile'}}">
-    <view class="title">分配档口（可多选）</view>
-    <checkbox-group bindchange="assignmentChange">
-      <label class="choice" wx:for="{{stalls}}" wx:key="id">
-        <checkbox value="{{item.id}}" checked="{{item.selected}}" />{{item.name}}
-      </label>
-    </checkbox-group>
-    <textarea placeholder="档口分配或负责人上下线原因（必填）" value="{{reason}}" data-field="reason" bindinput="input" />
-    <button class="primary" disabled="{{busy}}" bindtap="saveAssignments">保存档口分配</button>
-    <button disabled="{{busy}}" bindtap="toggleActive">{{profile.active ? '负责人下线' : '重新激活负责人'}}</button>
+    <view class="section-heading">
+      <view class="title">已分配档口</view>
+      <button class="assign-add" disabled="{{busy || !profile}}" bindtap="openAssignments" aria-label="分配新档口">＋</button>
+    </view>
+    <view class="muted assignment-hint">展示本负责人创建的商品，分配和移除后自动保存。</view>
+    <view class="assignment-empty" wx:if="{{!assignedStalls.length}}">暂无已分配档口，点击右上角＋分配</view>
+    <view class="assigned-stall" wx:for="{{assignedStalls}}" wx:key="id" bindtap="openStall" data-id="{{item.id}}">
+      <view class="stall-heading">
+        <view class="stall-name">{{item.name}}</view>
+        <button class="assignment-remove" disabled="{{busy}}" catchtap="removeAssignment" data-id="{{item.id}}" aria-label="移除档口分配">删除</button>
+      </view>
+      <view class="muted" wx:if="{{item.previewLoading}}">商品加载中...</view>
+      <view class="muted" wx:elif="{{item.previewError}}">商品预览加载失败，点击档口查看</view>
+      <block wx:else>
+        <view class="stall-meta">本负责人创建 {{item.productCount}} 件商品 <text class="stall-enter">查看全部 ›</text></view>
+        <view class="stall-previews" wx:if="{{item.previewProducts.length}}">
+          <view class="stall-preview" wx:for="{{item.previewProducts}}" wx:for-item="product" wx:key="productId" catchtap="openProduct" data-id="{{product.productId}}">
+            <image class="preview-image" src="{{product.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
+            <view class="preview-name">{{product.name}}</view>
+          </view>
+        </view>
+        <view class="muted" wx:else>该负责人暂未在此档口创建商品</view>
+      </block>
+    </view>
+    <textarea placeholder="操作说明（选填，留空时自动记录分配或上下线操作）" value="{{reason}}" maxlength="1000" data-field="reason" bindinput="input" />
     <view class="muted">下线期间新订单不计佣；历史佣金继续完成结算，订单完成后由本人点击提现，按原微信交易分账。</view>
     <view class="title">本人分账接收关系</view>
     <view class="muted">{{receiver.registered ? '已登记' : '尚未登记'}} · {{receiver.relationType}} {{receiver.customRelation}}</view>

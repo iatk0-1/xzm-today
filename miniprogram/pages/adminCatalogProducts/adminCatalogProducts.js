@@ -22,14 +22,16 @@ Page(autoSearch.wrap({
     selectedIds: [],
     selectedCount: 0,
     allLoadedSelected: false,
-    managers: []
+    managers: [], managerId: '', managerName: ''
   },
 
   async onLoad(options) {
     this.setData({
       type: options.type === 'tag' ? 'tag' : 'stall',
       groupId: options.id || '',
-      groupName: decodeURIComponent(options.name || '')
+      groupName: decodeURIComponent(options.name || ''),
+      managerId: options.type === 'tag' ? '' : (options.managerId || ''),
+      managerName: decodeURIComponent(options.managerName || '')
     });
     try {
       await auth.ensureAuthenticated({ silent: true });
@@ -39,7 +41,7 @@ Page(autoSearch.wrap({
         return;
       }
       this.loadProducts(true);
-      if (this.data.type === 'stall') {
+      if (this.data.type === 'stall' && !this.data.managerId) {
         this.loadManagers();
       }
     } catch (err) {
@@ -64,6 +66,7 @@ Page(autoSearch.wrap({
   },
 
   openPricingRule() {
+    if (this.data.managerId) return;
     wx.navigateTo({
       url: '/pages/pricingRules/pricingRules?stallId=' + encodeURIComponent(String(this.data.groupId))
         + '&stallName=' + encodeURIComponent(this.data.groupName)
@@ -73,6 +76,7 @@ Page(autoSearch.wrap({
   noop() {},
 
   renameGroup() {
+    if (this.data.managerId) return;
     if (this.data.renaming || this.data.operating) return;
     this.setData({ renameVisible: true, editName: this.data.groupName });
   },
@@ -159,18 +163,27 @@ Page(autoSearch.wrap({
     }
     this.setData({ loading: true });
     try {
+      const managerId = this.data.managerId;
+      const params = managerId ? {
+        stallId: this.data.groupId,
+        keyword: this.data.keyword.trim(),
+        page: this.data.page,
+        size: this.data.pageSize
+      } : {
+        scope: this.data.scope,
+        status: this.data.status,
+        keyword: this.data.keyword.trim(),
+        page: this.data.page,
+        size: this.data.pageSize
+      };
+      if (managerId && this.data.status !== 'all') params.status = this.data.status;
       const res = await api.get(
-        this.resourcePath() + '/' + this.data.groupId + '/products',
-        {
-          scope: this.data.scope,
-          status: this.data.status,
-          keyword: this.data.keyword.trim(),
-          page: this.data.page,
-          size: this.data.pageSize
-        }
+        managerId ? '/stall-managers/' + encodeURIComponent(managerId) + '/commission-products'
+          : this.resourcePath() + '/' + this.data.groupId + '/products',
+        params
       );
-      const list = (res.content || []).map(item => ({ ...item, selected: false }));
-      if (list.length) {
+      const list = (res.content || []).map(item => ({ ...item, id: managerId ? item.productId : item.id, selected: false }));
+      if (list.length && !managerId) {
         const owners = await api.get('/stall-managers/products/owners',
           { ids: list.map(item => item.id).join(',') }).catch(() => []);
         const ownerMap = {};
@@ -181,7 +194,8 @@ Page(autoSearch.wrap({
       this.setData({
         products: this.applySelection(products),
         page: this.data.page + 1,
-        hasMore: res.hasNext !== undefined ? res.hasNext : list.length === this.data.pageSize,
+        hasMore: res.hasNext !== undefined ? res.hasNext
+          : res.totalPages !== undefined ? this.data.page < res.totalPages : list.length === this.data.pageSize,
         loading: false
       });
       this.refreshSelection(products, this.data.selectedIds);
@@ -222,6 +236,10 @@ Page(autoSearch.wrap({
   },
 
   toggleProduct(e) {
+    if (this.data.managerId) {
+      wx.navigateTo({ url: '/pages/detail/detail?id=' + encodeURIComponent(String(e.currentTarget.dataset.id)) });
+      return;
+    }
     if (this.data.type === 'stall') {
       wx.navigateTo({ url: '/pages/admin/admin?editId=' + encodeURIComponent(String(e.currentTarget.dataset.id)) });
       return;

@@ -11,7 +11,8 @@ const LIST_PATHS = {
 Page({
   data: {
     userId: '', profile: null, tab: 'profile', busy: false, error: '',
-    stalls: [], assignmentIds: [], reason: '', income: {},
+    stalls: [], assignedStalls: [], assignmentIds: [], reason: '', income: {}, activeChecked: false,
+    assignmentVisible: false, availableStalls: [], newAssignmentIds: [],
     rows: [], page: 1, hasNext: false, totalElements: 0,
     keyword: '', filterStatus: '', commissionFilter: '', stallFilter: '',
     selectedProducts: [], unitCommission: '',
@@ -47,27 +48,65 @@ Page({
       + (suffix ? '/' + suffix : '');
   },
 
+  onShow() {
+    if (this._refreshOnShow && this._authorized) {
+      this._refreshOnShow = false;
+      this.refresh();
+    }
+  },
+
+  applyProfile(profile, stalls = this.data.stalls) {
+    this._previewSequence = (this._previewSequence || 0) + 1;
+    const ids = (profile.stallIds || []).map(String);
+    const previous = new Map(this.data.assignedStalls.map(stall => [String(stall.id), stall]));
+    const assignedStalls = stalls.filter(stall => ids.includes(String(stall.id)))
+      .map(stall => ({ previewError: true, ...previous.get(String(stall.id)), ...stall, previewLoading: false }));
+    this.setData({
+      profile, activeChecked: !!profile.active, stalls, assignmentIds: ids, assignedStalls,
+      availableStalls: stalls.filter(stall => !ids.includes(String(stall.id)))
+        .map(stall => ({ ...stall, selected: false })), newAssignmentIds: []
+    });
+  },
+
+  async loadStallPreviews() {
+    const sequence = (this._previewSequence || 0) + 1;
+    this._previewSequence = sequence;
+    const stalls = this.data.assignedStalls;
+    this.setData({ assignedStalls: stalls.map(stall => ({ ...stall, previewLoading: true })) });
+    const previews = await Promise.all(stalls.map(async stall => {
+      try {
+        const result = await api.get(this.base('commission-products'), { stallId: stall.id, page: 1, size: 4 });
+        return { ...stall, previewProducts: result.content || [], productCount: result.totalElements || 0, previewLoading: false, previewError: false };
+      } catch (error) {
+        return { ...stall, previewLoading: false, previewError: true };
+      }
+    }));
+    if (sequence === this._previewSequence) this.setData({ assignedStalls: previews });
+  },
+
   async refresh() {
     if (!this._authorized) return;
+    const sequence = (this._refreshSequence || 0) + 1;
+    this._refreshSequence = sequence;
     try {
       const results = await Promise.all([
         api.get(this.base()), api.get(this.base('income')), api.get('/stalls/all'),
         api.get(this.base('profit-sharing/receiver'))
       ]);
-      const profile = results[0];
+      if (sequence !== this._refreshSequence) return;
+      this.applyProfile(results[0], (results[2] || []).filter(stall => !stall.deletedAt && !stall.deleted));
       this.setData({
-        profile, income: results[1], receiver: results[3],
-        stalls: (results[2] || []).filter(stall => !stall.deletedAt && !stall.deleted)
-          .map(stall => ({ ...stall, selected: (profile.stallIds || []).some(id => String(id) === String(stall.id)) })),
-        assignmentIds: (profile.stallIds || []).map(String), error: ''
+        income: results[1], receiver: results[3], error: ''
       });
+      await this.loadStallPreviews();
       if (this.data.tab !== 'profile') await this.loadList(true);
     } catch (error) {
-      this.fail(error);
+      if (sequence === this._refreshSequence) this.fail(error);
     }
   },
 
   onPullDownRefresh() {
+    if (this.data.busy) { wx.stopPullDownRefresh(); return; }
     this.refresh().finally(() => wx.stopPullDownRefresh());
   },
 
@@ -87,30 +126,79 @@ Page({
     if (tab !== 'profile' && LIST_PATHS[tab]) await this.loadList(true);
   },
 
+  openAssignments() {
+    if (this.data.busy || !this.data.profile) return;
+    this.setData({ assignmentVisible: true, newAssignmentIds: [], error: '',
+      availableStalls: this.data.availableStalls.map(stall => ({ ...stall, selected: false })) });
+  },
+
+  closeAssignments() {
+    if (!this.data.busy) this.setData({ assignmentVisible: false });
+  },
+
+  noop() {},
+
   assignmentChange(event) {
-    const ids = event.detail.value.map(String);
+    const available = new Set(this.data.availableStalls.map(stall => String(stall.id)));
+    const ids = event.detail.value.map(String).filter(id => available.has(id));
     this.setData({
-      assignmentIds: ids,
-      stalls: this.data.stalls.map(stall => ({ ...stall, selected: ids.includes(String(stall.id)) }))
+      newAssignmentIds: ids,
+      availableStalls: this.data.availableStalls.map(stall => ({ ...stall, selected: ids.includes(String(stall.id)) }))
     });
   },
 
-  async saveAssignments() {
-    await this.mutate('保存档口分配', async () => {
-      await api.put(this.base('assignments'), {
-        stallIds: this.data.assignmentIds,
-        reason: finance.requireText(this.data.reason, '分配原因')
+  async addAssignments() {
+    if (!this.data.newAssignmentIds.length) return;
+    const ids = [...new Set(this.data.assignmentIds.concat(this.data.newAssignmentIds))];
+    const names = this.data.availableStalls.filter(stall => this.data.newAssignmentIds.includes(String(stall.id)))
+      .map(stall => stall.name).join('、');
+    await this.updateAssignments(ids, '新增分配档口：' + names);
+  },
+
+  async removeAssignment(event) {
+    const id = String(event.currentTarget.dataset.id);
+    const stall = this.data.assignedStalls.find(item => String(item.id) === id);
+    if (!stall) return;
+    await this.updateAssignments(this.data.assignmentIds.filter(value => value !== id), '移除分配档口：' + stall.name);
+  },
+
+  async updateAssignments(ids, action) {
+    await this.mutate('更新档口分配', async () => {
+      const profile = await api.put(this.base('assignments'), {
+        stallIds: ids,
+        reason: this.data.reason.trim() || action.slice(0, 1000)
       });
+      this.applyProfile(profile);
+      this.setData({ assignmentVisible: false });
     });
   },
 
-  async toggleActive() {
-    await this.mutate(this.data.profile.active ? '负责人下线' : '重新激活', async () => {
-      await api.put(this.base('active'), {
-        active: !this.data.profile.active,
-        reason: finance.requireText(this.data.reason, '上下线原因')
+  openStall(event) {
+    const stall = this.data.assignedStalls.find(item => String(item.id) === String(event.currentTarget.dataset.id));
+    if (!stall) return;
+    this._refreshOnShow = true;
+    wx.navigateTo({ url: '/pages/adminCatalogProducts/adminCatalogProducts?type=stall&id=' + encodeURIComponent(String(stall.id))
+      + '&name=' + encodeURIComponent(stall.name) + '&managerId=' + encodeURIComponent(this.data.userId)
+      + '&managerName=' + encodeURIComponent(this.data.profile.nickname || this.data.userId) });
+  },
+
+  openProduct(event) {
+    this._refreshOnShow = true;
+    wx.navigateTo({ url: '/pages/detail/detail?id=' + encodeURIComponent(String(event.currentTarget.dataset.id)) });
+  },
+
+  async toggleActive(event) {
+    if (!this.data.profile) return;
+    const active = !!event.detail.value;
+    this.setData({ activeChecked: active });
+    await this.mutate(active ? '负责人上线' : '负责人下线', async () => {
+      const profile = await api.put(this.base('active'), {
+        active,
+        reason: this.data.reason.trim() || (active ? '管理员通过开关将负责人上线' : '管理员通过开关将负责人下线')
       });
+      this.applyProfile(profile);
     });
+    this.setData({ activeChecked: !!this.data.profile.active });
   },
 
   async loadList(reset) {
@@ -410,6 +498,7 @@ Page({
 
   async mutate(title, operation) {
     if (!this._authorized || this.data.busy) return;
+    this._refreshSequence = (this._refreshSequence || 0) + 1;
     this.setData({ busy: true, error: '' });
     try {
       const result = await operation();
