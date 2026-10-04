@@ -15,10 +15,16 @@ Page({
     assignmentVisible: false, availableStalls: [], newAssignmentIds: [],
     rows: [], page: 1, hasNext: false, totalElements: 0,
     keyword: '', filterStatus: '', commissionFilter: '', stallFilter: '',
-    selectedProducts: [], unitCommission: '',
+    tagFilter: '', productStatus: '', stallOptions: [{ value: '', label: '全部档口' }], stallFilterIndex: 0,
+    tagOptions: [{ value: '', label: '全部标签' }], tagFilterIndex: 0,
+    statusOptions: [{ value: '', label: '全部状态' }, { value: 'on', label: '上架' }, { value: 'off', label: '下架' }, { value: 'sold_out', label: '售罄' }], statusFilterIndex: 0,
+    commissionOptions: [{ value: '', label: '全部佣金配置' }, { value: 'yes', label: '已配置' }, { value: 'no', label: '未配置' }], commissionFilterIndex: 0,
+    selectedProducts: [], unitCommission: '', allProductsSelected: false, listLoading: false,
+    commissionEdit: null, singleCommission: '', commissionError: '',
     allocations: {}, settlementTotal: '0.00', paidAt: '', paymentMethod: '',
     voucher: '', settlementReason: '',
     receiver: null, receiverTypeIndex: -1, customRelation: '', receiverReason: '', receiverVerified: false,
+    receiverVisible: false, receiverSummary: '未登记', receiverError: '',
     receiverTypes: [
       { value: 'STORE', label: '门店' }, { value: 'STAFF', label: '员工' },
       { value: 'STORE_OWNER', label: '店主' }, { value: 'PARTNER', label: '合作伙伴' },
@@ -61,8 +67,11 @@ Page({
     const previous = new Map(this.data.assignedStalls.map(stall => [String(stall.id), stall]));
     const assignedStalls = stalls.filter(stall => ids.includes(String(stall.id)))
       .map(stall => ({ previewError: true, ...previous.get(String(stall.id)), ...stall, previewLoading: false }));
+    const stallOptions = [{ value: '', label: '全部档口' }].concat(assignedStalls.map(stall => ({ value: String(stall.id), label: stall.name })));
+    const stallFilterIndex = Math.max(0, stallOptions.findIndex(item => item.value === this.data.stallFilter));
     this.setData({
       profile, activeChecked: !!profile.active, stalls, assignmentIds: ids, assignedStalls,
+      stallOptions, stallFilterIndex, stallFilter: stallOptions[stallFilterIndex].value,
       availableStalls: stalls.filter(stall => !ids.includes(String(stall.id)))
         .map(stall => ({ ...stall, selected: false })), newAssignmentIds: []
     });
@@ -95,8 +104,9 @@ Page({
       ]);
       if (sequence !== this._refreshSequence) return;
       this.applyProfile(results[0], (results[2] || []).filter(stall => !stall.deletedAt && !stall.deleted));
+      this.applyReceiver(results[3]);
       this.setData({
-        income: results[1], receiver: results[3], error: ''
+        income: results[1], error: ''
       });
       await this.loadStallPreviews();
       if (this.data.tab !== 'profile') await this.loadList(true);
@@ -119,10 +129,14 @@ Page({
   },
 
   async changeTab(event) {
+    if (this.data.busy) return;
     const tab = event.currentTarget.dataset.tab;
     this._listSequence = (this._listSequence || 0) + 1;
     this._listLoading = false;
-    this.setData({ tab, rows: [], page: 1, hasNext: false, error: '', filterStatus: '' });
+    this.setData({ tab, rows: [], page: 1, hasNext: false, error: '', filterStatus: '', listLoading: false,
+      selectedProducts: [], allProductsSelected: false });
+    if (tab === 'products') await this.loadProductTags();
+    if (tab !== this.data.tab) return;
     if (tab !== 'profile' && LIST_PATHS[tab]) await this.loadList(true);
   },
 
@@ -204,23 +218,24 @@ Page({
   async loadList(reset) {
     const tab = this.data.tab;
     const path = LIST_PATHS[tab];
-    if (!this._authorized || !path || this._listLoading) return;
+    if (!this._authorized || !path || (!reset && (this._listLoading || !this.data.hasNext))) return;
     this._listLoading = true;
+    this.setData({ listLoading: true });
     const sequence = (this._listSequence || 0) + 1;
     this._listSequence = sequence;
     try {
       const page = reset ? 1 : this.data.page + 1;
       const params = { page, size: 20 };
+      let productQuery;
       if (this.data.tab === 'products') {
-        params.keyword = this.data.keyword;
-        if (this.data.stallFilter) params.stallId = this.data.stallFilter;
-        if (this.data.filterStatus) params.status = this.data.filterStatus;
-        if (this.data.commissionFilter) params.commissionSet = this.data.commissionFilter === 'yes';
+        productQuery = reset ? this.productParams() : this._productQuery || this.productParams();
+        Object.assign(params, productQuery);
       }
       if (this.data.tab === 'history') params.historical = true;
       if (this.data.tab === 'records' && this.data.filterStatus) params.status = this.data.filterStatus;
       const result = await api.get(this.base(path), params);
       if (sequence !== this._listSequence || tab !== this.data.tab) return;
+      if (tab === 'products') this._productQuery = productQuery;
       const content = Array.isArray(result) ? result : (result.content || []);
       const items = content.map(row => ({
         ...row, channel: tab === 'sharing' ? 'PROFIT_SHARING' : 'LEGACY_TRANSFER',
@@ -229,55 +244,92 @@ Page({
       }));
       this.setData({
         rows: reset ? items : this.data.rows.concat(items),
-        page, hasNext: !Array.isArray(result) && page < result.totalPages, totalElements: Array.isArray(result) ? result.length : result.totalElements || 0,
+        page, hasNext: !Array.isArray(result) && page < result.totalPages, totalElements: Array.isArray(result) ? result.length : Number(result.totalElements || 0),
         error: ''
       });
+      if (tab === 'products') this.updateProductSelection(this.data.selectedProducts);
     } catch (error) {
       if (sequence === this._listSequence && tab === this.data.tab) this.fail(error);
     } finally {
-      if (sequence === this._listSequence) this._listLoading = false;
+      if (sequence === this._listSequence) { this._listLoading = false; this.setData({ listLoading: false }); }
     }
   },
 
   search() {
-    this.setData({ selectedProducts: [] });
-    this.loadList(true);
+    if (this.data.busy) return;
+    this.updateProductSelection([]);
+    return this.loadList(true);
   },
 
-  productChange(event) {
-    const ids = event.detail.value.map(String);
-    const visible = new Set(this.data.rows.map(row => String(row.productId)));
-    const selected = this.data.selectedProducts.filter(id => !visible.has(id)).concat(ids);
-    this.setData({
-      selectedProducts: selected,
-      rows: this.data.rows.map(row => ({ ...row, selected: selected.includes(String(row.productId)) }))
+  async loadProductTags() {
+    if (this._tagsLoaded) return;
+    try {
+      const tags = await api.get('/tags/all');
+      this.setData({ tagOptions: [{ value: '', label: '全部标签' }].concat((Array.isArray(tags) ? tags : [])
+        .filter(tag => !tag.deleted && !tag.deletedAt).map(tag => ({ value: String(tag.id), label: tag.name }))) });
+      this._tagsLoaded = true;
+    } catch (error) { this.fail(error); }
+  },
+
+  productParams() {
+    const params = { keyword: this.data.keyword.trim() };
+    if (this.data.stallFilter) params.stallId = this.data.stallFilter;
+    if (this.data.tagFilter) params.tagId = this.data.tagFilter;
+    if (this.data.productStatus) params.status = this.data.productStatus;
+    if (this.data.commissionFilter) params.commissionSet = this.data.commissionFilter === 'yes';
+    return params;
+  },
+
+  changeProductFilter(event) {
+    if (this.data.busy) return;
+    const fields = {
+      stall: ['stallOptions', 'stallFilter', 'stallFilterIndex'], tag: ['tagOptions', 'tagFilter', 'tagFilterIndex'],
+      status: ['statusOptions', 'productStatus', 'statusFilterIndex'], commission: ['commissionOptions', 'commissionFilter', 'commissionFilterIndex']
+    };
+    const config = fields[event.currentTarget.dataset.filter];
+    const index = Number(event.detail.value);
+    if (!config || !this.data[config[0]][index]) return;
+    this.setData({ [config[1]]: this.data[config[0]][index].value, [config[2]]: index });
+    return this.search();
+  },
+
+  updateProductSelection(ids) {
+    const selectedProducts = [...new Set(ids.map(String))];
+    this.setData({ selectedProducts,
+      rows: this.data.rows.map(row => ({ ...row, selected: selectedProducts.includes(String(row.productId)) })),
+      allProductsSelected: this.data.totalElements > 0 && selectedProducts.length === this.data.totalElements
+        && this.data.rows.every(row => selectedProducts.includes(String(row.productId)))
     });
   },
 
-  async selectFiltered() {
+  productChange(event) {
     if (this.data.busy) return;
+    const ids = event.detail.value.map(String);
+    const visible = new Set(this.data.rows.map(row => String(row.productId)));
+    const selected = this.data.selectedProducts.filter(id => !visible.has(id)).concat(ids);
+    this.updateProductSelection(selected);
+  },
+
+  async selectFiltered() {
+    if (this.data.busy || this.data.listLoading) return;
+    if (this.data.allProductsSelected) { this.updateProductSelection([]); return; }
     this.setData({ busy: true });
     try {
       const ids = [];
       let page = 1;
       let totalPages = 1;
       do {
-        const params = { keyword: this.data.keyword, page, size: 100 };
-        if (this.data.stallFilter) params.stallId = this.data.stallFilter;
-        if (this.data.filterStatus) params.status = this.data.filterStatus;
-        if (this.data.commissionFilter) params.commissionSet = this.data.commissionFilter === 'yes';
+        const params = { ...(this._productQuery || this.productParams()), page, size: 100 };
         const result = await api.get(this.base('commission-products'), params);
         (result.content || []).forEach(row => ids.push(String(row.productId)));
         totalPages = result.totalPages;
+        if (page === 1) this.setData({ totalElements: Number(result.totalElements || 0) });
         if (ids.length > 1000 || result.totalElements > 1000) {
           throw new Error('单次最多1000件商品，请缩小筛选范围');
         }
         page += 1;
       } while (page <= totalPages);
-      this.setData({
-        selectedProducts: ids,
-        rows: this.data.rows.map(row => ({ ...row, selected: ids.includes(String(row.productId)) }))
-      });
+      this.updateProductSelection(ids);
     } catch (error) {
       this.fail(error);
     } finally {
@@ -294,7 +346,31 @@ Page({
         '将修改 ' + ids.length + ' 件商品，每件佣金 ¥' + amount + '。仅影响后续下单，全部SKU统一。');
       if (!accepted) return false;
       await api.put(this.base('commissions'), { productIds: ids, unitCommission: amount });
-      this.setData({ selectedProducts: [] });
+      this.updateProductSelection([]);
+    });
+  },
+
+  editCommission(event) {
+    if (this.data.busy) return;
+    const row = this.data.rows.find(item => String(item.productId) === String(event.currentTarget.dataset.id));
+    if (!row) return;
+    this.setData({ commissionEdit: { productId: String(row.productId), name: row.name },
+      singleCommission: row.unitCommission == null ? '' : String(row.unitCommission), commissionError: '' });
+  },
+
+  closeCommission() {
+    if (!this.data.busy) this.setData({ commissionEdit: null, commissionError: '' });
+  },
+
+  async saveSingleCommission() {
+    if (!this.data.commissionEdit) return;
+    await this.mutate('修改商品佣金', async () => {
+      const amount = finance.money(this.data.singleCommission, true);
+      const productId = this.data.commissionEdit.productId;
+      if (!await finance.confirmAction('确认修改每件佣金', this.data.commissionEdit.name + '：每件佣金 ¥' + amount + '，仅影响后续下单，全部SKU统一。')) return false;
+      await api.put(this.base('commissions'), { productIds: [productId], unitCommission: amount });
+      this.setData({ rows: this.data.rows.map(row => String(row.productId) === productId ? { ...row, unitCommission: amount } : row),
+        commissionEdit: null, singleCommission: '', commissionError: '' });
     });
   },
 
@@ -413,6 +489,31 @@ Page({
     this.setData({ historyForm: null });
   },
 
+  applyReceiver(receiver) {
+    const type = this.data.receiverTypes.find(item => item.value === (receiver || {}).relationType);
+    const label = type && type.value === 'CUSTOM' ? receiver.customRelation || type.label : type && type.label;
+    this.setData({ receiver, receiverSummary: receiver && receiver.registered
+      ? '已登记' + (label ? ' · ' + label : '') : '未登记' });
+  },
+
+  openReceiver() {
+    if (!this._authorized || this.data.busy) return;
+    const receiver = this.data.receiver || {};
+    const index = receiver.registered ? this.data.receiverTypes.findIndex(type => type.value === receiver.relationType) : -1;
+    const type = this.data.receiverTypes[index];
+    this.setData({
+      receiverVisible: true, receiverError: '', receiverVerified: false,
+      receiverTypeIndex: index, receiverTypeLabel: type ? type.label : '请选择已核实的实际关系',
+      receiverRelationType: type ? type.value : '',
+      customRelation: type && type.value === 'CUSTOM' ? receiver.customRelation || '' : '',
+      receiverReason: receiver.registered ? receiver.reason || '' : ''
+    });
+  },
+
+  closeReceiver() {
+    if (!this.data.busy) this.setData({ receiverVisible: false, receiverError: '' });
+  },
+
   receiverTypeChange(event) {
     const index = Number(event.detail.value);
     const type = this.data.receiverTypes[index];
@@ -433,8 +534,9 @@ Page({
         if ([...body.customRelation].length > 10) throw new Error('自定义关系最多10个字符');
       }
       if (!await finance.confirmAction('登记真实分账关系', '将按本人小程序身份登记“' + type.label + '”关系，负责人主动提现时会使用该接收关系。')) return false;
-      await api.put(this.base('profit-sharing/receiver'), body);
-      this.setData({ receiverVerified: false, receiverReason: '', customRelation: '',
+      const receiver = await api.put(this.base('profit-sharing/receiver'), body);
+      this.applyReceiver(receiver);
+      this.setData({ receiverVisible: false, receiverError: '', receiverVerified: false, receiverReason: '', customRelation: '',
         receiverTypeIndex: -1, receiverTypeLabel: '请选择已核实的实际关系', receiverRelationType: '' });
     });
   },
@@ -499,7 +601,7 @@ Page({
   async mutate(title, operation) {
     if (!this._authorized || this.data.busy) return;
     this._refreshSequence = (this._refreshSequence || 0) + 1;
-    this.setData({ busy: true, error: '' });
+    this.setData({ busy: true, error: '', receiverError: '', commissionError: '' });
     try {
       const result = await operation();
       if (result !== false) {
@@ -514,6 +616,6 @@ Page({
   },
 
   fail(error) {
-    this.setData({ error: error.message || error.errMsg || '操作失败' });
+    this.setData({ [this.data.commissionEdit ? 'commissionError' : this.data.receiverVisible ? 'receiverError' : 'error']: error.message || error.errMsg || '操作失败' });
   }
 });

@@ -22,3 +22,41 @@ page { background:#f5f6f8; color:#222; } .page { padding:24rpx; } .card { backgr
 .assignment-options { height:48vh; margin-top:18rpx; }
 .assignment-actions { display:flex; gap:18rpx; margin-top:18rpx; }
 .assignment-actions button { flex:1; }
+.receiver-summary { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding-top:22rpx; margin-top:22rpx; border-top:1rpx solid #edf0f2; }
+.receiver-title { flex-shrink:0; font-size:29rpx; font-weight:600; }
+.receiver-action { min-width:0; margin:0; padding:12rpx 0 12rpx 12rpx; background:transparent; color:#747a83; font-size:25rpx; line-height:1.6; text-align:right; overflow-wrap:anywhere; }
+.receiver-action::after { border:0; }
+.receiver-action.registered { color:#173e33; }
+.receiver-arrow { margin-left:12rpx; color:#929ba4; }
+.receiver-dialog { max-height:85vh; }
+.receiver-fields { margin-top:12rpx; }
+.receiver-picker { display:flex; align-items:center; justify-content:space-between; padding:20rpx 0; margin-top:8rpx; border-bottom:1rpx solid #eee; font-size:27rpx; }
+.receiver-picker text { color:#929ba4; margin-left:12rpx; }
+.receiver-reason { height:150rpx; min-height:150rpx; font-size:26rpx; }
+.receiver-verification { font-size:25rpx; }
+.commission-search, .commission-batch { display:flex; align-items:center; gap:14rpx; }
+.commission-search input, .commission-batch input { flex:1; min-width:0; width:auto; margin:0; height:72rpx; font-size:25rpx; }
+.commission-search button, .commission-batch button { flex-shrink:0; margin:0; padding:0 22rpx; line-height:72rpx; font-size:25rpx; }
+.commission-filters { display:grid; grid-template-columns:1fr 1fr; gap:12rpx; margin-top:18rpx; }
+.commission-filters picker { min-width:0; }
+.commission-filter { display:flex; align-items:center; justify-content:space-between; gap:10rpx; padding:16rpx; color:#606873; background:#f5f6f8; border-radius:8rpx; font-size:24rpx; }
+.commission-filter text { flex-shrink:0; color:#929ba4; }
+.commission-selection { display:flex; align-items:center; justify-content:space-between; gap:12rpx; margin:14rpx 0; font-size:24rpx; color:#747a83; }
+.commission-selection button { margin:0; padding:8rpx 18rpx; background:transparent; color:#173e33; font-size:25rpx; line-height:1.6; }
+.commission-selection button::after, .commission-amount::after { border:0; }
+.commission-product { padding:20rpx; }
+.commission-product-main { display:flex; align-items:center; gap:14rpx; width:100%; }
+.commission-product-main checkbox { flex-shrink:0; }
+.commission-cover { flex-shrink:0; width:108rpx; height:108rpx; border-radius:8rpx; background:#edf0f2; }
+.commission-product-info { flex:1; min-width:0; }
+.commission-product-name { font-size:29rpx; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.commission-stall { margin-top:8rpx; color:#747a83; font-size:23rpx; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.commission-statuses { display:flex; gap:10rpx; margin-top:10rpx; }
+.commission-status { padding:3rpx 10rpx; border-radius:5rpx; font-size:21rpx; }
+.commission-status.on { color:#246447; background:#e8f4ed; }
+.commission-status.off { color:#747a83; background:#eef1f4; }
+.commission-status.sold-out { color:#b54728; background:#fff1e8; }
+.commission-product-bottom { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding-top:12rpx; margin-top:16rpx; border-top:1rpx solid #edf0f2; color:#747a83; font-size:24rpx; }
+.commission-amount { margin:0; padding:8rpx 0 8rpx 12rpx; color:#173e33; background:transparent; font-size:27rpx; line-height:1.6; }
+.commission-edit-label { margin-left:16rpx; font-size:23rpx; color:#486780; }
+.commission-edit-name { font-size:28rpx; margin-bottom:18rpx; overflow-wrap:anywhere; }

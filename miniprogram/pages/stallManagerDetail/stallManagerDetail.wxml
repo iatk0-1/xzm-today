@@ -25,6 +25,38 @@
       </view>
     </view>
   </view>
+  <view class="assignment-overlay" wx:if="{{receiverVisible}}" catchtap="closeReceiver" catchtouchmove="noop">
+    <view class="assignment-dialog receiver-dialog" catchtap="noop">
+      <view class="title">{{receiver.registered ? '变更分账接收关系' : '登记分账接收关系'}}</view>
+      <scroll-view class="receiver-fields" scroll-y style="height: {{receiverRelationType === 'CUSTOM' ? '560rpx' : '460rpx'}};">
+        <view class="muted">请核实负责人与商户的实际关系，收款身份使用负责人本人小程序登录身份。</view>
+        <view class="error" wx:if="{{receiverError}}">{{receiverError}}</view>
+        <picker disabled="{{busy}}" range="{{receiverTypes}}" range-key="label" value="{{receiverTypeIndex >= 0 ? receiverTypeIndex : 0}}" bindchange="receiverTypeChange">
+          <view class="receiver-picker">{{receiverTypeLabel}}<text>›</text></view>
+        </picker>
+        <input wx:if="{{receiverRelationType === 'CUSTOM'}}" disabled="{{busy}}" placeholder="自定义实际关系（最多10个字符）" value="{{customRelation}}" data-field="customRelation" bindinput="input" />
+        <textarea class="receiver-reason" disabled="{{busy}}" placeholder="关系核验依据（必填）" value="{{receiverReason}}" data-field="receiverReason" bindinput="input" />
+        <view class="row receiver-verification"><switch disabled="{{busy}}" checked="{{receiverVerified}}" color="#173e33" bindchange="receiverVerification" /><text>已核实本人实际关系</text></view>
+      </scroll-view>
+      <view class="assignment-actions">
+        <button disabled="{{busy}}" bindtap="closeReceiver">取消</button>
+        <button class="primary" disabled="{{busy}}" bindtap="saveReceiver">{{busy ? '保存中...' : '确认保存'}}</button>
+      </view>
+    </view>
+  </view>
+  <view class="assignment-overlay" wx:if="{{commissionEdit}}" catchtap="closeCommission" catchtouchmove="noop">
+    <view class="assignment-dialog" catchtap="noop">
+      <view class="title">修改每件佣金</view>
+      <view class="commission-edit-name">{{commissionEdit.name}}</view>
+      <view class="error" wx:if="{{commissionError}}">{{commissionError}}</view>
+      <input type="digit" disabled="{{busy}}" placeholder="每件佣金（元，允许0）" value="{{singleCommission}}" data-field="singleCommission" bindinput="input" bindconfirm="saveSingleCommission" />
+      <view class="muted">全部SKU统一，仅影响后续下单。</view>
+      <view class="assignment-actions">
+        <button disabled="{{busy}}" bindtap="closeCommission">取消</button>
+        <button class="primary" disabled="{{busy}}" bindtap="saveSingleCommission">{{busy ? '保存中...' : '确认保存'}}</button>
+      </view>
+    </view>
+  </view>
   <scroll-view class="tabs" scroll-x>
     <view class="tab {{tab === 'profile' ? 'active' : ''}}" data-tab="profile" bindtap="changeTab">档口与状态</view>
     <view class="tab {{tab === 'products' ? 'active' : ''}}" data-tab="products" bindtap="changeTab">商品佣金</view>
@@ -65,36 +97,51 @@
     </view>
     <textarea placeholder="操作说明（选填，留空时自动记录分配或上下线操作）" value="{{reason}}" maxlength="1000" data-field="reason" bindinput="input" />
     <view class="muted">下线期间新订单不计佣；历史佣金继续完成结算，订单完成后由本人点击提现，按原微信交易分账。</view>
-    <view class="title">本人分账接收关系</view>
-    <view class="muted">{{receiver.registered ? '已登记' : '尚未登记'}} · {{receiver.relationType}} {{receiver.customRelation}}</view>
-    <view class="muted">{{receiver.reason}} · {{receiver.updatedAt}}</view>
-    <view class="muted">管理员核实负责人本人与商户的实际关系后登记。收款身份使用本人小程序登录身份，不能默认认定为员工。</view>
-    <picker range="{{receiverTypes}}" range-key="label" bindchange="receiverTypeChange"><view class="choice">{{receiverTypeLabel}}</view></picker>
-    <input wx:if="{{receiverRelationType === 'CUSTOM'}}" placeholder="自定义实际关系（最多10个字符）" value="{{customRelation}}" data-field="customRelation" bindinput="input" />
-    <textarea placeholder="关系核验依据（必填）" value="{{receiverReason}}" data-field="receiverReason" bindinput="input" />
-    <view class="row"><switch checked="{{receiverVerified}}" bindchange="receiverVerification" /><text>已核实本人实际关系</text></view>
-    <button class="primary" disabled="{{busy}}" bindtap="saveReceiver">核实并登记分账接收关系</button>
+    <view class="receiver-summary">
+      <view class="receiver-title">分账接收关系</view>
+      <button class="receiver-action {{receiver.registered ? 'registered' : ''}}" disabled="{{busy}}" bindtap="openReceiver">{{receiverSummary}}<text class="receiver-arrow">›</text></button>
+    </view>
   </view>
 
   <view wx:if="{{tab === 'products'}}">
-    <view class="card">
-      <input placeholder="商品名称" value="{{keyword}}" data-field="keyword" bindinput="input" />
-      <input placeholder="档口ID（选填）" value="{{stallFilter}}" data-field="stallFilter" bindinput="input" />
-      <input placeholder="上下架筛选：on / off（选填）" value="{{filterStatus}}" data-field="filterStatus" bindinput="input" />
-      <input placeholder="佣金配置筛选：yes / no（选填）" value="{{commissionFilter}}" data-field="commissionFilter" bindinput="input" />
-      <view class="row">
-<button bindtap="search">筛选</button>
-<button disabled="{{busy}}" bindtap="selectFiltered">选择全部筛选结果</button>
-</view>
-      <view>已选 {{selectedProducts.length}} 件 · 结果 {{totalElements}} 件</view>
-      <input type="digit" placeholder="每件佣金（允许0，全部SKU统一）" value="{{unitCommission}}" data-field="unitCommission" bindinput="input" />
-      <button class="primary" disabled="{{busy}}" bindtap="setCommission">批量设置佣金</button>
+    <view class="card commission-panel">
+      <view class="commission-search">
+        <input disabled="{{busy}}" placeholder="搜索商品名称" value="{{keyword}}" data-field="keyword" bindinput="input" bindconfirm="search" />
+        <button class="primary" disabled="{{busy}}" bindtap="search">搜索</button>
+      </view>
+      <view class="commission-filters">
+        <picker disabled="{{busy}}" range="{{stallOptions}}" range-key="label" value="{{stallFilterIndex}}" data-filter="stall" bindchange="changeProductFilter"><view class="commission-filter">{{stallOptions[stallFilterIndex].label}}<text>⌄</text></view></picker>
+        <picker disabled="{{busy}}" range="{{tagOptions}}" range-key="label" value="{{tagFilterIndex}}" data-filter="tag" bindchange="changeProductFilter"><view class="commission-filter">{{tagOptions[tagFilterIndex].label}}<text>⌄</text></view></picker>
+        <picker disabled="{{busy}}" range="{{statusOptions}}" range-key="label" value="{{statusFilterIndex}}" data-filter="status" bindchange="changeProductFilter"><view class="commission-filter">{{statusOptions[statusFilterIndex].label}}<text>⌄</text></view></picker>
+        <picker disabled="{{busy}}" range="{{commissionOptions}}" range-key="label" value="{{commissionFilterIndex}}" data-filter="commission" bindchange="changeProductFilter"><view class="commission-filter">{{commissionOptions[commissionFilterIndex].label}}<text>⌄</text></view></picker>
+      </view>
+      <view class="commission-selection">
+        <text>已选 {{selectedProducts.length}} 件 · 共 {{totalElements}} 件</text>
+        <button disabled="{{busy || listLoading || !totalElements}}" bindtap="selectFiltered">{{allProductsSelected ? '取消全选' : '全选'}}</button>
+      </view>
+      <view class="commission-batch">
+        <input type="digit" disabled="{{busy}}" placeholder="每件佣金（元，允许0）" value="{{unitCommission}}" data-field="unitCommission" bindinput="input" />
+        <button class="primary" disabled="{{busy || !selectedProducts.length}}" bindtap="setCommission">批量设置佣金</button>
+      </view>
     </view>
     <checkbox-group bindchange="productChange">
-      <label class="card choice" wx:for="{{rows}}" wx:key="productId">
-        <checkbox value="{{item.productId}}" checked="{{item.selected}}" />{{item.name}}
-        <view class="muted">{{item.stallName}} · {{item.status === 'on' ? '在售' : '下架'}} · 每件佣金 {{item.unitCommission === null ? '未设置' : '¥' + item.unitCommission}}</view>
-      </label>
+      <view class="card commission-product" wx:for="{{rows}}" wx:key="productId">
+        <view class="commission-product-top">
+          <label class="commission-product-main">
+            <checkbox value="{{item.productId}}" checked="{{item.selected}}" disabled="{{busy}}" color="#173e33" />
+            <image class="commission-cover" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
+            <view class="commission-product-info">
+              <view class="commission-product-name">{{item.name}}</view>
+              <view class="commission-stall">{{item.stallName || '未设置档口'}}</view>
+              <view class="commission-statuses"><text class="commission-status {{item.status === 'on' ? 'on' : 'off'}}">{{item.status === 'on' ? '上架' : '下架'}}</text><text class="commission-status sold-out" wx:if="{{item.soldOut}}">售罄</text></view>
+            </view>
+          </label>
+        </view>
+        <view class="commission-product-bottom">
+          <text>每件佣金</text>
+          <button class="commission-amount" disabled="{{busy}}" bindtap="editCommission" data-id="{{item.productId}}">{{item.unitCommission == null ? '未配置' : '¥' + item.unitCommission}}<text class="commission-edit-label">修改 ›</text></button>
+        </view>
+      </view>
     </checkbox-group>
   </view>
 
@@ -218,7 +265,7 @@
     <view>{{item.action}} · ¥{{item.amount}}</view>
     <view class="muted">{{item.reason}} · {{item.createdAt || item.created_at}} · 操作人 {{item.operatorId || item.createdBy || item.created_by}}</view>
   </view>
-  <view class="muted" wx:if="{{tab !== 'profile'}}">{{rows.length ? (hasNext ? '上拉加载更多' : '已加载全部') : '暂无记录'}}</view>
+  <view class="muted" wx:if="{{tab !== 'profile'}}">{{listLoading ? '加载中...' : (rows.length ? (hasNext ? '上拉加载更多' : '已加载全部') : '暂无记录')}}</view>
 
   <view class="overlay" wx:if="{{historyForm}}">
     <scroll-view class="modal" scroll-y>

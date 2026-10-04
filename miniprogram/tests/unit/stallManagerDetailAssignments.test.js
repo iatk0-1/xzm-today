@@ -11,7 +11,7 @@ function harness(name, { get, put } = {}) {
     async get(url, params) { calls.push({ method: 'get', url, params }); return get ? get(url, params) : {}; },
     async put(url, body) { calls.push({ method: 'put', url, body }); return put(url, body); }
   };
-  const finance = { requireText: value => String(value) };
+  const finance = { requireText: value => String(value), confirmAction: async () => true };
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, `../../pages/${name}/${name}.js`), 'utf8'), {
     Page: config => { definition = config; },
     require: module => module.endsWith('/api') ? api : module.endsWith('/auth')
@@ -28,6 +28,79 @@ function harness(name, { get, put } = {}) {
 const stalls = [{ id: 2, name: '二号档口' }, { id: 3, name: '三号档口' }, { id: 4, name: '四号档口' }];
 const profile = ids => ({ userId: 42, nickname: '负责人甲', active: true, stallIds: ids });
 const event = id => ({ currentTarget: { dataset: { id } } });
+
+test('分账关系未登记点击打开空表单，已登记显示中文并回填，取消不修改登记', () => {
+  const { page, calls } = harness('stallManagerDetail');
+  page.applyReceiver({ registered: false, relationType: null });
+  assert.equal(page.data.receiverSummary, '未登记');
+  assert.equal(page.data.receiverVisible, false);
+  page.openReceiver();
+  assert.equal(page.data.receiverVisible, true);
+  assert.equal(page.data.receiverTypeIndex, -1);
+  page.closeReceiver();
+  page.applyReceiver({ registered: true, relationType: 'PARTNER', customRelation: null, reason: '已核实合作协议' });
+  assert.equal(page.data.receiverSummary, '已登记 · 合作伙伴');
+  page.openReceiver();
+  assert.equal(page.data.receiverTypeLabel, '合作伙伴');
+  assert.equal(page.data.receiverReason, '已核实合作协议');
+  assert.equal(page.data.receiverVerified, false);
+  page.receiverTypeChange({ detail: { value: 1 } });
+  page.closeReceiver();
+  assert.equal(page.data.receiverSummary, '已登记 · 合作伙伴');
+  assert.equal(calls.length, 0);
+  page.openReceiver();
+  assert.equal(page.data.receiverTypeLabel, '合作伙伴');
+  page.applyReceiver({ registered: true, relationType: 'CUSTOM', customRelation: '档口合作方', reason: '合同依据' });
+  assert.equal(page.data.receiverSummary, '已登记 · 档口合作方');
+  page.openReceiver();
+  assert.equal(page.data.customRelation, '档口合作方');
+});
+
+test('弹窗保存分账关系成功后关闭并立即更新摘要，刷新失败也保留保存结果', async () => {
+  const { page, calls } = harness('stallManagerDetail', {
+    put: (url, body) => ({ registered: true, ...body }),
+    get: () => { throw new Error('刷新失败'); }
+  });
+  page.data.userId = '42';
+  page.openReceiver();
+  page.receiverTypeChange({ detail: { value: 3 } });
+  page.setData({ receiverReason: '合作协议', receiverVerified: true });
+  await page.saveReceiver();
+  assert.equal(calls[0].url, '/stall-managers/42/profit-sharing/receiver');
+  assert.equal(calls[0].body.relationType, 'PARTNER');
+  assert.equal(calls[0].body.reason, '合作协议');
+  assert.equal(page.data.receiverVisible, false);
+  assert.equal(page.data.receiverSummary, '已登记 · 合作伙伴');
+  assert.equal(page.data.error, '刷新失败');
+});
+
+test('弹窗校验和保存失败保留输入及已登记摘要，保存期间禁止重复提交和关闭', async () => {
+  let reject;
+  const { page, calls } = harness('stallManagerDetail', {
+    put: () => new Promise((resolve, fail) => { reject = fail; })
+  });
+  page.applyReceiver({ registered: true, relationType: 'PARTNER', reason: '旧依据' });
+  page.openReceiver();
+  await page.saveReceiver();
+  assert.equal(calls.length, 0);
+  assert.match(page.data.receiverError, /核实/);
+  page.receiverTypeChange({ detail: { value: 1 } });
+  page.setData({ receiverReason: '新合同', receiverVerified: true });
+  const pending = page.saveReceiver();
+  await new Promise(resolve => setImmediate(resolve));
+  page.closeReceiver();
+  await page.saveReceiver();
+  assert.equal(calls.length, 1);
+  assert.equal(page.data.receiverVisible, true);
+  reject(new Error('登记失败'));
+  await pending;
+  assert.equal(page.data.receiverVisible, true);
+  assert.equal(page.data.receiverTypeLabel, '员工');
+  assert.equal(page.data.receiverReason, '新合同');
+  assert.equal(page.data.receiverSummary, '已登记 · 合作伙伴');
+  assert.equal(page.data.receiverError, '登记失败');
+  assert.equal(page.data.busy, false);
+});
 
 test('新增多选立即保存并保留原分配，移除只提交剩余档口且空说明自动记录原因', async () => {
   const { page, calls } = harness('stallManagerDetail', { put: (url, body) => profile(body.stallIds) });
