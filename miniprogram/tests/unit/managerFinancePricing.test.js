@@ -819,7 +819,7 @@ test('编辑预览忽略空成本SKU，保存仍保留成本完整校验', async
   assert.equal(page.data.skuList[0].price, '15.00');
   assert.equal(page.data.skuList[1].price, '旧售价');
   assert.equal(page.data.pricingError, '');
-  await assert.rejects(page.recalculatePricing(true), /请输入最多两位小数的金额/);
+  await assert.rejects(page.recalculatePricing(true), /每条SKU的成本/);
 });
 
 test('单档口选择替换，默认成本不会覆盖已有SKU成本，规则重算整个套装', async () => {
@@ -901,6 +901,107 @@ function preparePricingSubmit(page) {
     mediaList: [{ url: 'https://example.com/cover.jpg' }] });
 }
 
+test('负责人默认成本留空，SKU成本1元按规则算9.18元并可新增和编辑', async () => {
+  const rule = { id: '30', name: 'oker', enabled: true, currentVersion: 1,
+    segments: [{ lower: 0, upper: null, formula: '(x+8)/0.98' }] };
+  for (const editId of [null, '10']) {
+    for (const withStall of [false, true]) {
+      const { page, calls } = pageHarness('../../pages/admin/admin.js', { manager: true,
+        get: async () => rule,
+        post: async (_, body) => ({ price: ((Number(body.cost) + 8) / 0.98).toFixed(2) }),
+        put: async () => ({}) });
+      preparePricingSubmit(page);
+      page.setData({ editId, isStallManager: true, assignedStalls: [{ id: '2' }],
+        selectedStalls: withStall ? [{ id: '2' }] : [], costPrice: '', pricingRuleId: '30',
+        skuList: [{ skuId: '20', costPrice: '1.00', price: '9.18', stock: '' }] });
+      await page.submitProduct();
+      const saved = calls.find(call => call.url === (editId ? '/products/10' : '/products'));
+      assert.ok(saved, page.data.pricingError);
+      assert.equal(saved.data.costPrice, null);
+      assert.equal(saved.data.skus[0].costPrice, '1.00');
+      assert.equal(saved.data.skus[0].retailPrice, 9.18);
+      assert.equal(saved.data.skus[0].isUnlimitedStock, true);
+      assert.equal(page.data.defaultPrice, '');
+      assert.equal(page.data.pricingError, '');
+    }
+  }
+});
+
+test('负责人套装默认成本留空，所有分组按各自SKU成本保存', async () => {
+  const rule = { id: '30', enabled: true, currentVersion: 1,
+    segments: [{ lower: 0, upper: null, formula: '(x+8)/0.98' }] };
+  for (const editId of [null, '10']) {
+    const { page, calls } = pageHarness('../../pages/admin/admin.js', { manager: true,
+      get: async () => rule,
+      post: async (_, body) => ({ price: ((Number(body.cost) + 8) / 0.98).toFixed(2) }),
+      put: async () => ({}) });
+    preparePricingSubmit(page);
+    page.setData({ editId, isStallManager: true, selectedStalls: [], costPrice: '', pricingRuleId: '30',
+      isBundleMode: true, activeGroupIndex: 0,
+      skuList: [{ skuId: '20', costPrice: '1', price: '888', stock: '0' }],
+      bundleGroups: [{ id: '7', name: '上衣', skuList: [] },
+        { id: '8', name: '裤子', skuList: [{ skuId: '21', costPrice: '2', price: '888', stock: '' }] }] });
+    await page.submitProduct();
+    const saved = calls.find(call => call.url === (editId ? '/products/10' : '/products'));
+    assert.ok(saved, page.data.pricingError);
+    assert.equal(saved.data.costPrice, null);
+    const rows = editId ? saved.data.skus : saved.data.bundleGroups.flatMap(group => group.skus);
+    assert.deepEqual(Array.from(rows, row => row.costPrice), ['1.00', '2.00']);
+    assert.deepEqual(Array.from(rows, row => row.retailPrice), [9.18, 10.20]);
+  }
+});
+
+test('负责人保存逐条校验有效成本，默认成本可补空值但不能掩盖非法成本', async () => {
+  const rule = { id: '30', enabled: true, currentVersion: 1,
+    segments: [{ lower: 0, upper: null, formula: 'x+5' }] };
+  for (const invalid of ['', '0', '-1', '1.001']) {
+    const { page, calls } = pageHarness('../../pages/admin/admin.js', { manager: true,
+      get: async () => rule, post: async (_, body) => ({ price: (Number(body.cost) + 5).toFixed(2) }) });
+    preparePricingSubmit(page);
+    page.setData({ isStallManager: true, selectedStalls: [], pricingRuleId: '30',
+      skuList: [{ costPrice: '1', price: '6' }, { costPrice: invalid, price: '888' }] });
+    await page.submitProduct();
+    assert.match(page.data.pricingError, /SKU.*成本/);
+    assert.equal(calls.filter(call => call.url === '/products').length, 0);
+    if (invalid !== '') continue;
+    page.setData({ costPrice: '2' });
+    await page.submitProduct();
+    const saved = calls.find(call => call.url === '/products');
+    assert.ok(saved, page.data.pricingError);
+    assert.equal(saved.data.skus[0].costPrice, '1.00');
+    assert.equal(saved.data.skus[1].costPrice, '2.00');
+    page.setData({ costPrice: '1.001' });
+    await page.submitProduct();
+    assert.match(page.data.pricingError, /默认成本/);
+    assert.equal(calls.filter(call => call.url === '/products').length, 1);
+  }
+});
+
+test('直播发布默认成本留空仍可保存各SKU成本和规则售价', async () => {
+  const rule = { id: '30', enabled: true, currentVersion: 1,
+    segments: [{ lower: 0, upper: null, formula: '(x+8)/0.98' }] };
+  for (const bundle of [false, true]) {
+    const { page, calls } = pageHarness('../../pages/liveRoomPublish/publish.js', {
+      get: async () => rule,
+      post: async (_, body) => ({ price: ((Number(body.cost) + 8) / 0.98).toFixed(2) }),
+      put: async () => ({}) });
+    preparePricingSubmit(page);
+    page.setData({ editMode: true, productId: '10', sessionId: '9', costPrice: '', pricingRuleId: '30',
+      isBundleMode: bundle, activeGroupIndex: bundle ? 0 : -1,
+      skuList: [{ costPrice: '1', price: '9.18', stock: '' }],
+      bundleGroups: bundle ? [{ name: '上衣', skuList: [] },
+        { name: '裤子', skuList: [{ costPrice: '2', price: '10.20', stock: '0' }] }] : [] });
+    await page.submitProduct();
+    const saved = calls.find(call => call.url === '/live-products/10');
+    assert.ok(saved, page.data.pricingError);
+    assert.equal(saved.data.costPrice, null);
+    const rows = bundle ? saved.data.bundleGroups.flatMap(group => group.skus) : saved.data.skus;
+    assert.equal(rows[0].costPrice, '1.00');
+    assert.equal(rows[0].retailPrice, 9.18);
+    if (bundle) assert.equal(rows[1].retailPrice, 10.20);
+  }
+});
+
 test('管理员不选择档口可发布和编辑，提交空档口列表并保存手填价', async () => {
   for (const editId of [null, '10']) {
     const { page, calls } = pageHarness('../../pages/admin/admin.js', { post: async () => ({}), put: async () => ({}) });
@@ -959,9 +1060,9 @@ test('负责人不选档口可以选择规则并保存，仍强制填写成本�
   assert.ok(saved);
   assert.equal(saved.data.stallIds.length, 0);
   assert.equal(saved.data.skus[0].retailPrice, 15);
-  page.setData({ costPrice: '' });
+  page.setData({ costPrice: '', 'skuList[0].costPrice': '' });
   await page.submitProduct();
-  assert.match(page.data.pricingError, /金额/);
+  assert.match(page.data.pricingError, /每条SKU的成本/);
   assert.equal(calls.filter(call => call.url === '/products').length, 1);
   page.setData({ costPrice: '10', pricingRuleId: '' });
   await page.submitProduct();
@@ -1206,8 +1307,9 @@ test('负责人单条与批量手工改价都被拦住，保存仍强制校验�
   page.applyQuickFillAll();
   page.confirmBatch();
   assert.equal(page.data.skuList[0].price, '15');
+  page.setData({ 'skuList[0].costPrice': '' });
   await page.submitProduct();
-  assert.match(page.data.pricingError, /金额/);
+  assert.match(page.data.pricingError, /每条SKU的成本/);
   assert.equal(calls.filter(call => call.url === '/products').length, 0);
   page.setData({ costPrice: '10', 'skuList[0].price': '88' });
   await page.submitProduct();

@@ -24,6 +24,7 @@ function setup({ manager = true, userId = 8, saved, assigned = [], failPublish =
       if (name.endsWith('/productPricing')) return { integrateProductPricing(page) {
         page.canManuallyPrice = () => !manager;
         page.productCost = value => require('../../utils/managerFinance').money(value);
+        page.skuCost = value => require('../../utils/managerFinance').money(value);
       } };
       if (name.endsWith('/managerFinance')) return require('../../utils/managerFinance');
       if (name.endsWith('/auth')) return {

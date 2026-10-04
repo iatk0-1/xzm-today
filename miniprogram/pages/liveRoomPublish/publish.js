@@ -996,7 +996,7 @@ const pageDefinition = {
           size: sku.size || '均码',
           barcode: '',
           retailPrice: Number(sku.price),
-          costPrice: finance.money(sku.costPrice),
+          costPrice: this.skuCost(sku.costPrice),
           stockMain: stockNum,
           isUnlimitedStock: isUnlimited,
           imageUrl: skuImageMap[index] || null,
@@ -1006,7 +1006,7 @@ const pageDefinition = {
 
       const productData = {
         name: title,
-        costPrice: finance.money(this.data.costPrice),
+        costPrice: this.productCost(this.data.costPrice),
         pricingRuleId: String(this.data.pricingRuleId),
         coverUrl: uploadedMediaUrls[0],
         bannerImages: uploadedMediaUrls.slice(1),
@@ -1028,14 +1028,14 @@ const pageDefinition = {
           const imageMap = await this.uploadSkuImages(rows);
           uploadGroups.push({ ...group, skuList: rows.map((sku, index) => ({ ...sku, image: imageMap[index] || null })) });
         }
-        productData.bundleGroups = uploadGroups.map(function(bg, gi) {
+        productData.bundleGroups = uploadGroups.map((bg, gi) => {
           return {
             name: bg.name || ('子项' + (gi + 1)), sortOrder: gi,
             skus: (bg.skuList || []).filter(sku => !sku._toBeRemoved).map(sku => {
               const stock = String(sku.stock == null ? '' : sku.stock).trim();
               if (stock && (!/^\d+$/.test(stock) || Number(stock) > 999999999)) throw new Error('库存必须为0到999999999的整数');
               return { spec: sku.color || '默认', size: sku.size || '均码', barcode: '',
-                costPrice: finance.money(sku.costPrice), retailPrice: Number(sku.price),
+                costPrice: this.skuCost(sku.costPrice), retailPrice: Number(sku.price),
                 stockMain: stock === '' ? 0 : Number(stock), isUnlimitedStock: stock === '',
                 imageUrl: sku.image || null, sizeId: sku.sizeId || null };
             })

@@ -22,8 +22,18 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   };
 
   page.productCost = function(value) {
-    if (this.canManuallyPrice() && String(value == null ? '' : value).trim() === '') return null;
-    return finance.money(value);
+    if (String(value == null ? '' : value).trim() === '') return null;
+    try { return finance.money(value); }
+    catch (error) { throw new Error('默认成本：' + error.message); }
+  };
+
+  page.skuCost = function(value, required = !this.canManuallyPrice()) {
+    if (String(value == null ? '' : value).trim() === '') {
+      if (required) throw new Error('请填写每条SKU的成本，或设置默认成本');
+      return null;
+    }
+    try { return finance.money(value); }
+    catch (error) { throw new Error('SKU成本：' + error.message); }
   };
 
   page.loadPricingChoices = async function() {
@@ -136,8 +146,8 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     if (this.data.isBundleMode) this.saveActiveGroupState();
     try {
       if (!this.data.pricingRuleId || !this.data.pricingRuleSegments.length) throw new Error('请选择有效计价规则');
-      // 编辑预览允许默认成本为空；保存时仍按原有要求完整校验。
-      const defaultCost = strict ? finance.money(this.data.costPrice) : null;
+      // 默认成本只作为空成本SKU的后备值，保存时逐条校验有效成本。
+      const defaultCost = strict ? this.productCost(this.data.costPrice) : null;
       const segments = this.data.pricingRuleSegments.map(({ label, ...segment }) => segment);
       this.setData({ pricingBusy: true });
       const cache = new Map();
@@ -155,13 +165,13 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
         if (!shouldUpdate(groupIndex, skuIndex)) return { ...sku };
         if (sku._toBeRemoved) return { ...sku };
         if (!strict && String(sku.costPrice == null ? '' : sku.costPrice).trim() === '') return { ...sku };
-        const cost = finance.money(sku.costPrice || defaultCost);
+        const cost = this.skuCost(sku.costPrice || defaultCost, true);
         const retailPrice = await price(cost);
         updatedCount += 1;
         return { ...sku, costPrice: cost, price: retailPrice };
       };
       let defaultPrice = skuOnly ? this.data.defaultPrice : '';
-      if (strict) defaultPrice = await price(defaultCost);
+      if (strict && defaultCost !== null) defaultPrice = await price(defaultCost);
       else if (!skuOnly) {
         // 默认成本的输入状态不应阻挡已经填写成本的SKU计价。
         let previewCost;
@@ -378,7 +388,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
         this.productCost(this.data.costPrice);
         skus.filter(sku => !sku._toBeRemoved).forEach(sku => {
           try { finance.money(sku.price); } catch (_) { throw new Error('请填写正确的SKU售价，须大于零且最多两位小数'); }
-          this.productCost(sku.costPrice || this.data.costPrice);
+          this.skuCost(sku.costPrice || this.data.costPrice);
         });
         this.setData({ pricingError: '' });
         await originalSubmit.call(this);

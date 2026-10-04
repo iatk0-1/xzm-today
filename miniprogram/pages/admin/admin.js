@@ -1786,7 +1786,7 @@ const pageDefinition = {
           size: sku.size || '均码',
           barcode: '',
           retailPrice: Number(sku.price),
-          costPrice: this.productCost(sku.costPrice || this.data.costPrice),
+          costPrice: this.skuCost(sku.costPrice || this.data.costPrice),
           stockMain: stockNum,
           isUnlimitedStock: isUnlimited,
           imageUrl: skuImageMap[index] || null,
@@ -1840,7 +1840,7 @@ const pageDefinition = {
           uploadedGroups.push({ ...group, skuList: rows.map((sku, index) => ({ ...sku, image: images[index] || null })) });
         }
         var defaultCost = this.data.costPrice;
-        const productCost = value => this.productCost(value);
+        const skuCost = value => this.skuCost(value);
         var bundleGroupsData = uploadedGroups.map(function(bg, gi) {
           var bgSkus = (bg.skuList || []).filter(function(s) { return !s._toBeRemoved; }).map(function(sku) {
             var s = String(sku.stock == null ? '' : sku.stock).trim();
@@ -1850,7 +1850,7 @@ const pageDefinition = {
               size: sku.size || '均码',
               barcode: '',
               retailPrice: Number(sku.price) || 0,
-              costPrice: productCost(sku.costPrice || defaultCost),
+              costPrice: skuCost(sku.costPrice || defaultCost),
               id: editId ? sku.skuId : undefined,
               bundleGroupId: editId ? bg.id : undefined,
               imageUrl: sku.image || null,

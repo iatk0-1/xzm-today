@@ -176,7 +176,7 @@
   <view class="form-group pricing-panel">
     <view class="label">商品默认成本与自动售价</view>
     <view class="pricing-default-row">
-      <input class="input-box" type="digit" placeholder="默认成本（大于0）" value="{{costPrice}}" bindinput="onCostInput" />
+      <input class="input-box" type="digit" placeholder="默认成本（可选，大于0）" value="{{costPrice}}" bindinput="onCostInput" />
       <input class="input-box" placeholder="规则自动售价" value="{{defaultPrice}}" disabled />
     </view>
     <view class="muted">默认成本用于新SKU，已有SKU通过一键填充或批量设置成本更新。</view>

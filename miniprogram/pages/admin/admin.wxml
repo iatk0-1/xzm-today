@@ -132,7 +132,7 @@
 
   <view class="form-group pricing-default-panel">
     <view class="label">新 SKU 默认成本</view>
-    <input class="input-box" type="digit" placeholder="{{isAdmin ? '默认成本（可选，大于0）' : '默认成本（必填，大于0）'}}" value="{{costPrice}}" bindinput="onCostInput" />
+    <input class="input-box" type="digit" placeholder="默认成本（可选，大于0）" value="{{costPrice}}" bindinput="onCostInput" />
   </view>
 
   <view class="form-group pricing-panel">
