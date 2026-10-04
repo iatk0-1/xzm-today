@@ -42,7 +42,8 @@ function createPage() {
 test('档口管理返回时只同步变动的一行，下拉刷新才重查列表', { concurrency: false }, async () => {
   requests.length = 0;
   groupList = [{ id: 1, name: '一档口', sortOrder: 1 }, { id: 2, name: '二档口', sortOrder: 2 }];
-  singleGroup = { id: 2, name: '新二档口', sortOrder: 2, totalProductCount: 3 };
+  singleGroup = { id: 2, name: '新二档口', sortOrder: 2, totalProductCount: 3,
+    pricingRuleId: '21', pricingRuleName: '新加价规则', pricingRuleEnabled: true, pricingRuleDeleted: false };
   const page = createPage();
   await page.onLoad();
   await page.onShow();
@@ -53,6 +54,7 @@ test('档口管理返回时只同步变动的一行，下拉刷新才重查列�
   await page.onShow();
   assert.deepEqual(requests, ['/stalls/manage', '/stall-managers/assignments', '/stalls/2/manage']);
   assert.deepEqual(page.data.groups.map(item => item.name), ['一档口', '新二档口']);
+  assert.equal(page.data.groups[1].pricingRuleName, '新加价规则');
   assert.equal(page.scrollTop, 200);
 
   groupList = [{ id: 1, name: '刷新后' }, singleGroup];

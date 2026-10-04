@@ -6,9 +6,12 @@
       <view wx:if="{{!managerId}}" class="rename-btn" bindtap="renameGroup">改名</view>
     </view>
     <view wx:if="{{managerId}}" class="manager-line">仅展示 {{managerName || managerId}} 创建的商品</view>
+    <view wx:if="{{type === 'stall'}}" class="pricing-line">
+      <view class="pricing-name">计价规则：{{pricingRuleError || (pricingRuleLoaded ? (pricingRuleName || '未分配') : '加载中...')}}<text wx:if="{{!pricingRuleError && pricingRuleDeleted}}">（已删除）</text><text wx:elif="{{!pricingRuleError && pricingRuleId && pricingRuleEnabled === false}}">（已禁用）</text></view>
+      <view wx:if="{{!managerId}}" class="rename-btn" bindtap="openPricingRule">设置规则</view>
+    </view>
     <view wx:if="{{type === 'stall' && !managerId}}" class="manager-line">
       <text>负责人：{{managers.length ? managers.length + ' 人' : '未分配'}}</text>
-      <view class="rename-btn" bindtap="openPricingRule">档口计价规则</view>
     </view>
     <scroll-view wx:if="{{type === 'stall' && !managerId && managers.length}}" scroll-x class="manager-profiles">
       <view wx:for="{{managers}}" wx:key="id" class="manager-card">

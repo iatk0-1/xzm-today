@@ -67,6 +67,9 @@
               <view wx:if="{{currentType === 'stall'}}" class="manager-action" catchtap="openPricingRule" data-index="{{index}}">计价规则</view>
               <view class="rename-btn" catchtap="renameGroup" data-index="{{index}}">改名</view>
             </view>
+            <view wx:if="{{currentType === 'stall'}}" class="pricing-summary" catchtap="openPricingRule" data-index="{{index}}">
+              计价规则：{{item.pricingRuleName || '未分配'}}<text wx:if="{{item.pricingRuleDeleted}}">（已删除）</text><text wx:elif="{{item.pricingRuleId && item.pricingRuleEnabled === false}}">（已禁用）</text>
+            </view>
             <view class="group-meta">
               上架 {{item.onSaleProductCount}} / 全部 {{item.totalProductCount}}
               <text wx:if="{{item.hiddenReason === 'NO_ON_SALE_PRODUCT'}}" class="auto-hidden">无上架商品，暂不展示</text>

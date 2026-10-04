@@ -4,7 +4,8 @@ page {
 }
 .page { padding: 24rpx 24rpx 80rpx; }
 .card { background: white; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
-.title { font-size: 34rpx; font-weight: 600; margin-bottom: 20rpx; }
+.title { font-size: 34rpx; font-weight: 600; margin-bottom: 20rpx; word-break: break-all; }
+.assignment-summary { margin-bottom: 20rpx; color: #486780; font-size: 28rpx; line-height: 1.6; word-break: break-all; }
 .row { display: flex; align-items: center; gap: 16rpx; margin: 16rpx 0; flex-wrap: wrap; }
 input { background: #f4f6f8; padding: 18rpx; border-radius: 8rpx; margin: 12rpx 0; box-sizing: border-box; min-height: 72rpx; }
 .muted { color: #667788; font-size: 25rpx; line-height: 1.7; }

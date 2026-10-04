@@ -15,8 +15,8 @@ global.setInterval = (fn) => {
 };
 global.clearInterval = (id) => { timers.delete(id); };
 
-// 跟 adminCatalogManage.wxss 对齐：.group-row 高 132px，.list-scroll 上下留白 16rpx / 24rpx
-const ROW_HEIGHT = 132;
+// 跟 adminCatalogManage.wxss 对齐：.group-row 高 156px，.list-scroll 上下留白 16rpx / 24rpx
+const ROW_HEIGHT = 156;
 const LIST = { top: 100, height: 400 };
 const PADDING_TOP = 8;
 const PADDING_BOTTOM = 16;
@@ -244,7 +244,11 @@ test('拖到边缘自动滚动后手指回到中间，行不能跟手指拉开�
   // 手指顶进上边缘：自动滚动一路把行推到内容最上面，列表滚不动了才停
   const edgeY = LIST.top + 10;
   moveFinger(page, view, edgeY);
-  tick(page, 60);
+  let guard = 0;
+  while (page.data.dragY > 0 && guard < 500) {
+    tick(page);
+    guard += 1;
+  }
   assert.equal(page.data.dragY, 0, '行要一路顶到列表内容最上面');
   assert.equal(rowTopViewport(page, view, index), edgeY - offset, '顶着边缘时行还得在手指底下');
 
@@ -298,11 +302,12 @@ test('自动滚动是靠定时器一直滚的，不是手指一动才滚一下',
 test('拖动开始时按滚动容器回传的真实位置对齐基准', () => {
   const { page, view } = createPage(10, 0);
   // 模拟手动滚到中间、页面这一趟没收到 bindscroll：页面记账还停在 0
-  view.scrollTop = 300;
+  const actualScrollTop = PADDING_TOP + 4 * ROW_HEIGHT + ROW_HEIGHT / 2 - LIST.height / 2;
+  view.scrollTop = actualScrollTop;
   page.scrollTop = 0;
 
   startDrag(page, view, 4);
-  assert.equal(page.scrollTop, 300, '拖动开始要把真实滚动位置对齐过来');
+  assert.equal(page.scrollTop, actualScrollTop, '拖动开始要把真实滚动位置对齐过来');
 
   moveFinger(page, view, rowViewportY(view, 4));
   assert.equal(page.autoScrollStep, 0, '手指落在列表中间，不该触发自动滚动');

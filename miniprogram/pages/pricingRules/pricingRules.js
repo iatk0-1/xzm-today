@@ -2,6 +2,14 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const finance = require('../../utils/managerFinance');
 
+function decodeStallName(value) {
+  try {
+    return decodeURIComponent(value || '');
+  } catch (error) {
+    return value || '';
+  }
+}
+
 Page({
   data: {
     rules: [], editing: false, id: '', name: '', enabled: true, segments: [],
@@ -10,7 +18,7 @@ Page({
     formulaCursor: 0, formulaCells: [],
     editingBoundary: '', boundaryValue: '', boundaryError: '', error: '', saving: false,
     ruleBusy: '',
-    stallId: '', stallName: ''
+    stallId: '', stallName: '', currentRule: null, assignmentLoaded: false, assigning: false
   },
 
   async onLoad(options) {
@@ -19,7 +27,7 @@ Page({
       if (!auth.isAdmin()) throw new Error('仅管理员可设置规则');
       this._authorized = true;
       this.setData({
-        stallId: String(options.stallId || ''), stallName: options.stallName || ''
+        stallId: String(options.stallId || ''), stallName: decodeStallName(options.stallName)
       });
       await this.load();
     } catch (error) {
@@ -30,8 +38,11 @@ Page({
   async load() {
     if (!this._authorized) return;
     try {
-      const rules = await api.get('/pricing-rules', { includeDisabled: true });
-      this.setData({ rules: this.ruleRows(rules), error: '' });
+      const [rules, currentRule] = await Promise.all([
+        api.get('/pricing-rules', { includeDisabled: true }),
+        this.data.stallId ? api.get('/stalls/' + encodeURIComponent(this.data.stallId) + '/pricing-rule') : null
+      ]);
+      this.setData({ rules: this.ruleRows(rules), currentRule, assignmentLoaded: true, error: '' });
     } catch (error) {
       this.fail(error);
     }
@@ -48,7 +59,7 @@ Page({
   },
 
   async changeRuleStatus(event) {
-    if (!this._authorized || this.data.ruleBusy) return;
+    if (!this._authorized || this.data.ruleBusy || this.data.assigning) return;
     const rule = this.data.rules[Number(event.currentTarget.dataset.index)];
     if (!rule) return;
     const id = String(rule.id);
@@ -59,6 +70,9 @@ Page({
     try {
       const updated = await api.put('/pricing-rules/' + id + '/enabled', { enabled });
       this.setData({ rules: this.ruleRows(this.data.rules.map(item => String(item.id) === id ? updated : item)) });
+      if (this.data.currentRule && String(this.data.currentRule.id) === id) {
+        this.setData({ currentRule: updated });
+      }
     } catch (error) {
       this.setData({ rules: this.data.rules.map(item => String(item.id) === id ? { ...item, enabled: rule.enabled } : item) });
       this.fail(error);
@@ -68,7 +82,7 @@ Page({
   },
 
   async deleteRule(event) {
-    if (!this._authorized || this.data.ruleBusy) return;
+    if (!this._authorized || this.data.ruleBusy || this.data.assigning) return;
     const rule = this.data.rules[Number(event.currentTarget.dataset.index)];
     if (!rule) return;
     const id = String(rule.id);
@@ -77,6 +91,9 @@ Page({
       if (!await finance.confirmAction('删除计价规则', '删除后不再显示，也不能用于新增商品或新分配档口。已分配的档口和已使用的商品会保留。确定删除“' + rule.name + '”吗？')) return;
       await api.delete('/pricing-rules/' + id);
       this.setData({ rules: this.data.rules.filter(item => String(item.id) !== id), error: '' });
+      if (this.data.currentRule && String(this.data.currentRule.id) === id) {
+        this.setData({ currentRule: { ...this.data.currentRule, deleted: true, enabled: false } });
+      }
       wx.showToast({ title: '计价规则已删除' });
     } catch (error) {
       this.fail(error);
@@ -363,15 +380,19 @@ Page({
   },
 
   async assign(event) {
-    if (!this._authorized || !this.data.stallId) return;
+    if (!this._authorized || !this.data.stallId || this.data.assigning || this.data.ruleBusy) return;
+    this.setData({ assigning: true });
     try {
       const id = event.currentTarget.dataset.id;
-      await api.put('/stalls/' + this.data.stallId + '/pricing-rule', {
+      const currentRule = await api.put('/stalls/' + this.data.stallId + '/pricing-rule', {
         ruleId: id ? String(id) : null
       });
+      this.setData({ currentRule: currentRule || null, assignmentLoaded: true, error: '' });
       wx.showToast({ title: '档口规则已更新' });
     } catch (error) {
       this.fail(error);
+    } finally {
+      this.setData({ assigning: false });
     }
   },
 

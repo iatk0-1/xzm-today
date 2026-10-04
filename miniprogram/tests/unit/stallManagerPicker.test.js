@@ -40,12 +40,15 @@ test('档口列表保留负责人资料，分配操作迁出，计价入口正�
   const navigations = [];
   const user = { userId: 8, stallId: 1, nickname: '负责人', phone: '13800000000', avatarUrl: 'https://example.com/avatar.jpg' };
   const config = loadConfig('pages/adminCatalogManage/adminCatalogManage.js', {
-    get: async url => url === '/stall-managers/assignments' ? [user] : [{ id: 1, name: '一档口' }]
+    get: async url => url === '/stall-managers/assignments' ? [user] : [{ id: 1, name: '一档口',
+      pricingRuleId: '21', pricingRuleName: '标准加价规则', pricingRuleEnabled: false, pricingRuleDeleted: false }]
   }, { navigateTo(options) { navigations.push(options.url); } });
   const page = createInstance(config);
   await page.loadGroups();
   assert.equal(page.data.groups[0].managers[0].avatarUrl, user.avatarUrl);
   assert.equal(page.data.groups[0].managers[0].id, 8);
+  assert.equal(page.data.groups[0].pricingRuleName, '标准加价规则');
+  assert.equal(page.data.groups[0].pricingRuleEnabled, false);
   assert.equal(page.openManagerAssignment, undefined);
   page.openPricingRule({ currentTarget: { dataset: { index: 0 } } });
   assert.equal(navigations[0], '/pages/pricingRules/pricingRules?stallId=1&stallName=' + encodeURIComponent('一档口'));
@@ -148,6 +151,34 @@ test('修改搜索词和重新打开其他档口后，旧请求不能覆盖当�
   await flush();
   assert.equal(picker.data.managers[0].id, 2);
   assert.equal(picker.data.loading, false);
+});
+
+test('档口详情从接口取规则，设置返回后刷新，解除清空，失败明确显示', async () => {
+  let summary = { name: '一档口', pricingRuleId: '21', pricingRuleName: '加价规则',
+    pricingRuleEnabled: false, pricingRuleDeleted: true };
+  const requests = [];
+  const config = loadConfig('pages/adminCatalogProducts/adminCatalogProducts.js', {
+    get: async url => { requests.push(url); if (summary instanceof Error) throw summary; return summary; }
+  }, { navigateTo() {} });
+  const page = createInstance(config);
+  page._authorized = true;
+  page.data.groupId = '11';
+  await page.loadGroup();
+  assert.equal(page.data.pricingRuleName, '加价规则');
+  assert.equal(page.data.pricingRuleDeleted, true);
+  assert.equal(page.data.pricingRuleLoaded, true);
+  summary = { name: '一档口', pricingRuleId: null, pricingRuleName: null };
+  page.openPricingRule();
+  await page.onShow();
+  assert.equal(page.data.pricingRuleName, '');
+  assert.equal(page.data.pricingRuleId, '');
+  assert.deepEqual(requests, ['/stalls/11/manage', '/stalls/11/manage']);
+  summary = new Error('网络失败');
+  await page.loadGroup();
+  assert.equal(page.data.pricingRuleError, '加载失败');
+  page.data.type = 'tag';
+  await page.loadGroup();
+  assert.equal(requests.length, 3);
 });
 
 test('详情页商品保留负责人头像、昵称、手机号', async () => {

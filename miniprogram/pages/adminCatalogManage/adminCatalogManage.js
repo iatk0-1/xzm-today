@@ -3,7 +3,7 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
 // 与 adminCatalogManage.wxss 中 .group-row 的高度保持一致，拖拽换位依赖该数值。
-const ROW_HEIGHT = 132;
+const ROW_HEIGHT = 156;
 // 与 adminCatalogManage.wxss 中 .row-delete 的宽度保持一致，左滑最多露出这么宽。
 const DELETE_WIDTH = 72;
 // 横向滑动判定阈值，避免手抖被误判成左滑。

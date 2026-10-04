@@ -22,7 +22,9 @@ Page(autoSearch.wrap({
     selectedIds: [],
     selectedCount: 0,
     allLoadedSelected: false,
-    managers: [], managerId: '', managerName: ''
+    managers: [], managerId: '', managerName: '',
+    pricingRuleId: '', pricingRuleName: '', pricingRuleEnabled: null, pricingRuleDeleted: false,
+    pricingRuleLoaded: false, pricingRuleError: ''
   },
 
   async onLoad(options) {
@@ -40,7 +42,9 @@ Page(autoSearch.wrap({
         wx.navigateBack();
         return;
       }
+      this._authorized = true;
       this.loadProducts(true);
+      if (this.data.type === 'stall') this.loadGroup();
       if (this.data.type === 'stall' && !this.data.managerId) {
         this.loadManagers();
       }
@@ -51,6 +55,29 @@ Page(autoSearch.wrap({
 
   resourcePath() {
     return this.data.type === 'stall' ? '/stalls' : '/tags';
+  },
+
+  onShow() {
+    if (this._openedPricingRule) {
+      this._openedPricingRule = false;
+      return this.loadGroup();
+    }
+  },
+
+  async loadGroup() {
+    if (!this._authorized || this.data.type !== 'stall' || !this.data.groupId) return;
+    try {
+      const group = await api.get('/stalls/' + encodeURIComponent(this.data.groupId) + '/manage');
+      this.setData({
+        groupName: group.name,
+        pricingRuleId: group.pricingRuleId || '', pricingRuleName: group.pricingRuleName || '',
+        pricingRuleEnabled: group.pricingRuleEnabled, pricingRuleDeleted: !!group.pricingRuleDeleted,
+        pricingRuleLoaded: true, pricingRuleError: ''
+      });
+    } catch (err) {
+      this.setData({ pricingRuleError: '加载失败' });
+      wx.showToast({ title: err.message || '加载档口计价规则失败', icon: 'none' });
+    }
   },
 
   async loadManagers() {
@@ -66,7 +93,8 @@ Page(autoSearch.wrap({
   },
 
   openPricingRule() {
-    if (this.data.managerId) return;
+    if (this.data.managerId || this.data.type !== 'stall') return;
+    this._openedPricingRule = true;
     wx.navigateTo({
       url: '/pages/pricingRules/pricingRules?stallId=' + encodeURIComponent(String(this.data.groupId))
         + '&stallName=' + encodeURIComponent(this.data.groupName)

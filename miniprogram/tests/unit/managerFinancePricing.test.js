@@ -433,6 +433,63 @@ test('保存先应用正在编辑的边界再检查重名，重名时不丢失�
   assert.equal(calls.length, 0);
 });
 
+test('档口名称跳转解码一次，中文、特殊字符和非法编码都能打开页面', async () => {
+  const name = '花棉袄 & 100% + 档口';
+  for (const [input, expected] of [[encodeURIComponent(name), name], ['中文档口', '中文档口'],
+    ['100%档口', '100%档口'], ['%E6%E5', '%E6%E5'], [encodeURIComponent('%E6'), '%E6']]) {
+    const { page } = pageHarness('../../pages/pricingRules/pricingRules.js', {
+      get: async url => url === '/pricing-rules' ? [] : { id: '21', name: '加价规则', enabled: false, segments: [] }
+    });
+    await page.onLoad({ stallId: '11', stallName: input });
+    assert.equal(page.data.stallName, expected);
+    assert.equal(page.data.currentRule.name, '加价规则');
+    assert.equal(page.data.currentRule.enabled, false);
+    assert.equal(page.data.assignmentLoaded, true);
+    assert.equal(page.data.error, '');
+  }
+});
+
+test('分配和解除立即更新当前规则，重复点击拦住，失败保留原分配', async () => {
+  const rule = { id: '21', name: '加价规则', enabled: true, segments: [] };
+  let resolve, reject;
+  const { page, calls } = pageHarness('../../pages/pricingRules/pricingRules.js', {
+    put: () => new Promise((done, fail) => { resolve = done; reject = fail; })
+  });
+  page.setData({ stallId: '11' });
+  const event = { currentTarget: { dataset: { id: '21' } } };
+  const assigning = page.assign(event);
+  await page.assign(event);
+  assert.equal(calls.length, 1);
+  resolve(rule);
+  await assigning;
+  assert.equal(page.data.currentRule.name, '加价规则');
+  const failed = page.assign({ currentTarget: { dataset: {} } });
+  reject(new Error('解除失败'));
+  await failed;
+  assert.equal(page.data.currentRule.id, '21');
+  assert.equal(page.data.error, '解除失败');
+  const clearing = page.assign({ currentTarget: { dataset: {} } });
+  resolve(null);
+  await clearing;
+  assert.equal(calls.at(-1).data.ruleId, null);
+  assert.equal(page.data.currentRule, null);
+  assert.equal(page.data.assigning, false);
+  assert.equal(page.data.error, '');
+});
+
+test('当前分配规则被禁用或删除后保留名称并更新状态', async () => {
+  const rule = { id: '21', name: '加价规则', enabled: true, segments: [] };
+  const { page } = pageHarness('../../pages/pricingRules/pricingRules.js', {
+    put: async () => ({ ...rule, enabled: false })
+  });
+  page.setData({ rules: [rule], currentRule: rule });
+  await page.changeRuleStatus({ currentTarget: { dataset: { index: 0 } }, detail: { value: false } });
+  assert.equal(page.data.currentRule.enabled, false);
+  await page.deleteRule({ currentTarget: { dataset: { index: 0 } } });
+  assert.equal(page.data.currentRule.name, '加价规则');
+  assert.equal(page.data.currentRule.deleted, true);
+});
+
 test('规则列表只显示未删除规则和第一段公式，无上限有明确标识', async () => {
   const { page } = pageHarness('../../pages/pricingRules/pricingRules.js', { get: async () => [
     { id: '1', enabled: true, segments: [

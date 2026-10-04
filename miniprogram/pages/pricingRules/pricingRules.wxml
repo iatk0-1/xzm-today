@@ -3,14 +3,15 @@
 <view wx:if="{{!editing}}">
 <view class="card">
 <view class="title">{{stallId ? '为档口分配规则：' + stallName : '计价规则管理'}}</view>
+<view wx:if="{{stallId}}" class="assignment-summary">当前计价规则：{{assignmentLoaded ? (currentRule ? currentRule.name : '未分配') : '加载中...'}}<text wx:if="{{currentRule.deleted}}">（已删除）</text><text wx:elif="{{currentRule && !currentRule.enabled}}">（已禁用）</text></view>
 <button class="primary" bindtap="newRule">新增计价规则</button>
-<button wx:if="{{stallId}}" bindtap="assign">解除档口规则</button>
+<button wx:if="{{stallId && currentRule}}" bindtap="assign" disabled="{{assigning || !!ruleBusy}}">解除档口规则</button>
 </view>
 <view class="card" wx:for="{{rules}}" wx:key="id">
 <view class="title">{{item.name}} · v{{item.currentVersion}}</view>
 <view class="rule-status-row">
-<view class="rule-status"><text>状态</text><switch checked="{{item.enabled}}" disabled="{{!!ruleBusy}}" bindchange="changeRuleStatus" data-index="{{index}}"/><text class="muted">{{item.enabled ? '启用' : '禁用'}}</text></view>
-<button class="rule-delete" bindtap="deleteRule" data-index="{{index}}" disabled="{{!!ruleBusy}}">删除</button>
+<view class="rule-status"><text>状态</text><switch checked="{{item.enabled}}" disabled="{{!!ruleBusy || assigning}}" bindchange="changeRuleStatus" data-index="{{index}}"/><text class="muted">{{item.enabled ? '启用' : '禁用'}}</text></view>
+<button class="rule-delete" bindtap="deleteRule" data-index="{{index}}" disabled="{{!!ruleBusy || assigning}}">删除</button>
 </view>
 <view class="rule-preview">
 <view class="rule-preview-line"><text class="rule-preview-label">条件公式</text><text class="rule-preview-value">{{item.firstCondition}}</text></view>
@@ -20,7 +21,7 @@
 <button bindtap="edit" data-index="{{index}}" disabled="{{!!ruleBusy}}">编辑</button>
 <button bindtap="copy" data-index="{{index}}" disabled="{{!!ruleBusy}}">复制</button>
 </view>
-<button wx:if="{{stallId && item.enabled}}" class="primary" bindtap="assign" data-id="{{item.id}}">分配给当前档口</button>
+<button wx:if="{{stallId && item.enabled}}" class="primary" bindtap="assign" data-id="{{item.id}}" disabled="{{assigning || !!ruleBusy || currentRule.id == item.id}}">{{currentRule.id == item.id ? '已分配给当前档口' : '分配给当前档口'}}</button>
 </view>
 </view>
 <view wx:else>
