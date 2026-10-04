@@ -553,7 +553,7 @@ test('批量佣金全筛选收集所有页并保持雪花ID字符串', async () 
   assert.deepEqual(Array.from(call.data.productIds), ['9007199254740993', '9007199254740995']);
 });
 
-test('历史缺创建人需确认；任职时间区间包含下单；套装传明确套数与完整ID', async () => {
+test('历史缺创建人不能核对；任职时间区间包含下单；套装传明确套数与完整ID', async () => {
   const { page, calls } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js');
   page.setData({
     userId: '42',
@@ -569,7 +569,7 @@ test('历史缺创建人需确认；任职时间区间包含下单；套装传�
   await page.confirmHistory();
   assert.equal(calls.length, 0);
   assert.match(page.data.error, /创建/);
-  page.setData({ 'historyForm.creatorConfirmed': true });
+  page.setData({ 'historyForm.creatorUserId': '42' });
   await page.confirmHistory();
   const item = calls[0].data.items[0];
   assert.equal(item.creatorUserId, '42');
@@ -1182,6 +1182,7 @@ test('管理员手动结算逐条分配总额，凭证、付款时间和冲正�
   assert.equal(calls[0].url, '/stall-managers/42/offline-settlements');
   assert.equal(calls[0].data.amount, '35.00');
   assert.equal(calls[0].data.allocations[1].recordId, '9007199254740993');
+  page.setData({ settlementReason: '核对已付款' });
   await page.reverseSettlement({ currentTarget: { dataset: { id: '10' } } });
   assert.equal(calls[1].url, '/stall-managers/42/offline-settlements/10/reverse');
   assert.equal(calls[1].data.reason, '核对已付款');

@@ -67,4 +67,66 @@ function isoTime(value, label, optional = false) {
 function cents(value) {
   return Math.round(Number(money(value, true)) * 100);
 }
-module.exports = { money, cents, requireText, isoTime, confirmAction, segmentsWithLabels, toggleBoundary, changeBoundary, transferStatus, isTerminal, profitSharingStatus, profitSharingRow, withdrawalRequestRow, newWithdrawalRequestKey };
+const auditLabels = {
+  COMMISSION_SET: '设置商品佣金', HISTORY_CONFIRMED: '确认历史应付佣金', HISTORY_EXCLUDED: '确认历史不计佣',
+  OFFLINE_SETTLED: '登记线下付款', OFFLINE_REVERSED: '冲正线下付款登记', DEBT_OFFSET: '抵扣退款欠款', DEBT_OFFSET_RELEASED: '解除退款欠款抵扣',
+  WITHDRAWAL_SUCCESS: '历史转账到账', WITHDRAWAL_FAIL: '历史转账失败', WITHDRAWAL_CANCELLED: '历史转账撤销',
+  WITHDRAWAL_MANUAL_SUCCESS: '人工核验历史转账已付款', WITHDRAWAL_MANUAL_CANCELLED: '人工核验历史转账未付款',
+  PROFIT_SHARING_RECEIVER_REGISTERED: '登记分账接收关系', PROFIT_SHARING_WITHDRAWAL_REQUESTED: '负责人申请提现',
+  PROFIT_SHARING_CREATED: '发起微信分账', PROFIT_SHARING_WITHDRAWAL_ITEM_BLOCKED: '提现订单暂不符合分账条件',
+  PROFIT_SHARING_SUCCESS: '微信分账到账', PROFIT_SHARING_CLOSED: '微信分账关闭',
+  PROFIT_SHARING_MANUAL_SUCCESS: '人工核验分账已付款', PROFIT_SHARING_MANUAL_CLOSED: '人工核验分账未付款',
+  MANAGEMENT_FREEZE_RETIRED: '解除历史管理冻结', WITHDRAWAL_BLOCK_RETIRED: '解除历史提现限制'
+};
+function displayText(value) {
+  const text = value == null ? '' : String(value).trim();
+  return ['null', 'undefined'].includes(text.toLowerCase()) ? '' : text;
+}
+function timeMillis(value) {
+  if (value == null || value === '') return NaN;
+  return typeof value === 'number' || /^\d{13}$/.test(String(value)) ? Number(value) : Date.parse(value);
+}
+function displayTime(value) {
+  const millis = timeMillis(value);
+  if (!Number.isFinite(millis)) return '时间未记录';
+  // 业务时间统一显示北京时间，不依赖手机时区。
+  return new Date(millis + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' ');
+}
+function displayMoney(value) {
+  return value == null || value === '' || !Number.isFinite(Number(value)) ? '未记录' : Number(value).toFixed(2);
+}
+function displayReason(value) {
+  const relations = { STORE: '门店', STAFF: '员工', STORE_OWNER: '店主', PARTNER: '合作伙伴', HEADQUARTER: '总部', BRAND: '品牌方', DISTRIBUTOR: '分销商', USER: '用户', SUPPLIER: '供应商', CUSTOM: '自定义关系' };
+  return displayText(value)
+    .replace(/(关系=)([A-Z_]+)/g, (match, prefix, type) => prefix + (relations[type] || '其他关系'))
+    .replace(/；分配区间=null\/null；激活区间=null\/null/g, '；未补充任职时间区间')
+    .replace(/recordId=/g, '佣金明细编号=').replace(/itemId=/g, '提现明细编号=')
+    .replace(/transaction_id=/g, '微信交易号=').replace(/requestKey=/g, '提现申请编号=');
+}
+function managerDetailRow(row, tab) {
+  const orderLabels = { pending: '待付款', unpaid: '待付款', stocking: '备货中', paid: '已付款', partial_shipped: '部分发货', shipped: '已发货', completed: '已完成', cancelled: '已取消', canceled: '已取消', closed: '已关闭' };
+  const afterSaleLabels = { pending: '售后待审核', approved: '售后已通过', rejected: '售后已拒绝', received: '售后已收货', refunded: '已退款', cancelled: '售后已取消', canceled: '售后已取消', closed: '售后已关闭' };
+  const creatorName = displayText(row.creatorName) || displayText(row.creatorPhone) || '未设置昵称';
+  const operatorName = displayText(row.operatorName) || displayText(row.operatorPhone) || (row.operatorId ? '未设置昵称的操作人' : '系统自动处理');
+  return { ...row,
+    productName: displayText(row.productName) || '商品名称未记录',
+    productImage: displayText(row.productImage),
+    specLabel: [row.skuSpec, row.skuSize].map(displayText).filter(Boolean).join(' / ') || '规格未记录',
+    bundleLabel: [row.bundleProductName, row.bundleGroupName].map(displayText).filter(Boolean).join(' · '),
+    buyerName: displayText(row.buyerName) || displayText(row.buyerPhone) || '买家未设置昵称', creatorName, operatorName,
+    salePriceLabel: displayMoney(row.salePrice), lineAmountLabel: displayMoney(row.lineAmount), orderPayLabel: displayMoney(row.orderPayAmount),
+    commissionLabel: displayMoney(row.commissionAmount), unitCommissionLabel: displayMoney(row.unitCommission), amountLabel: displayMoney(row.amount),
+    createdTime: displayTime(row.createdAt || row.created_at), orderedTime: displayTime(row.orderedAt || row.createdAt),
+    paidTimeLabel: displayTime(row.paidAt || row.paid_at), updatedTime: displayTime(row.updatedAt || row.createdAt),
+    deadlineLabel: row.deadline ? displayTime(row.deadline) : '不适用',
+    orderStatusLabel: orderLabels[row.orderStatus] || '订单状态待核实',
+    afterSaleLabel: row.afterSaleStatus ? afterSaleLabels[row.afterSaleStatus] || '有售后记录' : '无售后',
+    refundedLabel: displayMoney(row.refundedAmount),
+    historyStatusLabel: row.status === 'UNCONFIRMED' ? '待核对' : row.status === 'EXCLUDED' ? '已核对 · 不计佣' : '已核对 · 计佣',
+    actionLabel: auditLabels[row.action] || '其他财务操作', reasonLabel: displayReason(row.reason),
+    receiverResultLabel: ({ SUCCESS: '已到账', CLOSED: '已关闭', PENDING: '处理中', PROCESSING: '处理中' })[row.receiverResult] || '待查询',
+    channel: tab === 'sharing' ? 'PROFIT_SHARING' : 'LEGACY_TRANSFER',
+    statusLabel: tab === 'sharing' ? profitSharingStatus(row.status) : transferStatus(row.status)
+  };
+}
+module.exports = { money, cents, requireText, isoTime, confirmAction, segmentsWithLabels, toggleBoundary, changeBoundary, transferStatus, isTerminal, profitSharingStatus, profitSharingRow, withdrawalRequestRow, newWithdrawalRequestKey, displayText, timeMillis, displayTime, managerDetailRow };

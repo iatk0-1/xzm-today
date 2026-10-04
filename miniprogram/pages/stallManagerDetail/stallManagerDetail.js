@@ -11,7 +11,7 @@ const LIST_PATHS = {
 Page({
   data: {
     userId: '', profile: null, tab: 'profile', busy: false, error: '',
-    stalls: [], assignedStalls: [], assignmentIds: [], reason: '', income: {}, activeChecked: false,
+    stalls: [], assignedStalls: [], assignmentIds: [], reason: '', income: {}, incomeDetailsVisible: false, activeChecked: false,
     assignmentVisible: false, availableStalls: [], newAssignmentIds: [],
     rows: [], page: 1, hasNext: false, totalElements: 0,
     keyword: '', filterStatus: '', commissionFilter: '', stallFilter: '',
@@ -22,7 +22,13 @@ Page({
     selectedProducts: [], unitCommission: '', allProductsSelected: false, listLoading: false,
     commissionEdit: null, singleCommission: '', commissionError: '',
     allocations: {}, settlementTotal: '0.00', paidAt: '', paymentMethod: '',
-    voucher: '', settlementReason: '',
+    voucher: '', settlementReason: '', paidDate: '', paidTime: '', paidDateEnd: '',
+    paymentMethods: ['银行转账', '微信转账', '支付宝转账', '现金', '其他'], paymentMethodIndex: -1,
+    settlementNoteVisible: false,
+    recordStatusOptions: [{ value: '', label: '全部明细' }, { value: 'COMPLETED', label: '已完成订单' }, { value: 'PENDING', label: '待完成订单' }],
+    recordStatusIndex: 0, historyStatusIndex: 0,
+    historyStatusOptions: [{ value: '', label: '全部核对状态' }, { value: 'UNCONFIRMED', label: '待核对' }, { value: 'CONFIRMED', label: '已核对' }],
+    reverseForm: null,
     receiver: null, receiverTypeIndex: -1, customRelation: '', receiverReason: '', receiverVerified: false,
     receiverVisible: false, receiverSummary: '未登记', receiverError: '',
     receiverTypes: [
@@ -134,7 +140,8 @@ Page({
     this._listSequence = (this._listSequence || 0) + 1;
     this._listLoading = false;
     this.setData({ tab, rows: [], page: 1, hasNext: false, error: '', filterStatus: '', listLoading: false,
-      selectedProducts: [], allProductsSelected: false });
+      selectedProducts: [], allProductsSelected: false, recordStatusIndex: 0, historyStatusIndex: 0, reverseForm: null });
+    if (tab === 'records') this.updatePaidDateEnd();
     if (tab === 'products') await this.loadProductTags();
     if (tab !== this.data.tab) return;
     if (tab !== 'profile' && LIST_PATHS[tab]) await this.loadList(true);
@@ -151,6 +158,8 @@ Page({
   },
 
   noop() {},
+
+  toggleIncomeDetails() { this.setData({ incomeDetailsVisible: !this.data.incomeDetailsVisible }); },
 
   assignmentChange(event) {
     const available = new Set(this.data.availableStalls.map(stall => String(stall.id)));
@@ -231,15 +240,18 @@ Page({
         productQuery = reset ? this.productParams() : this._productQuery || this.productParams();
         Object.assign(params, productQuery);
       }
-      if (this.data.tab === 'history') params.historical = true;
+      if (this.data.tab === 'history') {
+        params.historical = true;
+        const status = this.data.historyStatusOptions[this.data.historyStatusIndex].value;
+        if (status) params.status = status;
+      }
       if (this.data.tab === 'records' && this.data.filterStatus) params.status = this.data.filterStatus;
       const result = await api.get(this.base(path), params);
       if (sequence !== this._listSequence || tab !== this.data.tab) return;
       if (tab === 'products') this._productQuery = productQuery;
       const content = Array.isArray(result) ? result : (result.content || []);
       const items = content.map(row => ({
-        ...row, channel: tab === 'sharing' ? 'PROFIT_SHARING' : 'LEGACY_TRANSFER',
-        statusLabel: tab === 'sharing' ? finance.profitSharingStatus(row.status) : finance.transferStatus(row.status),
+        ...finance.managerDetailRow(row, tab),
         selected: this.data.selectedProducts.includes(String(row.productId))
       }));
       this.setData({
@@ -374,7 +386,48 @@ Page({
     });
   },
 
+  async recordStatusChange(event) {
+    if (this.data.busy) return;
+    const index = Number(event.detail.value);
+    const option = this.data.recordStatusOptions[index];
+    if (!option) return;
+    this.setData({ filterStatus: option.value, recordStatusIndex: index });
+    await this.loadList(true);
+  },
+
+  async refreshRecords() {
+    if (this.data.busy || this.data.listLoading) return;
+    this.updatePaidDateEnd();
+    await this.refresh();
+  },
+
+  updatePaidDateEnd() {
+    this.setData({ paidDateEnd: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10) });
+  },
+
+  paymentTimeChange(event) {
+    if (this.data.busy) return;
+    const field = event.currentTarget.dataset.field;
+    if (field !== 'paidDate' && field !== 'paidTime') return;
+    const paidDate = field === 'paidDate' ? event.detail.value : this.data.paidDate;
+    const paidTime = field === 'paidTime' ? event.detail.value : this.data.paidTime;
+    this.setData({ paidDate, paidTime, paidAt: paidDate && paidTime ? paidDate + 'T' + paidTime + ':00+08:00' : '' });
+  },
+
+  paymentMethodChange(event) {
+    if (this.data.busy) return;
+    const index = Number(event.detail.value);
+    const method = this.data.paymentMethods[index];
+    if (!method) return;
+    this.setData({ paymentMethodIndex: index, paymentMethod: method === '其他' ? '' : method });
+  },
+
+  toggleSettlementNote() {
+    if (!this.data.busy) this.setData({ settlementNoteVisible: !this.data.settlementNoteVisible });
+  },
+
   allocationInput(event) {
+    if (this.data.busy) return;
     try {
       const id = String(event.currentTarget.dataset.id);
       const allocations = { ...this.data.allocations, [id]: event.detail.value };
@@ -393,12 +446,15 @@ Page({
         .filter(([, value]) => value && finance.cents(value) > 0)
         .map(([recordId, amount]) => ({ recordId, amount: finance.money(amount) }));
       if (!allocations.length) throw new Error('请为完成订单填写本次付款分配金额');
+      if (!this.data.paidAt) throw new Error('请选择实际付款日期和时间');
+      const paidAt = finance.isoTime(this.data.paidAt, '实际付款时间');
+      if (Date.parse(paidAt) > Date.now()) throw new Error('实际付款时间不能晚于当前时间');
       const body = {
         allocations, amount: finance.money(this.data.settlementTotal),
-        paidAt: finance.isoTime(this.data.paidAt, '实际付款时间'),
+        paidAt,
         paymentMethod: finance.requireText(this.data.paymentMethod, '付款方式'),
         voucher: finance.requireText(this.data.voucher, '付款凭证号或凭证说明'),
-        reason: finance.requireText(this.data.settlementReason, '结算说明')
+        reason: this.data.settlementReason.trim() || '登记负责人已完成订单的线下佣金付款'
       };
       if (Number(body.amount) > Number(this.data.income.settleableIncome || 0)) {
         throw new Error('线下付款分配超过账户可结算余额');
@@ -407,29 +463,77 @@ Page({
         '本次登记 ¥' + body.amount + '，系统不会转账。请确认关联订单与付款凭证正确。');
       if (!accepted) return false;
       await api.post(this.base('offline-settlements'), body);
-      this.setData({ allocations: {}, settlementTotal: '0.00' });
+      this.setData({ allocations: {}, settlementTotal: '0.00', paidAt: '', paidDate: '', paidTime: '',
+        paymentMethod: '', paymentMethodIndex: -1, voucher: '', settlementReason: '', settlementNoteVisible: false });
     });
   },
 
   async reverseSettlement(event) {
-    const id = event.currentTarget.dataset.id;
+    const id = this.data.reverseForm ? this.data.reverseForm.id : event.currentTarget.dataset.id;
     await this.mutate('冲正线下结算', async () => {
-      const reason = finance.requireText(this.data.settlementReason, '冲正原因');
+      const reason = finance.requireText(this.data.reverseForm ? this.data.reverseForm.reason : this.data.settlementReason, '冲正原因');
       if (!await finance.confirmAction('冲正结算记录', '仅纠正登记，原付款记录和冲正原因将保留。')) return false;
       await api.post(this.base('offline-settlements/' + id + '/reverse'), { reason });
+      this.setData({ reverseForm: null });
     });
   },
 
+  openOrder(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!id) return;
+    this._refreshOnShow = true;
+    wx.navigateTo({ url: '/pages/adminOrderDetail/adminOrderDetail?id=' + encodeURIComponent(String(id)) });
+  },
+
+  historyStatusChange(event) {
+    if (this.data.busy) return;
+    const index = Number(event.detail.value);
+    if (!this.data.historyStatusOptions[index]) return;
+    this.setData({ historyStatusIndex: index });
+    return this.loadList(true);
+  },
+
+  async toggleSettlementDetails(event) {
+    const id = String(event.currentTarget.dataset.id);
+    const row = this.data.rows.find(item => String(item.id) === id);
+    if (!row || row.detailsLoading || this.data.busy) return;
+    const update = values => this.setData({ rows: this.data.rows.map(item => String(item.id) === id ? { ...item, ...values } : item) });
+    if (row.detailsLoaded) { update({ detailsVisible: !row.detailsVisible }); return; }
+    const sequence = this._listSequence;
+    update({ detailsLoading: true });
+    try {
+      const result = await api.get(this.base('offline-settlements/' + encodeURIComponent(id)));
+      if (this.data.tab !== 'settlements' || sequence !== this._listSequence) return;
+      update({ detailsLoading: false, detailsLoaded: true, detailsVisible: true,
+        allocationRows: (result.allocations || []).map(item => finance.managerDetailRow(item, 'settlements')) });
+    } catch (error) {
+      if (this.data.tab === 'settlements' && sequence === this._listSequence) { update({ detailsLoading: false }); this.fail(error); }
+    }
+  },
+
+  openReverseSettlement(event) {
+    if (this.data.busy) return;
+    const row = this.data.rows.find(item => String(item.id) === String(event.currentTarget.dataset.id));
+    if (row && !row.reversed) this.setData({ reverseForm: { ...row, reason: '' }, error: '' });
+  },
+  reverseReasonInput(event) { this.setData({ 'reverseForm.reason': event.detail.value }); },
+  closeReverseSettlement() { if (!this.data.busy) this.setData({ reverseForm: null }); },
+
   openHistory(event) {
     const row = this.data.rows[Number(event.currentTarget.dataset.index)];
-    if (!row || row.status !== 'UNCONFIRMED') return;
+    if (!row || row.status !== 'UNCONFIRMED' || String(row.creatorUserId) !== String(this.data.userId)) return;
     this.setData({
       error: '', historyForm: {
         ...row, eligible: true, reason: '', unitCommission: '',
-        creatorConfirmed: row.creatorUserId != null,
         assignmentStartedAt: '', assignmentEndedAt: '',
         activeStartedAt: '', activeEndedAt: '',
-        saleUnits: '', memberIds: String(row.orderItemId)
+        evidencePeriods: [
+          { field: 'assignmentStartedAt', label: '档口分配开始', date: '', time: '', optional: false },
+          { field: 'assignmentEndedAt', label: '档口分配结束', date: '', time: '', optional: true },
+          { field: 'activeStartedAt', label: '负责人上线开始', date: '', time: '', optional: false },
+          { field: 'activeEndedAt', label: '负责人上线结束', date: '', time: '', optional: true }
+        ],
+        saleUnits: '', memberIds: row.bundleMemberIds || String(row.orderItemId)
       }
     });
   },
@@ -442,30 +546,52 @@ Page({
     this.setData({ 'historyForm.eligible': event.detail.value });
   },
 
-  creatorConfirmation(event) {
-    this.setData({ 'historyForm.creatorConfirmed': event.detail.value });
+  historyPeriodChange(event) {
+    if (this.data.busy || !this.data.historyForm) return;
+    const { index, part } = event.currentTarget.dataset;
+    const periods = this.data.historyForm.evidencePeriods.map(period => ({ ...period }));
+    const period = periods[Number(index)];
+    if (!period || !['date', 'time'].includes(part)) return;
+    period[part] = event.detail.value;
+    this.setData({ 'historyForm.evidencePeriods': periods,
+      ['historyForm.' + period.field]: period.date && period.time ? period.date + 'T' + period.time + ':00+08:00' : '' });
+  },
+  clearHistoryPeriod(event) {
+    if (this.data.busy || !this.data.historyForm) return;
+    const index = Number(event.currentTarget.dataset.index);
+    const periods = this.data.historyForm.evidencePeriods.map(period => ({ ...period }));
+    if (!periods[index] || !periods[index].optional) return;
+    periods[index].date = ''; periods[index].time = '';
+    this.setData({ 'historyForm.evidencePeriods': periods, ['historyForm.' + periods[index].field]: '' });
   },
 
   async confirmHistory() {
     await this.mutate('确认历史佣金', async () => {
       const form = this.data.historyForm;
+      if (!form || form.creatorUserId == null || String(form.creatorUserId) !== String(this.data.userId)) {
+        throw new Error('商品创建人缺失或不属于此负责人，不能核对');
+      }
       const item = {
         orderItemId: String(form.orderItemId),
         unitCommission: form.eligible ? finance.money(form.unitCommission, true) : '0.00',
         eligible: form.eligible, reason: finance.requireText(form.reason, '历史核对依据')
       };
       if (form.eligible) {
-        if (!form.creatorConfirmed) throw new Error('历史创建人缺失，请明确确认商品由本负责人创建');
-        item.creatorUserId = String(form.creatorUserId || this.data.userId);
-        item.assignmentStartedAt = finance.isoTime(form.assignmentStartedAt, '档口分配开始时间');
-        item.assignmentEndedAt = finance.isoTime(form.assignmentEndedAt, '档口分配结束时间', true);
-        item.activeStartedAt = finance.isoTime(form.activeStartedAt, '负责人激活开始时间');
-        item.activeEndedAt = finance.isoTime(form.activeEndedAt, '负责人激活结束时间', true);
-        const orderTime = Date.parse(form.createdAt);
-        if (Date.parse(item.assignmentStartedAt) > orderTime || Date.parse(item.activeStartedAt) > orderTime
-          || (item.assignmentEndedAt && Date.parse(item.assignmentEndedAt) <= orderTime)
-          || (item.activeEndedAt && Date.parse(item.activeEndedAt) <= orderTime)) {
-          throw new Error('任职区间必须包含下单时间，结束时间不包含');
+        item.creatorUserId = String(form.creatorUserId);
+        if (!form.hasAppointmentEvidence) {
+          const incomplete = (form.evidencePeriods || []).some(period => !!period.date !== !!period.time);
+          if (incomplete) throw new Error('任职时间需同时选择日期和时间，或清空选填的结束时间');
+          item.assignmentStartedAt = finance.isoTime(form.assignmentStartedAt, '档口分配开始时间');
+          item.assignmentEndedAt = finance.isoTime(form.assignmentEndedAt, '档口分配结束时间', true);
+          item.activeStartedAt = finance.isoTime(form.activeStartedAt, '负责人激活开始时间');
+          item.activeEndedAt = finance.isoTime(form.activeEndedAt, '负责人激活结束时间', true);
+          const orderTime = finance.timeMillis(form.createdAt);
+          if (!Number.isFinite(orderTime)) throw new Error('下单时间缺失，无法核实任职区间');
+          if (Date.parse(item.assignmentStartedAt) > orderTime || Date.parse(item.activeStartedAt) > orderTime
+            || (item.assignmentEndedAt && Date.parse(item.assignmentEndedAt) <= orderTime)
+            || (item.activeEndedAt && Date.parse(item.activeEndedAt) <= orderTime)) {
+            throw new Error('任职区间必须包含下单时间，结束时间不包含');
+          }
         }
       }
       if (form.isBundle || form.bundleProductName) {
@@ -486,7 +612,7 @@ Page({
   },
 
   closeHistory() {
-    this.setData({ historyForm: null });
+    if (!this.data.busy) this.setData({ historyForm: null });
   },
 
   applyReceiver(receiver) {

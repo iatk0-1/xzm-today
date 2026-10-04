@@ -1,10 +1,18 @@
-page { background:#f5f6f8; color:#222; } .page { padding:24rpx; } .card { background:#fff; border-radius:18rpx; padding:24rpx; margin-bottom:20rpx; } .title { font-size:34rpx; font-weight:600; margin-bottom:16rpx; } .muted { color:#747a83; font-size:25rpx; line-height:1.7; } .error { padding:20rpx; background:#fff0ee; color:#ac2d24; margin-bottom:18rpx; white-space:pre-wrap; } .tabs { white-space:nowrap; margin-bottom:20rpx; } .tab { display:inline-block; padding:16rpx 22rpx; background:#fff; border-radius:12rpx; margin-right:12rpx; } .active { background:#173e33; color:#fff; } .row { display:flex; gap:12rpx; align-items:center; flex-wrap:wrap; } .choice { display:block; padding:16rpx 0; border-bottom:1rpx solid #eee; } input,textarea { background:#f5f6f8; border-radius:10rpx; padding:18rpx; margin:14rpx 0; box-sizing:border-box; width:100%; } textarea { min-height:110rpx; } button { margin:12rpx 0; font-size:28rpx; } .primary { background:#173e33; color:#fff; } .amount { color:#173e33; font-size:38rpx; margin-bottom:10rpx; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:18rpx; } .label { font-size:25rpx; color:#606873; } .metric { font-size:33rpx; } .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:30; padding:35rpx 22rpx; box-sizing:border-box; } .modal { background:#fff; border-radius:18rpx; height:90vh; padding:25rpx; box-sizing:border-box; } .badge { font-size:24rpx; color:#747a83; }
+.muted { color:#747a83; font-size:25rpx; line-height:1.7; }
+.error { padding:20rpx; background:#fff0ee; color:#ac2d24; margin-bottom:18rpx; white-space:pre-wrap; font-size:25rpx; border-radius:8rpx; }
+.row { display:flex; gap:12rpx; align-items:center; flex-wrap:wrap; }
+.choice { display:block; padding:16rpx 0; border-bottom:1rpx solid #eee; }
+input,textarea { margin:14rpx 0; box-sizing:border-box; width:100%; flex-shrink:0; }
+textarea { min-height:110rpx; font-size:27rpx; }
+.label { font-size:25rpx; color:#606873; }
+.metric { font-size:33rpx; }
+.badge { font-size:24rpx; color:#747a83; }
 .profile-heading, .section-heading, .stall-heading { display:flex; align-items:center; justify-content:space-between; gap:18rpx; }
 .profile-name { flex:1; min-width:0; margin-bottom:0; overflow-wrap:anywhere; }
 .profile-heading { margin-bottom:16rpx; }
 .active-control { display:flex; align-items:center; gap:10rpx; flex-shrink:0; color:#606873; font-size:25rpx; }
 .section-heading .title { margin-bottom:0; }
-.assign-add { width:64rpx; height:64rpx; margin:0; padding:0; line-height:60rpx; font-size:42rpx; background:#edf4f1; color:#173e33; border-radius:50%; flex-shrink:0; }
+.assign-add { width:64rpx; height:64rpx; margin:0; padding:0; line-height:60rpx; font-size:42rpx; background:#f2f4f6; color:#1f2933; border-radius:50%; flex-shrink:0; }
 .assign-add::after, .assignment-remove::after { border:0; }
 .assignment-hint { margin:12rpx 0 20rpx; }
 .assignment-empty { padding:35rpx 0; text-align:center; color:#8b929b; font-size:25rpx; }
@@ -26,7 +34,7 @@ page { background:#f5f6f8; color:#222; } .page { padding:24rpx; } .card { backgr
 .receiver-title { flex-shrink:0; font-size:29rpx; font-weight:600; }
 .receiver-action { min-width:0; margin:0; padding:12rpx 0 12rpx 12rpx; background:transparent; color:#747a83; font-size:25rpx; line-height:1.6; text-align:right; overflow-wrap:anywhere; }
 .receiver-action::after { border:0; }
-.receiver-action.registered { color:#173e33; }
+.receiver-action.registered { color:#1f2933; }
 .receiver-arrow { margin-left:12rpx; color:#929ba4; }
 .receiver-dialog { max-height:85vh; }
 .receiver-fields { margin-top:12rpx; }
@@ -42,7 +50,7 @@ page { background:#f5f6f8; color:#222; } .page { padding:24rpx; } .card { backgr
 .commission-filter { display:flex; align-items:center; justify-content:space-between; gap:10rpx; padding:16rpx; color:#606873; background:#f5f6f8; border-radius:8rpx; font-size:24rpx; }
 .commission-filter text { flex-shrink:0; color:#929ba4; }
 .commission-selection { display:flex; align-items:center; justify-content:space-between; gap:12rpx; margin:14rpx 0; font-size:24rpx; color:#747a83; }
-.commission-selection button { margin:0; padding:8rpx 18rpx; background:transparent; color:#173e33; font-size:25rpx; line-height:1.6; }
+.commission-selection button { margin:0; padding:8rpx 18rpx; background:transparent; color:#1f2933; font-size:25rpx; line-height:1.6; }
 .commission-selection button::after, .commission-amount::after { border:0; }
 .commission-product { padding:20rpx; }
 .commission-product-main { display:flex; align-items:center; gap:14rpx; width:100%; }
@@ -57,6 +65,95 @@ page { background:#f5f6f8; color:#222; } .page { padding:24rpx; } .card { backgr
 .commission-status.off { color:#747a83; background:#eef1f4; }
 .commission-status.sold-out { color:#b54728; background:#fff1e8; }
 .commission-product-bottom { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding-top:12rpx; margin-top:16rpx; border-top:1rpx solid #edf0f2; color:#747a83; font-size:24rpx; }
-.commission-amount { margin:0; padding:8rpx 0 8rpx 12rpx; color:#173e33; background:transparent; font-size:27rpx; line-height:1.6; }
+.commission-amount { margin:0; padding:8rpx 0 8rpx 12rpx; color:#1f2933; background:transparent; font-size:27rpx; line-height:1.6; }
 .commission-edit-label { margin-left:16rpx; font-size:23rpx; color:#486780; }
 .commission-edit-name { font-size:28rpx; margin-bottom:18rpx; overflow-wrap:anywhere; }
+/* 单行输入框需要明确高度和横向内边距，避免默认高度被上下内边距挤掉。 */
+input { height:80rpx; min-height:72rpx; padding:0 18rpx; font-size:27rpx; flex-shrink:0; }
+textarea { font-size:27rpx; }
+.record-toolbar { display:flex; align-items:center; gap:14rpx; }
+.record-toolbar picker { flex:1; min-width:0; }
+.record-toolbar button { margin:0; padding:0 18rpx; line-height:80rpx; font-size:24rpx; background:#f2f4f6; color:#1f2933; flex-shrink:0; }
+.record-hint { margin-top:16rpx; }
+.payment-label { margin:24rpx 0 12rpx; font-size:26rpx; font-weight:500; }
+.payment-time-row { display:flex; gap:14rpx; }
+.payment-time-row picker { flex:1; min-width:0; }
+.payment-picker { display:flex; align-items:center; justify-content:space-between; gap:10rpx; min-height:80rpx; padding:16rpx 18rpx; box-sizing:border-box; border-radius:10rpx; background:#f5f6f8; font-size:26rpx; }
+.payment-picker text { flex-shrink:0; color:#929ba4; }
+.payment-picker.placeholder { color:#929ba4; }
+.payment-voucher { height:150rpx; min-height:150rpx; margin:0; }
+.payment-note-toggle { padding:20rpx 0; color:#486780; font-size:25rpx; }
+
+/* 与商品、订单管理页统一的卡片、筛选和表单视觉。 */
+page { background:#f4f6f8; color:#1f2933; font-size:28rpx; }
+.page { padding:20rpx; padding-bottom:calc(32rpx + env(safe-area-inset-bottom)); }
+.card { background:#fff; border-radius:12rpx; padding:24rpx; margin-bottom:18rpx; }
+.title { font-size:30rpx; font-weight:600; line-height:1.5; }
+.profile-name { font-size:34rpx; }
+button { min-height:72rpx; line-height:72rpx; border-radius:8rpx; font-size:26rpx; padding:0 20rpx; background:#f2f4f6; color:#1f2933; }
+button::after { border:none; }
+button.primary { background:#1f2933; color:#fff; }
+button[disabled] { opacity:.5; }
+.tabs { white-space:nowrap; background:#fff; border-radius:12rpx; padding:8rpx 0; margin-bottom:18rpx; }
+.tab { display:inline-block; background:transparent; color:#747a83; border-radius:0; padding:20rpx 22rpx; margin:0; font-size:27rpx; }
+.tab.active { color:#1f2933; font-weight:600; border-bottom:4rpx solid #1f2933; }
+input { height:80rpx; min-height:80rpx; padding:0 20rpx; font-size:27rpx; border-radius:8rpx; background:#f5f5f5; }
+textarea { padding:20rpx; line-height:1.6; border-radius:8rpx; background:#f5f5f5; }
+.compact-textarea { height:150rpx; min-height:150rpx; width:100%; }
+.payment-picker, .commission-filter { background:#f5f5f5; border-radius:8rpx; }
+.commission-filter { min-height:72rpx; box-sizing:border-box; }
+.assignment-dialog { max-height:85vh; border-radius:16rpx; }
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60; box-sizing:border-box; display:flex; justify-content:center; align-items:center; padding:30rpx; }
+.modal { background:#fff; width:100%; box-sizing:border-box; height:82vh; border-radius:16rpx; padding:28rpx; }
+.amount { color:#1f2933; font-size:38rpx; margin:0; font-weight:600; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:22rpx 18rpx; margin-bottom:20rpx; }
+.metric { font-weight:600; margin-top:6rpx; }
+.history-filter { margin-top:20rpx; }
+.order-heading { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding-bottom:18rpx; border-bottom:1rpx solid #edf0f2; font-size:26rpx; }
+.order-heading > text:first-child { min-width:0; overflow-wrap:anywhere; }
+.link-text { color:#486780; font-size:24rpx; flex-shrink:0; }
+.order-product { display:flex; align-items:flex-start; gap:18rpx; margin:22rpx 0; }
+.order-cover { width:120rpx; height:120rpx; flex-shrink:0; border-radius:8rpx; background:#f2f4f6; }
+.order-product-info { flex:1; min-width:0; }
+.order-product-name { font-size:29rpx; font-weight:600; line-height:1.5; overflow-wrap:anywhere; }
+.order-price { font-size:25rpx; margin-top:10rpx; display:flex; flex-wrap:wrap; gap:8rpx 20rpx; }
+.bundle-note { font-size:23rpx; color:#486780; line-height:1.6; }
+.detail-line { display:flex; align-items:flex-start; justify-content:space-between; gap:18rpx; font-size:25rpx; line-height:1.7; margin:12rpx 0; }
+.detail-line > text:first-child, .detail-label { color:#747a83; flex-shrink:0; }
+.detail-line > text:last-child { text-align:right; overflow-wrap:anywhere; }
+.person-line { display:flex; align-items:center; gap:10rpx; font-size:25rpx; margin:16rpx 0; }
+.person-avatar { width:42rpx; height:42rpx; border-radius:50%; flex-shrink:0; margin-left:auto; }
+.person-name { flex:1; min-width:0; text-align:right; overflow-wrap:anywhere; }
+.person-name text { color:#747a83; font-size:23rpx; }
+.after-sale-text { color:#b54728; }
+.order-ids { color:#929ba4; font-size:22rpx; line-height:1.7; margin-top:16rpx; overflow-wrap:anywhere; }
+.card-actions { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding-top:18rpx; margin-top:18rpx; border-top:1rpx solid #edf0f2; }
+.history-state { font-size:24rpx; color:#246447; }
+.history-state.pending { color:#b7791f; }
+.small-button { flex-shrink:0; margin:0; min-height:64rpx; line-height:64rpx; font-size:24rpx; }
+.text-button { background:transparent; color:#486780; padding:8rpx 0; font-size:24rpx; line-height:1.6; min-height:0; margin:0; text-align:left; }
+.text-button.danger { color:#b9433b; }
+.status-tag { font-size:23rpx; color:#246447; background:#e8f4ed; padding:8rpx 14rpx; border-radius:6rpx; }
+.status-tag.invalid { background:#eef1f4; color:#747a83; }
+.evidence-box { background:#f8fafb; padding:18rpx; border-radius:8rpx; font-size:25rpx; line-height:1.7; overflow-wrap:anywhere; white-space:pre-wrap; margin-top:20rpx; }
+.evidence-box > .payment-label { margin:0 0 8rpx; }
+.settlement-details { margin-top:16rpx; }
+.settlement-item { border-top:1rpx solid #edf0f2; padding:18rpx 0; font-size:26rpx; }
+.settlement-item .section-heading > text:first-child { min-width:0; flex:1; overflow-wrap:anywhere; }
+.settlement-item .section-heading > text:last-child { flex-shrink:0; }
+.audit-title { flex:1; min-width:0; font-size:29rpx; font-weight:600; }
+.audit-amount { font-size:30rpx; flex-shrink:0; font-weight:600; }
+.audit-reason { font-size:25rpx; color:#606873; line-height:1.8; white-space:pre-wrap; overflow-wrap:anywhere; background:#f8fafb; padding:18rpx; border-radius:8rpx; margin:18rpx 0; }
+.history-switch { justify-content:space-between; margin:20rpx 0; }
+.period-label { display:flex; align-items:center; justify-content:space-between; margin:20rpx 0 10rpx; font-size:25rpx; }
+.money-summary { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; padding:18rpx 0; border-top:1rpx solid #edf0f2; border-bottom:1rpx solid #edf0f2; }
+.money-summary view { font-size:23rpx; color:#747a83; }
+.money-summary text { display:block; margin-top:8rpx; font-size:28rpx; color:#1f2933; }
+.assign-add { min-height:64rpx; padding:0; line-height:60rpx; }
+.assignment-remove { min-height:54rpx; line-height:54rpx; padding:0 18rpx; background:#faeae7; color:#b9433b; font-size:24rpx; }
+.receiver-action, .commission-amount, .commission-selection button { min-height:0; background:transparent; }
+.record-toolbar button { min-height:80rpx; background:#f2f4f6; }
+.payment-label { color:#606873; }
+
+.income-grid { margin-top:18rpx; }
+.income-details { border-top:1rpx solid #edf0f2; margin-top:16rpx; padding-top:10rpx; }
