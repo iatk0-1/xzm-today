@@ -194,6 +194,8 @@ test('切换普通用户后，刷新凭证保留角色并携带所选角色', as
   const api = require('../../utils/api');
   await api.get('/products/query');
   assert.equal(env.requests.at(-1).header['X-Active-Role'], 'user');
+  await api.post('/picking-list/skus/9/orders/100/refunds', { items: [] }, { idempotencyKey: 'pr_fixed' });
+  assert.equal(env.requests.at(-1).header['Idempotency-Key'], 'pr_fixed');
 });
 
 test('可切换角色由服务端提供，不能切换未授予角色', async () => {

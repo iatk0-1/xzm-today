@@ -360,7 +360,7 @@ async function uploadFile(url, filePath, formData = {}, options = {}) {
 module.exports = {
   request,
   get: (url, data) => request({ url, method: 'GET', data }),
-  post: (url, data) => request({ url, method: 'POST', data }),
+  post: (url, data, options = {}) => request({ ...options, url, method: 'POST', data }),
   put: (url, data) => request({ url, method: 'PUT', data }),
   patch: (url, data) => request({ url, method: 'PATCH', data }),
   delete: (url, data) => request({ url, method: 'DELETE', data }),

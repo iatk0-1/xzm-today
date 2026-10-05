@@ -3,6 +3,7 @@ const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/pickingList/pickingList.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const config = require('../../utils/config');
 
 Page(autoSearch.wrap(pageSync.wrap({
   data: {
@@ -114,6 +115,17 @@ Page(autoSearch.wrap(pageSync.wrap({
   async refundOneOrder(entry) {
     const orderId = entry.order.id;
     const refundBase = `/picking-list/skus/${this.data.refundSku.skuId}/orders/${orderId}`;
+    const user = wx.getStorageSync(config.USER_INFO_KEY);
+    const userId = user && (user.userId || user.id);
+    if (!userId) throw new Error('登录信息缺失，请重新登录后退款');
+    const storageKey = `picking-refund-request:${userId}:${this.data.refundSku.skuId}:${orderId}`;
+    const previousKey = wx.getStorageSync(storageKey);
+    if (previousKey) {
+      const recovered = await this.queryRefundRequest(refundBase, previousKey);
+      if (recovered.status !== 'unknown') wx.removeStorageSync(storageKey);
+      // 已存在待核对请求时只查询，绝不能再发起退款。
+      return recovered;
+    }
     const preview = await api.get(`${refundBase}/refund-preview`);
     const availableById = new Map((preview.items || []).map(item => [String(item.orderItemId), item]));
     let remainingAmount = Math.round(Number(preview.availableRefundAmount || 0) * 100);
@@ -135,12 +147,43 @@ Page(autoSearch.wrap(pageSync.wrap({
       remainingAmount -= amount;
     }
     if (!items.length) throw new Error('当前订单没有可退的待报商品');
-    return api.post(`${refundBase}/refunds`, {
-      reason: '拣货单待报商品退款',
-      note: `SKU ${this.data.refundSku.skuId} 待报数量退款`,
-      returnPurchaseOrder: this.data.refundReturnPurchaseOrder,
-      items
-    });
+    const requestKey = `pr_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    // 先留存请求编号，页面退出后仍能核对同一笔退款。
+    wx.setStorageSync(storageKey, requestKey);
+    try {
+      const result = await api.post(`${refundBase}/refunds`, {
+        reason: '拣货单待报商品退款',
+        note: `SKU ${this.data.refundSku.skuId} 待报数量退款`,
+        returnPurchaseOrder: this.data.refundReturnPurchaseOrder,
+        items
+      }, { idempotencyKey: requestKey });
+      if (!result || !['success', 'processing', 'failed'].includes(result.status)) {
+        throw new Error('退款返回结果无法确认');
+      }
+      wx.removeStorageSync(storageKey);
+      return result;
+    } catch (err) {
+      if (err && [400, 401, 403, 404, 422].includes(err.statusCode)) {
+        wx.removeStorageSync(storageKey);
+        return { status: 'not_submitted', errorMessage: err.message || '退款请求未获受理' };
+      }
+      const result = await this.queryRefundRequest(refundBase, requestKey);
+      if (result.status !== 'unknown') wx.removeStorageSync(storageKey);
+      return result;
+    }
+  },
+
+  async queryRefundRequest(refundBase, requestKey) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const result = await api.get(`${refundBase}/refund-requests/${encodeURIComponent(requestKey)}`);
+        if (result && ['success', 'processing', 'failed'].includes(result.status)) return result;
+      } catch (err) {
+        // 尚未提交事务或查询网络异常都不能证明退款失败。
+      }
+      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    return { status: 'unknown', errorMessage: '本次退款结果待确认，请稍后核对，勿重复提交。' };
   },
 
   async refundRelatedOrder(e) {
@@ -204,6 +247,8 @@ Page(autoSearch.wrap(pageSync.wrap({
     const requested = entries.reduce((sum, entry) => sum + Number(entry.pendingQty || 0), 0);
     let completed = 0;
     let processing = 0;
+    let unknown = 0;
+    let failed = 0;
     let message = '';
     try {
       for (const entry of entries) {
@@ -213,18 +258,30 @@ Page(autoSearch.wrap(pageSync.wrap({
         } else if (result.status === 'processing') {
           // 微信已受理，后续由回调或对账确认结果；继续提交其他订单。
           processing += Number(entry.pendingQty || 0);
+        } else if (result.status === 'unknown') {
+          unknown += Number(entry.pendingQty || 0);
+          message = `订单 ${entry.order.outTradeNo || entry.order.id}：${result.errorMessage}`;
+          break;
+        } else if (result.status === 'not_submitted') {
+          message = result.errorMessage;
+          break;
         } else {
+          failed += Number(entry.pendingQty || 0);
           message = result.errorMessage || '微信退款失败，已暂停后续订单';
           break;
         }
       }
     } catch (err) {
-      message = err.message || '退款失败，已暂停后续订单';
+      message = err.message || '退款尚未提交，已暂停后续订单';
     } finally {
       this.setData({ refundBusy: false, showRefundModal: false, refundOrders: [], refundSku: null });
-      await this.refreshSkuRecommendations([skuId]);
+      try {
+        await this.refreshSkuRecommendations([skuId]);
+      } catch (err) {
+        message = `${message ? message + ' ' : ''}列表刷新失败，请稍后刷新查看退款结果。`;
+      }
     }
-    if (message) wx.showModal({ title: '退款未完成', content: `已成功退款 ${completed} 件，微信处理中 ${processing} 件，未完成 ${Math.max(requested - completed - processing, 0)} 件。${message}${processing > 0 ? '处理中订单请勿重复提交，系统会自动同步结果。' : ''}`, showCancel: false });
+    if (message) wx.showModal({ title: unknown > 0 ? '退款结果待确认' : '退款进度', content: `已成功退款 ${completed} 件，微信处理中 ${processing} 件，结果待确认 ${unknown} 件，退款失败 ${failed} 件，尚未提交 ${Math.max(requested - completed - processing - unknown - failed, 0)} 件。${message}${processing > 0 ? '处理中订单请勿重复提交，系统会自动同步结果。' : ''}`, showCancel: false });
     else if (processing > 0) wx.showModal({ title: '退款处理中', content: `已成功退款 ${completed} 件，微信处理中 ${processing} 件。后续结果由系统自动同步，请勿重复提交。`, showCancel: false });
     else wx.showToast({ title: `已退 ${completed} 件`, icon: 'success' });
   },
