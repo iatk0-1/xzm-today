@@ -289,7 +289,7 @@
 
   <view class="overlay" wx:if="{{paymentVisible}}" catchtouchmove="noop">
     <view class="settlement-dialog">
-      <view class="section-heading"><view class="title">{{settlementMode === 'OFFLINE' ? '登记线下付款' : '微信分账提现'}}</view><button disabled="{{busy}}" class="text-button" bindtap="closeSettlement">关闭</button></view>
+      <view class="settlement-dialog-header"><view class="title">{{settlementMode === 'OFFLINE' ? '登记线下付款' : '微信分账提现'}}</view><button disabled="{{busy}}" class="settlement-dialog-close" bindtap="closeSettlement" aria-label="关闭弹窗">×</button></view>
       <scroll-view class="settlement-dialog-body" scroll-y bindscrolltolower="loadMoreSettlementOrders">
         <view class="error" wx:if="{{error}}">{{error}}</view>
         <view class="muted">只选择已完成、无待处理售后的订单，单次最多100笔。{{settlementMode === 'WECHAT' ? '微信剩余分账额度核验通过才能勾选，提交时会再核对。' : '仅登记已实际支付的款项，系统不会转账。'}}</view>
@@ -301,7 +301,8 @@
         <checkbox-group bindchange="withdrawalOrderChange">
           <view class="settlement-order" wx:for="{{settlementRows}}" wx:key="orderId">
             <label class="withdrawal-order-heading"><checkbox value="{{item.orderId}}" checked="{{item.selected}}" disabled="{{busy || settlementLoading || !item.eligible}}" color="#1f2933" /><text>订单 {{item.orderNo || item.orderId}}</text><text class="status-tag">{{item.orderStatusLabel}} · {{item.settlementStatus}}</text></label>
-            <view class="withdrawal-product" wx:for="{{item.items}}" wx:for-item="product" wx:for-index="detailIndex" wx:key="orderItemId"><image wx:if="{{product.productImage}}" class="withdrawal-product-image" src="{{product.productImage}}" mode="aspectFill" data-index="{{index}}" data-detail-index="{{detailIndex}}" binderror="settlementProductImageError" /><view wx:else class="withdrawal-product-image withdrawal-image-placeholder">暂无图片</view><view class="withdrawal-product-info"><view>{{product.productName}}</view><view class="muted">{{product.specLabel}} · {{product.qty}} 件</view><view class="muted">{{product.stallName || '档口未记录'}}</view><view class="muted" wx:if="{{product.bundleLabel}}">{{product.bundleLabel}}</view></view></view>
+            <view class="settlement-refund-tag" wx:if="{{item.hasRefundedItems}}">含已退款商品 · 佣金已扣除退款部分</view>
+            <view class="withdrawal-product" wx:for="{{item.items}}" wx:for-item="product" wx:for-index="detailIndex" wx:key="orderItemId"><image wx:if="{{product.productImage}}" class="withdrawal-product-image" src="{{product.productImage}}" mode="aspectFill" data-index="{{index}}" data-detail-index="{{detailIndex}}" binderror="settlementProductImageError" /><view wx:else class="withdrawal-product-image withdrawal-image-placeholder">暂无图片</view><view class="withdrawal-product-info"><view>{{product.productName}}</view><view class="muted">{{product.specLabel}} · 原购买 {{product.originalQty}} 件</view><view class="settlement-refund-note" wx:if="{{product.hasRefund}}">{{product.refundLabel}}<text wx:if="{{product.refundedAmount > 0}}"> · 退款 ¥{{product.refundedAmountLabel}}</text></view><view class="muted" wx:if="{{product.remainingQty != null}}">剩余计佣数量 {{product.remainingQty}} 件</view><view class="muted">{{product.stallName || '档口未记录'}}</view><view class="muted" wx:if="{{product.bundleLabel}}">{{product.bundleLabel}}</view></view></view>
             <view>本单可结算佣金 ¥{{item.availableAmount}}</view><view class="muted">下单时间 {{item.orderedTime}}</view><view class="muted" wx:if="{{settlementMode === 'WECHAT'}}">分账截止 {{item.deadlineLabel}}</view><view class="error" wx:if="{{item.blockedReason}}">{{item.blockedReason}}</view>
           </view>
         </checkbox-group>

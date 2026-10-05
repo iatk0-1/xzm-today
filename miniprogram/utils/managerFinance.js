@@ -115,6 +115,19 @@ function incomeEligibilityRow(row) {
     deadlineLabel: row.deadline ? displayTime(row.deadline) : '不适用',
     items: (Array.isArray(row.items) ? row.items : []).map(incomeProductRow) };
 }
+function settlementOrderRow(row) {
+  const result = incomeEligibilityRow(row);
+  result.items = result.items.map(item => {
+    const originalQty = item.originalQty == null ? item.qty : item.originalQty;
+    const hasRefund = Number(item.refundedQty) > 0 || Number(item.refundedAmount) > 0;
+    // 退款数量由后端按成功退款流水计算，缺少新字段时不推测退款件数。
+    return { ...item, originalQty,
+      hasRefund, refundedAmountLabel: displayMoney(item.refundedAmount),
+      refundLabel: Number(item.refundedQty) > 0 ? '已退款 ' + item.refundedQty + ' 件' : '已退款（未退件）' };
+  });
+  result.hasRefundedItems = result.items.some(item => item.hasRefund);
+  return result;
+}
 function displayMoney(value) {
   return value == null || value === '' || !Number.isFinite(Number(value)) ? '未记录' : Number(value).toFixed(2);
 }
@@ -152,4 +165,4 @@ function managerDetailRow(row, tab) {
     statusLabel: tab === 'sharing' ? profitSharingStatus(row.status) : transferStatus(row.status)
   };
 }
-module.exports = { money, cents, requireText, isoTime, confirmAction, segmentsWithLabels, toggleBoundary, changeBoundary, transferStatus, isTerminal, profitSharingStatus, profitSharingRow, withdrawalRequestRow, newWithdrawalRequestKey, displayText, timeMillis, displayTime, managerDetailRow, incomeRecordRow, incomeEligibilityRow };
+module.exports = { money, cents, requireText, isoTime, confirmAction, segmentsWithLabels, toggleBoundary, changeBoundary, transferStatus, isTerminal, profitSharingStatus, profitSharingRow, withdrawalRequestRow, newWithdrawalRequestKey, displayText, timeMillis, displayTime, managerDetailRow, incomeRecordRow, incomeEligibilityRow, settlementOrderRow };

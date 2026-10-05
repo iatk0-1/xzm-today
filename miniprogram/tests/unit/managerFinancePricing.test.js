@@ -37,6 +37,11 @@ function pageHarness(file, { get, post, put, del, upload, manager = false } = {}
       require(name) {
         if (name.endsWith('/api') || name === './api') return api;
         if (name.endsWith('/auth') || name === './auth') return auth;
+        if (name.endsWith('/media')) return { compressImage: async filePath => ({ path: filePath }) };
+        if (name.endsWith('/cos-upload')) return { uploadFile: async (file, dir) => {
+          calls.push({ method: 'cos-upload', file, dir });
+          return upload ? upload(file, dir) : 'https://example.com/voucher.jpg';
+        } };
         if (name.endsWith('/managerFinance') || name === './managerFinance') {
           return runModule('../../utils/managerFinance.js');
         }
@@ -1761,6 +1766,35 @@ test('线下付款按钮打开选单弹窗，接口按管理员目标与结算�
   page.closeSettlement();assert.equal(page.data.paymentVisible, false);
 });
 
+test('线下付款与微信提现弹窗标记成功退款数量，剩余计佣数量与后端佣金保持一致', async () => {
+  for (const mode of ['OFFLINE', 'WECHAT']) {
+    const { page } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { get: async () => ({
+      content: [{ orderId: '88', eligible: true, availableAmount: '10.00', items: [
+        { orderItemId: '89', productName: '衬衫', qty: 2, originalQty: 2, refundedQty: 1, remainingQty: 1, refundedAmount: '100.00' },
+        { orderItemId: '90', productName: '已全退子件', qty: 1, originalQty: 1, refundedQty: 1, remainingQty: 0, refundedAmount: '30.00' }
+      ] }], totalPages: 1 }) });
+    readyOrderPayment(page, mode); await page.loadSettlementOrders(true);
+    const row = page.data.settlementRows[0];
+    assert.equal(row.hasRefundedItems, true);
+    assert.equal(row.items[0].originalQty, 2); assert.equal(row.items[0].refundLabel, '已退款 1 件');
+    assert.equal(row.items[0].remainingQty, 1); assert.equal(row.items[0].refundedAmountLabel, '100.00');
+    assert.equal(row.items[1].remainingQty, 0);
+    page.withdrawalOrderChange({ detail: { value: ['88'] } });
+    assert.equal(page.data.selectedWithdrawalTotal, '10.00');
+  }
+});
+
+test('仅退金额不凭金额推测退件数量，旧接口没有退款字段时保留原数量', () => {
+  const row = finance.settlementOrderRow({ items: [
+    { qty: 2, originalQty: 2, refundedQty: 0, remainingQty: 2, refundedAmount: '10.00' },
+    { qty: 3 }
+  ] });
+  assert.equal(row.items[0].refundLabel, '已退款（未退件）');
+  assert.equal(row.items[0].remainingQty, 2);
+  assert.equal(row.items[1].originalQty, 3); assert.equal(row.items[1].hasRefund, false);
+  assert.equal(row.items[1].remainingQty, undefined);
+});
+
 test('选单筛选按日期档口和商品关键词请求，筛选变化清空选择，分页保留已选合计', async () => {
   const { page, calls } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { get: async (_, params) => ({
     content: [{ orderId: 'order-' + params.page, eligible: true, availableAmount: params.page === 1 ? '0.07' : '1.02' }], totalPages: 2 }) });
@@ -1806,10 +1840,10 @@ test('线下付款失败保留订单和凭证，未选择或取消确认不登�
   assert.equal(page.data.paymentVisible, true);assert.equal(page.data.voucher, '流水001');assert.equal(page.data.selectedOrders.length, 1);
 });
 
-test('凭证选择图片经管理员上传接口保存地址，可移除，上传失败保留已有凭证', async () => {
-  const { page, calls, wx } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { upload: async () => ({ url: 'https://example.com/receipt-new.jpg' }) });
+test('凭证图片使用 COS 直传保存地址，可移除，上传失败保留已有凭证', async () => {
+  const { page, calls, wx } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { upload: async () => 'https://example.com/receipt-new.jpg' });
   readyOrderPayment(page);wx.chooseMedia = options => options.success({ tempFiles: [{ tempFilePath: '/tmp/image.jpg' }] });
-  await page.uploadVoucherImages();assert.equal(calls[0].method, 'upload');assert.equal(calls[0].url, '/admin/files/upload');assert.equal(calls[0].data.dir, 'commission-vouchers');
+  await page.uploadVoucherImages();assert.equal(calls[0].method, 'cos-upload');assert.equal(calls[0].file, '/tmp/image.jpg');assert.equal(calls[0].dir, 'commission-vouchers');
   assert.deepEqual(Array.from(page.data.voucherImages), ['https://example.com/receipt-new.jpg']);
   page.removeVoucherImage({ currentTarget: { dataset: { index: 0 } } });assert.equal(page.data.voucherImages.length, 0);
   const failed = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { upload: async () => { throw new Error('上传失败'); } });

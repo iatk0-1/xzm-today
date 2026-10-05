@@ -1,6 +1,7 @@
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const finance = require('../../utils/managerFinance');
+const { compressImage } = require('../../utils/media');
 
 const LIST_PATHS = {
   products: 'commission-products', records: 'commission-records',
@@ -946,7 +947,7 @@ Page({
       if (stall && stall.value) params.stallId = stall.value;
       const result = await api.get(this.base('settlement-orders'), params);
       if (sequence !== this._settlementSequence || !this.data.paymentVisible || this.adminWithdrawalStorageKey() !== actorKey) return;
-      const rows = (result.content || []).map(row => ({ ...finance.incomeEligibilityRow(row), orderStatusLabel: finance.managerDetailRow(row, 'records').orderStatusLabel }));
+      const rows = (result.content || []).map(row => ({ ...finance.settlementOrderRow(row), orderStatusLabel: finance.managerDetailRow(row, 'records').orderStatusLabel }));
       this.setData({ settlementRows: reset ? rows : this.data.settlementRows.concat(rows), settlementPage: page, settlementHasNext: page < result.totalPages });
       this.updateOrderSelection(this.data.selectedOrders);
     } catch (error) { if (sequence === this._settlementSequence) this.fail(error); }
@@ -965,10 +966,18 @@ Page({
       const actorKey = this.adminWithdrawalStorageKey();
       const result = await new Promise((resolve, reject) => wx.chooseMedia({ count: 9 - this.data.voucherImages.length, mediaType: ['image'], sourceType: ['album', 'camera'], success: resolve, fail: reject }));
       for (const file of result.tempFiles || []) {
-        const uploaded = await api.uploadFile('/admin/files/upload', file.tempFilePath, { dir: 'commission-vouchers' });
+        let filePath = file.tempFilePath;
+        try {
+          const compressed = await compressImage(filePath);
+          filePath = compressed.path;
+        } catch (error) {
+          console.warn('凭证图片压缩失败，使用原图:', error);
+        }
+        const cosUpload = require('../../utils/cos-upload');
+        const url = await cosUpload.uploadFile(filePath, 'commission-vouchers');
         if (this.adminWithdrawalStorageKey() !== actorKey) throw new Error('管理员账号已变化，请重新登录');
-        if (!uploaded.url || !/^https:\/\//.test(uploaded.url)) throw new Error('凭证图片上传未返回有效地址');
-        this.setData({ voucherImages: this.data.voucherImages.concat(uploaded.url) });
+        if (!url || !/^https:\/\//.test(url)) throw new Error('凭证图片上传未返回有效地址');
+        this.setData({ voucherImages: this.data.voucherImages.concat(url) });
       }
     } catch (error) { if (!/cancel/.test(error.errMsg || '')) this.fail(error); }
     finally { this.setData({ busy: false }); }
