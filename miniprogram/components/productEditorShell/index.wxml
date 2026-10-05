@@ -1,0 +1,19 @@
+<view style="height: {{statusBarHeight + navigationHeight}}px;"></view>
+<view class="editor-navigation" style="padding-top: {{statusBarHeight}}px;">
+  <view class="editor-navigation-row" style="height: {{navigationHeight}}px;">
+    <button class="editor-back" style="width: {{sideWidth}}px;" bindtap="back" disabled="{{saving}}" aria-label="返回上一页">‹ 返回</button>
+    <view class="editor-navigation-title">{{title}}</view>
+    <view style="width: {{sideWidth}}px;"></view>
+  </view>
+</view>
+<view wx:if="{{showExitConfirm}}" class="editor-exit-mask" catchtouchmove="blockTouch">
+  <view class="editor-exit-dialog" role="dialog" aria-label="有未保存的修改">
+    <view class="editor-exit-title">有未保存的修改</view>
+    <view class="editor-exit-content">保存草稿后退出，或直接退出不保存本次修改。</view>
+    <view class="editor-exit-actions">
+      <button class="editor-exit-cancel" bindtap="cancel" disabled="{{saving}}">取消</button>
+      <button class="editor-exit-save" bindtap="save" loading="{{saving}}" disabled="{{saving}}">保存</button>
+      <button class="editor-exit-discard" bindtap="discard" disabled="{{saving}}">退出</button>
+    </view>
+  </view>
+</view>

@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "上架直播商品",
+  "navigationStyle": "custom",
+  "usingComponents": { "product-editor-shell": "../../components/productEditorShell/index" },
   "navigationBarBackgroundColor": "#ffffff",
   "navigationBarTextStyle": "black",
   "style": "v2"

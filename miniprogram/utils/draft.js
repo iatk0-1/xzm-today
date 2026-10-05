@@ -18,6 +18,7 @@ var IMAGE_FIELDS = ['url', 'image', 'imageUrl', 'coverUrl', 'videoUrl'];
 function isRemoteUrl(url) {
   if (!url) return false;
   if (url.startsWith('http://tmp/')) return false;
+  if (url.startsWith('https://tmp/')) return false;
   if (url.startsWith('http://127.0.0.1')) return false;
   if (url.startsWith('http://localhost')) return false;
   if (!url.startsWith('http://') && !url.startsWith('https://')) return false;
@@ -45,12 +46,8 @@ async function _uploadAllImages(obj, uploadFn) {
     // 字符串：如果字段名是图片字段且值是需要上传的临时路径
     if (typeof val === 'string' && IMAGE_FIELDS.indexOf(key) >= 0) {
       if (val && !isRemoteUrl(val)) {
-        try {
-          copy[key] = await uploadFn(val, 'image/jpeg');
-        } catch (e) {
-          console.warn('[draft] 图片上传失败，置空:', val, e);
-          copy[key] = '';
-        }
+        copy[key] = await uploadFn(val, key === 'videoUrl' ? 'video/mp4' : 'image/jpeg');
+        if (!isRemoteUrl(copy[key])) throw new Error('草稿媒体上传失败，请重试');
       } else {
         copy[key] = val;
       }

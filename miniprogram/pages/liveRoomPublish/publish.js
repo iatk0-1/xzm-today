@@ -105,17 +105,10 @@ const pageDefinition = {
       this.checkDraft();
     }
 
-    this.loadRecentStallsAndTags();
-    this.loadSizeCategories();
   },
 
   onUnload() {
-    // 已提交成功 → 不再补存草稿，避免把刚清掉的草稿又写回后端
-    if (this._submitted) return;
-    var currentSnapshot = JSON.stringify(this.collectDraftData());
-    if (this.hasFormContent() && currentSnapshot !== this._lastSavedSnapshot) {
-      this.saveDraft();
-    }
+    // 页面卸载只清理退出提醒，草稿只能由用户主动保存。
     if (this._alertEnabled) {
       wx.disableAlertBeforeUnload();
       this._alertEnabled = false;
@@ -239,7 +232,7 @@ const pageDefinition = {
   loadRecentStallsAndTags: async function() {
     try {
       const [stallsRes, tagsRes] = await Promise.all([
-        api.get('/stalls/recent?limit=10'),
+        api.get(this.data.isStallManager ? '/stall-managers/stalls/mine' : '/stalls/recent?limit=10'),
         api.get('/tags/recent?limit=10')
       ]);
 
@@ -416,6 +409,13 @@ const pageDefinition = {
   },
 
   searchStalls: async function(keyword) {
+    if (this.data.isStallManager) {
+      const selectedIds = this.data.selectedStalls.map(stall => String(stall.id));
+      const matches = (this.data.recentStalls || []).filter(stall => stall.name.includes(keyword.trim())
+        && !selectedIds.includes(String(stall.id)));
+      this.setData({ stallSearchResults: matches, showStallSearch: matches.length > 0, showStallCreate: false });
+      return;
+    }
     try {
       const res = await api.get(`/stalls/search?keyword=${encodeURIComponent(keyword)}`);
       const selectedIds = this.data.selectedStalls.map(s => s.id);
@@ -1235,6 +1235,7 @@ const pageDefinition = {
     var data = this.data;
     return {
       title: data.title,
+      videoUrl: data.videoUrl || '',
       costPrice: data.costPrice, pricingRuleId: data.pricingRuleId,
       pricingRuleName: data.pricingRuleName, pricingRuleVersion: data.pricingRuleVersion,
       pricingRuleSegments: data.pricingRuleSegments,
@@ -1263,32 +1264,9 @@ const pageDefinition = {
   },
 
   // 保存草稿到后端：临时图片先上传 CDN，整份 JSON 存库（由 draft.js 统一处理）
-  saveDraft: async function() {
-    if (this.data.isBundleMode && this.data.activeGroupIndex >= 0) {
-      this.saveActiveGroupState();
-    }
-    var draftData = this.collectDraftData();
-
-    wx.showLoading({ title: '保存草稿...', mask: true });
-    try {
-      await draft.saveDraft(draftData, this.uploadFile.bind(this), {
-        draftType: this.getDraftType(),
-        relatedId: this.getDraftRelatedId()
-      });
-      this._lastSavedSnapshot = JSON.stringify(this.collectDraftData());
-      if (this._alertEnabled) {
-        wx.disableAlertBeforeUnload();
-        this._alertEnabled = false;
-      }
-      wx.hideLoading();
-      wx.showToast({ title: '草稿已保存', icon: 'success' });
-    } catch (e) {
-      wx.hideLoading();
-      console.error('草稿保存失败:', e);
-      wx.showToast({ title: '草稿保存失败', icon: 'none' });
-    }
+  saveDraft: function() {
+    return this.saveProductDraft();
   },
-
   clearDraft: async function() {
     try {
       await draft.removeDraft();
@@ -1316,10 +1294,8 @@ const pageDefinition = {
       success: function(res) {
         if (res.confirm) {
           self.restoreDraft(record.draftData);
-        } else {
-          self.clearDraft();
         }
-        self.enableExitConfirm();
+        self._updateExitGuard();
       }
     });
   },
@@ -1337,6 +1313,7 @@ const pageDefinition = {
 
     var restored = {
       title: d.title || '',
+      videoUrl: d.videoUrl || '',
       mediaList: mediaList,
       selectedStalls: (d.selectedStalls || []).slice(0, 1),
       selectedTags: d.selectedTags || [],
@@ -1398,13 +1375,7 @@ const pageDefinition = {
       (d.isBundleMode && d.bundleGroups && d.bundleGroups.length > 0));
   },
 
-  enableExitConfirm() {
-    if (this._alertEnabled) return;
-    this._alertEnabled = true;
-    wx.enableAlertBeforeUnload({
-      message: '表单内容未保存，确定离开吗？'
-    });
-  },
+
 };
 integrateProductPricing(pageDefinition);
 Page(pageDefinition);

@@ -1,0 +1,14 @@
+.editor-navigation { position: fixed; top: 0; left: 0; right: 0; background: #f6f6f6; z-index: 1000; }
+.editor-navigation-row { display: flex; align-items: center; }
+.editor-back { flex: none; margin: 0; padding: 0 12px; background: transparent; font-size: 16px; text-align: left; color: #1a1a1a; line-height: 40px; }
+.editor-back::after, .editor-exit-dialog button::after { border: none; }
+.editor-navigation-title { flex: 1; min-width: 0; text-align: center; font-size: 16px; font-weight: 600; color: #1a1a1a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.editor-exit-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 10000; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 48rpx; }
+.editor-exit-dialog { box-sizing: border-box; width: 100%; max-width: 640rpx; background: #fff; border-radius: 24rpx; padding: 40rpx 32rpx 24rpx; }
+.editor-exit-title { font-size: 34rpx; font-weight: 600; color: #1a1a1a; text-align: center; }
+.editor-exit-content { font-size: 28rpx; color: #666; line-height: 1.6; margin: 24rpx 0 28rpx; }
+.editor-exit-actions { display: flex; align-items: center; gap: 16rpx; }
+.editor-exit-actions button { flex: 1; width: 0; min-width: 0; box-sizing: border-box; height: 72rpx; padding: 0 12rpx; font-size: 26rpx; line-height: 72rpx; border-radius: 10rpx; margin: 0; white-space: nowrap; }
+.editor-exit-save { background: #07c160; color: #fff; }
+.editor-exit-discard { background: #f5f5f5; color: #b42318; }
+.editor-exit-cancel { background: #f5f5f5; color: #555; }

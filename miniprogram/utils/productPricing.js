@@ -1,6 +1,7 @@
 const api = require('./api');
 const auth = require('./auth');
 const finance = require('./managerFinance');
+const { integrateProductDraftExit } = require('./productDraftExit');
 
 function integrateProductPricing(page, { allowAdminManualPricing = false } = {}) {
   Object.assign(page.data, {
@@ -8,7 +9,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     isAdmin: false,
     pricingRules: [], pricingRuleId: '', pricingRuleName: '',
     pricingRuleVersion: '', pricingRuleSegments: [], ruleSource: '',
-    pricingError: '', pricingBusy: false, managerInactive: false
+    pricingError: '', pricingBusy: false, stallPricingLoading: false, managerInactive: false
   });
 
   page.canManuallyPrice = function() {
@@ -37,6 +38,8 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   };
 
   page.loadPricingChoices = async function() {
+    // 负责人选项只由所属档口提供，不能加载全局规则覆盖档口选项。
+    if (this.data.isStallManager || auth.isStallManager()) return;
     const rules = await api.get('/pricing-rules');
     const choices = (rules || []).filter(rule => rule.enabled && !rule.deleted);
     if (this.canManuallyPrice()) choices.unshift({ id: '', name: '未选择', segments: [] });
@@ -73,8 +76,22 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     const token = (this._ruleToken || 0) + 1;
     this._ruleToken = token;
     if (!stall) {
-      // 不选档口时使用当前明确选择的规则，负责人仍按成本计价。
+      if (this.data.isStallManager) {
+        this.cancelPricing();
+        this.setData({ pricingRules: [], stallPricingLoading: false });
+        // 历史无档口商品编辑时保留原规则；新增商品必须先选档口。
+        if (!this.data.editId && !(this.data.editMode && this.data.productId)) {
+          this.showRule(null, '');
+          this.setData({ defaultPrice: '', pricingError: '请先选择分配给你的档口，再选择计价规则' });
+        }
+      }
       return;
+    }
+    const selectedRuleId = this.data.pricingRuleId;
+    if (this.data.isStallManager) {
+      this.cancelPricing();
+      this.showRule(null, '');
+      this.setData({ pricingRules: [], defaultPrice: '', stallPricingLoading: true });
     }
     try {
       if (this.canManuallyPrice()) {
@@ -90,12 +107,12 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
       const assignedRules = Array.isArray(assignedResponse) ? assignedResponse : (assignedResponse ? [assignedResponse] : []);
       const activeRules = (assignedRules || []).filter(rule => rule.enabled && !rule.deleted);
       this.setData({ pricingRules: activeRules });
-      const assignedSelection = assignedRules.find(rule => String(rule.id) === String(this.data.pricingRuleId));
+      const assignedSelection = assignedRules.find(rule => String(rule.id) === String(selectedRuleId));
       if (assignedSelection && (!assignedSelection.enabled || assignedSelection.deleted)
         && await this.useExistingPricing(assignedSelection, token)) return;
       if (token !== this._ruleToken) return;
-      const selected = this.data.pricingRuleId
-        ? activeRules.find(rule => String(rule.id) === String(this.data.pricingRuleId)) : null;
+      const selected = selectedRuleId
+        ? activeRules.find(rule => String(rule.id) === String(selectedRuleId)) : null;
       if (selected) this.showRule(selected, '档口：' + stall.name);
       else if (activeRules.length === 1) this.showRule(activeRules[0], '档口：' + stall.name);
       else if (activeRules.length > 1) {
@@ -117,13 +134,20 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
       if (!this.canManuallyPrice()) await this.recalculatePricing(false);
     } catch (error) {
       if (token === this._ruleToken) {
+        if (this.data.isStallManager) this.setData({ pricingRules: [] });
         this.showRule(null, '');
         this.setData({ pricingError: error.message || '加载档口规则失败' });
       }
+    } finally {
+      if (token === this._ruleToken) this.setData({ stallPricingLoading: false });
     }
   };
 
   page.choosePricingRule = async function(event) {
+    if (this.data.isStallManager && (!this.data.selectedStalls.length || this.data.stallPricingLoading)) {
+      wx.showToast({ title: this.data.stallPricingLoading ? '正在加载档口计价规则' : '请先选择分配给你的档口', icon: 'none' });
+      return;
+    }
     const rule = this.data.pricingRules[Number(event.detail.value)];
     if (!rule) return;
     // 单规则档口由档口规则自动确定；只有多个已分配规则时才允许负责人切换。
@@ -298,6 +322,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     });
     this._draftType = 'create';
     this._relatedId = null;
+    if (this.data.isStallManager) this.useStallPricing();
     this._markDirty();
     wx.showToast({ title: '已复制为新商品，请检查成本与规则', icon: 'none' });
   };
@@ -316,7 +341,11 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   ['selectRecentStall', 'selectStall', 'createStall'].forEach(name => {
     const original = page[name];
     page[name] = async function(event) {
+      const previousStallId = (this.data.selectedStalls[0] || {}).id;
       await original.call(this, event);
+      if (this.data.isStallManager && String(previousStallId) !== String((this.data.selectedStalls[0] || {}).id)) {
+        this.showRule(null, '');
+      }
       await this.useStallPricing();
     };
   });
@@ -326,7 +355,10 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     originalRemove.call(this, event);
     this._ruleToken = (this._ruleToken || 0) + 1;
     if (this.data.isStallManager && !this.data.selectedStalls.length) {
-      this.setData({ ruleSource: this.data.pricingRuleId ? '未选择档口，使用当前规则' : '' });
+      this.cancelPricing();
+      this.showRule(null, '');
+      this.setData({ pricingRules: [], defaultPrice: '', stallPricingLoading: false,
+        pricingError: '请先选择分配给你的档口，再选择计价规则' });
     }
   };
 
@@ -392,12 +424,17 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
       pricingRuleName: data.pricingRuleName || '',
       pricingRuleSegments: finance.segmentsWithLabels(data.pricingRuleSegments || [])
     });
-    if (this.data.isStallManager) this.useStallPricing();
-    else this.schedulePricing();
+    if (this.data.isStallManager) return this.useStallPricing();
+    if (this.canManuallyPrice()) return this.schedulePricing();
+    return this.recalculatePricing(false);
   };
 
   const originalSubmit = page.submitProduct;
   page.submitProduct = async function() {
+    if (this.data.draftSaving) {
+      wx.showToast({ title: '正在保存草稿，请稍后保存商品', icon: 'none' });
+      return;
+    }
     if (this._pricingSubmitting) return;
     if (this.canManuallyPrice() && this.data.pricingBusy) {
       wx.showToast({ title: '正在计算售价，请稍后保存', icon: 'none' });
@@ -406,6 +443,10 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     this._pricingSubmitting = true;
     try {
       if (this.data.managerInactive) throw new Error('负责人已下线，不能保存商品');
+      if (this.data.isStallManager && !this.data.selectedStalls.length
+        && !this.data.editId && !(this.data.editMode && this.data.productId)) {
+        throw new Error('请先选择分配给你的档口，再选择计价规则');
+      }
       if (this.data.selectedStalls.length > 1) throw new Error('商品最多只能选择一个档口');
       if (this.canManuallyPrice()) {
         this.cancelPricing();
@@ -421,7 +462,10 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
         await originalSubmit.call(this);
         return;
       }
-      if (this.data.isStallManager && this.data.selectedStalls.length) await this.useStallPricing();
+      if (this.data.isStallManager && this.data.selectedStalls.length) {
+        await this.useStallPricing();
+        if (!this.data.pricingRuleId) throw new Error(this.data.pricingError || '请选择有效计价规则');
+      }
       else {
         if (!this.data.pricingRuleId) throw new Error('请选择有效计价规则');
         const current = await api.get('/pricing-rules/' + encodeURIComponent(this.data.pricingRuleId));
@@ -445,6 +489,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     this._pricingSequence = (this._pricingSequence || 0) + 1;
     originalUnload.call(this);
   };
+  integrateProductDraftExit(page);
 }
 
 module.exports = { integrateProductPricing };

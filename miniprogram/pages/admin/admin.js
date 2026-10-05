@@ -137,7 +137,7 @@ const pageDefinition = {
     // 加载历史档口和标签
     if (!auth.isStallManager()) this.loadRecentStallsAndTags();
     // 加载尺码类型和尺码
-    this.loadSizeCategories();
+    await this.loadSizeCategories();
 
     // 设置草稿类型（用于保存时标记到后端）
     if (options && options.editId) {
@@ -166,14 +166,7 @@ const pageDefinition = {
   },
 
   onUnload() {
-    // 已提交成功 → 无需操作
-    if (this._submitted) return;
-    // 有未保存变更时自动保存草稿（不做弹窗，系统 alert 已处理确认）
-    var currentSnapshot = JSON.stringify(this.collectDraftData());
-    if (this.hasFormContent() && currentSnapshot !== this._lastSavedSnapshot) {
-      this.saveDraft();
-    }
-    // 清理
+    // 页面卸载只清理退出提醒，草稿只能由用户主动保存。
     if (this._alertEnabled) {
       wx.disableAlertBeforeUnload();
       this._alertEnabled = false;
@@ -669,19 +662,6 @@ const pageDefinition = {
       console.error('加载直播商品失败:', err);
       wx.hideLoading();
       wx.showToast({ title: '加载失败', icon: 'none' });
-    }
-  },
-
-  // 检查是否需要启用系统退出拦截（与上次保存快照对比）
-  _updateExitGuard: function() {
-    if (this._submitted || this._alertEnabled) return;
-    if (!this.hasFormContent()) return;
-    var currentSnapshot = JSON.stringify(this.collectDraftData());
-    if (currentSnapshot !== this._lastSavedSnapshot) {
-      this._alertEnabled = true;
-      wx.enableAlertBeforeUnload({
-        message: '当前内容尚未保存为草稿，确定离开吗？'
-      });
     }
   },
 
@@ -2547,35 +2527,9 @@ const pageDefinition = {
   },
 
   // 保存草稿到后端：先上传所有临时图片到 CDN，再将 JSON 存入数据库
-  saveDraft: async function() {
-    // 套装模式：先存档当前子项
-    if (this.data.isBundleMode && this.data.activeGroupIndex >= 0) {
-      this.saveActiveGroupState();
-    }
-    var draftData = this.collectDraftData();
-
-    wx.showLoading({ title: '保存草稿...', mask: true });
-    try {
-      await draft.saveDraft(draftData, this.uploadFile.bind(this), {
-        draftType: this._draftType,
-        relatedId: this._relatedId
-      });
-      this._lastDraftSavedAt = Date.now();
-      // 保存成功：更新快照 & 关闭退出拦截
-      this._lastSavedSnapshot = JSON.stringify(this.collectDraftData());
-      if (this._alertEnabled) {
-        wx.disableAlertBeforeUnload();
-        this._alertEnabled = false;
-      }
-      wx.hideLoading();
-      wx.showToast({ title: '草稿已保存', icon: 'success' });
-    } catch (e) {
-      wx.hideLoading();
-      console.error('草稿保存失败:', e);
-      wx.showToast({ title: '保存失败', icon: 'none' });
-    }
+  saveDraft: function() {
+    return this.saveProductDraft();
   },
-
   clearDraft: async function() {
     try {
       await draft.removeDraft();
@@ -2591,6 +2545,8 @@ const pageDefinition = {
 
     // 一个账号只存一份草稿：忽略直播商品发布页存的草稿，避免两边互相恢复错数据
     if (draftRes.draftType && draftRes.draftType.indexOf('live_') === 0) return;
+    if (draftRes.draftType !== this._draftType
+      || String(draftRes.relatedId || '') !== String(this._relatedId || '')) return;
 
     var savedAt = draftRes.savedAt ? new Date(draftRes.savedAt).toLocaleString() : '未知时间';
 
@@ -2602,8 +2558,6 @@ const pageDefinition = {
       success: function(res) {
         if (res.confirm) {
           self.restoreDraft(draftRes.draftData);
-        } else {
-          self.clearDraft();
         }
       }
     });
