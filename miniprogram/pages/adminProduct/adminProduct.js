@@ -3,6 +3,7 @@ const autoSearch = require('../../utils/autoSearch');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const { isProductSoldOut } = require('../../utils/stock');
+const { beijingParts, hasPendingSchedule } = require('../../utils/productSchedule');
 
 Page(autoSearch.wrap({
   data: {
@@ -31,13 +32,87 @@ Page(autoSearch.wrap({
     selectedProductIds: [],
     selectedCount: 0,
     allSelected: false,
-    batchOperating: false
+    batchOperating: false,
+    showProductSchedule: false
   },
 
   onLoad: function() {
     this.setData({ isStallManager: auth.isStallManager() });
     this.loadFilterOptions();
     this.loadProducts();
+  },
+
+  onShow() {
+    this._schedulePageVisible = true;
+    this.planScheduleRefresh();
+  },
+  onHide() {
+    this._schedulePageVisible = false;
+    this.clearScheduleRefresh();
+  },
+  onUnload() {
+    this._schedulePageVisible = false;
+    this.clearScheduleRefresh();
+  },
+
+  clearScheduleRefresh() {
+    if (this._scheduleRefreshTimer) clearTimeout(this._scheduleRefreshTimer);
+    this._scheduleRefreshTimer = null;
+  },
+  planScheduleRefresh() {
+    this.clearScheduleRefresh();
+    if (this._schedulePageVisible === false) return;
+    if (this._scheduleListNeedsRefill) {
+      this._scheduleRefreshTimer = setTimeout(() => this.refreshDueScheduleProducts(), 5000);
+      return;
+    }
+    const times = this.data.products.filter(item => hasPendingSchedule(item.schedule))
+      .map(item => Date.parse(item.schedule.executeAt));
+    if (!times.length) return;
+    const next = Math.min(...times);
+    this._scheduleRefreshTimer = setTimeout(() => {
+      this._scheduleRefreshTimer = null;
+      if (next <= Date.now()) this.refreshDueScheduleProducts();
+      else this.planScheduleRefresh();
+    }, Math.min(60000, Math.max(5000, next - Date.now() + 5000)));
+  },
+  async refreshDueScheduleProducts() {
+    if (this._schedulePageVisible === false) return;
+    if (this.data.isLoading || this.data.batchOperating || this.data.showProductSchedule || this._scheduleRefreshInFlight) {
+      this.planScheduleRefresh();
+      return;
+    }
+    this._scheduleRefreshInFlight = true;
+    const query = this.getQueryParams();
+    const version = this._productQueryVersion;
+    const currentPage = this.data.page;
+    const signature = JSON.stringify(query);
+    try {
+      // 到点时重新取已加载的页，补齐“已定时”筛选中因任务清理而前移的商品。
+      const responses = await Promise.all(Array.from({ length: Math.max(1, currentPage - 1) },
+        (_, index) => api.get('/products/query', { ...query, page: index + 1 })));
+      if (this._schedulePageVisible === false || this.data.isLoading || this.data.batchOperating || version !== this._productQueryVersion
+        || currentPage !== this.data.page || signature !== JSON.stringify(this.getQueryParams())) return;
+      const products = responses.reduce((all, response) => all.concat(response.content || []), [])
+        .map(item => this.normalizeProduct(item)).filter(item => this.data.activeStatus !== 'scheduled' || item.hasSchedule);
+      await this.loadProductOwners(products);
+      if (this._schedulePageVisible === false || this.data.isLoading || this.data.batchOperating || version !== this._productQueryVersion
+        || currentPage !== this.data.page || signature !== JSON.stringify(this.getQueryParams())) return;
+      const visibleIds = new Set(products.map(item => this.normalizeId(item.id)));
+      const selectedIds = this.data.selectedProductIds.filter(id => visibleIds.has(this.normalizeId(id)));
+      let lastIndex = 0;
+      responses.forEach((response, index) => { if ((response.content || []).length) lastIndex = index; });
+      const last = responses[lastIndex];
+      this.setData({ page: lastIndex + 2, hasMore: last.hasNext !== undefined ? last.hasNext
+        : (last.content || []).length === this.data.pageSize });
+      this.refreshSelectionState(products, selectedIds);
+      this._scheduleListNeedsRefill = false;
+    } catch (err) {
+      console.error('刷新到期定时商品失败:', err);
+    } finally {
+      this._scheduleRefreshInFlight = false;
+      this.planScheduleRefresh();
+    }
   },
 
   onRefresh: async function() {
@@ -52,9 +127,13 @@ Page(autoSearch.wrap({
   },
 
   // 滚动到底部加载更多（scroll-view 使用）
-  loadMore: function() {
+  loadMore: async function() {
     if (!this.data.hasMore || this.data.isLoading) return;
-    this.loadProducts(false);
+    if (this._scheduleListNeedsRefill) {
+      await this.refreshDueScheduleProducts();
+      if (this._scheduleListNeedsRefill || !this.data.hasMore) return;
+    }
+    return this.loadProducts(false);
   },
 
   loadFilterOptions: async function() {
@@ -132,6 +211,7 @@ Page(autoSearch.wrap({
 
     if (!this.data.hasMore || this.data.isLoading) return;
 
+    this._productQueryVersion = (this._productQueryVersion || 0) + 1;
     this.setData({ isLoading: true });
 
     if (reset) {
@@ -143,16 +223,9 @@ Page(autoSearch.wrap({
       const pageSize = this.data.pageSize;
       const res = await api.get('/products/query', this.getQueryParams());
 
-      let list = (res.content || []).map(item => this.normalizeProduct(item));
-      if (!this.data.isStallManager && list.length) {
-        const owners = await api.get('/stall-managers/products/owners',
-          { ids: list.map(item => item.id).join(',') }).catch(() => []);
-        const ownerMap = {};
-        (owners || []).forEach(owner => {
-          ownerMap[String(owner.productId)] = owner.nickname || owner.phone || String(owner.userId);
-        });
-        list.forEach(item => { item.managerName = ownerMap[String(item.id)] || ''; });
-      }
+      let list = (res.content || []).map(item => this.normalizeProduct(item))
+        .filter(item => this.data.activeStatus !== 'scheduled' || item.hasSchedule);
+      await this.loadProductOwners(list);
 
       const hasMore = res.hasNext !== undefined ? res.hasNext : list.length === pageSize;
       const products = reset ? list : [...this.data.products, ...list];
@@ -163,6 +236,8 @@ Page(autoSearch.wrap({
         hasMore: hasMore,
         isLoading: false
       });
+      if (reset) this._scheduleListNeedsRefill = false;
+      this.planScheduleRefresh();
 
       if (reset) {
         wx.hideLoading();
@@ -176,8 +251,33 @@ Page(autoSearch.wrap({
     }
   },
 
+  async loadProductOwners(list) {
+    if (!this.data.isStallManager && list.length) {
+      const batches = [];
+      for (let index = 0; index < list.length; index += 200) batches.push(list.slice(index, index + 200));
+      const responses = await Promise.all(batches.map(batch => api.get('/stall-managers/products/owners',
+        { ids: batch.map(item => item.id).join(',') }).catch(() => [])));
+      const owners = responses.reduce((all, rows) => all.concat(rows || []), []);
+      const ownerMap = {};
+      (owners || []).forEach(owner => {
+        ownerMap[String(owner.productId)] = owner.nickname || owner.phone || String(owner.userId);
+      });
+      list.forEach(item => { item.managerName = ownerMap[String(item.id)] || ''; });
+    }
+  },
+
   normalizeProduct: function(item) {
     item.soldOut = isProductSoldOut(item);
+    item.hasSchedule = hasPendingSchedule(item.schedule);
+    if (item.hasSchedule) {
+      const parts = beijingParts(Date.parse(item.schedule.executeAt));
+      item.scheduleTimeStr = `${parts.date} ${parts.time}`;
+      item.scheduleAction = item.schedule.status === 'on' ? '上架' : '下架';
+    } else {
+      item.schedule = null;
+      item.scheduleTimeStr = '';
+      item.scheduleAction = '';
+    }
     if (item.createdAt) {
       const date = new Date(item.createdAt);
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -479,6 +579,7 @@ Page(autoSearch.wrap({
             }
           });
 
+          this._productQueryVersion = (this._productQueryVersion || 0) + 1;
           const products = this.data.products.filter(item => !succeededIds[this.normalizeId(item.id)]);
           wx.hideLoading();
           this.setData({
@@ -491,6 +592,7 @@ Page(autoSearch.wrap({
             ),
             batchOperating: false
           });
+          this.planScheduleRefresh();
 
           if (failedIds.length > 0) {
             wx.showToast({ title: `成功删除${selectedCount - failedIds.length}个，${failedIds.length}个失败`, icon: 'none' });
@@ -510,6 +612,8 @@ Page(autoSearch.wrap({
     const { activeStatus, searchKeyword, selectedStall, selectedTag } = this.data;
     if (activeStatus === 'sold_out') {
       if (!isProductSoldOut(product)) return false;
+    } else if (activeStatus === 'scheduled') {
+      if (!hasPendingSchedule(product.schedule)) return false;
     } else if (activeStatus !== 'all' && product.status !== activeStatus) return false;
     const keyword = searchKeyword.trim().toLowerCase();
     if (keyword && !String(product.name || '').toLowerCase().includes(keyword)) return false;
@@ -522,7 +626,9 @@ Page(autoSearch.wrap({
     if (!updatedProduct || updatedProduct.id == null) return;
     const productId = this.normalizeId(updatedProduct.id);
     if (!this.data.products.some(item => this.normalizeId(item.id) === productId)) return;
-    const product = this.normalizeProduct(updatedProduct);
+    this._productQueryVersion = (this._productQueryVersion || 0) + 1;
+    const previous = this.data.products.find(item => this.normalizeId(item.id) === productId);
+    const product = this.normalizeProduct({ ...previous, ...updatedProduct });
     const stillVisible = this.productMatchesFilters(product);
     const products = stillVisible
       ? this.data.products.map(item => this.normalizeId(item.id) === productId ? product : item)
@@ -531,6 +637,102 @@ Page(autoSearch.wrap({
       ? this.data.selectedProductIds
       : this.data.selectedProductIds.filter(id => this.normalizeId(id) !== productId);
     this.refreshSelectionState(products, selectedIds);
+    this.planScheduleRefresh();
+  },
+
+  openBatchSchedule() {
+    if (this.data.batchOperating) return;
+    if (!this.data.selectedCount) {
+      wx.showToast({ title: '请先选择商品', icon: 'none' });
+      return;
+    }
+    if (this.data.selectedCount > 200) {
+      wx.showToast({ title: '一次最多选择200个商品', icon: 'none' });
+      return;
+    }
+    this._scheduleProductIds = this.data.selectedProductIds.slice();
+    this.setData({ showProductSchedule: true });
+  },
+  closeProductSchedule() {
+    if (!this.data.batchOperating) this.setData({ showProductSchedule: false });
+  },
+  async confirmBatchSchedule(e) {
+    if (this.data.batchOperating) return;
+    const productIds = (this._scheduleProductIds || []).slice();
+    if (!productIds.length) return;
+    this.setData({ batchOperating: true });
+    try {
+      await api.put('/products/schedule/batch', { productIds, schedule: e.detail });
+      this.setData({ showProductSchedule: false });
+      this.applyScheduleChanges(productIds, e.detail, true);
+      wx.showToast({ title: `已设置${productIds.length}个商品`, icon: 'success' });
+    } catch (err) {
+      wx.showToast({ title: err.message || '定时设置失败', icon: 'none' });
+    } finally {
+      this.setData({ batchOperating: false });
+    }
+  },
+
+  applyScheduleChanges(productIds, schedule, clearSelection = false) {
+    this._productQueryVersion = (this._productQueryVersion || 0) + 1;
+    const ids = new Set(productIds.map(id => this.normalizeId(id)));
+    const products = this.data.products.map(item => ids.has(this.normalizeId(item.id))
+      ? this.normalizeProduct({ ...item, schedule: schedule && !schedule.cancelled ? { ...schedule, state: 'pending' } : null })
+      : item).filter(item => this.productMatchesFilters(item));
+    if (this.data.activeStatus === 'scheduled' && products.length !== this.data.products.length) {
+      this._scheduleListNeedsRefill = true;
+    }
+    const visibleIds = new Set(products.map(item => this.normalizeId(item.id)));
+    this.refreshSelectionState(products, clearSelection ? [] : this.data.selectedProductIds.filter(id => visibleIds.has(this.normalizeId(id))));
+    this.planScheduleRefresh();
+  },
+  cancelProductSchedule(e) {
+    const id = this.normalizeId(e.currentTarget.dataset.id);
+    const product = this.data.products.find(item => this.normalizeId(item.id) === id);
+    if (!product || !hasPendingSchedule(product.schedule)) return;
+    this.confirmCancelSchedules([id], false);
+  },
+  batchCancelSchedules() {
+    if (!this.data.selectedCount) {
+      wx.showToast({ title: '请先选择商品', icon: 'none' });
+      return;
+    }
+    if (this.data.selectedCount > 200) {
+      wx.showToast({ title: '一次最多选择200个商品', icon: 'none' });
+      return;
+    }
+    this.confirmCancelSchedules(this.data.selectedProductIds.slice(), true);
+  },
+  confirmCancelSchedules(productIds, batch) {
+    if (this.data.batchOperating || this._scheduleCancelConfirming) return;
+    this._scheduleCancelConfirming = true;
+    wx.showModal({
+      title: batch ? '批量取消定时' : '取消定时任务',
+      content: batch ? `确认取消所选 ${productIds.length} 个商品的定时上架/下架任务？商品当前状态保持不变。`
+        : '确认取消这件商品的定时上架/下架任务？商品当前状态保持不变。',
+      confirmText: '取消定时',
+      cancelText: '返回',
+      confirmColor: '#d32f2f',
+      success: async res => {
+        if (!res.confirm) { this._scheduleCancelConfirming = false; return; }
+        this.setData({ batchOperating: true });
+        let succeeded = false;
+        try {
+          const result = await api.put('/products/schedule/batch', { productIds, schedule: { cancelled: true } });
+          this.applyScheduleChanges(productIds, null, batch);
+          succeeded = true;
+          const count = result && result.updatedCount !== undefined ? result.updatedCount : productIds.length;
+          wx.showToast({ title: count ? `已取消${count}个定时任务` : '所选商品已无定时任务', icon: count ? 'success' : 'none' });
+        } catch (err) {
+          wx.showToast({ title: err.message || '取消定时失败', icon: 'none' });
+        } finally {
+          this._scheduleCancelConfirming = false;
+          this.setData({ batchOperating: false });
+        }
+        if (succeeded && this._scheduleListNeedsRefill) await this.refreshDueScheduleProducts();
+      },
+      fail: () => { this._scheduleCancelConfirming = false; }
+    });
   },
 
   batchSetStatus: function(e) {
@@ -565,6 +767,7 @@ Page(autoSearch.wrap({
           productIds.forEach(id => {
             selectedMap[this.normalizeId(id)] = true;
           });
+          this._productQueryVersion = (this._productQueryVersion || 0) + 1;
           const products = this.data.products
             .map(item => ({
               ...item,
@@ -582,6 +785,7 @@ Page(autoSearch.wrap({
             allSelected: false,
             batchOperating: false
           });
+          this.planScheduleRefresh();
 
           const updatedCount = result && result.updatedCount !== undefined ? result.updatedCount : selectedCount;
           const skippedCount = result && result.skippedCount ? result.skippedCount : 0;
@@ -614,10 +818,12 @@ Page(autoSearch.wrap({
             wx.hideLoading();
             wx.showToast({ title: '删除成功', icon: 'success' });
             const productId = this.normalizeId(id);
+            this._productQueryVersion = (this._productQueryVersion || 0) + 1;
             this.refreshSelectionState(
               this.data.products.filter(item => this.normalizeId(item.id) !== productId),
               this.data.selectedProductIds.filter(itemId => this.normalizeId(itemId) !== productId)
             );
+            this.planScheduleRefresh();
           } catch (err) {
             wx.hideLoading();
             wx.showToast({ title: '删除失败', icon: 'none' });

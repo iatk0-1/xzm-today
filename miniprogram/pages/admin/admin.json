@@ -1,4 +1,7 @@
 {
   "navigationStyle": "custom",
-  "usingComponents": { "product-editor-shell": "../../components/productEditorShell/index" }
+  "usingComponents": {
+    "product-editor-shell": "../../components/productEditorShell/index",
+    "product-schedule": "../../components/productSchedule/index"
+  }
 }

@@ -1,0 +1,24 @@
+<view wx:if="{{visible}}" class="schedule-overlay" catchtouchmove="stopPropagation">
+  <view class="schedule-mask" catchtap="close"></view>
+  <view class="schedule-panel" catchtap="stopPropagation">
+    <view class="schedule-title">定时上架/下架</view>
+    <view class="schedule-hint">日期和时间均为北京时间</view>
+    <picker mode="date" value="{{date}}" start="{{minDate}}" disabled="{{busy}}" bindchange="changeDate">
+      <view class="schedule-field"><text>日期</text><text>{{date}} ›</text></view>
+    </picker>
+    <picker mode="time" value="{{time}}" disabled="{{busy}}" bindchange="changeTime">
+      <view class="schedule-field"><text>时间</text><text>{{time}} ›</text></view>
+    </picker>
+    <view class="schedule-status">
+      <view class="schedule-option {{status === 'on' ? 'active' : ''}}" data-status="on" bindtap="selectStatus">上架</view>
+      <view class="schedule-option {{status === 'off' ? 'active' : ''}}" data-status="off" bindtap="selectStatus">下架</view>
+    </view>
+    <view class="schedule-hint">{{hint}}；重新设置将覆盖原定时任务。</view>
+    <view class="schedule-hint">到点已删除的商品将跳过，上架须通过内容审核。</view>
+    <view class="schedule-cancel-task" wx:if="{{allowCancel && schedule && !schedule.cancelled && (!schedule.state || schedule.state === 'pending')}}" bindtap="cancelSchedule">取消定时任务</view>
+    <view class="schedule-buttons">
+      <button class="schedule-button" disabled="{{busy}}" bindtap="close">返回</button>
+      <button class="schedule-button confirm" loading="{{busy}}" disabled="{{busy}}" bindtap="confirm">确认设置</button>
+    </view>
+  </view>
+</view>

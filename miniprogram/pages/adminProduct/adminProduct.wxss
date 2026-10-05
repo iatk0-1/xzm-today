@@ -110,9 +110,21 @@ page { background-color: #f2f2f2; height: 100vh; display: flex; flex-direction: 
   height: 64rpx; line-height: 64rpx; text-align: center; border-radius: 8rpx;
   font-size: 24rpx; box-sizing: border-box; white-space: nowrap;
 }
-.batch-btn.secondary { flex: 1.35; min-width: 0; color: #1f2933; background: #f4f6f8; }
+.batch-btn.secondary { flex: 2.3; min-width: 0; color: #1f2933; background: #f4f6f8; }
 .batch-btn.primary { flex: 1; color: #fff; background: #1f2933; }
 .batch-btn.danger { flex: 1; color: #fff; background: #d32f2f; }
 .batch-btn.delete { flex: 1; color: #fff; background: #b71c1c; }
 .batch-btn.disabled { background: #c9ced6; color: #fff; }
 .manager-label { color: #276749; font-size: 23rpx; margin-top: 6rpx; }
+
+.batch-selection-actions { display: flex; align-items: center; gap: 20rpx; }
+.card-time-row { display: flex; align-items: center; flex: 1; min-width: 0; gap: 12rpx; }
+.card-footer.with-schedule { display: block; }
+.with-schedule .card-time-row { justify-content: space-between; }
+.with-schedule .time { font-size: 20rpx; }
+.with-schedule .action-group { justify-content: flex-end; margin-top: 16rpx; }
+.schedule-info { display: flex; align-items: center; gap: 8rpx; flex-shrink: 0; font-size: 20rpx; color: #64748b; white-space: nowrap; }
+.schedule-cancel { color: #d32f2f; border: 1rpx solid #f0c4c4; border-radius: 6rpx; padding: 6rpx 10rpx; }
+.schedule-cancel.disabled { color: #b8bec6; }
+.batch-clear.cancel-schedule { color: #d32f2f; }
+.batch-clear.cancel-schedule.disabled { color: #b8bec6; }

@@ -25,6 +25,7 @@
       <view class="status-tab {{activeStatus === 'on' ? 'active' : ''}}" bindtap="selectStatusTab" data-status="on">已上架</view>
       <view class="status-tab {{activeStatus === 'off' ? 'active' : ''}}" bindtap="selectStatusTab" data-status="off">已下架</view>
       <view class="status-tab {{activeStatus === 'sold_out' ? 'active' : ''}}" bindtap="selectStatusTab" data-status="sold_out">已售罄</view>
+      <view class="status-tab {{activeStatus === 'scheduled' ? 'active' : ''}}" bindtap="selectStatusTab" data-status="scheduled">已定时</view>
     </scroll-view>
 
     <view class="filter-section">
@@ -96,8 +97,14 @@
         </view>
       </view>
 
-      <view class="card-footer">
-        <view class="time">上架时间：{{item.createTimeStr || '早期数据'}}</view>
+      <view class="card-footer {{item.hasSchedule ? 'with-schedule' : ''}}">
+        <view class="card-time-row">
+          <view class="time">上架时间：{{item.createTimeStr || '早期数据'}}</view>
+          <view class="schedule-info" wx:if="{{item.hasSchedule}}">
+            <text>定时时间：{{item.scheduleTimeStr}} {{item.scheduleAction}}</text>
+            <view class="schedule-cancel {{batchOperating ? 'disabled' : ''}}" catchtap="cancelProductSchedule" data-id="{{item.id}}">取消</view>
+          </view>
+        </view>
         <view class="action-group" wx:if="{{!selectMode}}">
           <view class="btn-ghost" catchtap="toggleStatus" data-id="{{item.id}}" data-status="{{item.status}}">
             {{item.status === 'off' ? '重新上架' : '下架'}}
@@ -128,15 +135,19 @@
   <view class="batch-bar" wx:if="{{selectMode}}">
     <view class="batch-summary">
       <view class="batch-count">已选 {{selectedCount}} 个</view>
-      <view class="batch-clear {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="clearSelection">清空</view>
+      <view class="batch-selection-actions">
+        <view class="batch-clear cancel-schedule {{selectedCount === 0 || batchOperating ? 'disabled' : ''}}" bindtap="batchCancelSchedules">取消定时</view>
+        <view class="batch-clear" bindtap="toggleSelectAllLoaded">{{allSelected ? '取消全选' : '全选当前列表'}}</view>
+        <view class="batch-clear {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="clearSelection">清空</view>
+      </view>
     </view>
     <view class="batch-actions">
-      <view class="batch-btn secondary" bindtap="toggleSelectAllLoaded">
-        {{allSelected ? '取消全选' : '全选当前列表'}}
-      </view>
+      <view class="batch-btn secondary {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="openBatchSchedule">定时上架/下架</view>
       <view class="batch-btn primary {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="batchSetStatus" data-status="on">上架</view>
       <view class="batch-btn danger {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="batchSetStatus" data-status="off">下架</view>
       <view class="batch-btn delete {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="batchDelete">删除</view>
     </view>
   </view>
 </view>
+
+<product-schedule visible="{{showProductSchedule}}" busy="{{batchOperating}}" allow-cancel="{{false}}" hint="确认后立即为所选商品保存定时设置" bind:close="closeProductSchedule" bind:confirm="confirmBatchSchedule" />

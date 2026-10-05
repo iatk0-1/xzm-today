@@ -930,3 +930,8 @@ line-height: 88rpx; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; }
 .pricing-apply-btn::after { border:none; }
 .pricing-apply-btn[disabled] { background:#ededed; color:#999; }
 .pricing-error { color:#b53a30; padding:16rpx 0; }
+
+.product-name-header { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: 16rpx; }
+.product-name-header .label { margin-bottom: 0; }
+.product-schedule-trigger { margin: 0; flex-shrink: 0; font-size: 24rpx; background: #f4f6f8; color: #1f2933; }
+.product-schedule-summary { margin-top: 12rpx; color: #64748b; font-size: 24rpx; line-height: 1.6; }

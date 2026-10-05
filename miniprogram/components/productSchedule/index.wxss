@@ -1,0 +1,13 @@
+.schedule-overlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 3000; }
+.schedule-mask { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0, 0, 0, .45); }
+.schedule-panel { position: absolute; left: 32rpx; right: 32rpx; top: 50%; transform: translateY(-50%); padding: 32rpx; background: #fff; border-radius: 20rpx; }
+.schedule-title { font-size: 34rpx; font-weight: 600; color: #1f2933; }
+.schedule-hint { font-size: 24rpx; color: #7b838d; margin-top: 16rpx; line-height: 1.6; }
+.schedule-field { display: flex; justify-content: space-between; padding: 28rpx 0; border-bottom: 1rpx solid #eee; font-size: 28rpx; color: #333; }
+.schedule-status { display: flex; gap: 20rpx; margin-top: 28rpx; }
+.schedule-option { flex: 1; text-align: center; padding: 18rpx 0; border: 2rpx solid #ddd; border-radius: 10rpx; color: #555; font-size: 28rpx; }
+.schedule-option.active { color: #fff; background: #1f2933; border-color: #1f2933; }
+.schedule-buttons { display: flex; gap: 20rpx; margin-top: 28rpx; }
+.schedule-button { flex: 1; font-size: 28rpx; margin: 0; }
+.schedule-button.confirm { background: #1f2933; color: #fff; }
+.schedule-cancel-task { text-align: center; color: #d32f2f; font-size: 26rpx; padding-top: 24rpx; }

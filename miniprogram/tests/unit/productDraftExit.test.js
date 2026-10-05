@@ -50,7 +50,7 @@ function harness(file, { save, record, manager = false } = {}) {
           ensureAuthenticated: async () => {}, isAdmin: () => !manager, isStallManager: () => manager,
           getUserInfo: () => ({ userId: '42' })
         };
-        if (name.endsWith('/productPricing') || name.endsWith('/productDraftExit') || name.endsWith('/managerFinance')) {
+        if (name.endsWith('/productPricing') || name.endsWith('/productDraftExit') || name.endsWith('/managerFinance') || name.endsWith('/productSchedule')) {
           return load(path.resolve(path.dirname(filename), name + '.js'));
         }
         if (name.endsWith('/stock')) return { UNLIMITED_THRESHOLD: 999999999 };

@@ -117,7 +117,9 @@ test('详情返回不重新请求，编辑成功只替换原商品并保留分�
 
   page.openProductEditor(2);
   navigationOptions.events.productUpdated(product(2, 'off', '新名字'));
-  assert.equal(page.onShow, undefined);
+  const requestCount = requests.length;
+  page.onShow();
+  assert.equal(requests.length, requestCount); // 返回页面只安排定时检查，不重置原分页列表
 
   assert.deepEqual(page.data.products.map(item => item.name), ['商品1', '新名字']);
   assert.equal(page.data.products[1].status, 'off');

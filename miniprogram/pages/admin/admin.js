@@ -7,6 +7,7 @@ const { compressImage, compressVideo } = require('../../utils/media');
 const draft = require('../../utils/draft');
 const { integrateProductPricing } = require('../../utils/productPricing');
 const finance = require('../../utils/managerFinance');
+const { scheduleSummary } = require('../../utils/productSchedule');
 
 
 // 拖拽网格配置
@@ -31,6 +32,10 @@ const pageDefinition = {
 
     shippingInfo: '付款后按排单顺序发货',
     publishOnSale: false,
+    showProductSchedule: false,
+    productSchedule: null,
+    productScheduleDirty: false,
+    productScheduleSummary: '',
     description: '',
     fabricCare: '',
     sizeChartTip: '',
@@ -259,6 +264,9 @@ const pageDefinition = {
       // 填充基本信息
       const formData = {
         title: product.name || '',
+        productSchedule: res.schedule || null,
+        productScheduleDirty: false,
+        productScheduleSummary: scheduleSummary(res.schedule),
         publishOnSale: product.status !== 'off',
         videoUrl: product.videoUrl || '',
         videoThumbPath: '',
@@ -1676,10 +1684,25 @@ const pageDefinition = {
     this.setData({ publishOnSale: !!e.detail.value });
   },
 
+  openProductSchedule() { this.setData({ showProductSchedule: true }); },
+  closeProductSchedule() { this.setData({ showProductSchedule: false }); },
+  confirmProductSchedule(e) {
+    const schedule = e.detail;
+    this.setData({ productSchedule: schedule, productScheduleDirty: true,
+      productScheduleSummary: scheduleSummary(schedule), showProductSchedule: false });
+    wx.showToast({ title: '请保存商品使设置生效', icon: 'none' });
+  },
+
   submitProduct: async function() {
     const { mediaList, title, selectedStalls, selectedTags, skuList, lookbookImgs, detailImgs, manualRelated,
             videoUrl, videoThumbPath, useVideoCover, shippingInfo, description, fabricCare, sizeChartTip, warmTips,
             publishOnSale, editId } = this.data;
+
+    const schedule = this.data.productSchedule;
+    if (this.data.productScheduleDirty && schedule && !schedule.cancelled
+      && (!Number.isFinite(Date.parse(schedule.executeAt)) || Date.parse(schedule.executeAt) <= Date.now())) {
+      return wx.showToast({ title: '定时时间已过，请重新设置', icon: 'none' });
+    }
 
     var isBundle = this.data.isBundleMode && this.data.bundleGroups.length > 0;
     var hasSkus = isBundle
@@ -1786,6 +1809,7 @@ const pageDefinition = {
       // 4. 构造商品请求数据
       const productData = {
         name: title,
+        schedule: this.data.productScheduleDirty ? this.data.productSchedule : undefined,
         costPrice: this.productCost(this.data.costPrice),
         pricingRuleId: this.data.pricingRuleId ? String(this.data.pricingRuleId) : null,
         coverUrl: coverUrl,
@@ -1854,7 +1878,7 @@ const pageDefinition = {
         const updateRes = await api.put(`/products/${editId}`, productData);
         const eventChannel = this.getOpenerEventChannel && this.getOpenerEventChannel();
         if (eventChannel && eventChannel.emit) {
-          eventChannel.emit('productUpdated', updateRes.product || updateRes);
+          eventChannel.emit('productUpdated', { ...(updateRes.product || updateRes), schedule: updateRes.schedule || null });
         }
         wx.hideLoading();
       } else {
@@ -1906,7 +1930,7 @@ const pageDefinition = {
       wx.hideLoading();
       wx.showModal({
         title: editId ? '保存失败' : '创建失败',
-        content: typeof err === 'object' ? JSON.stringify(err) : String(err),
+        content: err && err.message ? err.message : (typeof err === 'object' ? JSON.stringify(err) : String(err)),
         showCancel: false
       });
     }
@@ -2475,6 +2499,8 @@ const pageDefinition = {
       useVideoCover: data.useVideoCover || false,
       shippingInfo: data.shippingInfo,
       publishOnSale: data.publishOnSale,
+      productSchedule: data.productSchedule,
+      productScheduleDirty: data.productScheduleDirty,
       description: data.description,
       fabricCare: data.fabricCare,
       sizeChartTip: data.sizeChartTip,
@@ -2586,6 +2612,9 @@ const pageDefinition = {
       useVideoCover: safeGet(draftData, 'useVideoCover', false),
       shippingInfo: safeGet(draftData, 'shippingInfo', '付款后按排单顺序发货'),
       publishOnSale: safeGet(draftData, 'publishOnSale', false),
+      productSchedule: safeGet(draftData, 'productSchedule', null),
+      productScheduleDirty: safeGet(draftData, 'productScheduleDirty', false),
+      productScheduleSummary: scheduleSummary(safeGet(draftData, 'productSchedule', null)),
       description: safeGet(draftData, 'description', ''),
       fabricCare: safeGet(draftData, 'fabricCare', ''),
       sizeChartTip: safeGet(draftData, 'sizeChartTip', ''),

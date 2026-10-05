@@ -320,6 +320,9 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
       editId: null, skuList: this.data.skuList.filter(sku => !sku._toBeRemoved).map(cloneSku),
       bundleGroups: groups
     });
+    if ('productSchedule' in this.data) {
+      this.setData({ productSchedule: null, productScheduleDirty: false, productScheduleSummary: '' });
+    }
     this._draftType = 'create';
     this._relatedId = null;
     if (this.data.isStallManager) this.useStallPricing();
