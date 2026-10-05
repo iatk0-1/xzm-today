@@ -58,7 +58,11 @@ Page({
     failedWaybillLoading: false
   },
 
-  onLoad: async function() {
+  onLoad: async function(options = {}) {
+    if (options.fromInventory === '1') {
+      const channel = this.getOpenerEventChannel();
+      channel.on('inventoryShipmentItems', result => this.importInventoryShipmentItems(result.items || []));
+    }
     this.setData({ today: this.formatCalendarDate(new Date()) });
     try {
       await auth.ensureAuthenticated({ silent: true });
@@ -72,6 +76,20 @@ Page({
     // 空搜索时，自动加载所有未发货商品明细
     this.loadAllPendingItems();
     this.resumeBatchTask();
+  },
+
+  importInventoryShipmentItems: function(matches) {
+    const pendingShipItems = matches.map(({ item, shipQty }) => ({
+      ...item, uniqueKey: this.getPendingItemKey(item), shipQty,
+      canShip: Number(item.unshippedQty) > 0,
+      createdAt: this.formatDate(item.orderCreatedAt)
+    }));
+    this.updatePendingShipSummary(pendingShipItems);
+    this.setData({ showPendingShipList: pendingShipItems.length > 0 });
+    if (this.rawPendingItems && this.rawPendingItems.length) {
+      const grouped = this.groupByOrder(this.rawPendingItems);
+      this.setData({ orderGroups: grouped.groups, selectedItems: this.collectSelectedItems(grouped.groups) });
+    }
   },
 
   refreshPendingData: async function() {

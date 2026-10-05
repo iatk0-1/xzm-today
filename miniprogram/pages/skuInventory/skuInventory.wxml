@@ -1,134 +1,147 @@
-<!-- miniprogram/pages/skuInventory/skuInventory.wxml -->
 <view class="container">
-  <!-- 搜索栏 -->
+  <view class="inventory-tabs">
+    <view wx:for="{{inventoryTabs}}" wx:key="id" class="inventory-tab {{inventoryTab === item.id ? 'active' : ''}}" data-tab="{{item.id}}" bindtap="changeInventoryTab">{{item.name}}</view>
+  </view>
   <view class="search-bar">
-    <input class="search-input" placeholder="搜索商品名称" value="{{keyword}}" bindinput="onKeywordInput" />
+    <input class="search-input" placeholder="搜索商品名称" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="search" />
     <button class="search-btn" bindtap="search">搜索</button>
   </view>
-
-  <!-- 商品列表 -->
+  <button class="stock-shipping-btn" bindtap="openShippingModal">按照库存发货</button>
   <view class="product-list">
     <view class="product-item" wx:for="{{productList}}" wx:key="id" bindtap="selectProduct" data-item="{{item}}">
       <image class="product-image" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
       <view class="product-info">
         <view class="product-name">{{item.name}}</view>
-        <view class="product-skus" wx:if="{{item.skus && item.skus.length > 0}}">
-          <view class="sku-tag" wx:for="{{item.skus}}" wx:key="id" wx:for-item="sku">
-            {{sku.spec}} {{sku.size}}:
-            <text wx:if="{{sku.unlimitedStock}}" class="sku-qty normal">无限</text>
-            <text wx:else class="sku-qty {{(sku.availableQty || 0) <= 0 ? 'out' : ((sku.availableQty || 0) <= 5 ? 'low' : 'normal')}}">
-              {{sku.availableQty || 0}}
-            </text>
+        <view class="sku-summary" wx:for="{{item.skus}}" wx:for-item="sku" wx:key="id">
+          <view class="sku-title">{{sku.spec}} {{sku.size}}</view>
+          <view class="quantity-line">
+            <text>实存 {{sku.availableQty}}</text><text>可发 {{sku.shippableQty}}</text>
+            <text class="{{sku.shortageQty > 0 ? 'shortage-text' : ''}}">欠货 {{sku.shortageQty}}</text>
+            <text class="{{sku.abnormalQty > 0 ? 'abnormal-text' : ''}}">异常 {{sku.abnormalQty}}</text>
           </view>
+          <view class="muted">报单 {{sku.reportedQty}} · 已到货 {{sku.receivedQty}}<text wx:if="{{sku.reservedQty}}"> · 发货占用 {{sku.reservedQty}}</text></view>
         </view>
-        <view class="product-skus" wx:else>
-          <text class="no-sku">暂无 SKU 信息</text>
-        </view>
+        <text class="no-sku" wx:if="{{!item.skus.length}}">暂无 SKU 信息</text>
       </view>
-      <view class="product-action" wx:if="{{item.skus && item.skus.length > 0}}">
-        <button class="btn-operate" wx:if="{{!item.skus[0].unlimitedStock}}" catchtap="operateSku" data-product="{{item}}" data-sku="{{item.skus[0]}}">管理</button>
-        <text wx:else class="unlimited-tip">无限库存</text>
+      <view class="product-action" wx:if="{{item.skus.length}}">
+        <view class="edit-icon" catchtap="operateSku" data-product="{{item}}" data-sku="{{item.skus[0]}}">✏️</view>
       </view>
     </view>
-
-    <!-- 空状态 -->
-    <view class="empty-state" wx:if="{{productList.length === 0 && !loading}}">
-      <text>暂无商品</text>
-    </view>
-
-    <!-- 加载状态 -->
-    <view class="loading-state" wx:if="{{loading}}">
-      <text>加载中...</text>
-    </view>
+    <view class="empty-state" wx:if="{{!productList.length && !loading}}">暂无符合条件的商品</view>
+    <view class="loading-state" wx:if="{{loading}}">加载中...</view>
   </view>
 
-  <!-- SKU 操作弹窗 -->
   <view class="modal" wx:if="{{showSkuModal}}">
     <view class="modal-mask" bindtap="hideSkuModal"></view>
     <view class="modal-content">
-      <view class="modal-title">库存管理</view>
-      <view class="modal-body">
-        <!-- SKU 选择器 -->
-        <view class="sku-selector">
-          <text class="selector-label">选择 SKU</text>
-          <view class="sku-options" wx:if="{{selectedProduct.skus && selectedProduct.skus.length > 1}}">
-            <view 
-              class="sku-option {{selectedSku.id === item.id ? 'active' : ''}}" 
-              wx:for="{{selectedProduct.skus}}" 
-              wx:for-item="item"
-              wx:key="id"
-              bindtap="selectSku"
-              data-index="{{index}}">
-              {{item.spec}} {{item.size}}
-              <text class="sku-qty-badge">{{item.availableQty || 0}}</text>
-            </view>
-          </view>
+      <view class="modal-title">仓库库存管理</view>
+      <scroll-view class="warehouse-body" scroll-y>
+        <view class="product-name">{{selectedProduct.name}}</view>
+        <view class="sku-options">
+          <view wx:for="{{selectedProduct.skus}}" wx:key="id" class="sku-option {{selectedSku.id === item.id ? 'active' : ''}}" data-index="{{index}}" bindtap="selectSku">{{item.spec}} {{item.size}}</view>
         </view>
-
-        <view class="sku-info">
-          <image class="sku-image" src="{{selectedSku.imageUrl || selectedProduct.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
-          <view class="sku-detail">
-            <view class="sku-name">{{selectedProduct.name}}</view>
-            <view class="sku-spec">{{selectedSku.spec}} {{selectedSku.size}}</view>
-            <view class="sku-current-qty">当前库存：<text class="qty-value {{currentQty <= 0 ? 'out' : (currentQty <= 5 ? 'low' : 'normal')}}">{{currentQty}}</text></view>
-          </view>
+        <view class="inventory-summary">
+          <text>实际库存 {{currentQty}}</text><text>可发 {{selectedSku.shippableQty}}</text>
+          <text class="shortage-text">欠货 {{selectedSku.shortageQty}}</text>
+          <text class="abnormal-text">异常 {{selectedSku.abnormalQty}}</text>
         </view>
-
-        <!-- 选项卡 -->
+        <view class="muted">欠货按报单待到货数量统计；现货可发货，不自动抵扣欠货。</view>
         <view class="tabs">
-          <view class="tab-item {{activeTab === 'ledger' ? 'active' : ''}}" bindtap="switchTab" data-tab="ledger">录入记录</view>
-          <view class="tab-item {{activeTab === 'operate' ? 'active' : ''}}" bindtap="switchTab" data-tab="operate">操作</view>
+          <view class="tab-item {{activeTab === 'operate' ? 'active' : ''}}" data-tab="operate" bindtap="switchTab">操作</view>
+          <view class="tab-item {{activeTab === 'reports' ? 'active' : ''}}" data-tab="reports" bindtap="switchTab">报单记录</view>
+          <view class="tab-item {{activeTab === 'ledger' ? 'active' : ''}}" data-tab="ledger" bindtap="switchTab">入库与流水</view>
         </view>
-
-        <!-- 录入记录 -->
-        <scroll-view class="ledger-list" scroll-y wx:if="{{activeTab === 'ledger'}}">
-          <view class="ledger-item {{item.isRevoked ? 'revoked' : ''}}" wx:for="{{ledgerList}}" wx:key="id">
-            <view class="ledger-header">
-              <text class="ledger-type {{item.changeQty > 0 ? 'positive' : 'negative'}}">
-                {{item.changeQty > 0 ? '+' : ''}}{{item.changeQty}}
-              </text>
-              <text class="ledger-time">{{item.createdAt}}</text>
-              <text class="ledger-status" wx:if="{{item.isRevoked}}">已撤销</text>
-            </view>
-            <view class="ledger-body">
-              <text class="ledger-reason">{{item.changeTypeText}}</text>
-              <text class="ledger-note" wx:if="{{item.note}}">{{item.note}}</text>
-            </view>
-            <view class="ledger-footer">
-              <text>变动前：{{item.beforeQty}}</text>
-              <text>变动后：{{item.afterQty}}</text>
-            </view>
-            <!-- 只有手动录入和库存调整的记录才能撤销，且未被撤销 -->
-            <button class="btn-revoke" wx:if="{{(item.changeType === 'manual_add' || item.changeType === 'adjustment') && !item.isRevoked}}" catchtap="revokeLedger" data-item="{{item}}">撤销</button>
-          </view>
-        </scroll-view>
-
-        <!-- 操作 -->
+        <view wx:if="{{detailLoading}}" class="muted">加载明细中...</view>
         <view class="operate-form" wx:if="{{activeTab === 'operate'}}">
-          <view class="form-item">
-            <text class="form-label">操作类型</text>
+          <view class="radio-group">
+            <view class="radio-item {{operateType === 'normal' ? 'active' : ''}}" data-type="normal" bindtap="setOperateType">正常到货</view>
+            <view class="radio-item {{operateType === 'history' ? 'active' : ''}}" data-type="history" bindtap="setOperateType">历史入库</view>
+          </view>
+          <view class="radio-group">
+            <view class="radio-item {{operateType === 'stocktake' ? 'active' : ''}}" data-type="stocktake" bindtap="setOperateType">盘点调整</view>
+            <view class="radio-item {{operateType === 'abnormal' ? 'active' : ''}}" data-type="abnormal" bindtap="setOperateType">异常处理</view>
+          </view>
+          <view wx:if="{{operateType === 'normal'}}" class="operation-tip">按报单时间自动抵扣欠货，超出报单的部分记为异常库存。</view>
+          <view wx:if="{{operateType === 'history'}}" class="operation-tip">历史遗留实物入库，可用于发货，不抵欠货、不产生超收异常。</view>
+          <block wx:if="{{operateType === 'stocktake'}}">
             <view class="radio-group">
-              <view class="radio-item {{operateType === 'add' ? 'active' : ''}}" bindtap="setOperateType" data-type="add">
-                <text>录入库存</text>
-              </view>
-              <view class="radio-item {{operateType === 'set' ? 'active' : ''}}" bindtap="setOperateType" data-type="set">
-                <text>修改库存</text>
+              <view class="radio-item {{stocktakeDirection === 'gain' ? 'active' : ''}}" data-value="gain" bindtap="setStocktakeDirection">盘盈</view>
+              <view class="radio-item {{stocktakeDirection === 'loss' ? 'active' : ''}}" data-value="loss" bindtap="setStocktakeDirection">盘亏</view>
+            </view>
+            <view class="operation-tip" wx:if="{{stocktakeDirection === 'gain'}}">盘盈数量先记为异常库存，等待人工处理。</view>
+            <view wx:if="{{stocktakeDirection === 'loss'}}">
+              <view class="form-label">减少哪类库存</view>
+              <view class="radio-group">
+                <view class="radio-item {{stocktakeCategory === 'normal' ? 'active' : ''}}" data-value="normal" bindtap="setStocktakeCategory">正常库存</view>
+                <view class="radio-item {{stocktakeCategory === 'abnormal' ? 'active' : ''}}" data-value="abnormal" bindtap="setStocktakeCategory">异常库存</view>
               </view>
             </view>
+          </block>
+          <block wx:if="{{operateType === 'abnormal'}}">
+            <view class="radio-group">
+              <view class="radio-item {{abnormalAction === 'keep' ? 'active' : ''}}" data-value="keep" bindtap="setAbnormalAction">保留补报</view>
+              <view class="radio-item {{abnormalAction === 'exchange' ? 'active' : ''}}" data-value="exchange" bindtap="setAbnormalAction">换货出库</view>
+              <view class="radio-item {{abnormalAction === 'return' ? 'active' : ''}}" data-value="return" bindtap="setAbnormalAction">退货出库</view>
+            </view>
+            <view class="operation-tip">待处理 {{selectedSku.abnormalQty}} 件。保留自动补报并转为可发库存；退换货只记录出库用途。</view>
+          </block>
+          <view class="form-item"><text class="form-label">本次数量</text><input class="form-input" type="number" value="{{inputQty}}" bindinput="onQtyInput" placeholder="请输入正整数数量" disabled="{{saving}}" /></view>
+          <view class="form-item"><text class="form-label">{{operateType === 'stocktake' ? '调整原因（必填）' : '备注'}}</text><input class="form-input" value="{{note}}" bindinput="onNoteInput" placeholder="{{operateType === 'stocktake' ? '填写盘点差异原因' : '可选'}}" disabled="{{saving}}" /></view>
+        </view>
+        <view wx:if="{{activeTab === 'reports'}}">
+          <view wx:for="{{reportList}}" wx:key="purchaseOrderId" class="record-card">
+            <view>报单 {{item.batchNo || item.purchaseOrderId}}</view>
+            <view class="quantity-line"><text>报单 {{item.reportedQty}}</text><text>到货 {{item.receivedQty}}</text><text class="shortage-text">欠货 {{item.shortageQty}}</text></view>
+            <view class="muted" wx:if="{{item.note}}">{{item.note}}</view>
           </view>
-          <view class="form-item">
-            <text class="form-label">数量</text>
-            <input class="form-input" type="number" value="{{inputQty}}" bindinput="onQtyInput" placeholder="{{operateType === 'add' ? '输入增加的数量' : '输入目标库存数量'}}" />
+          <view class="muted" wx:if="{{!reportList.length && !detailLoading}}">暂无报单记录</view>
+        </view>
+        <view wx:if="{{activeTab === 'ledger'}}">
+          <view class="record-section-title">入库记录及报单抵扣</view>
+          <view wx:for="{{receiptList}}" wx:key="id" class="record-card {{item.revoked ? 'revoked' : ''}}">
+            <view>{{item.sourceText}} · {{item.qty}} 件 <text wx:if="{{item.revoked}}">（已撤销）</text></view>
+            <view class="muted">{{item.timeText}} {{item.note}}</view>
+            <view wx:for="{{item.allocations}}" wx:for-item="allocation" wx:key="purchaseOrderId" class="allocation-line">对应报单 {{allocation.batchNo || allocation.purchaseOrderId}} · {{allocation.qty}} 件</view>
+            <button wx:if="{{item.canRevoke}}" class="receipt-revoke" data-item="{{item}}" bindtap="revokeLedger" disabled="{{saving}}">撤销本次入库</button>
           </view>
-          <view class="form-item">
-            <text class="form-label">备注</text>
-            <input class="form-input" value="{{note}}" bindinput="onNoteInput" placeholder="可选" />
+          <view class="record-section-title">库存变动流水</view>
+          <view wx:for="{{ledgerList}}" wx:key="id" class="record-card">
+            <view>{{item.changeTypeText}} · {{item.changeQty > 0 ? '+' : ''}}{{item.changeQty}} 件</view>
+            <view class="muted">{{item.beforeQty}} → {{item.afterQty}} · {{item.timeText}}</view>
+            <view class="muted">{{item.note}}</view>
+          </view>
+          <view class="muted" wx:if="{{!receiptList.length && !ledgerList.length && !detailLoading}}">暂无库存记录</view>
+        </view>
+      </scroll-view>
+      <view class="modal-footer">
+        <button class="btn-cancel" bindtap="hideSkuModal" disabled="{{saving}}">关闭</button>
+        <button class="btn-confirm" bindtap="confirmOperate" wx:if="{{activeTab === 'operate'}}" loading="{{saving}}" disabled="{{saving || detailLoading}}">确认操作</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="modal" wx:if="{{showShippingModal}}">
+    <view class="modal-mask" bindtap="closeShippingModal"></view>
+    <view class="modal-content">
+      <view class="modal-title">按现有库存发货</view>
+      <scroll-view class="warehouse-body" scroll-y>
+        <view class="operation-tip">默认选中全部可发规格。异常库存及其他任务占用的库存不参与发货，订单按下单时间从早到晚匹配。</view>
+        <view wx:if="{{shippingLoading}}" class="muted">加载可发库存中...</view>
+        <view wx:for="{{shippingProducts}}" wx:key="id" wx:for-item="product" wx:for-index="productIndex" class="record-card">
+          <view class="product-name">{{product.name}}</view>
+          <view wx:for="{{product.skus}}" wx:key="id" wx:for-item="sku" wx:for-index="skuIndex" class="shipping-sku">
+            <view class="shipping-choice" data-product-index="{{productIndex}}" data-sku-index="{{skuIndex}}" bindtap="toggleShippingSku">
+              <checkbox checked="{{sku.selected}}" disabled="{{matching}}" /><text>{{sku.spec}} {{sku.size}}</text>
+            </view>
+            <view class="muted">可发 {{sku.shippableQty}} 件</view>
+            <input class="shipping-qty" type="number" value="{{sku.shipQty}}" data-product-index="{{productIndex}}" data-sku-index="{{skuIndex}}" bindinput="onShippingQtyInput" disabled="{{matching}}" />
           </view>
         </view>
-      </view>
+        <view wx:if="{{!shippingProducts.length && !shippingLoading}}" class="empty-state">暂无可发库存</view>
+      </scroll-view>
       <view class="modal-footer">
-        <button class="btn-cancel" bindtap="hideSkuModal">取消</button>
-        <button class="btn-confirm" bindtap="confirmOperate" wx:if="{{activeTab === 'operate'}}">确定</button>
+        <button class="btn-cancel" bindtap="closeShippingModal" disabled="{{matching}}">取消</button>
+        <button class="btn-confirm" bindtap="goToStockShipping" loading="{{matching}}" disabled="{{matching || shippingLoading || !shippingProducts.length}}">去发货</button>
       </view>
     </view>
   </view>
