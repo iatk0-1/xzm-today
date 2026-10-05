@@ -19,7 +19,7 @@ Page({
     formulaCursor: 0, formulaCells: [],
     editingBoundary: '', boundaryValue: '', boundaryError: '', error: '', saving: false,
     ruleBusy: '',
-    stallId: '', stallName: '', currentRule: null, assignmentLoaded: false, assigning: false
+    stallId: '', stallName: '', currentRule: null, currentRules: [], currentRuleIds: [], assignmentLoaded: false, assigning: false
   },
 
   async onLoad(options) {
@@ -41,18 +41,22 @@ Page({
     try {
       const [rules, currentRule] = await Promise.all([
         api.get('/pricing-rules', { includeDisabled: true }),
-        this.data.stallId ? api.get('/stalls/' + encodeURIComponent(this.data.stallId) + '/pricing-rule') : null
+        this.data.stallId ? api.get('/stalls/' + encodeURIComponent(this.data.stallId) + '/pricing-rules') : null
       ]);
-      this.setData({ rules: this.ruleRows(rules), currentRule, assignmentLoaded: true, error: '' });
+      const assigned = Array.isArray(currentRule) ? currentRule : (currentRule ? [currentRule] : []);
+      const assignedIds = assigned.map(item => String(item.id));
+      this.setData({ rules: this.ruleRows(rules, assignedIds), currentRules: assigned,
+        currentRule: assigned[0] || null, currentRuleIds: assignedIds, assignmentLoaded: true, error: '' });
     } catch (error) {
       this.fail(error);
     }
   },
 
-  ruleRows(rules) {
+  ruleRows(rules, assignedIds = this.data.currentRuleIds || []) {
     return (rules || []).filter(rule => !rule.deleted).map(rule => {
       const first = finance.segmentsWithLabels(rule.segments)[0];
       return { ...rule,
+        assigned: assignedIds.includes(String(rule.id)),
         firstCondition: rule.minimumProfit != null ? '预期利润取 ' + rule.minimumProfit + ' 元与成本的'
           + (rule.profitPercent == null ? 10 : rule.profitPercent) + '%中的较大值'
           : first ? first.label + (first.upper == null ? ' 无上限' : '') : '暂无条件公式',
@@ -73,10 +77,10 @@ Page({
     });
     try {
       const updated = await api.put('/pricing-rules/' + id + '/enabled', { enabled });
-      this.setData({ rules: this.ruleRows(this.data.rules.map(item => String(item.id) === id ? updated : item)) });
-      if (this.data.currentRule && String(this.data.currentRule.id) === id) {
-        this.setData({ currentRule: updated });
-      }
+      const nextRules = this.data.rules.map(item => String(item.id) === id ? updated : item);
+      const nextAssigned = (this.data.currentRules || []).map(item => String(item.id) === id ? updated : item);
+      this.setData({ rules: this.ruleRows(nextRules), currentRules: nextAssigned,
+        currentRule: this.data.currentRule && String(this.data.currentRule.id) === id ? updated : this.data.currentRule });
     } catch (error) {
       this.setData({ rules: this.data.rules.map(item => String(item.id) === id ? { ...item, enabled: rule.enabled } : item) });
       this.fail(error);
@@ -95,9 +99,9 @@ Page({
       if (!await finance.confirmAction('删除计价规则', '删除后不再显示，也不能用于新增商品或新分配档口。已分配的档口和已使用的商品会保留。确定删除“' + rule.name + '”吗？')) return;
       await api.delete('/pricing-rules/' + id);
       this.setData({ rules: this.data.rules.filter(item => String(item.id) !== id), error: '' });
-      if (this.data.currentRule && String(this.data.currentRule.id) === id) {
-        this.setData({ currentRule: { ...this.data.currentRule, deleted: true, enabled: false } });
-      }
+      const deleted = { ...rule, deleted: true, enabled: false };
+      const nextAssigned = (this.data.currentRules || []).map(item => String(item.id) === id ? deleted : item);
+      this.setData({ currentRules: nextAssigned, currentRule: this.data.currentRule && String(this.data.currentRule.id) === id ? deleted : this.data.currentRule });
       wx.showToast({ title: '计价规则已删除' });
     } catch (error) {
       this.fail(error);
@@ -423,10 +427,20 @@ Page({
     this.setData({ assigning: true });
     try {
       const id = event.currentTarget.dataset.id;
+      if (id && (this.data.currentRuleIds || []).includes(String(id))) {
+        await api.delete('/stalls/' + this.data.stallId + '/pricing-rules/' + encodeURIComponent(String(id)));
+        const assigned = (this.data.currentRules || []).filter(item => String(item.id) !== String(id));
+        const assignedIds = assigned.map(item => String(item.id));
+        this.setData({ currentRules: assigned, currentRuleIds: assignedIds, rules: this.ruleRows(this.data.rules, assignedIds), currentRule: assigned[0] || null, assignmentLoaded: true, error: '' });
+        wx.showToast({ title: '已解除档口规则' });
+        return;
+      }
       const currentRule = await api.put('/stalls/' + this.data.stallId + '/pricing-rule', {
         ruleId: id ? String(id) : null
       });
-      this.setData({ currentRule: currentRule || null, assignmentLoaded: true, error: '' });
+      const assigned = id ? (this.data.currentRules || []).concat(currentRule ? [currentRule] : []) : [];
+      const assignedIds = assigned.map(item => String(item.id));
+      this.setData({ currentRules: assigned, currentRuleIds: assignedIds, rules: this.ruleRows(this.data.rules, assignedIds), currentRule: assigned[0] || null, assignmentLoaded: true, error: '' });
       wx.showToast({ title: '档口规则已更新' });
     } catch (error) {
       this.fail(error);

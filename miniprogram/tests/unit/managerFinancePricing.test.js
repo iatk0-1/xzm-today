@@ -105,6 +105,70 @@ function pricingEvent(index, side, value) {
   };
 }
 
+test('档口可追加多条规则、解除一条保留其他规则，禁用规则也可解除', async () => {
+  const first = { id: '31', name: '规则一', enabled: true, segments: [] };
+  const second = { id: '32', name: '规则二', enabled: false, segments: [] };
+  const third = { id: '33', name: '规则三', enabled: true, segments: [] };
+  const { page, calls } = pageHarness('../../pages/pricingRules/pricingRules.js', {
+    get: async url => url === '/pricing-rules' ? [first, second, third] : [first, second],
+    put: async () => third
+  });
+  page.setData({ stallId: '2' });
+  await page.load();
+  assert.deepEqual(Array.from(page.data.currentRuleIds), ['31', '32']);
+  assert.equal(page.data.rules[0].assigned, true);
+  await page.assign({ currentTarget: { dataset: { id: '33' } } });
+  assert.deepEqual(Array.from(page.data.currentRuleIds), ['31', '32', '33']);
+  await page.assign({ currentTarget: { dataset: { id: '32' } } });
+  assert.deepEqual(Array.from(page.data.currentRuleIds), ['31', '33']);
+  assert.equal(calls.find(call => call.method === 'delete').url, '/stalls/2/pricing-rules/32');
+  assert.equal(page.data.rules[1].assigned, false);
+  await page.assign({ currentTarget: { dataset: { id: '' } } });
+  assert.equal(page.data.currentRules.length, 0);
+  assert.equal(calls.at(-1).data.ruleId, null);
+});
+
+test('负责人新增商品遇到多规则档口必须明确选择，选择后按对应规则重算售价', async () => {
+  const rules = [
+    { id: '31', name: '规则一', enabled: true, currentVersion: 1, segments: [{ lower: 0, upper: null, formula: 'x+5' }] },
+    { id: '32', name: '规则二', enabled: true, currentVersion: 1, segments: [{ lower: 0, upper: null, formula: 'x+8' }] },
+    { id: '33', name: '已禁用', enabled: false, segments: [] }
+  ];
+  const { page, calls } = pageHarness('../../pages/admin/admin.js', { manager: true,
+    get: async () => rules,
+    post: async (_, body) => ({ price: Number(body.cost) + (body.segments[0].formula === 'x+8' ? 8 : 5) })
+  });
+  page.setData({ isStallManager: true, selectedStalls: [{ id: '2', name: '档口' }], skuList: [{ costPrice: '10', price: '' }] });
+  await page.useStallPricing();
+  assert.equal(page.data.pricingRuleId, '');
+  assert.match(page.data.pricingError, /请选择其中一个/);
+  assert.deepEqual(Array.from(page.data.pricingRules, rule => rule.id), ['31', '32']);
+  await page.choosePricingRule({ detail: { value: 1 } });
+  assert.equal(page.data.pricingRuleId, '32');
+  assert.equal(page.data.skuList[0].price, '18');
+  assert.equal(calls[0].url, '/stalls/2/pricing-rules');
+  await page.choosePricingRule({ detail: { value: 0 } });
+  assert.equal(page.data.skuList[0].price, '15');
+});
+
+test('已分配的历史禁用规则仍保留旧商品版本，多条规则不替换旧商品选中规则', async () => {
+  const historical = [{ lower: 0, upper: null, formula: 'x+5' }];
+  const assigned = [
+    { id: '31', name: '旧规则', enabled: false, currentVersion: 2, segments: [{ lower: 0, upper: null, formula: 'x+9' }] },
+    { id: '32', name: '新规则', enabled: true, currentVersion: 1, segments: historical }
+  ];
+  const { page } = pageHarness('../../pages/admin/admin.js', { manager: true,
+    get: async url => url.startsWith('/stalls/') ? assigned : {
+      product: { stallIds: ['2'] }, pricingRuleId: '31', pricingRuleVersion: 1, pricingRuleSegments: historical
+    }
+  });
+  page.setData({ editId: '10', isStallManager: true, selectedStalls: [{ id: '2' }], pricingRuleId: '31' });
+  await page.useStallPricing();
+  assert.equal(page.data.pricingRuleId, '31');
+  assert.equal(page.data.pricingRuleVersion, 1);
+  assert.equal(page.data.pricingRuleSegments[0].formula, 'x+5');
+});
+
 function enterPricingBoundary(page, index, side, value) {
   page.editBoundary(pricingEvent(index, side));
   page.boundaryInput(pricingEvent(index, side, value));

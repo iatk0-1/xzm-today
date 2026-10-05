@@ -181,6 +181,21 @@ test('档口详情从接口取规则，设置返回后刷新，解除清空，�
   assert.equal(requests.length, 3);
 });
 
+test('档口列表和详情展示全部已分配规则名称', async () => {
+  const group = { id: '11', name: '一档口', pricingRuleId: '21', pricingRuleName: '规则一', pricingRuleNames: ['规则一', '规则二'] };
+  const config = loadConfig('pages/adminCatalogProducts/adminCatalogProducts.js', { get: async () => group });
+  const page = createInstance(config);
+  page._authorized = true;
+  page.data.groupId = '11';
+  await page.loadGroup();
+  assert.equal(page.data.pricingRuleName, '规则一、规则二');
+  assert.equal(page.data.pricingRuleCount, 2);
+  const list = createInstance(loadConfig('pages/adminCatalogManage/adminCatalogManage.js', {}));
+  const rows = list.positionGroups([group]);
+  assert.equal(rows[0].pricingRuleSummary, '规则一、规则二');
+  assert.equal(rows[0].pricingRuleCount, 2);
+});
+
 test('详情页商品保留负责人头像、昵称、手机号', async () => {
   const owner = { productId: 5, userId: 8, nickname: '负责人', phone: '13800000000', avatarUrl: 'avatar.jpg' };
   const config = loadConfig('pages/adminCatalogProducts/adminCatalogProducts.js', {

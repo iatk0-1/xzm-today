@@ -102,6 +102,8 @@ Page(pageSync.wrap({
   positionGroups(groups) {
     return groups.map((item, index) => ({
       ...item,
+      pricingRuleSummary: item.pricingRuleNames ? item.pricingRuleNames.join('、') : (item.pricingRuleName || ''),
+      pricingRuleCount: item.pricingRuleNames ? item.pricingRuleNames.length : (item.pricingRuleId ? 1 : 0),
       y: index * ROW_HEIGHT,
       offsetX: 0
     }));

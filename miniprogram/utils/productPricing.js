@@ -77,11 +77,35 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
       return;
     }
     try {
-      const rule = await api.get('/stalls/' + encodeURIComponent(String(stall.id)) + '/pricing-rule');
+      if (this.canManuallyPrice()) {
+        const rule = await api.get('/stalls/' + encodeURIComponent(String(stall.id)) + '/pricing-rule');
+        if (token !== this._ruleToken) return;
+        if (rule && rule.enabled && !rule.deleted) this.showRule(rule, '档口：' + stall.name);
+        else if (rule && await this.useExistingPricing(rule, token)) return;
+        else this.showRule(null, '');
+        return;
+      }
+      const assignedResponse = await api.get('/stalls/' + encodeURIComponent(String(stall.id)) + '/pricing-rules');
       if (token !== this._ruleToken) return;
-      if (rule && rule.enabled && !rule.deleted) this.showRule(rule, '档口：' + stall.name);
+      const assignedRules = Array.isArray(assignedResponse) ? assignedResponse : (assignedResponse ? [assignedResponse] : []);
+      const activeRules = (assignedRules || []).filter(rule => rule.enabled && !rule.deleted);
+      this.setData({ pricingRules: activeRules });
+      const assignedSelection = assignedRules.find(rule => String(rule.id) === String(this.data.pricingRuleId));
+      if (assignedSelection && (!assignedSelection.enabled || assignedSelection.deleted)
+        && await this.useExistingPricing(assignedSelection, token)) return;
+      if (token !== this._ruleToken) return;
+      const selected = this.data.pricingRuleId
+        ? activeRules.find(rule => String(rule.id) === String(this.data.pricingRuleId)) : null;
+      if (selected) this.showRule(selected, '档口：' + stall.name);
+      else if (activeRules.length === 1) this.showRule(activeRules[0], '档口：' + stall.name);
+      else if (activeRules.length > 1) {
+        this.showRule(null, '');
+        this.setData({ pricingError: '当前档口有多个计价规则，请选择其中一个' });
+        return;
+      }
       else {
-        const preserved = await this.useExistingPricing(rule, token);
+        const legacy = assignedSelection || assignedRules[0] || null;
+        const preserved = await this.useExistingPricing(legacy, token);
         if (token !== this._ruleToken) return;
         if (!preserved) {
           this.showRule(null, '');
@@ -100,9 +124,12 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   };
 
   page.choosePricingRule = async function(event) {
-    if (this.data.isStallManager && this.data.selectedStalls.length) return;
     const rule = this.data.pricingRules[Number(event.detail.value)];
     if (!rule) return;
+    // 单规则档口由档口规则自动确定；只有多个已分配规则时才允许负责人切换。
+    if (this.data.isStallManager && this.data.selectedStalls.length
+      && this.data.pricingRules.length <= 1
+      && String(rule.id) !== String(this.data.pricingRuleId || '')) return;
     this._ruleToken = (this._ruleToken || 0) + 1;
     this.showRule(rule.id === '' ? null : rule, this.data.isStallManager ? '手动选择' : '管理员选择');
     this._markDirty();

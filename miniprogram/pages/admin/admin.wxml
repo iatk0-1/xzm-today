@@ -136,7 +136,7 @@
   </view>
 
   <view class="form-group pricing-panel">
-    <picker wx:if="{{!isStallManager || !selectedStalls.length}}" range="{{pricingRules}}" range-key="name" bindchange="choosePricingRule">
+    <picker wx:if="{{!isStallManager || !selectedStalls.length || pricingRules.length > 1}}" range="{{pricingRules}}" range-key="name" bindchange="choosePricingRule">
       <view class="pricing-rule-heading">
         <view class="label">计价规则：{{pricingRuleName || '未选择'}}</view>
         <text class="pricing-rule-arrow">›</text>

@@ -24,7 +24,7 @@ Page(autoSearch.wrap({
     allLoadedSelected: false,
     managers: [], managerId: '', managerName: '',
     pricingRuleId: '', pricingRuleName: '', pricingRuleEnabled: null, pricingRuleDeleted: false,
-    pricingRuleLoaded: false, pricingRuleError: ''
+    pricingRuleLoaded: false, pricingRuleError: '', pricingRuleCount: 0
   },
 
   async onLoad(options) {
@@ -70,7 +70,9 @@ Page(autoSearch.wrap({
       const group = await api.get('/stalls/' + encodeURIComponent(this.data.groupId) + '/manage');
       this.setData({
         groupName: group.name,
-        pricingRuleId: group.pricingRuleId || '', pricingRuleName: group.pricingRuleName || '',
+        pricingRuleId: group.pricingRuleId || '',
+        pricingRuleName: group.pricingRuleNames ? group.pricingRuleNames.join('、') : (group.pricingRuleName || ''),
+        pricingRuleCount: group.pricingRuleNames ? group.pricingRuleNames.length : (group.pricingRuleId ? 1 : 0),
         pricingRuleEnabled: group.pricingRuleEnabled, pricingRuleDeleted: !!group.pricingRuleDeleted,
         pricingRuleLoaded: true, pricingRuleError: ''
       });

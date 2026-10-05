@@ -6,6 +6,8 @@ page {
 .card { background: white; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
 .title { font-size: 34rpx; font-weight: 600; margin-bottom: 20rpx; word-break: break-all; }
 .assignment-summary { margin-bottom: 20rpx; color: #486780; font-size: 28rpx; line-height: 1.6; word-break: break-all; }
+.assigned-rule { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 12rpx 0; font-size: 28rpx; word-break: break-all; }
+button.assigned-rule-remove { flex-shrink: 0; margin: 0; padding: 0 20rpx; line-height: 2.4; font-size: 26rpx; }
 .row { display: flex; align-items: center; gap: 16rpx; margin: 16rpx 0; flex-wrap: wrap; }
 input { background: #f4f6f8; padding: 18rpx; border-radius: 8rpx; margin: 12rpx 0; box-sizing: border-box; min-height: 72rpx; }
 .muted { color: #667788; font-size: 25rpx; line-height: 1.7; }
