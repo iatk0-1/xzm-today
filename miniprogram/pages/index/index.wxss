@@ -641,8 +641,8 @@ page {
   margin-bottom: 8rpx;
 }
 
-.out-of-stock {
-  color: #d32f2f; /* 没货标红 */
+.sku-stock-low {
+  color: #d32f2f;
 }
 
 .sku-choose-tip {

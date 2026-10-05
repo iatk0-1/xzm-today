@@ -167,7 +167,8 @@
     </view>
     <view class="sku-main">
       <view class="sku-price" style="color: #d32f2f;">¥ {{currentSkuPrice || product.displayPrice || product.price}}</view>
-      <view class="sku-stock" style="color: {{currentSkuStock === 0 && !currentSkuUnlimited ? 'red' : '#999'}};">库存: {{currentSkuStockText || '请选择规格'}}</view>
+      <view class="sku-stock sku-stock-low" wx:if="{{bundleSelections.length === 0 && !currentSkuUnlimited && currentSkuStock != null && currentSkuStock <= 3}}">库存：仅剩{{currentSkuStock}}件</view>
+      <view class="sku-stock" wx:elif="{{bundleSelections.length === 0 && (isAdmin || isStallManager) && currentSkuStock != null}}">库存：{{currentSkuStockText}}</view>
       <view class="sku-meta-row">
         <view class="sku-choose-tip">已选: {{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
         <view class="sku-quantity" wx:if="{{bundleSelections.length === 0}}">

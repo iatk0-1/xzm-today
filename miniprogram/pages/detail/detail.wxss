@@ -605,7 +605,12 @@ page {
 
 .sku-stock { 
   font-size: 12px; /* 库存文字大小 */
+  color: #999;
   margin-bottom: 5px; /* 库存距下方间距 */
+}
+
+.sku-stock-low {
+  color: #d32f2f;
 }
 
 .sku-choose-tip { 

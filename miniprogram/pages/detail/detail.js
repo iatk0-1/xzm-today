@@ -16,6 +16,8 @@ Page({
     detailImgs: [],
     currentDetailIndex: 1,
     relatedProducts: [],
+    isAdmin: false,
+    isStallManager: false,
     showSku: false,
     skuAction: 'cart',
     uniqueColors: [],
@@ -406,6 +408,8 @@ Page({
   openSkuPanel(e) {
     const product = this.data.product;
     if (!product.id || product.offSale || product.soldOut) return;
+
+    this.setData({ isAdmin: !!auth.isAdmin(), isStallManager: !!auth.isStallManager() });
 
     const action = e.currentTarget.dataset.action || 'cart';
     const { uniqueColors, uniqueSizes } = this.data;

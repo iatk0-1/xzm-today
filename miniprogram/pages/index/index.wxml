@@ -178,8 +178,11 @@
         {{bundlePriceRange}}
       </view>
 
-      <view class="sku-stock {{currentSkuStock === 0 && !currentSkuUnlimited ? 'out-of-stock' : ''}}" style="{{bundleSelections.length > 0 ? 'visibility: hidden;' : ''}}">
-        库存：{{currentSkuStockText || '请选择规格'}}
+      <view class="sku-stock sku-stock-low" wx:if="{{bundleSelections.length === 0 && !currentSkuUnlimited && currentSkuStock != null && currentSkuStock <= 3}}">
+        库存：仅剩{{currentSkuStock}}件
+      </view>
+      <view class="sku-stock" wx:elif="{{bundleSelections.length === 0 && (isAdmin || isStallManager) && currentSkuStock != null}}">
+        库存：{{currentSkuStockText}}
       </view>
 
       <view class="sku-meta-row" wx:if="{{bundleSelections.length === 0}}">
