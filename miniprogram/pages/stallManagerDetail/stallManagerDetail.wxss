@@ -157,3 +157,12 @@ textarea { padding:20rpx; line-height:1.6; border-radius:8rpx; background:#f5f5f
 
 .income-grid { margin-top:18rpx; }
 .income-details { border-top:1rpx solid #edf0f2; margin-top:16rpx; padding-top:10rpx; }
+.self-withdrawal-control { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 28rpx 0 12rpx; }
+.withdrawal-selection { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 24rpx 0; }
+.withdrawal-selection button { margin: 0; font-size: 24rpx; }
+.withdrawal-order-heading { display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap; }
+.withdrawal-product { display: flex; gap: 20rpx; margin: 24rpx 0; }
+.withdrawal-product-image { width: 120rpx; height: 120rpx; flex-shrink: 0; border-radius: 12rpx; background: #f3f4f6; }
+.withdrawal-image-placeholder { display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 22rpx; }
+.withdrawal-product-info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.withdrawal-request-item { border-top: 1rpx solid #eee; padding-top: 18rpx; margin-top: 18rpx; }

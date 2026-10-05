@@ -64,7 +64,8 @@
     <view id="manager-tab-history" class="tab {{tab === 'history' ? 'active' : ''}}" data-tab="history" bindtap="changeTab">历史核对</view>
     <view id="manager-tab-settlements" class="tab {{tab === 'settlements' ? 'active' : ''}}" data-tab="settlements" bindtap="changeTab">线下付款记录</view>
     <view id="manager-tab-withdrawals" class="tab {{tab === 'withdrawals' ? 'active' : ''}}" data-tab="withdrawals" bindtap="changeTab">历史商家转账</view>
-    <view id="manager-tab-eligibility" class="tab {{tab === 'eligibility' ? 'active' : ''}}" data-tab="eligibility" bindtap="changeTab">提现资格</view>
+    <view id="manager-tab-eligibility" class="tab {{tab === 'eligibility' ? 'active' : ''}}" data-tab="eligibility" bindtap="changeTab">选单提现</view>
+    <view id="manager-tab-requests" class="tab {{tab === 'requests' ? 'active' : ''}}" data-tab="requests" bindtap="changeTab">提现申请记录</view>
     <view id="manager-tab-sharing" class="tab {{tab === 'sharing' ? 'active' : ''}}" data-tab="sharing" bindtap="changeTab">微信分账</view>
     <view id="manager-tab-audit" class="tab {{tab === 'audit' ? 'active' : ''}}" data-tab="audit" bindtap="changeTab">财务审计</view>
   </scroll-view>
@@ -97,7 +98,10 @@
     </view>
     <view class="payment-label">操作备注（选填）</view>
     <textarea class="compact-textarea" placeholder="补充分配或上下线操作说明" value="{{reason}}" maxlength="1000" data-field="reason" bindinput="input" />
-    <view class="muted">下线期间新订单不计佣；历史佣金继续完成结算，订单完成后由本人点击提现，按原微信交易分账。</view>
+    <view class="muted">下线期间新订单不计佣；历史佣金继续完成结算，已完成订单可按原微信交易分账提现。</view>
+    <view class="self-withdrawal-control"><view><view class="receiver-title">允许负责人自助提现</view><view class="muted">{{income.selfWithdrawalEnabled === false ? '已关闭，由管理员办理提现' : '已开启，负责人可自行申请'}}</view></view><switch checked="{{selfWithdrawalChecked}}" disabled="{{busy}}" color="#1f2933" bindchange="toggleSelfWithdrawal" /></view>
+    <view class="muted">开关仅控制该负责人的新申请，已提交的提现继续处理。</view>
+    <button class="primary" disabled="{{busy}}" data-tab="eligibility" bindtap="changeTab">为该负责人选单提现</button>
     <view class="receiver-summary">
       <view class="receiver-title">分账接收关系</view>
       <button class="receiver-action {{receiver.registered ? 'registered' : ''}}" disabled="{{busy}}" bindtap="openReceiver">{{receiverSummary}}<text class="receiver-arrow">›</text></button>
@@ -250,12 +254,44 @@
     </view>
   </view>
 
-  <view wx:if="{{tab === 'eligibility'}}" class="card" wx:for="{{rows}}" wx:key="orderId">
-    <view>订单 {{item.orderId}} · {{item.eligible ? '具备本人提现资格' : '当前不可提现'}}</view>
-    <view class="muted">微信支付交易号 {{item.transactionId || '无真实微信支付交易'}}</view>
-    <view>本单佣金 ¥{{item.commissionAmount}} · 可分账 ¥{{item.availableAmount}}</view>
-    <view class="muted">分账截止 {{item.deadlineLabel}}</view>
-    <view class="error" wx:if="{{item.blockedReason}}">{{item.blockedReason}}</view>
+  <view wx:if="{{tab === 'eligibility'}}">
+    <view class="card">
+      <view class="title">按已完成订单提现</view>
+      <view class="muted">仅列出本负责人已完成的计佣订单；可勾选合格订单，款项到账至该负责人本人微信零钱。单次最多100笔。</view>
+      <view class="withdrawal-selection"><text>已选 {{selectedOrders.length}} 笔 · ¥{{selectedWithdrawalTotal}}</text><button disabled="{{busy || listLoading || pendingAdminRequest}}" bindtap="selectWithdrawalOrders">{{selectedOrders.length ? '清空选择' : '选择合格订单'}}</button></view>
+      <button class="primary" loading="{{busy}}" disabled="{{busy || listLoading || pendingAdminRequest || !income.profitSharingEnabled || !selectedOrders.length}}" bindtap="withdrawSelectedOrders">为负责人提现所选订单佣金</button>
+    </view>
+    <checkbox-group bindchange="withdrawalOrderChange">
+      <view class="card" wx:for="{{rows}}" wx:key="orderId">
+        <label class="withdrawal-order-heading"><checkbox value="{{item.orderId}}" checked="{{item.selected}}" disabled="{{busy || pendingAdminRequest || !item.eligible}}" color="#1f2933" /><text>订单 {{item.orderNo || item.orderId}}</text><text class="muted">{{item.eligible ? '可提现' : '不可提现'}}</text></label>
+        <view class="withdrawal-product" wx:for="{{item.items}}" wx:for-item="product" wx:for-index="detailIndex" wx:key="orderItemId">
+          <image wx:if="{{product.productImage}}" class="withdrawal-product-image" src="{{product.productImage}}" mode="aspectFill" binderror="withdrawalProductImageError" data-index="{{index}}" data-detail-index="{{detailIndex}}" />
+          <view wx:else class="withdrawal-product-image withdrawal-image-placeholder">暂无图片</view>
+          <view class="withdrawal-product-info"><view>{{product.productName}}</view><view class="muted">{{product.specLabel}} · {{product.qty}} 件</view><view class="muted" wx:if="{{product.bundleLabel}}">{{product.bundleLabel}}</view></view>
+        </view>
+        <view>本单佣金 ¥{{item.commissionAmount}} · 未结算佣金 ¥{{item.availableAmount}}</view>
+        <view class="muted">下单时间 {{item.orderedTime}}</view><view class="muted">分账截止 {{item.deadlineLabel}}</view>
+        <view class="error" wx:if="{{item.blockedReason}}">{{item.blockedReason}}</view>
+        <view class="muted" wx:elif="{{!item.eligible}}">本单没有可提现佣金</view>
+      </view>
+    </checkbox-group>
+  </view>
+  <view class="card" wx:if="{{pendingAdminRequest}}">
+    <view class="title">原提现申请待核对</view><view class="muted">已保存 {{pendingAdminRequest.orderIds.length}} 笔订单，处理完原申请后才能发起新申请。</view>
+    <view class="muted">{{adminRequestUncertain ? '提交结果暂不确定，请查询原申请' : '继续跟踪原申请，避免重复付款'}}</view>
+    <button disabled="{{busy}}" bindtap="queryAdminWithdrawal">查询原申请</button>
+    <button wx:if="{{adminRequestMissing}}" disabled="{{busy}}" bindtap="withdrawSelectedOrders">按原订单范围重试原申请</button>
+    <button wx:if="{{adminRequestMissing && pendingAdminRequest.rejected}}" disabled="{{busy}}" bindtap="clearMissingAdminWithdrawal">确认未创建后重新选单</button>
+  </view>
+  <view class="card" wx:if="{{currentWithdrawal}}">
+    <view class="title">提现申请 {{currentWithdrawal.id}} · {{currentWithdrawal.statusLabel}}</view>
+    <view class="muted">{{currentWithdrawal.sourceLabel}} · 申请时间 {{currentWithdrawal.requestedTime}}</view>
+    <view>申请 ¥{{currentWithdrawal.requestedAmount}} · 已到账 ¥{{currentWithdrawal.settledAmount}} · 处理中 ¥{{currentWithdrawal.heldAmount}}</view>
+    <view class="withdrawal-request-item" wx:for="{{currentWithdrawal.items}}" wx:key="id"><view>订单 {{item.orderNo || item.orderId}} · {{item.statusLabel}}</view><view class="muted">申请 ¥{{item.snapshotAmount}} · 已到账 ¥{{item.settledAmount}} · {{item.reason || '等待处理结果'}}</view><view class="muted">分账截止 {{item.deadlineLabel}}</view></view>
+    <button disabled="{{busy}}" bindtap="queryAdminWithdrawal" data-id="{{currentWithdrawal.id}}">刷新该申请结果</button>
+  </view>
+  <view wx:if="{{tab === 'requests'}}">
+    <view class="card" wx:for="{{rows}}" wx:key="id"><view class="title">¥{{item.requestedAmount}} · {{item.statusLabel}}</view><view class="muted">{{item.sourceLabel}} · 申请时间 {{item.requestedTime}}</view><view>已到账 ¥{{item.settledAmount}} · 处理中 ¥{{item.heldAmount}}</view><button disabled="{{busy}}" data-id="{{item.id}}" bindtap="queryAdminWithdrawal">查看订单及到账结果</button></view>
   </view>
   <view wx:if="{{tab === 'sharing'}}" class="card" wx:for="{{rows}}" wx:key="id">
     <view>¥{{item.amount}} · {{item.statusLabel}}</view>

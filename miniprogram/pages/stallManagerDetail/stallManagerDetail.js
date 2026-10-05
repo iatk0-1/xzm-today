@@ -5,12 +5,14 @@ const finance = require('../../utils/managerFinance');
 const LIST_PATHS = {
   products: 'commission-products', records: 'commission-records',
   history: 'commission-records', settlements: 'offline-settlements',
-  withdrawals: 'withdrawals', sharing: 'profit-sharing', eligibility: 'profit-sharing/eligibility', audit: 'financial-audit'
+  withdrawals: 'withdrawals', sharing: 'profit-sharing', eligibility: 'profit-sharing/eligibility', requests: 'profit-sharing/withdrawals', audit: 'financial-audit'
 };
 
 Page({
   data: {
     userId: '', profile: null, tab: 'profile', busy: false, error: '',
+    selfWithdrawalChecked: true, selectedOrders: [], selectedWithdrawalTotal: '0.00',
+    pendingAdminRequest: null, currentWithdrawal: null, adminRequestMissing: false, adminRequestUncertain: false,
     stalls: [], assignedStalls: [], assignmentIds: [], reason: '', income: {}, incomeDetailsVisible: false, activeChecked: false,
     assignmentVisible: false, availableStalls: [], newAssignmentIds: [],
     rows: [], page: 1, hasNext: false, totalElements: 0,
@@ -112,8 +114,10 @@ Page({
       this.applyProfile(results[0], (results[2] || []).filter(stall => !stall.deletedAt && !stall.deleted));
       this.applyReceiver(results[3]);
       this.setData({
-        income: results[1], error: ''
+        income: results[1], selfWithdrawalChecked: results[1].selfWithdrawalEnabled !== false, error: ''
       });
+      this.restoreAdminWithdrawal();
+      if (this.data.pendingAdminRequest) await this.recoverAdminWithdrawal();
       await this.loadStallPreviews();
       if (this.data.tab !== 'profile') await this.loadList(true);
     } catch (error) {
@@ -251,8 +255,8 @@ Page({
       if (tab === 'products') this._productQuery = productQuery;
       const content = Array.isArray(result) ? result : (result.content || []);
       const items = content.map(row => ({
-        ...finance.managerDetailRow(row, tab),
-        selected: this.data.selectedProducts.includes(String(row.productId))
+        ...(tab === 'requests' ? finance.withdrawalRequestRow(row) : tab === 'eligibility' ? finance.incomeEligibilityRow(row) : finance.managerDetailRow(row, tab)),
+        selected: tab === 'eligibility' ? this.data.selectedOrders.includes(String(row.orderId)) : this.data.selectedProducts.includes(String(row.productId))
       }));
       this.setData({
         rows: reset ? items : this.data.rows.concat(items),
@@ -260,6 +264,7 @@ Page({
         error: ''
       });
       if (tab === 'products') this.updateProductSelection(this.data.selectedProducts);
+      if (tab === 'eligibility') this.updateOrderSelection(this.data.selectedOrders);
     } catch (error) {
       if (sequence === this._listSequence && tab === this.data.tab) this.fail(error);
     } finally {
@@ -724,6 +729,155 @@ Page({
     this.setData({ reconciliation: null });
   },
 
+  assertWithdrawalAdmin() {
+    if (!this._authorized || !auth.isAdmin() || !this.data.userId) throw new Error('仅管理员可为负责人办理提现');
+    const account = auth.getUserInfo() || {};
+    const actor = String(account.userId || account.id || '');
+    if (!actor) throw new Error('管理员身份未加载，请重新登录');
+    return actor;
+  },
+  adminWithdrawalStorageKey() {
+    return 'adminManagerWithdrawal:' + this.assertWithdrawalAdmin() + ':' + this.data.userId;
+  },
+  restoreAdminWithdrawal() {
+    const key = this.adminWithdrawalStorageKey();
+    if (this._adminWithdrawalStorageKey !== key) {
+      this._adminWithdrawalStorageKey = key;
+      this.setData({ pendingAdminRequest: null, currentWithdrawal: null, adminRequestMissing: false, adminRequestUncertain: false });
+    }
+    const stored = wx.getStorageSync(key);
+    if (stored && stored.requestKey && Array.isArray(stored.orderIds) && stored.orderIds.length) {
+      this.setData({ pendingAdminRequest: stored });
+    }
+  },
+  acceptAdminWithdrawal(row) {
+    if (!row || row.id == null || !row.requestKey) throw new Error('提现申请返回不完整，请查询原申请');
+    const pending = this.data.pendingAdminRequest;
+    if (pending && row.requestKey !== pending.requestKey) throw new Error('申请编号与原申请不一致，请查询原申请');
+    const currentWithdrawal = finance.withdrawalRequestRow(row);
+    if (currentWithdrawal.terminal) {
+      wx.setStorageSync(this.adminWithdrawalStorageKey(), null);
+      this.setData({ pendingAdminRequest: null });
+    }
+    this.setData({ currentWithdrawal, adminRequestMissing: false, adminRequestUncertain: false });
+  },
+  async recoverAdminWithdrawal() {
+    const pending = this.data.pendingAdminRequest;
+    if (!pending) return;
+    const storageKey = this.adminWithdrawalStorageKey();
+    try {
+      const row = await api.get(this.base('profit-sharing/withdrawals/by-key/' + encodeURIComponent(pending.requestKey)));
+      if (this.adminWithdrawalStorageKey() !== storageKey) throw new Error('管理员账号或负责人已变化，请刷新后查询');
+      this.acceptAdminWithdrawal(row);
+    } catch (error) {
+      this.setData({ adminRequestMissing: error.statusCode === 404, adminRequestUncertain: error.statusCode !== 404 });
+      if (error.statusCode !== 404) this.fail(new Error('原提现申请结果暂不确定，请继续查询原申请'));
+    }
+  },
+  updateOrderSelection(ids) {
+    const available = new Map(this.data.rows.filter(row => row.eligible === true).map(row => [String(row.orderId), row]));
+    const selectedOrders = [...new Set(ids.map(String))].filter(id => available.has(id));
+    let total = 0;
+    selectedOrders.forEach(id => { total += finance.cents(available.get(id).availableAmount); });
+    this.setData({ selectedOrders, selectedWithdrawalTotal: (total / 100).toFixed(2),
+      rows: this.data.rows.map(row => ({ ...row, selected: selectedOrders.includes(String(row.orderId)) })) });
+  },
+  withdrawalOrderChange(event) {
+    if (this.data.busy || this.data.pendingAdminRequest || this.data.tab !== 'eligibility') return;
+    this.updateOrderSelection(event.detail.value);
+  },
+  selectWithdrawalOrders() {
+    if (this.data.busy || this.data.pendingAdminRequest || this.data.tab !== 'eligibility') return;
+    this.updateOrderSelection(this.data.selectedOrders.length ? [] : this.data.rows.filter(row => row.eligible === true).slice(0, 100).map(row => String(row.orderId)));
+  },
+  async toggleSelfWithdrawal(event) {
+    if (this.data.busy) return;
+    const enabled = !!event.detail.value;
+    await this.mutate('更新自助提现开关', async () => {
+      this.assertWithdrawalAdmin();
+      if (!await finance.confirmAction(enabled ? '开启负责人自助提现' : '关闭负责人自助提现',
+        enabled ? '该负责人将可以自行申请提现合格佣金。' : '关闭后该负责人不能新申请提现，管理员仍可按订单代发起，已提交申请继续处理。')) return false;
+      await api.put(this.base('self-withdrawal'), { enabled });
+      this.setData({ 'income.selfWithdrawalEnabled': enabled });
+    });
+    this.setData({ selfWithdrawalChecked: this.data.income.selfWithdrawalEnabled !== false });
+  },
+  async withdrawSelectedOrders() {
+    if (!this._authorized || this.data.busy) return;
+    this.setData({ busy: true, error: '' });
+    try {
+      const storageKey = this.adminWithdrawalStorageKey();
+      if (this.data.pendingAdminRequest) {
+        await this.recoverAdminWithdrawal();
+        if (!this.data.pendingAdminRequest || !this.data.adminRequestMissing || this.data.adminRequestUncertain) return;
+      }
+      const retry = !!this.data.pendingAdminRequest;
+      if (!retry) {
+        if (this.data.tab !== 'eligibility') throw new Error('请在选单提现页面选择订单');
+        if (!this.data.income.profitSharingEnabled) throw new Error('微信分账提现功能未开启');
+        if (!this.data.selectedOrders.length || this.data.selectedOrders.length > 100) throw new Error('请选择1到100笔合格的已完成订单');
+        finance.money(this.data.selectedWithdrawalTotal);
+      }
+      if (!await finance.confirmAction(retry ? '重试原提现申请' : '确认替负责人提现', retry
+        ? '沿用原申请编号和原订单范围提交，到账结果以原申请为准。'
+        : '负责人：' + (this.data.profile.nickname || this.data.userId) + '。仅提现选中的 ' + this.data.selectedOrders.length
+          + ' 笔已完成订单佣金，预计 ¥' + this.data.selectedWithdrawalTotal + '，款项分账到该负责人本人微信零钱。')) return;
+      if (this.adminWithdrawalStorageKey() !== storageKey) throw new Error('管理员账号或负责人已变化，请刷新后再操作');
+      const pending = { ...(this.data.pendingAdminRequest || { requestKey: finance.newWithdrawalRequestKey(), orderIds: this.data.selectedOrders.slice() }), rejected: false };
+      wx.setStorageSync(storageKey, pending);
+      this.setData({ pendingAdminRequest: pending, adminRequestUncertain: true, adminRequestMissing: false });
+      const row = await api.request({ url: this.base('profit-sharing/withdrawals'), method: 'POST', data: { requestKey: pending.requestKey, orderIds: pending.orderIds }, idempotencyKey: pending.requestKey });
+      if (this.adminWithdrawalStorageKey() !== storageKey) throw new Error('管理员账号或负责人已变化，请刷新后查询原申请');
+      this.acceptAdminWithdrawal(row);
+      this.setData({ selectedOrders: [] });
+      await this.refresh();
+    } catch (error) {
+      // 只有服务端明确拒绝且后续查询确认未创建，才允许放弃原订单范围。
+      if ([400, 403, 422].includes(error.statusCode) && this.data.pendingAdminRequest) {
+        const pending = { ...this.data.pendingAdminRequest, rejected: true };
+        try { wx.setStorageSync(this.adminWithdrawalStorageKey(), pending); this.setData({ pendingAdminRequest: pending }); } catch (_) { }
+      }
+      this.fail(error);
+    }
+    finally { this.setData({ busy: false }); }
+  },
+  async queryAdminWithdrawal(event) {
+    if (!this._authorized || this.data.busy) return;
+    this.setData({ busy: true, error: '' });
+    try {
+      const storageKey = this.adminWithdrawalStorageKey();
+      const id = event && event.currentTarget && event.currentTarget.dataset.id;
+      if (id) {
+        const row = await api.get(this.base('profit-sharing/withdrawals/' + encodeURIComponent(String(id))));
+        if (this.adminWithdrawalStorageKey() !== storageKey) throw new Error('账号或负责人已变化，请刷新');
+        if (this.data.pendingAdminRequest && row.requestKey === this.data.pendingAdminRequest.requestKey) this.acceptAdminWithdrawal(row);
+        else this.setData({ currentWithdrawal: finance.withdrawalRequestRow(row) });
+      } else await this.recoverAdminWithdrawal();
+      if (this.data.tab === 'requests') await this.loadList(true);
+    } catch (error) { this.fail(error); }
+    finally { this.setData({ busy: false }); }
+  },
+  async clearMissingAdminWithdrawal() {
+    if (this.data.busy || !this.data.pendingAdminRequest || !this.data.pendingAdminRequest.rejected) return;
+    this.setData({ busy: true, error: '' });
+    try {
+      const storageKey = this.adminWithdrawalStorageKey();
+      await this.recoverAdminWithdrawal();
+      if (!this.data.pendingAdminRequest || !this.data.adminRequestMissing || this.data.adminRequestUncertain) return;
+      if (!await finance.confirmAction('重新选择订单', '已确认原申请尚未创建。清除本机待提交记录后，可重新选择订单。')) return;
+      // 再查一次：提交结果未知或已受理的原单绝不丢弃。
+      await this.recoverAdminWithdrawal();
+      if (this.adminWithdrawalStorageKey() !== storageKey || !this.data.adminRequestMissing || this.data.adminRequestUncertain) return;
+      wx.setStorageSync(storageKey, null);
+      this.setData({ pendingAdminRequest: null, currentWithdrawal: null, adminRequestMissing: false, adminRequestUncertain: false, selectedOrders: [] });
+      if (this.data.tab === 'eligibility') this.updateOrderSelection([]);
+    } catch (error) { this.fail(error); }
+    finally { this.setData({ busy: false }); }
+  },
+  withdrawalProductImageError(event) {
+    const { index, detailIndex } = event.currentTarget.dataset;
+    if (this.data.rows[index] && this.data.rows[index].items[detailIndex]) this.setData({ ['rows[' + index + '].items[' + detailIndex + '].productImage']: '' });
+  },
   async mutate(title, operation) {
     if (!this._authorized || this.data.busy) return;
     this._refreshSequence = (this._refreshSequence || 0) + 1;

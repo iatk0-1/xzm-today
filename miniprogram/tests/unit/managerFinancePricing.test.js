@@ -1667,6 +1667,129 @@ function pendingWithdrawal(key, overrides = {}) {
   return { id: '9007199254740993', requestKey: key, status: 'PROCESSING', requestedAmount: '20', settledAmount: '0', heldAmount: '20', unpaidAmount: '20',
     items: [{ id: '1', orderId: '2', transactionId: 'wx2', snapshotAmount: '20', status: 'WAITING' }], ...overrides };
 }
+
+function readyAdminWithdrawal(page) {
+  page.setData({ userId: '99', profile: { userId: '99', nickname: '测试负责人' }, tab: 'eligibility',
+    income: { profitSharingEnabled: true, selfWithdrawalEnabled: false },
+    rows: [{ orderId: '365088797156708352', availableAmount: '0.07', eligible: true },
+      { orderId: '365088797156708353', availableAmount: '1.02', eligible: true },
+      { orderId: '365088797156708354', availableAmount: '2.00', eligible: false }] });
+  page.refresh = async () => {};
+}
+
+test('管理员选单仅接受合格订单并按分汇总，订单ID保持字符串', () => {
+  const { page } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js');
+  readyAdminWithdrawal(page);
+  page.withdrawalOrderChange({ detail: { value: ['365088797156708352', '365088797156708353', '365088797156708354', '365088797156708352'] } });
+  assert.deepEqual(Array.from(page.data.selectedOrders), ['365088797156708352', '365088797156708353']);
+  assert.equal(page.data.selectedWithdrawalTotal, '1.09');
+  page.selectWithdrawalOrders(); assert.equal(page.data.selectedOrders.length, 0);
+  page.selectWithdrawalOrders(); assert.equal(page.data.selectedOrders.length, 2);
+});
+
+test('管理员代提现仅提交选定范围，关闭自助开关仍可代提，双击只提交一次', async () => {
+  let complete;
+  const response = new Promise(resolve => { complete = resolve; });
+  const { page, calls, storage } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { post: async () => response });
+  readyAdminWithdrawal(page);
+  page.updateOrderSelection(['365088797156708352']);
+  const first = page.withdrawSelectedOrders();
+  await Promise.resolve(); await Promise.resolve();
+  await page.withdrawSelectedOrders();
+  const posts = calls.filter(call => call.method === 'post');
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].url, '/stall-managers/99/profit-sharing/withdrawals');
+  assert.deepEqual(Array.from(posts[0].data.orderIds), ['365088797156708352']);
+  assert.deepEqual(Object.keys(posts[0].data).sort(), ['orderIds', 'requestKey']);
+  assert.equal(posts[0].idempotencyKey, posts[0].data.requestKey);
+  assert.equal(storage.get('adminManagerWithdrawal:42:99').requestKey, posts[0].data.requestKey);
+  complete(pendingWithdrawal(posts[0].data.requestKey, { source: 'ADMIN' })); await first;
+  assert.equal(page.data.currentWithdrawal.sourceLabel, '管理员代发起');
+});
+
+test('管理员提交超时重试保留原key及订单，未知结果不能清除本机记录', async () => {
+  let attempts = 0;
+  const { page, calls, storage } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', {
+    get: async () => { throw { statusCode: 404 }; },
+    post: async (_, body) => { if (++attempts === 1) throw new Error('timeout'); return pendingWithdrawal(body.requestKey); }
+  });
+  readyAdminWithdrawal(page);page.updateOrderSelection(['365088797156708352']);
+  await page.withdrawSelectedOrders();
+  const original = page.data.pendingAdminRequest;
+  await page.queryAdminWithdrawal();await page.clearMissingAdminWithdrawal();
+  assert.equal(page.data.pendingAdminRequest.requestKey, original.requestKey);
+  assert.ok(storage.get('adminManagerWithdrawal:42:99'));
+  page.withdrawalOrderChange({ detail: { value: ['365088797156708353'] } });
+  await page.withdrawSelectedOrders();
+  const posts = calls.filter(call => call.method === 'post');
+  assert.equal(posts.length, 2);assert.equal(posts[0].data.requestKey, posts[1].data.requestKey);
+  assert.deepEqual(Array.from(posts[1].data.orderIds), ['365088797156708352']);
+});
+
+test('管理员已受理或查询未知的原申请不会重提，恢复和查看只GET', async () => {
+  const key = 'mw_admin_recover_123456789';
+  for (const unknown of [false, true]) {
+    const { page, calls } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', {
+      get: async () => { if (unknown) throw new Error('network'); return pendingWithdrawal(key); }
+    });
+    readyAdminWithdrawal(page);page.setData({ pendingAdminRequest: { requestKey: key, orderIds: ['365088797156708352'] } });
+    await page.withdrawSelectedOrders();await page.clearMissingAdminWithdrawal();
+    assert.equal(calls.filter(call => call.method === 'post').length, 0);
+    assert.equal(page.data.pendingAdminRequest.requestKey, key);
+  }
+});
+
+test('管理员取消或存储失败不提交资金请求，非管理员不能代提或改开关', async () => {
+  const { page, calls, wx } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js');
+  readyAdminWithdrawal(page);page.updateOrderSelection(['365088797156708352']);
+  wx.showModal = options => options.success({ confirm: false });
+  await page.withdrawSelectedOrders();assert.equal(calls.length, 0);
+  wx.showModal = options => options.success({ confirm: true });
+  wx.setStorageSync = () => { throw new Error('存储失败'); };
+  await page.withdrawSelectedOrders();assert.equal(calls.length, 0);
+  const denied = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { manager: true });
+  readyAdminWithdrawal(denied.page);denied.page.updateOrderSelection(['365088797156708352']);
+  await denied.page.withdrawSelectedOrders();await denied.page.toggleSelfWithdrawal({ detail: { value: true } });
+  assert.equal(denied.calls.length, 0);assert.match(denied.page.data.error, /仅管理员/);
+});
+
+test('管理员明确拒绝且查询404才可重新选单，重试超时会撤销拒绝标记', async () => {
+  let attempts = 0;
+  const { page, storage } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', {
+    get: async () => { throw { statusCode: 404 }; },
+    post: async () => { if (++attempts === 1) throw { statusCode: 400, message: '订单已不合格' }; throw new Error('timeout'); }
+  });
+  readyAdminWithdrawal(page);page.updateOrderSelection(['365088797156708352']);
+  await page.withdrawSelectedOrders();assert.equal(page.data.pendingAdminRequest.rejected, true);
+  await page.queryAdminWithdrawal();await page.clearMissingAdminWithdrawal();
+  assert.equal(page.data.pendingAdminRequest, null);assert.equal(storage.get('adminManagerWithdrawal:42:99'), null);
+  page.updateOrderSelection(['365088797156708353']);await page.withdrawSelectedOrders();
+  assert.equal(page.data.pendingAdminRequest.rejected, false);
+  await page.clearMissingAdminWithdrawal();assert.ok(page.data.pendingAdminRequest);
+});
+
+test('自助开关关闭会拦住负责人新提交，已有申请仍可查询', async () => {
+  const { page, calls } = pageHarness('../../pages/managerIncome/managerIncome.js', { manager: true });
+  readyToWithdraw(page);page.setData({ 'income.selfWithdrawalEnabled': false });
+  await page.withdrawAll();assert.equal(calls.length, 0);assert.match(page.data.error, /关闭自助提现/);
+  const key = 'mw_disabled_read_12345678';
+  page.setData({ pendingRequestKey: key });
+  page.acceptRequest(pendingWithdrawal(key));
+  assert.equal(page.data.currentRequest.status, 'PROCESSING');
+});
+
+test('管理员开关请求单独作用于负责人，取消或接口失败会恢复显示状态', async () => {
+  const { page, calls, wx } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { put: async () => { throw new Error('保存失败'); } });
+  readyAdminWithdrawal(page);page.setData({ selfWithdrawalChecked: false });
+  wx.showModal = options => options.success({ confirm: false });
+  await page.toggleSelfWithdrawal({ detail: { value: true } });
+  assert.equal(calls.length, 0);assert.equal(page.data.selfWithdrawalChecked, false);
+  wx.showModal = options => options.success({ confirm: true });
+  await page.toggleSelfWithdrawal({ detail: { value: true } });
+  assert.equal(calls[0].url, '/stall-managers/99/self-withdrawal');
+  assert.deepEqual(Object.keys(calls[0].data), ['enabled']);assert.equal(calls[0].data.enabled, true);
+  assert.equal(page.data.selfWithdrawalChecked, false);
+});
 function readyToWithdraw(page) {
   page.setData({ profile: { userId: '42', active: false }, income: { profitSharingEnabled: true, manualWithdrawalAvailable: '20' } });
   page.restoreRequestPointer();
@@ -1806,7 +1929,7 @@ test('by-key查询网络失败不会POST也不换key，不同POST返回key保留
   assert.match(mismatch.page.data.error, /不一致/);
 });
 
-test('申请记录一基分页和逐单状态只来自服务器，管理页无代本人提现按钮', async () => {
+test('申请记录一基分页和逐单状态只来自服务器，管理页使用独立选单提现入口', async () => {
   const { page, calls } = pageHarness('../../pages/managerIncome/managerIncome.js', { manager: true,
     get: async (_, params) => ({ content: [pendingWithdrawal('mw_list_key_123456789', { id: String(params.page) })], totalPages: 2 }) });
   page.setData({ tab: 'requests' });
@@ -1823,6 +1946,7 @@ test('申请记录一基分页和逐单状态只来自服务器，管理页无�
   assert.doesNotMatch(own, /data-field="amount"|data-field="openId"|data-field="realName"/);
   const admin = fs.readFileSync(path.resolve(__dirname, '../../pages/stallManagerDetail/stallManagerDetail.wxml'), 'utf8');
   assert.doesNotMatch(admin, /bindtap="withdrawAll"/);
-  assert.match(admin, /本人点击提现/);
+  assert.match(admin, /bindtap="withdrawSelectedOrders"/);
+  assert.match(admin, /bindchange="toggleSelfWithdrawal"/);
   assert.doesNotMatch(admin, /自动分账会|自动分账功能/);
 });

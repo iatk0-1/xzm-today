@@ -22,8 +22,9 @@ function harness({ get, post, confirm = true } = {}) {
         return get ? get(url, params) : { content: [], totalElements: 0, totalPages: 0 };
       },
       async post(url, body) { calls.push({ method: 'post', url, body }); return post && post(url, body); }
-    } : name.endsWith('/managerFinance') ? { ...finance, confirmAction: async () => confirm } : {},
-    wx: { showToast() {}, stopPullDownRefresh() {} }, console
+    } : name.endsWith('/managerFinance') ? { ...finance, confirmAction: async () => confirm }
+      : name.endsWith('/auth') ? { isAdmin: () => true, getUserInfo: () => ({ userId: '42' }) } : {},
+    wx: { showToast() {}, stopPullDownRefresh() {}, getStorageSync() { return null; } }, console
   });
   const page = { ...config, data: structuredClone(config.data), _authorized: true };
   page.setData = patch => Object.assign(page.data, patch);

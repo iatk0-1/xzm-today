@@ -28,16 +28,17 @@
     <view class="title">提现全部当前合格佣金</view>
     <view class="amount">¥{{income.manualWithdrawalAvailable || '0.00'}}</view>
     <view class="muted">已下线负责人仍可提取原归属历史佣金。超过30天、历史非分账或其它不合格佣金保留，由管理员登记线下结算。</view>
-    <button wx:if="{{!pendingRequestKey}}" class="primary" loading="{{busy}}" disabled="{{busy || !income.profitSharingEnabled || income.manualWithdrawalAvailable <= 0}}" bindtap="withdrawAll">确认提现全部合格佣金</button>
+    <view class="error" wx:if="{{income.selfWithdrawalEnabled === false}}">管理员已关闭自助提现，请联系管理员办理。已提交的申请仍可查询。</view>
+    <button wx:if="{{!pendingRequestKey}}" class="primary" loading="{{busy}}" disabled="{{busy || income.selfWithdrawalEnabled === false || !income.profitSharingEnabled || income.manualWithdrawalAvailable <= 0}}" bindtap="withdrawAll">确认提现全部合格佣金</button>
     <view wx:if="{{pendingRequestKey}}" class="muted">原申请编号 {{pendingRequestKey}}。结果不明确时继续查询，不会生成新申请。</view>
     <button wx:if="{{pendingRequestKey}}" disabled="{{busy}}" bindtap="queryRequest">查询原提现申请</button>
-    <button wx:if="{{pendingRequestKey && requestMissing}}" disabled="{{busy}}" bindtap="withdrawAll">使用同一申请编号重试提交</button>
+    <button wx:if="{{pendingRequestKey && requestMissing}}" disabled="{{busy || income.selfWithdrawalEnabled === false}}" bindtap="withdrawAll">使用同一申请编号重试提交</button>
     <view wx:if="{{requestUncertain}}" class="error">提交或查询结果暂不确定。原申请编号已保留，请继续核对原申请。</view>
   </view>
   <view class="card" wx:if="{{currentRequest}}">
     <view class="title">本次提现 · {{currentRequest.statusLabel}}</view>
     <view class="muted">申请 {{currentRequest.id}} · {{currentRequest.requestKey}}</view>
-    <view class="muted">申请时间 {{currentRequest.requestedTime}}</view>
+    <view class="muted">{{currentRequest.sourceLabel}} · 申请时间 {{currentRequest.requestedTime}}</view>
     <view>申请快照 ¥{{currentRequest.requestedAmount}} · 服务端已到账 ¥{{currentRequest.settledAmount}}</view>
     <view>处理中 ¥{{currentRequest.heldAmount}} · 快照未到账 ¥{{currentRequest.unpaidAmount}}</view>
     <view class="muted">快照未到账是原申请金额与已到账的差额，含后来退款、售后或欠款抵扣的调整，不代表仍然应付。实际未结算佣金以上方收入账本为准；逐单查看原因。</view>
@@ -60,7 +61,7 @@
   <view wx:if="{{tab === 'requests'}}" class="card" wx:for="{{rows}}" wx:key="id">
     <view>申请 {{item.id}} · {{item.statusLabel}}</view>
     <view>快照 ¥{{item.requestedAmount}} · 已到账 ¥{{item.settledAmount}} · 处理中 ¥{{item.heldAmount}} · 快照未到账 ¥{{item.unpaidAmount}}</view>
-    <view class="muted">申请时间 {{item.requestedTime}}</view>
+    <view class="muted">{{item.sourceLabel}} · 申请时间 {{item.requestedTime}}</view>
     <view class="muted">申请编号 {{item.requestKey}}</view>
     <button disabled="{{busy}}" data-id="{{item.id}}" bindtap="queryRequest">查看逐订单结果</button>
   </view>

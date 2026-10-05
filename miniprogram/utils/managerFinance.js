@@ -39,7 +39,7 @@ function profitSharingRow(row) {
 function withdrawalRequestRow(row) {
   const labels = { PROCESSING: '提现处理中', SUCCESS: '全部到账', PARTIAL: '部分到账，请核对快照差额', BLOCKED: '本次未付款，请查看原因' };
   const itemLabels = { WAITING: '申请已记录，等待处理', PROCESSING: '微信处理中', SUCCESS: '已到账', CLOSED: '该笔未付，分账已关闭', BLOCKED: '本单未付，暂不符合条件' };
-  return { ...row, requestedTime: displayTime(row.createdAt), statusLabel: labels[row.status] || '结果待查询',
+  return { ...row, sourceLabel: row.source === 'ADMIN' ? '管理员代发起' : '负责人本人发起', requestedTime: displayTime(row.createdAt), statusLabel: labels[row.status] || '结果待查询',
     terminal: ['SUCCESS', 'PARTIAL', 'BLOCKED'].includes(row.status) && Number(row.heldAmount || 0) === 0,
     items: (row.items || []).map(item => ({ ...item, deadlineLabel: item.deadline ? displayTime(item.deadline) : '不适用',
       statusLabel: itemLabels[item.status] || '结果待查询' })) };
@@ -73,7 +73,7 @@ const auditLabels = {
   OFFLINE_SETTLED: '登记线下付款', OFFLINE_REVERSED: '冲正线下付款登记', DEBT_OFFSET: '抵扣退款欠款', DEBT_OFFSET_RELEASED: '解除退款欠款抵扣',
   WITHDRAWAL_SUCCESS: '历史转账到账', WITHDRAWAL_FAIL: '历史转账失败', WITHDRAWAL_CANCELLED: '历史转账撤销',
   WITHDRAWAL_MANUAL_SUCCESS: '人工核验历史转账已付款', WITHDRAWAL_MANUAL_CANCELLED: '人工核验历史转账未付款',
-  PROFIT_SHARING_RECEIVER_REGISTERED: '登记分账接收关系', PROFIT_SHARING_WITHDRAWAL_REQUESTED: '负责人申请提现',
+  PROFIT_SHARING_RECEIVER_REGISTERED: '登记分账接收关系', PROFIT_SHARING_WITHDRAWAL_REQUESTED: '发起佣金提现', SELF_WITHDRAWAL_CHANGED: '调整负责人自助提现开关',
   PROFIT_SHARING_CREATED: '发起微信分账', PROFIT_SHARING_WITHDRAWAL_ITEM_BLOCKED: '提现订单暂不符合分账条件',
   PROFIT_SHARING_SUCCESS: '微信分账到账', PROFIT_SHARING_CLOSED: '微信分账关闭',
   PROFIT_SHARING_MANUAL_SUCCESS: '人工核验分账已付款', PROFIT_SHARING_MANUAL_CLOSED: '人工核验分账未付款',
