@@ -15,6 +15,7 @@ Page({
     rules: [], editing: false, id: '', name: '', enabled: true, segments: [],
     activeIndex: 0, keys: ['x', '(', ')', '÷', '7', '8', '9', '×', '4', '5', '6', '-', '1', '2', '3', '+', '0', '.'],
     trialCost: '', trialPrice: '', calculatorOpen: false,
+    profitRule: false, minimumProfit: '10', profitPercent: '10', trialProfit: '', trialMarkup: '',
     formulaCursor: 0, formulaCells: [],
     editingBoundary: '', boundaryValue: '', boundaryError: '', error: '', saving: false,
     ruleBusy: '',
@@ -52,8 +53,11 @@ Page({
     return (rules || []).filter(rule => !rule.deleted).map(rule => {
       const first = finance.segmentsWithLabels(rule.segments)[0];
       return { ...rule,
-        firstCondition: first ? first.label + (first.upper == null ? ' 无上限' : '') : '暂无条件公式',
-        firstFormula: first ? first.formula : '暂无价格公式'
+        firstCondition: rule.minimumProfit != null ? '预期利润取 ' + rule.minimumProfit + ' 元与成本的'
+          + (rule.profitPercent == null ? 10 : rule.profitPercent) + '%中的较大值'
+          : first ? first.label + (first.upper == null ? ' 无上限' : '') : '暂无条件公式',
+        firstFormula: rule.minimumProfit != null ? '(成本 + 预期利润) ÷ 0.98'
+          : first ? first.formula : '暂无价格公式'
       };
     });
   },
@@ -107,12 +111,15 @@ Page({
   },
 
   input(event) {
+    this._previewRequest = (this._previewRequest || 0) + 1;
     this.setData({ [event.currentTarget.dataset.field]: event.detail.value, trialPrice: '' });
   },
 
   newRule() {
+    this._previewRequest = (this._previewRequest || 0) + 1;
     this.setData({
       editing: true, id: '', name: '', enabled: true, activeIndex: 0, trialPrice: '',
+      profitRule: false, minimumProfit: '10', profitPercent: '10',
       calculatorOpen: false, editingBoundary: '', boundaryValue: '', boundaryError: '', error: '',
       segments: finance.segmentsWithLabels([{
         lower: 0, upper: null, lowerInclusive: false, upperInclusive: false, formula: 'x'
@@ -120,11 +127,24 @@ Page({
     });
   },
 
+  newProfitRule() {
+    this.newRule();
+    this.setData({ profitRule: true, name: '利润保底规则', minimumProfit: '10', profitPercent: '10', segments: [] });
+  },
+
+  chooseProfit(event) {
+    this.input({ currentTarget: { dataset: { field: 'minimumProfit' } },
+      detail: { value: String(event.currentTarget.dataset.amount) } });
+  },
+
   edit(event) {
     const rule = this.data.rules[Number(event.currentTarget.dataset.index)];
     if (!rule) return;
+    this._previewRequest = (this._previewRequest || 0) + 1;
     this.setData({
       editing: true, id: String(rule.id), name: rule.name, enabled: rule.enabled,
+      profitRule: rule.minimumProfit != null, minimumProfit: String(rule.minimumProfit == null ? '10' : rule.minimumProfit),
+      profitPercent: String(rule.profitPercent == null ? '10' : rule.profitPercent),
       segments: finance.segmentsWithLabels(rule.segments), activeIndex: 0, trialPrice: '',
       calculatorOpen: false, editingBoundary: '', boundaryValue: '', boundaryError: '', error: ''
     });
@@ -133,8 +153,11 @@ Page({
   copy(event) {
     const rule = this.data.rules[Number(event.currentTarget.dataset.index)];
     if (!rule) return;
+    this._previewRequest = (this._previewRequest || 0) + 1;
     this.setData({
       editing: true, id: '', name: rule.name, enabled: rule.enabled,
+      profitRule: rule.minimumProfit != null, minimumProfit: String(rule.minimumProfit == null ? '10' : rule.minimumProfit),
+      profitPercent: String(rule.profitPercent == null ? '10' : rule.profitPercent),
       segments: finance.segmentsWithLabels((rule.segments || []).map(segment => ({ ...segment }))),
       activeIndex: 0, trialPrice: '', calculatorOpen: false,
       formulaCursor: 0, formulaCells: [], editingBoundary: '', boundaryValue: '',
@@ -332,14 +355,30 @@ Page({
 
   async preview() {
     if (!this.finishBoundaryEdit()) return;
+    const request = this._previewRequest = (this._previewRequest || 0) + 1;
+    this.setData({ trialPrice: '', trialProfit: '', trialMarkup: '' });
     try {
       const result = await api.post('/pricing-rules/preview', {
-        segments: this.cleanSegments(), cost: finance.money(this.data.trialCost)
+        ...this.pricingSettings(), cost: finance.money(this.data.trialCost)
       });
-      this.setData({ trialPrice: result.price, error: '' });
+      if (request !== this._previewRequest) return;
+      this.setData({ trialPrice: result.price,
+        trialProfit: result.expectedProfit == null ? '' : String(result.expectedProfit),
+        trialMarkup: result.markup == null ? '' : Number(result.markup).toFixed(2), error: '' });
     } catch (error) {
-      this.fail(error);
+      if (request === this._previewRequest) this.fail(error);
     }
+  },
+
+  pricingSettings() {
+    if (!this.data.profitRule) return { segments: this.cleanSegments() };
+    let minimumProfit;
+    try { minimumProfit = finance.money(this.data.minimumProfit); }
+    catch (error) { throw new Error('最低预期利润：' + error.message); }
+    let profitPercent;
+    try { profitPercent = finance.money(this.data.profitPercent, true); }
+    catch (_) { throw new Error('利润比例须填写非负数字，最多两位小数且不超过99999999.99%'); }
+    return { minimumProfit, profitPercent };
   },
 
   cleanSegments() {
@@ -366,7 +405,7 @@ Page({
     try {
       const body = {
         name,
-        enabled: this.data.enabled, segments: this.cleanSegments()
+        enabled: this.data.enabled, ...this.pricingSettings()
       };
       if (this.data.id) await api.put('/pricing-rules/' + this.data.id, body);
       else await api.post('/pricing-rules', body);
@@ -397,6 +436,7 @@ Page({
   },
 
   close() {
+    this._previewRequest = (this._previewRequest || 0) + 1;
     this.setData({ editing: false, calculatorOpen: false, editingBoundary: '', boundaryValue: '', boundaryError: '' });
   },
 

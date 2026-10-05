@@ -5,6 +5,7 @@
 <view class="title">{{stallId ? '为档口分配规则：' + stallName : '计价规则管理'}}</view>
 <view wx:if="{{stallId}}" class="assignment-summary">当前计价规则：{{assignmentLoaded ? (currentRule ? currentRule.name : '未分配') : '加载中...'}}<text wx:if="{{currentRule.deleted}}">（已删除）</text><text wx:elif="{{currentRule && !currentRule.enabled}}">（已禁用）</text></view>
 <button class="primary" bindtap="newRule">新增计价规则</button>
+<button bindtap="newProfitRule">新增利润保底规则</button>
 <button wx:if="{{stallId && currentRule}}" bindtap="assign" disabled="{{assigning || !!ruleBusy}}">解除档口规则</button>
 </view>
 <view class="card" wx:for="{{rules}}" wx:key="id">
@@ -29,8 +30,25 @@
 <input placeholder="规则名称" value="{{name}}" data-field="name" bindinput="input"/>
 <view class="row">启用<switch checked="{{enabled}}" bindchange="enabled"/>
 </view>
-<view class="muted">覆盖所有大于零的成本。点击符号切换包含关系，点击数字修改边界。将“无上限”改为数字后自动新增下一段，并复制当前价格公式。</view>
+<view wx:if="{{!profitRule}}" class="muted">覆盖所有大于零的成本。点击符号切换包含关系，点击数字修改边界。将“无上限”改为数字后自动新增下一段，并复制当前价格公式。</view>
 </view>
+<view wx:if="{{profitRule}}" class="card">
+<view class="field-label">最低预期利润（元）</view>
+<input type="digit" placeholder="例如：10、20、30" value="{{minimumProfit}}" data-field="minimumProfit" bindinput="input"/>
+<view class="profit-presets">
+<button data-amount="10" bindtap="chooseProfit">10元</button>
+<button data-amount="20" bindtap="chooseProfit">20元</button>
+<button data-amount="30" bindtap="chooseProfit">30元</button>
+</view>
+<view class="field-label">成本利润比例（%）</view>
+<input type="digit" placeholder="例如：10 表示成本的10%" value="{{profitPercent}}" data-field="profitPercent" bindinput="input"/>
+<view class="muted">利润和比例都可填写，最多两位小数。比例填0时按最低预期利润计算。</view>
+<view class="profit-formula">预期利润 z = max(最低预期利润, 成本 × 利润比例 ÷ 100)</view>
+<view class="profit-formula">加价 y = (z + 0.02 × 成本) ÷ 0.98</view>
+<view class="profit-formula">实际售价 = 成本 + 加价 = (成本 + z) ÷ 0.98</view>
+<view class="muted">每条SKU按自身成本动态计算。售价中的2%预留给平台抽成及预期其他成本，售价保留两位小数。</view>
+</view>
+<block wx:if="{{!profitRule}}">
 <view class="card" wx:for="{{segments}}" wx:key="index">
 <view class="field-label">条件公式</view>
 <view class="condition-row">
@@ -51,10 +69,12 @@
 </view>
 <button wx:if="{{index > 0}}" bindtap="merge" data-index="{{index}}">合并至上一段</button>
 </view>
+</block>
 <view class="card">
 <input type="digit" placeholder="试算成本 x" value="{{trialCost}}" data-field="trialCost" bindinput="input"/>
 <button bindtap="preview">后端试算</button>
 <view class="amount" wx:if="{{trialPrice}}">售价 ¥{{trialPrice}}</view>
+<view wx:if="{{profitRule && trialPrice}}" class="muted">预期利润 ¥{{trialProfit}} · 加价 ¥{{trialMarkup}}</view>
 <button class="primary" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存规则版本</button>
 <button bindtap="close">返回列表</button>
 </view>
