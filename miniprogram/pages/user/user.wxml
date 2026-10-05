@@ -90,6 +90,10 @@
       <text>计价规则管理</text>
       <text class="arrow">></text>
     </view>
+    <view class="menu-item commission-configs-entry" wx:if="{{isAdmin}}" bindtap="goToCommissionConfigs">
+      <text>佣金配置</text>
+      <text class="arrow">></text>
+    </view>
     <view class="menu-item manager-income-entry" wx:if="{{isStallManager}}" bindtap="goToManagerIncome">
       <text>我的收入与提现</text>
       <text class="arrow">></text>

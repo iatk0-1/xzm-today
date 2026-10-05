@@ -332,6 +332,11 @@ Page({
     wx.navigateTo({ url: '/pages/pricingRules/pricingRules' });
   },
 
+  goToCommissionConfigs: function() {
+    if (!auth.isAdmin()) return;
+    wx.navigateTo({ url: '/pages/commissionConfigs/commissionConfigs' });
+  },
+
   goToManagerIncome: function() {
     if (!auth.isStallManager()) return;
     wx.navigateTo({ url: '/pages/managerIncome/managerIncome' });

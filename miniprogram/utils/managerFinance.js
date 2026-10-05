@@ -69,7 +69,7 @@ function cents(value) {
   return Math.round(Number(money(value, true)) * 100);
 }
 const auditLabels = {
-  COMMISSION_SET: '设置商品佣金', HISTORY_CONFIRMED: '确认历史应付佣金', HISTORY_EXCLUDED: '确认历史不计佣',
+  COMMISSION_SET: '设置商品佣金', COMMISSION_CONFIG_APPLIED: '全局佣金配置生效', HISTORY_CONFIRMED: '确认历史应付佣金', HISTORY_EXCLUDED: '确认历史不计佣',
   OFFLINE_SETTLED: '登记线下付款', OFFLINE_REVERSED: '冲正线下付款登记', DEBT_OFFSET: '抵扣退款欠款', DEBT_OFFSET_RELEASED: '解除退款欠款抵扣',
   WITHDRAWAL_SUCCESS: '历史转账到账', WITHDRAWAL_FAIL: '历史转账失败', WITHDRAWAL_CANCELLED: '历史转账撤销',
   WITHDRAWAL_MANUAL_SUCCESS: '人工核验历史转账已付款', WITHDRAWAL_MANUAL_CANCELLED: '人工核验历史转账未付款',

@@ -27,6 +27,7 @@
     "pages/stallManagers/stallManagers",
     "pages/stallManagerDetail/stallManagerDetail",
     "pages/pricingRules/pricingRules",
+    "pages/commissionConfigs/commissionConfigs",
     "pages/managerIncome/managerIncome",
     "pages/adminChangeRequestManage/adminChangeRequestManage",
     "pages/adminCatalogProducts/adminCatalogProducts",

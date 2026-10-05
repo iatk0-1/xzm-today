@@ -1,0 +1,36 @@
+<view class="page">
+  <view class="title">佣金配置</view>
+  <view class="hint">固定金额与利润比例二选一，同时只能一条配置生效。商品可单独修改佣金，下次配置生效时统一覆盖。</view>
+  <view class="error" wx:if="{{error}}">{{error}}</view>
+  <view class="card" wx:if="{{editing}}">
+    <view class="card-title">{{id ? '编辑配置' : '新增配置'}}</view>
+    <view class="label">配置名称</view>
+    <input maxlength="100" disabled="{{busy}}" placeholder="填写配置名称" value="{{name}}" data-field="name" bindinput="input" />
+    <radio-group class="modes" bindchange="changeMode">
+      <label><radio value="fixed" checked="{{mode === 'fixed'}}" disabled="{{busy}}" />固定金额</label>
+      <label><radio value="percent" checked="{{mode === 'percent'}}" disabled="{{busy}}" />利润比例</label>
+    </radio-group>
+    <view class="label">{{mode === 'fixed' ? '每件 / 每套佣金（元）' : '利润佣金比例（%）'}}</view>
+    <input type="digit" disabled="{{busy}}" placeholder="{{mode === 'fixed' ? '金额允许0，最多两位小数' : '填写0到100，最多两位小数'}}" value="{{value}}" data-field="value" bindinput="input" />
+    <view class="hint" wx:if="{{mode === 'percent'}}">佣金＝（SKU售价－SKU成本）×比例；套装按整套售价减整套成本。利润不大于0时佣金为0，按每件 / 每套四舍五入到分。下单前须补齐成本，运费不参与计算。</view>
+    <view class="hint" wx:if="{{editingEnabled}}">当前配置已生效，修改后须保存并生效，以同步商品佣金。</view>
+    <view class="actions">
+      <button disabled="{{busy}}" bindtap="cancelEdit">取消</button>
+      <button wx:if="{{!editingEnabled}}" disabled="{{busy}}" data-activate="false" bindtap="save">仅保存</button>
+    </view>
+    <button class="primary" loading="{{busy}}" disabled="{{busy}}" data-activate="true" bindtap="save">保存并生效</button>
+  </view>
+  <block wx:else>
+    <button class="primary" disabled="{{busy || loading}}" bindtap="newConfig">新增佣金配置</button>
+    <view class="hint" wx:if="{{loading}}">加载中…</view>
+    <view class="empty" wx:if="{{!loading && !configs.length}}">暂无配置，已有商品的单独佣金继续使用。</view>
+    <view class="card" wx:for="{{configs}}" wx:key="id">
+      <view class="heading"><view class="card-title">{{item.name}}</view><text class="status {{item.enabled ? 'active' : ''}}">{{item.enabled ? '已生效' : '未生效'}}</text></view>
+      <view class="value">{{item.valueLabel}}</view>
+      <view class="actions">
+        <button disabled="{{busy}}" data-id="{{item.id}}" bindtap="editConfig">编辑</button>
+        <button class="primary" disabled="{{busy}}" data-id="{{item.id}}" bindtap="activateConfig">{{item.enabled ? '重新生效并覆盖' : '设为生效'}}</button>
+      </view>
+    </view>
+  </block>
+</view>

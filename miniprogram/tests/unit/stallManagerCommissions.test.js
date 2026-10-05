@@ -132,6 +132,18 @@ test('单件佣金允许0、保留雪花ID且不修改其他商品或勾选状�
   assert.equal(page.data.commissionEdit, null);
 });
 
+test('单独修改比例商品后切为固定佣金并清除全局配置来源', async () => {
+  const { page } = harness();
+  page.setData({ rows: [{ productId: '1', name: '比例商品', unitCommission: null, profitPercent: '10.00', commissionConfigId: '8' }] });
+  page.refresh = async () => {};
+  page.editCommission(event('1'));
+  page.setData({ singleCommission: '3' });
+  await page.saveSingleCommission();
+  assert.equal(page.data.rows[0].unitCommission, '3.00');
+  assert.equal(page.data.rows[0].profitPercent, null);
+  assert.equal(page.data.rows[0].commissionConfigId, null);
+});
+
 test('单件佣金非法金额和取消确认不请求接口，保存失败保留表单且禁止重复提交', async () => {
   const pending = deferred();
   const { page, calls } = harness({ put: () => pending.promise });

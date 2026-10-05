@@ -50,7 +50,7 @@
       <view class="commission-edit-name">{{commissionEdit.name}}</view>
       <view class="error" wx:if="{{commissionError}}">{{commissionError}}</view>
       <input type="digit" disabled="{{busy}}" placeholder="每件佣金（元，允许0）" value="{{singleCommission}}" data-field="singleCommission" bindinput="input" bindconfirm="saveSingleCommission" />
-      <view class="muted">全部SKU统一，仅影响后续下单。</view>
+      <view class="muted">全部SKU统一，仅影响后续下单。单独修改后使用固定金额，下次全局配置生效时统一覆盖。</view>
       <view class="assignment-actions">
         <button disabled="{{busy}}" bindtap="closeCommission">取消</button>
         <button class="primary" disabled="{{busy}}" bindtap="saveSingleCommission">{{busy ? '保存中...' : '确认保存'}}</button>
@@ -144,7 +144,7 @@
         </view>
         <view class="commission-product-bottom">
           <text>每件佣金</text>
-          <button class="commission-amount" disabled="{{busy}}" bindtap="editCommission" data-id="{{item.productId}}">{{item.unitCommission == null ? '未配置' : '¥' + item.unitCommission}}<text class="commission-edit-label">修改 ›</text></button>
+          <button class="commission-amount" disabled="{{busy}}" bindtap="editCommission" data-id="{{item.productId}}">{{item.profitPercent != null ? '利润的 ' + item.profitPercent + '%' : (item.unitCommission == null ? '未配置' : '¥' + item.unitCommission)}}<text class="commission-edit-label">修改 ›</text></button>
         </view>
       </view>
     </checkbox-group>

@@ -1,0 +1,22 @@
+page { background:#f5f6f8; color:#26313b; }
+.page { padding:28rpx 24rpx 64rpx; }
+.title { font-size:38rpx; font-weight:600; margin-bottom:20rpx; }
+.hint { font-size:25rpx; color:#747a83; line-height:1.7; margin:16rpx 0 24rpx; }
+.error { color:#b54728; background:#fff1e8; padding:20rpx; border-radius:10rpx; margin-bottom:20rpx; overflow-wrap:break-word; }
+.card { background:white; border-radius:14rpx; padding:26rpx; margin:24rpx 0; }
+.card-title { font-size:30rpx; font-weight:600; overflow-wrap:break-word; }
+.heading { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }
+.heading .card-title { flex:1; min-width:0; }
+.status { flex-shrink:0; font-size:23rpx; color:#747a83; background:#eef1f4; border-radius:6rpx; padding:6rpx 12rpx; }
+.status.active { color:#246447; background:#e8f4ed; }
+.value { font-size:31rpx; margin:24rpx 0; }
+.label { font-size:26rpx; margin:24rpx 0 14rpx; }
+input { background:#f5f6f8; height:84rpx; border-radius:8rpx; padding:0 20rpx; font-size:28rpx; }
+.modes { display:flex; flex-wrap:wrap; gap:28rpx; margin:28rpx 0; font-size:27rpx; }
+.modes label { display:flex; align-items:center; }
+.actions { display:flex; gap:16rpx; margin:22rpx 0; }
+button { font-size:27rpx; border-radius:9rpx; }
+.actions button { flex:1; margin:0; padding:0 12rpx; }
+.primary { background:#26313b; color:white; }
+button[disabled] { opacity:0.5; }
+.empty { text-align:center; color:#747a83; font-size:27rpx; padding:60rpx 12rpx; }

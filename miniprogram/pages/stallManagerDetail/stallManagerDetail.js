@@ -386,7 +386,7 @@ Page({
       const productId = this.data.commissionEdit.productId;
       if (!await finance.confirmAction('确认修改每件佣金', this.data.commissionEdit.name + '：每件佣金 ¥' + amount + '，仅影响后续下单，全部SKU统一。')) return false;
       await api.put(this.base('commissions'), { productIds: [productId], unitCommission: amount });
-      this.setData({ rows: this.data.rows.map(row => String(row.productId) === productId ? { ...row, unitCommission: amount } : row),
+      this.setData({ rows: this.data.rows.map(row => String(row.productId) === productId ? { ...row, unitCommission: amount, profitPercent: null, commissionConfigId: null } : row),
         commissionEdit: null, singleCommission: '', commissionError: '' });
     });
   },
