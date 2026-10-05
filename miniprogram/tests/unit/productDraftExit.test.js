@@ -50,7 +50,7 @@ function harness(file, { save, record, manager = false } = {}) {
           ensureAuthenticated: async () => {}, isAdmin: () => !manager, isStallManager: () => manager,
           getUserInfo: () => ({ userId: '42' })
         };
-        if (name.endsWith('/productPricing') || name.endsWith('/productDraftExit') || name.endsWith('/managerFinance') || name.endsWith('/productSchedule')) {
+        if (name.endsWith('/productPricing') || name.endsWith('/productDraftExit') || name.endsWith('/managerFinance') || name.endsWith('/productSchedule') || name.endsWith('/purchaseNotice')) {
           return load(path.resolve(path.dirname(filename), name + '.js'));
         }
         if (name.endsWith('/stock')) return { UNLIMITED_THRESHOLD: 999999999 };
@@ -257,4 +257,23 @@ test('草稿媒体上传失败拒绝整次保存，不提交缺失图片的草�
     async (file, type) => { types.push(type); return 'https://example.com/' + types.length; });
   assert.deepEqual(types, ['video/mp4', 'image/jpeg']);
   assert.equal(events.length, 1);
+});
+
+
+test('购买须知改动参与草稿保存与退出保护，旧草稿恢复默认文案', async () => {
+  const { DEFAULT_PURCHASE_NOTICE } = require('../../utils/purchaseNotice');
+  const { page, events } = harness('../../pages/admin/admin.js');
+  page.setData({ colors: [] });
+  assert.equal(page.hasFormContent(), false);
+  await page.onLoad({});
+  assert.equal(page.data.purchaseNotice, DEFAULT_PURCHASE_NOTICE);
+  page.onInput({ currentTarget: { dataset: { field: 'purchaseNotice' } }, detail: { value: '自定义购买须知' } });
+  assert.equal(page.hasUnsavedDraftChanges(), true);
+  assert.equal(page.hasFormContent(), true);
+  await page.saveDraft();
+  assert.equal(events.find(event => event[0] === 'save')[1].purchaseNotice, '自定义购买须知');
+  await page.restoreDraft({ purchaseNotice: '恢复的购买须知' });
+  assert.equal(page.data.purchaseNotice, '恢复的购买须知');
+  await page.restoreDraft({ title: '旧草稿' });
+  assert.equal(page.data.purchaseNotice, DEFAULT_PURCHASE_NOTICE);
 });

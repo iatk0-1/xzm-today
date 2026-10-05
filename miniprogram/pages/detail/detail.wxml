@@ -93,6 +93,11 @@
     </swiper>
   </view>
 
+  <view class="purchase-notice-section" wx:if="{{product.purchaseNotice}}">
+    <view class="purchase-notice-title">购买须知</view>
+    <text class="purchase-notice-content" user-select="true">{{product.purchaseNotice}}</text>
+  </view>
+
   <view class="related-products-section" wx:if="{{relatedProducts.length > 0}}">
     <view class="section-title-eng" style="text-align: left; padding-left: 20px;">关联商品</view>
     <view class="related-grid">

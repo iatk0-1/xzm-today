@@ -323,6 +323,11 @@
     <view class="label">温馨提示 (Tip / Q&A)</view>
     <textarea id="warmtips-input" class="textarea-box" placeholder="例如：深色衣物首次洗涤可能轻微浮色，属正常现象..." value="{{warmTips}}" bindinput="onInput" data-field="warmTips" maxlength="-1" adjust-position="{{true}}" adjust-keyboard-to="cursor" cursor-spacing="140"></textarea>
   </view>
+
+  <view class="form-group">
+    <view class="label">购买须知</view>
+    <textarea id="purchase-notice-input" class="textarea-box purchase-notice-input" placeholder="请输入购买须知" value="{{purchaseNotice}}" bindinput="onInput" data-field="purchaseNotice" maxlength="-1" adjust-position="{{true}}" adjust-keyboard-to="cursor" cursor-spacing="140"></textarea>
+  </view>
   <view class="form-group">
     <view class="label">Lookbook 详情长图 (选填，多张)</view>
     <view class="multi-image-box">

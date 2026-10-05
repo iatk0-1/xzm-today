@@ -72,6 +72,7 @@ function loadPage(name, { fail = false, detail = {}, get } = {}) {
       };
       if (moduleName.endsWith('/auth')) return { isStallManager: () => false, ensureAuthenticated: async () => {} };
       if (moduleName.endsWith('/productSchedule')) return scheduleUtils;
+      if (moduleName.endsWith('/purchaseNotice')) return require('../../utils/purchaseNotice');
       if (moduleName.endsWith('/productPricing')) return { integrateProductPricing(page) {
         page.canManuallyPrice = () => true;
         page.productCost = () => null;

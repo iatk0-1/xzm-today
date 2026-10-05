@@ -26,6 +26,7 @@ function setup({ manager = true, userId = 8, saved, assigned = [], failPublish =
         page.productCost = value => require('../../utils/managerFinance').money(value);
         page.skuCost = value => require('../../utils/managerFinance').money(value);
       } };
+      if (name.endsWith('/purchaseNotice')) return require('../../utils/purchaseNotice');
       if (name.endsWith('/managerFinance')) return require('../../utils/managerFinance');
       if (name.endsWith('/auth')) return {
         ensureAuthenticated: async () => {}, isStallManager: () => manager,

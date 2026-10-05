@@ -8,6 +8,7 @@ const draft = require('../../utils/draft');
 const { integrateProductPricing } = require('../../utils/productPricing');
 const finance = require('../../utils/managerFinance');
 const { scheduleSummary } = require('../../utils/productSchedule');
+const { DEFAULT_PURCHASE_NOTICE, getPurchaseNotice } = require('../../utils/purchaseNotice');
 
 
 // 拖拽网格配置
@@ -40,6 +41,7 @@ const pageDefinition = {
     fabricCare: '',
     sizeChartTip: '',
     warmTips: '',
+    purchaseNotice: DEFAULT_PURCHASE_NOTICE,
 
     title: '',
     selectedStalls: [],
@@ -276,6 +278,7 @@ const pageDefinition = {
         fabricCare: product.fabricCare || '',
         sizeChartTip: product.sizeChartTip || '',
         warmTips: product.warmTips || '',
+        purchaseNotice: getPurchaseNotice(product.purchaseNotice),
         selectedStalls: [],
         selectedTags: [],
         lookbookImgs: product.lookbookImages || [],
@@ -510,6 +513,7 @@ const pageDefinition = {
         fabricCare: product.fabricCare || '',
         sizeChartTip: product.sizeChartTip || '',
         warmTips: product.warmTips || '',
+        purchaseNotice: getPurchaseNotice(product.purchaseNotice),
         selectedStalls: [],
         selectedTags: [],
         lookbookImgs: product.lookbookImages || [],
@@ -1695,7 +1699,7 @@ const pageDefinition = {
 
   submitProduct: async function() {
     const { mediaList, title, selectedStalls, selectedTags, skuList, lookbookImgs, detailImgs, manualRelated,
-            videoUrl, videoThumbPath, useVideoCover, shippingInfo, description, fabricCare, sizeChartTip, warmTips,
+            videoUrl, videoThumbPath, useVideoCover, shippingInfo, description, fabricCare, sizeChartTip, warmTips, purchaseNotice,
             publishOnSale, editId } = this.data;
 
     const schedule = this.data.productSchedule;
@@ -1829,6 +1833,7 @@ const pageDefinition = {
         fabricCare: fabricCare || null,
         sizeChartTip: sizeChartTip || null,
         warmTips: warmTips || null,
+        purchaseNotice: getPurchaseNotice(purchaseNotice),
         sizeCategoryId: this.data.currentSizeCategoryId || null,
         skus: skus,
         bundleGroups: null
@@ -2505,6 +2510,7 @@ const pageDefinition = {
       fabricCare: data.fabricCare,
       sizeChartTip: data.sizeChartTip,
       warmTips: data.warmTips,
+      purchaseNotice: data.purchaseNotice,
       mediaList: data.mediaList,
       lookbookImgs: data.lookbookImgs,
       detailImgs: data.detailImgs,
@@ -2619,6 +2625,7 @@ const pageDefinition = {
       fabricCare: safeGet(draftData, 'fabricCare', ''),
       sizeChartTip: safeGet(draftData, 'sizeChartTip', ''),
       warmTips: safeGet(draftData, 'warmTips', ''),
+      purchaseNotice: safeGet(draftData, 'purchaseNotice', DEFAULT_PURCHASE_NOTICE),
       mediaList: mediaList,
       lookbookImgs: safeGet(draftData, 'lookbookImgs', []),
       detailImgs: safeGet(draftData, 'detailImgs', []),
@@ -2667,6 +2674,7 @@ const pageDefinition = {
       (d.selectedTags && d.selectedTags.length > 0) ||
       (d.colors && d.colors.length > 0) ||
       d.description || d.fabricCare || d.sizeChartTip || d.warmTips ||
+      (d.purchaseNotice && d.purchaseNotice !== DEFAULT_PURCHASE_NOTICE) ||
       (d.manualRelated && d.manualRelated.length > 0) ||
       (d.lookbookImgs && d.lookbookImgs.length > 0) ||
       (d.isBundleMode && d.bundleGroups && d.bundleGroups.length > 0) ||

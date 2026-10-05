@@ -67,11 +67,36 @@
   </view>
 
   <view class="bottom-pay-bar">
-    <view class="pay-total">
-      <text class="pay-label">合计</text>
-      <text class="pay-price">¥ {{totalPrice}}</text>
+    <view class="pay-left">
+      <view class="pay-total">
+        <text class="pay-label">合计</text>
+        <text class="pay-price">¥ {{totalPrice}}</text>
+      </view>
+      <view class="purchase-notice-agreement">
+        <view class="agreement-toggle" bindtap="togglePurchaseNoticeAgreement">
+          <view class="agreement-radio {{purchaseNoticeAgreed ? 'checked' : ''}}">{{purchaseNoticeAgreed ? '✓' : ''}}</view>
+          <text>已阅读并同意</text>
+        </view>
+        <text class="agreement-link" catchtap="openPurchaseNotice">购买须知</text>
+      </view>
     </view>
-    <view class="btn-pay" bindtap="submitOrder">立即支付</view>
+    <view class="btn-pay {{!purchaseNoticeAgreed || !purchaseNoticeReady || submitting ? 'disabled' : ''}}" bindtap="submitOrder">{{submitting ? '支付处理中' : '立即支付'}}</view>
   </view>
 
+</view>
+
+<view class="purchase-notice-mask" wx:if="{{showPurchaseNotice}}" bindtap="closePurchaseNotice" catchtouchmove="stopPurchaseNoticeTouch">
+  <view class="purchase-notice-modal" catchtap="stopPurchaseNoticeTouch">
+    <view class="purchase-notice-modal-header">
+      <text>购买须知</text>
+      <view class="purchase-notice-close" bindtap="closePurchaseNotice">×</view>
+    </view>
+    <scroll-view class="purchase-notice-scroll" scroll-y="true">
+      <view class="purchase-notice-entry" wx:for="{{purchaseNoticeSections}}" wx:key="id">
+        <view class="purchase-notice-product" wx:if="{{item.title}}">{{item.title}}</view>
+        <text class="purchase-notice-text" user-select="true">{{item.content}}</text>
+      </view>
+    </scroll-view>
+    <view class="purchase-notice-dismiss" bindtap="closePurchaseNotice">关闭</view>
+  </view>
 </view>

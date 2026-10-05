@@ -1,12 +1,19 @@
 // miniprogram/pages/checkout/checkout.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const { buildPurchaseNoticeSections } = require('../../utils/purchaseNotice');
 
 Page({
   data: {
     address: null,
     checkoutItems: [],
-    totalPrice: 0
+    totalPrice: 0,
+    purchaseNoticeAgreed: true,
+    purchaseNoticeSections: [],
+    purchaseNoticeReady: false,
+    purchaseNoticeLoading: false,
+    showPurchaseNotice: false,
+    submitting: false
   },
 
   onLoad: async function() {
@@ -23,7 +30,7 @@ Page({
 
     if (localItems && localItems.length > 0) {
       // 立即购买模式，使用本地数据
-      this.loadLocalCheckoutItems(localItems);
+      await this.loadLocalCheckoutItems(localItems);
     } else {
       // 购物车结算模式，从后端获取选中商品
       await this.loadCartSelectedItems();
@@ -31,7 +38,7 @@ Page({
   },
 
   // 加载本地结算商品（立即购买模式）
-  loadLocalCheckoutItems: function(items) {
+  loadLocalCheckoutItems: async function(items) {
     let total = 0;
     items.forEach(item => {
       let currentPrice = Number(item.finalPrice || item.price || 0);
@@ -42,6 +49,7 @@ Page({
       checkoutItems: items,
       totalPrice: total.toFixed(2)
     });
+    await this.loadPurchaseNotices();
   },
 
   // 从后端获取购物车选中商品
@@ -80,11 +88,68 @@ Page({
         checkoutItems: checkoutItems,
         totalPrice: total.toFixed(2)
       });
+      await this.loadPurchaseNotices();
     } catch (err) {
       wx.hideLoading();
       console.error('加载结算商品失败:', err);
       wx.showToast({ title: '加载失败', icon: 'none' });
     }
+  },
+
+  // 用最新商品规则，避免本地结算数据或购物车中保存的文案过期。
+  loadPurchaseNotices: async function() {
+    if (this._noticeLoading) return;
+    const items = this.data.checkoutItems || [];
+    if (!items.length) return;
+    this._noticeLoading = true;
+    this.setData({ purchaseNoticeReady: false, purchaseNoticeLoading: true });
+    try {
+      const ids = [...new Set(items.map(item => String(item.productId || '')))];
+      if (ids.some(id => !id)) throw new Error('结算商品缺少商品编号');
+      const products = await Promise.all(ids.map(async id => {
+        const res = await api.get(`/products/${id}`);
+        if (!res || !res.product) throw new Error('购买须知加载失败');
+        return res.product;
+      }));
+      this.setData({
+        purchaseNoticeSections: buildPurchaseNoticeSections(products),
+        purchaseNoticeReady: true
+      });
+    } catch (err) {
+      console.error('加载购买须知失败:', err);
+      wx.showToast({ title: '购买须知加载失败，请点击重试', icon: 'none' });
+    } finally {
+      this._noticeLoading = false;
+      this.setData({ purchaseNoticeLoading: false });
+    }
+  },
+
+  togglePurchaseNoticeAgreement: function() {
+    if (this.data.submitting) return;
+    this.setData({ purchaseNoticeAgreed: !this.data.purchaseNoticeAgreed });
+  },
+
+  openPurchaseNotice: async function() {
+    if (!this.data.purchaseNoticeReady) await this.loadPurchaseNotices();
+    if (this.data.purchaseNoticeReady) this.setData({ showPurchaseNotice: true });
+  },
+
+  closePurchaseNotice: function() {
+    this.setData({ showPurchaseNotice: false });
+  },
+
+  stopPurchaseNoticeTouch: function() {},
+
+  ensurePurchaseNoticeAgreed: function() {
+    if (!this.data.purchaseNoticeAgreed) {
+      wx.showToast({ title: '请先阅读并同意购买须知', icon: 'none' });
+      return false;
+    }
+    if (!this.data.purchaseNoticeReady) {
+      wx.showToast({ title: '请先点击购买须知加载完整内容', icon: 'none' });
+      return false;
+    }
+    return true;
   },
 
   // 输入商品备注
@@ -119,11 +184,12 @@ Page({
 
   // 提交订单 & 拉起微信支付
   submitOrder: function() {
-    this.submitOrderInternal();
+    return this.submitOrderInternal();
   },
 
   // 内部提交订单方法
   submitOrderInternal: async function() {
+    if (this.data.submitting || !this.ensurePurchaseNoticeAgreed()) return;
     const { address, checkoutItems, totalPrice } = this.data;
 
     if (!address) {
@@ -136,10 +202,12 @@ Page({
       return;
     }
 
-    wx.showLoading({ title: '创建订单...' });
+    this.setData({ submitting: true });
+    wx.showLoading({ title: '创建订单...', mask: true });
 
     try {
       await auth.ensureAuthenticated({ silent: true });
+      if (!this.ensurePurchaseNoticeAgreed()) return;
 
       // 构造后端要求的订单格式（包含 SKU 快照数据）
       const orderItems = checkoutItems.map(item => {
@@ -181,14 +249,17 @@ Page({
       const orderId = orderRes.id;
 
       // 2. 调用微信支付预下单
-      wx.showLoading({ title: '准备支付...' });
+      if (!this.ensurePurchaseNoticeAgreed()) return;
+      wx.showLoading({ title: '准备支付...', mask: true });
       const payRes = await api.post(`/orders/${orderId}/pay/wechat`);
 
       // 3. 拉起微信支付
       // 后端返回可能是 package (原始 JSON) 或 packageValue (JSON 序列化后)
       const packageValue = payRes.package || payRes.packageValue;
       if (payRes && packageValue) {
-        wx.requestPayment({
+        if (!this.ensurePurchaseNoticeAgreed()) return;
+        wx.hideLoading();
+        await new Promise(resolve => wx.requestPayment({
           timeStamp: payRes.timeStamp.toString(),
           nonceStr: payRes.nonceStr,
           package: packageValue,
@@ -214,8 +285,9 @@ Page({
                 showCancel: false
               });
             }
-          }
-        });
+          },
+          complete: resolve
+        }));
       } else {
         wx.showModal({
           title: '支付准备失败',
@@ -231,6 +303,9 @@ Page({
         content: typeof err === 'object' ? JSON.stringify(err) : String(err),
         showCancel: false
       });
+    } finally {
+      wx.hideLoading();
+      this.setData({ submitting: false });
     }
   }
 });

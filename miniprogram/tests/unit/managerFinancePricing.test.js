@@ -42,6 +42,7 @@ function pageHarness(file, { get, post, put, del, upload, manager = false } = {}
           calls.push({ method: 'cos-upload', file, dir });
           return upload ? upload(file, dir) : 'https://example.com/voucher.jpg';
         } };
+        if (name.endsWith('/purchaseNotice')) return runModule('../../utils/purchaseNotice.js');
         if (name.endsWith('/productSchedule')) return runModule('../../utils/productSchedule.js');
         if (name.endsWith('/managerFinance') || name === './managerFinance') {
           return runModule('../../utils/managerFinance.js');

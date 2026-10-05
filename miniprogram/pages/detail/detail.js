@@ -1,5 +1,6 @@
 // miniprogram/pages/detail/detail.js
 const api = require('../../utils/api');
+const { getPurchaseNotice } = require('../../utils/purchaseNotice');
 const auth = require('../../utils/auth');
 const { formatStock, hasStock, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
 const { createShareImage } = require('../../utils/shareImage');
@@ -153,6 +154,7 @@ Page({
       this.setData({
         product: {
           ...product,
+          purchaseNotice: getPurchaseNotice(product.purchaseNotice),
           skuMatrix: skuMatrix,
           image: product.coverUrl || product.image,
           title: product.name,
