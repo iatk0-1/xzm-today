@@ -39,9 +39,10 @@ function profitSharingRow(row) {
 function withdrawalRequestRow(row) {
   const labels = { PROCESSING: '提现处理中', SUCCESS: '全部到账', PARTIAL: '部分到账，请核对快照差额', BLOCKED: '本次未付款，请查看原因' };
   const itemLabels = { WAITING: '申请已记录，等待处理', PROCESSING: '微信处理中', SUCCESS: '已到账', CLOSED: '该笔未付，分账已关闭', BLOCKED: '本单未付，暂不符合条件' };
-  return { ...row, statusLabel: labels[row.status] || '结果待查询',
+  return { ...row, requestedTime: displayTime(row.createdAt), statusLabel: labels[row.status] || '结果待查询',
     terminal: ['SUCCESS', 'PARTIAL', 'BLOCKED'].includes(row.status) && Number(row.heldAmount || 0) === 0,
-    items: (row.items || []).map(item => ({ ...item, statusLabel: itemLabels[item.status] || '结果待查询' })) };
+    items: (row.items || []).map(item => ({ ...item, deadlineLabel: item.deadline ? displayTime(item.deadline) : '不适用',
+      statusLabel: itemLabels[item.status] || '结果待查询' })) };
 }
 function newWithdrawalRequestKey() {
   return 'mw_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 14).padEnd(12, '0') + '_' + Math.random().toString(36).slice(2, 14).padEnd(12, '0');
@@ -84,13 +85,35 @@ function displayText(value) {
 }
 function timeMillis(value) {
   if (value == null || value === '') return NaN;
-  return typeof value === 'number' || /^\d{13}$/.test(String(value)) ? Number(value) : Date.parse(value);
+  const text = String(value).trim();
+  if (typeof value === 'number' || /^\d{10}(?:\d{3})?$/.test(text)) {
+    const number = Number(value);
+    return Math.abs(number) < 100000000000 ? number * 1000 : number;
+  }
+  // 后端也会返回无时区的北京时间字符串；显式补时区，避免手机解析后再多加8小时。
+  const local = text.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/);
+  if (local) return Date.parse(`${local[1]}-${local[2]}-${local[3]}T${local[4]}:${local[5]}:${local[6] || '00'}+08:00`);
+  return Date.parse(text);
 }
 function displayTime(value) {
   const millis = timeMillis(value);
-  if (!Number.isFinite(millis)) return '时间未记录';
+  if (!Number.isFinite(millis) || !Number.isFinite(new Date(millis + 8 * 3600000).getTime())) return '时间未记录';
   // 业务时间统一显示北京时间，不依赖手机时区。
   return new Date(millis + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' ');
+}
+function incomeProductRow(row) {
+  return { ...row, productName: displayText(row.productName) || '商品名称未记录',
+    productImage: displayText(row.productImage),
+    specLabel: [row.skuSpec, row.skuSize].map(displayText).filter(Boolean).join(' / ') || '规格未记录',
+    bundleLabel: [row.bundleProductName, row.bundleGroupName].map(displayText).filter(Boolean).join(' · ') };
+}
+function incomeRecordRow(row) {
+  return { ...incomeProductRow(row), orderedTime: displayTime(row.orderedAt) };
+}
+function incomeEligibilityRow(row) {
+  return { ...row, orderedTime: displayTime(row.orderedAt),
+    deadlineLabel: row.deadline ? displayTime(row.deadline) : '不适用',
+    items: (Array.isArray(row.items) ? row.items : []).map(incomeProductRow) };
 }
 function displayMoney(value) {
   return value == null || value === '' || !Number.isFinite(Number(value)) ? '未记录' : Number(value).toFixed(2);
@@ -129,4 +152,4 @@ function managerDetailRow(row, tab) {
     statusLabel: tab === 'sharing' ? profitSharingStatus(row.status) : transferStatus(row.status)
   };
 }
-module.exports = { money, cents, requireText, isoTime, confirmAction, segmentsWithLabels, toggleBoundary, changeBoundary, transferStatus, isTerminal, profitSharingStatus, profitSharingRow, withdrawalRequestRow, newWithdrawalRequestKey, displayText, timeMillis, displayTime, managerDetailRow };
+module.exports = { money, cents, requireText, isoTime, confirmAction, segmentsWithLabels, toggleBoundary, changeBoundary, transferStatus, isTerminal, profitSharingStatus, profitSharingRow, withdrawalRequestRow, newWithdrawalRequestKey, displayText, timeMillis, displayTime, managerDetailRow, incomeRecordRow, incomeEligibilityRow };

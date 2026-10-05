@@ -37,12 +37,13 @@
   <view class="card" wx:if="{{currentRequest}}">
     <view class="title">本次提现 · {{currentRequest.statusLabel}}</view>
     <view class="muted">申请 {{currentRequest.id}} · {{currentRequest.requestKey}}</view>
+    <view class="muted">申请时间 {{currentRequest.requestedTime}}</view>
     <view>申请快照 ¥{{currentRequest.requestedAmount}} · 服务端已到账 ¥{{currentRequest.settledAmount}}</view>
     <view>处理中 ¥{{currentRequest.heldAmount}} · 快照未到账 ¥{{currentRequest.unpaidAmount}}</view>
     <view class="muted">快照未到账是原申请金额与已到账的差额，含后来退款、售后或欠款抵扣的调整，不代表仍然应付。实际未结算佣金以上方收入账本为准；逐单查看原因。</view>
     <view class="card" wx:for="{{currentRequest.items}}" wx:key="id">
       <view>订单 {{item.orderId}} · {{item.statusLabel}}</view>
-      <view class="muted">原微信交易 {{item.transactionId}} · 截止 {{item.deadline}}</view>
+      <view class="muted">原微信交易 {{item.transactionId}} · 截止 {{item.deadlineLabel}}</view>
       <view>快照 ¥{{item.snapshotAmount}} · 已到账 ¥{{item.settledAmount}} · 占用 ¥{{item.heldAmount}} · 快照未到账 ¥{{item.unpaidAmount}}</view>
       <view class="muted">{{item.reason}} · 分账单 {{item.outOrderNo}}</view>
     </view>
@@ -59,21 +60,46 @@
   <view wx:if="{{tab === 'requests'}}" class="card" wx:for="{{rows}}" wx:key="id">
     <view>申请 {{item.id}} · {{item.statusLabel}}</view>
     <view>快照 ¥{{item.requestedAmount}} · 已到账 ¥{{item.settledAmount}} · 处理中 ¥{{item.heldAmount}} · 快照未到账 ¥{{item.unpaidAmount}}</view>
-    <view class="muted">{{item.createdAt}} · {{item.requestKey}}</view>
+    <view class="muted">申请时间 {{item.requestedTime}}</view>
+    <view class="muted">申请编号 {{item.requestKey}}</view>
     <button disabled="{{busy}}" data-id="{{item.id}}" bindtap="queryRequest">查看逐订单结果</button>
   </view>
   <view wx:if="{{tab === 'records'}}" class="card" wx:for="{{rows}}" wx:key="id">
-    <view>{{item.productName}} · {{item.qty}} 件</view>
-    <view class="muted">订单 {{item.orderId}} · {{item.status === 'PENDING' ? '待完成' : (item.status === 'SETTLED' ? '已结清' : '已完成')}}</view>
+    <view class="product-row">
+      <image wx:if="{{item.productImage}}" class="product-cover" src="{{item.productImage}}" mode="aspectFill" lazy-load binderror="productImageError" data-index="{{index}}" />
+      <view wx:else class="product-cover product-placeholder">暂无图片</view>
+      <view class="product-info">
+        <view class="product-name">{{item.productName}}</view>
+        <view class="muted">{{item.specLabel}}</view>
+        <view class="muted" wx:if="{{item.bundleLabel}}">{{item.bundleLabel}}</view>
+        <view class="product-quantity">数量 {{item.qty}} 件</view>
+      </view>
+    </view>
+    <view class="muted">订单 {{item.orderNo || item.orderId}} · {{item.status === 'PENDING' ? '待完成' : (item.status === 'SETTLED' ? '已结清' : '已完成')}}</view>
+    <view class="muted">下单时间 {{item.orderedTime}}</view>
     <view>佣金 ¥{{item.commissionAmount}} · 现金已付 ¥{{item.settledAmount}} · 退款欠款抵扣 ¥{{item.debtOffsetAmount || '0.00'}}
     <view class="muted" wx:if="{{item.debtRecoveredAmount > 0}}">本条旧佣金欠款已追回 ¥{{item.debtRecoveredAmount}}（抵扣后续佣金，不是新付款）</view></view>
-    <view class="muted">每件 ¥{{item.unitCommission}} · 售后暂缓 ¥{{item.afterSaleFrozen || '0.00'}} · {{item.createdAt}}</view>
+    <view class="muted">每件佣金 ¥{{item.unitCommission}} · 售后暂缓 ¥{{item.afterSaleFrozen || '0.00'}}</view>
   </view>
   <view wx:if="{{tab === 'eligibility'}}" class="card" wx:for="{{rows}}" wx:key="orderId">
-    <view>订单 {{item.orderId}} · {{item.eligible ? '具备微信分账提现资格' : '当前不可微信提现'}}</view>
+    <view>订单 {{item.orderNo || item.orderId}} · {{item.eligible ? '具备微信分账提现资格' : '当前不可微信提现'}}</view>
+    <view class="product-list">
+      <view class="product-row" wx:for="{{item.items}}" wx:for-item="product" wx:for-index="detailIndex" wx:key="orderItemId">
+        <image wx:if="{{product.productImage}}" class="product-cover" src="{{product.productImage}}" mode="aspectFill" lazy-load binderror="productImageError" data-index="{{index}}" data-detail-index="{{detailIndex}}" />
+        <view wx:else class="product-cover product-placeholder">暂无图片</view>
+        <view class="product-info">
+          <view class="product-name">{{product.productName}}</view>
+          <view class="muted">{{product.specLabel}}</view>
+          <view class="muted" wx:if="{{product.bundleLabel}}">{{product.bundleLabel}}</view>
+          <view class="product-quantity">数量 {{product.qty}} 件</view>
+        </view>
+      </view>
+      <view class="muted" wx:if="{{!item.items.length}}">商品明细未记录</view>
+    </view>
+    <view class="muted">下单时间 {{item.orderedTime}}</view>
     <view class="muted">微信支付交易号 {{item.transactionId || '无真实微信支付交易'}}</view>
     <view>本单佣金 ¥{{item.commissionAmount}} · 可分账 ¥{{item.availableAmount}}</view>
-    <view class="muted">分账截止 {{item.deadline || '不适用'}}</view>
+    <view class="muted">分账截止时间 {{item.deadlineLabel}}</view>
     <view class="error" wx:if="{{item.blockedReason}}">{{item.blockedReason}}</view>
   </view>
   <view wx:if="{{tab === 'sharing'}}" class="card" wx:for="{{rows}}" wx:key="id">

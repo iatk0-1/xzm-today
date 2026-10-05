@@ -1506,6 +1506,51 @@ test('直播转普通商品保留成本规则及所有分组并清除旧SKU身�
 });
 
 
+test('负责人收入时间兼容时间戳和北京时间字符串，不随手机时区偏移', () => {
+  const millis = Date.parse('2026-10-05T04:46:33Z');
+  for (const value of [millis, String(millis), millis / 1000, String(millis / 1000),
+    '2026-10-05T04:46:33Z', '2026-10-05T12:46:33+08:00', '2026-10-05 12:46:33', '2026/10/05 12:46:33']) {
+    assert.equal(finance.displayTime(value), '2026-10-05 12:46');
+  }
+  for (const value of [null, '', '不是时间', Infinity, 1e20]) assert.equal(finance.displayTime(value), '时间未记录');
+  const request = finance.withdrawalRequestRow({ createdAt: millis, status: 'SUCCESS', items: [{ deadline: millis }] });
+  assert.equal(request.requestedTime, '2026-10-05 12:46');
+  assert.equal(request.items[0].deadlineLabel, '2026-10-05 12:46');
+});
+
+test('本人佣金和交易资格展示商品快照与时间，缺失字段不伪造下单时间', async () => {
+  const orderId = '9007199254740993';
+  const row = { id: '1', orderId, orderItemId: '2', productName: '秋季上衣', productImage: 'https://example.com/cover.jpg',
+    skuSpec: '米白', skuSize: 'XL', qty: 3, orderedAt: '2026-10-04 19:12:27', createdAt: '2026-10-05T04:00:00Z' };
+  const { page, calls } = pageHarness('../../pages/managerIncome/managerIncome.js', { get: async url => {
+    if (url.endsWith('eligibility/mine')) return [{ orderId, orderedAt: row.orderedAt,
+      deadline: Date.parse('2026-11-03T11:12:27Z'), items: [row], eligible: false, blockedReason: '已结清' }];
+    if (url.endsWith('withdrawals/mine')) return { content: [{ id: '5', status: 'SUCCESS', createdAt: '2026-10-05 10:51:27' }], totalPages: 1 };
+    return { content: [row], totalPages: 1 };
+  } });
+  await page.loadList(true);
+  assert.equal(page.data.rows[0].specLabel, '米白 / XL');
+  assert.equal(page.data.rows[0].orderedTime, '2026-10-04 19:12');
+  assert.equal(page.data.rows[0].productImage, row.productImage);
+  assert.equal(page.data.rows[0].orderId, orderId);
+  page.productImageError({ currentTarget: { dataset: { index: 0 } } });
+  assert.equal(page.data.rows[0].productImage, '');
+  await page.changeTab({ currentTarget: { dataset: { tab: 'eligibility' } } });
+  assert.equal(page.data.rows[0].items[0].specLabel, '米白 / XL');
+  assert.equal(page.data.rows[0].items[0].qty, 3);
+  assert.equal(page.data.rows[0].deadlineLabel, '2026-11-03 19:12');
+  page.productImageError({ currentTarget: { dataset: { index: 0, detailIndex: 0 } } });
+  assert.equal(page.data.rows[0].items[0].productImage, '');
+  await page.changeTab({ currentTarget: { dataset: { tab: 'requests' } } });
+  assert.equal(page.data.rows[0].requestedTime, '2026-10-05 10:51');
+  assert.equal(calls.every(call => call.method === 'get'), true);
+  assert.equal(finance.incomeRecordRow({ createdAt: row.createdAt }).orderedTime, '时间未记录');
+  const missing = finance.incomeEligibilityRow({});
+  assert.deepEqual(missing.items, []);
+  assert.equal(missing.deadlineLabel, '不适用');
+  assert.equal(finance.incomeRecordRow({ skuSpec: 'null', skuSize: 'undefined' }).specLabel, '规格未记录');
+});
+
 test('逐交易资格数组完整显示不自动分账原因，不伪造分页或发资金请求', async () => {
   for (const [file, prefix] of [['../../pages/managerIncome/managerIncome.js', '/stall-managers/profit-sharing/eligibility/mine'], ['../../pages/stallManagerDetail/stallManagerDetail.js', '/stall-managers/42/profit-sharing/eligibility']]) {
     const { page, calls } = pageHarness(file, { get: async () => [

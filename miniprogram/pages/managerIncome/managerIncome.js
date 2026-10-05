@@ -67,6 +67,8 @@ Page({
       if (sequence !== this._listSequence || tab !== this.data.tab) return;
       const content = Array.isArray(result) ? result : (result.content || []);
       const rows = content.map(row => tab === 'requests' ? finance.withdrawalRequestRow(row)
+        : tab === 'records' ? finance.incomeRecordRow(row)
+        : tab === 'eligibility' ? finance.incomeEligibilityRow(row)
         : tab === 'sharing' ? finance.profitSharingRow(row)
         : tab === 'withdrawals' ? { ...row, channel: 'LEGACY_TRANSFER', statusLabel: finance.transferStatus(row.status) }
           : row);
@@ -77,6 +79,12 @@ Page({
     } finally {
       if (sequence === this._listSequence) this.setData({ loading: false });
     }
+  },
+  productImageError(event) {
+    const { index, detailIndex } = event.currentTarget.dataset;
+    if (!this.data.rows[index]) return;
+    const key = detailIndex == null ? `rows[${index}].productImage` : `rows[${index}].items[${detailIndex}].productImage`;
+    this.setData({ [key]: '' });
   },
   assertRequestOwner() {
     const account = auth.getUserInfo() || {};
