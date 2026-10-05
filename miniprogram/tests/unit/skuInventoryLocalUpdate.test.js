@@ -41,6 +41,7 @@ test('首次进入和空白搜索不传关键词，有效关键词去除首尾�
   const page = { ...config, data: JSON.parse(JSON.stringify(config.data)) };
   page.setData = patch => Object.assign(page.data, patch);
   let pending;
+  page.loadFilterOptions = () => {};
   page.loadProducts = function(...args) {
     pending = config.loadProducts.apply(this, args);
     return pending;

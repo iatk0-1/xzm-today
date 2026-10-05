@@ -33,6 +33,62 @@ test.beforeEach(() => {
   global.wx = { showToast: value => toasts.push(value.title), showModal: value => value.success({ confirm: true }) };
 });
 
+test('档口和标签筛选与关键词及库存 Tab 组合，翻页保留条件，全部仅清除对应筛选', async () => {
+  handler = () => ({ content: [], hasNext: true });
+  const inventory = page(inventoryConfig);
+  inventory.setData({ keyword: '  棉袄  ', inventoryTab: 'shortage', page: 7, productList: [{ id: 'old', skus: [] }] });
+  await inventory.selectStall({ currentTarget: { dataset: { stall: '41' } } });
+  assert.deepEqual(requests.at(-1).data, { page: 1, size: 20, tab: 'shortage', keyword: '棉袄', stallId: '41' });
+  assert.deepEqual(inventory.data.productList, []);
+  await inventory.selectTag({ currentTarget: { dataset: { tag: '51' } } });
+  assert.deepEqual(requests.at(-1).data, { page: 1, size: 20, tab: 'shortage', keyword: '棉袄', stallId: '41', tagId: '51' });
+  await inventory.loadProducts(false);
+  assert.deepEqual(requests.at(-1).data, { page: 2, size: 20, tab: 'shortage', keyword: '棉袄', stallId: '41', tagId: '51' });
+  inventory.changeInventoryTab({ currentTarget: { dataset: { tab: 'stock' } } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(requests.at(-1).data, { page: 1, size: 20, tab: 'stock', keyword: '棉袄', stallId: '41', tagId: '51' });
+  const count = requests.length;
+  await inventory.selectStall({ currentTarget: { dataset: { stall: '41' } } });
+  assert.equal(requests.length, count);
+  await inventory.selectTag({ currentTarget: { dataset: { tag: 'all' } } });
+  assert.deepEqual(requests.at(-1).data, { page: 1, size: 20, tab: 'stock', keyword: '棉袄', stallId: '41' });
+  await inventory.selectStall({ currentTarget: { dataset: { stall: 'all' } } });
+  assert.deepEqual(requests.at(-1).data, { page: 1, size: 20, tab: 'stock', keyword: '棉袄' });
+});
+
+test('筛选项从现有档口和标签接口加载，一项失败仍能使用另一项', async () => {
+  const stalls = [{ id: '41', name: '一号档口' }];
+  const tags = [{ id: '51', name: '秋装' }];
+  handler = url => url === '/stalls/all' ? stalls : tags;
+  const inventory = page(inventoryConfig);
+  await inventory.loadFilterOptions();
+  assert.deepEqual(inventory.data.stallList, stalls);
+  assert.deepEqual(inventory.data.tagList, tags);
+  handler = url => { if (url === '/stalls/all') throw new Error('档口加载失败'); return tags; };
+  const originalError = console.error;
+  console.error = () => {};
+  try { await inventory.loadFilterOptions(); } finally { console.error = originalError; }
+  assert.deepEqual(inventory.data.stallList, []);
+  assert.deepEqual(inventory.data.tagList, tags);
+  assert.equal(toasts.length, 1);
+});
+
+test('快速切换档口和标签时，旧筛选请求不能覆盖最新商品列表', async () => {
+  let release;
+  handler = (url, query) => query.tagId
+    ? { content: [{ productId: '2', skuId: '21', qty: 1 }], hasNext: false }
+    : new Promise(resolve => { release = resolve; });
+  const inventory = page(inventoryConfig);
+  const old = inventory.selectStall({ currentTarget: { dataset: { stall: '41' } } });
+  await new Promise(resolve => setImmediate(resolve));
+  await inventory.selectTag({ currentTarget: { dataset: { tag: '51' } } });
+  release({ content: [{ productId: '1', skuId: '11', qty: 2 }], hasNext: true });
+  await old;
+  assert.deepEqual(inventory.data.productList.map(product => product.id), ['2']);
+  assert.equal(inventory.data.hasMore, false);
+  assert.equal(inventory.data.loading, false);
+});
+
 test('现货弹窗排除不可发规格，默认全选并填可发数量，允许调整某个规格', async () => {
   handler = () => [
     { productId: '1', productName: '棉袄', skuId: '11', qty: 6, abnormalQty: 1, shippableQty: 5 },

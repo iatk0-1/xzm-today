@@ -228,6 +228,8 @@
   border-color: #ff4444;
 }
 
+.after-sale-type-tip { margin-bottom: 20rpx; color: #888; font-size: 24rpx; line-height: 1.6; }
+
 /* 原因标签 */
 .reason-tags {
   display: flex;

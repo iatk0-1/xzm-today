@@ -263,6 +263,7 @@
               <text class="review-item-name">{{item.productName}}</text>
               <text class="review-item-spec">{{item.skuSpec}} / {{item.skuSize}}</text>
               <text class="review-item-limit">用户申请 {{item.requestedQty || item.qty}} 件，¥ {{item.requestedRefundAmount || item.refundAmount}}</text>
+              <text class="review-item-limit" wx:if="{{item.currentShippedQty !== null}}">当前已发 {{item.currentShippedQty}} 件 · 未发 {{item.currentUnshippedQty}} 件</text>
             </view>
           </view>
           <view class="review-edit-row" wx:if="{{item.selected}}">
@@ -294,16 +295,19 @@
           <view class="review-type-row" wx:if="{{item.selected}}">
             <text class="review-type-label">退款方式</text>
             <view
+              wx:if="{{item.reviewRefundQtyLimit > 0}}"
               class="review-type-option {{item.reviewType === 'refund' ? 'selected' : ''}}"
               data-index="{{index}}"
               data-type="refund"
-              bindtap="chooseReviewType">仅退款</view>
+              bindtap="chooseReviewType">仅退款（未发货）</view>
             <view
+              wx:if="{{item.reviewReturnQtyLimit > 0}}"
               class="review-type-option {{item.reviewType === 'return_refund' ? 'selected' : ''}}"
               data-index="{{index}}"
               data-type="return_refund"
-              bindtap="chooseReviewType">退货退款</view>
+              bindtap="chooseReviewType">退货退款（已发货）</view>
           </view>
+          <view class="review-type-tip" wx:if="{{item.selected && item.reviewQtyLimit === 0}}">原退款方式与当前发货数量不符，请重新选择退款方式。</view>
         </view>
       </scroll-view>
       <view class="modal-input-group" wx:if="{{reviewDecision === 'reject'}}">
@@ -316,9 +320,9 @@
           maxlength="200"/>
       </view>
       <checkbox-group wx:if="{{reviewDecision === 'approve'}}" bindchange="changeReturnPurchaseOrder" class="purchase-return-choice">
-        <label><checkbox value="return" checked="{{returnPurchaseOrder}}" />是否返回报单（默认不返回）</label>
+        <label><checkbox value="return" checked="{{returnPurchaseOrder}}" />退款成功后返回报单</label>
       </checkbox-group>
-      <view wx:if="{{reviewDecision === 'approve'}}" class="purchase-return-choice">勾选后退款成功会重新分配；不勾选则作废对应已报件数。</view>
+      <view wx:if="{{reviewDecision === 'approve'}}" class="purchase-return-choice">返回报单用于重新分配备货，不代表用户退货。已入库但未发货仍选“仅退款”，退款成功后系统强制返回对应报单；未入库部分按勾选结果处理。</view>
       <view class="modal-actions">
         <view class="modal-btn cancel" bindtap="hideReviewModal">取消</view>
         <view class="modal-btn confirm {{reviewDecision === 'reject' ? 'danger' : ''}}" bindtap="submitReview">确认</view>

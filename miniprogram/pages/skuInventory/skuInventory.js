@@ -24,6 +24,7 @@ Page(autoSearch.wrap({
       { id: 'stock', name: '现货' }, { id: 'abnormal', name: '异常' }
     ],
     page: 1, pageSize: 20, hasMore: true,
+    stallList: [], tagList: [], selectedStall: '', selectedTag: '',
     showSkuModal: false, selectedProduct: null, selectedSku: null, currentQty: 0,
     detailLoading: false, reportList: [], receiptList: [], ledgerList: [],
     activeTab: 'operate', operateType: 'normal', inputQty: '', note: '',
@@ -32,7 +33,7 @@ Page(autoSearch.wrap({
     shippingProducts: [], matching: false
   },
 
-  onLoad() { this.loadProducts(); },
+  onLoad() { this.loadProducts(); this.loadFilterOptions(); },
   onShow() {
     if (this._refreshAfterShipping) {
       this._refreshAfterShipping = false;
@@ -41,6 +42,23 @@ Page(autoSearch.wrap({
   },
   onReachBottom() {
     if (this.data.hasMore && !this.data.loading) this.loadProducts(false);
+  },
+  async loadFilterOptions() {
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      const results = await Promise.allSettled([api.get('/stalls/all'), api.get('/tags/all')]);
+      this.setData({
+        stallList: results[0].status === 'fulfilled' && Array.isArray(results[0].value) ? results[0].value : [],
+        tagList: results[1].status === 'fulfilled' && Array.isArray(results[1].value) ? results[1].value : []
+      });
+      if (results.some(result => result.status === 'rejected')) {
+        console.error('加载库存档口或标签筛选项失败:', results.filter(result => result.status === 'rejected').map(result => result.reason));
+        wx.showToast({ title: '部分筛选项加载失败，请重新进入页面', icon: 'none' });
+      }
+    } catch (err) {
+      console.error('加载库存筛选项失败:', err);
+      wx.showToast({ title: err.message || '加载筛选项失败', icon: 'none' });
+    }
   },
   async loadProducts(reset = true) {
     if (!reset && (!this.data.hasMore || this.data.loading)) return;
@@ -53,6 +71,8 @@ Page(autoSearch.wrap({
       const query = { page: this.data.page, size: this.data.pageSize, tab: this.data.inventoryTab };
       const keyword = this.data.keyword.trim();
       if (keyword) query.keyword = keyword;
+      if (this.data.selectedStall !== '') query.stallId = this.data.selectedStall;
+      if (this.data.selectedTag !== '') query.tagId = this.data.selectedTag;
       const result = await api.get('/sku-inventory/query', query);
       if (this._listVersion !== version) return;
       const existing = reset ? [] : this.data.productList;
@@ -81,6 +101,20 @@ Page(autoSearch.wrap({
     if (inventoryTab === this.data.inventoryTab) return;
     this.setData({ inventoryTab });
     this.loadProducts();
+  },
+  selectStall(e) {
+    const value = e.currentTarget.dataset.stall;
+    const selectedStall = value === 'all' ? '' : value;
+    if (String(selectedStall) === String(this.data.selectedStall)) return;
+    this.setData({ selectedStall });
+    return this.loadProducts();
+  },
+  selectTag(e) {
+    const value = e.currentTarget.dataset.tag;
+    const selectedTag = value === 'all' ? '' : value;
+    if (String(selectedTag) === String(this.data.selectedTag)) return;
+    this.setData({ selectedTag });
+    return this.loadProducts();
   },
   onKeywordInput(e) { this.setData({ keyword: e.detail.value }); },
   search() { return this.loadProducts(); },

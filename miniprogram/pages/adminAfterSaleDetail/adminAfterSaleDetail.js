@@ -73,8 +73,13 @@ Page({
     }, {});
     const items = (res.items || []).map(item => {
       const orderItem = orderItemsById[String(item.orderItemId)] || {};
+      const shipmentKnown = orderItem.qty != null && orderItem.shippedQty != null;
+      const currentShippedQty = shipmentKnown
+        ? Math.max(0, Math.min(Number(orderItem.qty), Number(orderItem.shippedQty))) : null;
       return {
         ...item,
+        currentShippedQty,
+        currentUnshippedQty: shipmentKnown ? Number(orderItem.qty) - currentShippedQty : null,
         displayImage: item.productImage || item.skuImageUrl || orderItem.skuImageUrl || orderItem.productImage || '',
         statusDisplay: this.getStatusDisplay(item.status)
       };
@@ -279,19 +284,40 @@ Page({
   noop: function() {},
 
   // 显示审核弹窗
+  getReviewQtyLimit: function(item, type) {
+    const requestedQty = Math.max(1, Number(item.requestedQty || item.qty || 1));
+    const availableQty = type === 'return_refund' ? item.currentShippedQty : item.currentUnshippedQty;
+    return availableQty == null ? 0 : Math.min(requestedQty, Math.max(0, Number(availableQty)));
+  },
+
+  getReviewTypeError: function(item, type) {
+    if (item.currentShippedQty == null || item.currentUnshippedQty == null) {
+      return '当前发货信息缺失，请刷新售后详情后重试';
+    }
+    if (type === 'return_refund' && item.currentShippedQty === 0) {
+      return '商品尚未发货，请选择仅退款；返回报单请勾选下方选项';
+    }
+    return type === 'return_refund' ? '退货退款数量不能超过已发货数量' : '仅退款数量不能超过未发货数量';
+  },
+
   showReviewModal: function(e) {
     const decision = e && e.currentTarget && e.currentTarget.dataset.decision
       ? e.currentTarget.dataset.decision : 'approve';
     const reviewItems = ((this.data.afterSale && this.data.afterSale.items) || [])
       .filter(item => item.status === 'pending')
       .map(item => {
-        const reviewQtyLimit = Math.max(1, Number(item.requestedQty || item.qty || 1));
+        const requestedQty = Math.max(1, Number(item.requestedQty || item.qty || 1));
+        const reviewQtyLimit = this.getReviewQtyLimit(item, item.afterSaleType);
+        const reviewQty = reviewQtyLimit > 0 ? reviewQtyLimit : requestedQty;
         return {
           ...item,
           selected: true,
-          reviewQty: String(reviewQtyLimit),
+          reviewQty: String(reviewQty),
           reviewQtyLimit,
-          reviewAmount: Number(item.requestedRefundAmount || item.refundAmount || 0).toFixed(2),
+          reviewRefundQtyLimit: this.getReviewQtyLimit(item, 'refund'),
+          reviewReturnQtyLimit: this.getReviewQtyLimit(item, 'return_refund'),
+          reviewAmount: Math.min(Number(item.requestedRefundAmount || item.refundAmount || 0),
+            Number(item.salePrice || 0) * reviewQty).toFixed(2),
           reviewType: item.afterSaleType
         };
       });
@@ -332,7 +358,11 @@ Page({
     const item = this.data.reviewItems[index];
     if (!item) return;
 
-    const maxQty = Math.max(1, Number(item.reviewQtyLimit || item.requestedQty || item.qty || 1));
+    const maxQty = this.getReviewQtyLimit(item, item.reviewType);
+    if (maxQty < 1) {
+      wx.showToast({ title: this.getReviewTypeError(item, item.reviewType), icon: 'none' });
+      return;
+    }
     const qty = Math.min(maxQty, Math.max(1, Number(nextQty) || 1));
     const requestedAmount = Number(item.requestedRefundAmount || item.refundAmount || 0);
     const unitSalePrice = Number(item.salePrice || 0);
@@ -364,7 +394,16 @@ Page({
 
   chooseReviewType: function(e) {
     const index = Number(e.currentTarget.dataset.index);
-    this.setData({ [`reviewItems[${index}].reviewType`]: e.currentTarget.dataset.type });
+    const item = this.data.reviewItems[index];
+    const type = e.currentTarget.dataset.type;
+    if (!item || !['refund', 'return_refund'].includes(type)) return;
+    const limit = this.getReviewQtyLimit(item, type);
+    if (limit < 1) {
+      wx.showToast({ title: this.getReviewTypeError(item, type), icon: 'none' });
+      return;
+    }
+    this.setData({ [`reviewItems[${index}].reviewType`]: type, [`reviewItems[${index}].reviewQtyLimit`]: limit });
+    if (Number(item.reviewQty) > limit) this.updateReviewQty(index, limit);
   },
 
   // 提交审核
@@ -387,6 +426,13 @@ Page({
         returnPurchaseOrder: this.data.reviewDecision === 'approve' && this.data.returnPurchaseOrder
       };
       if (this.data.reviewDecision === 'approve') {
+        const invalidType = this.data.reviewItems.find(item => item.selected
+          && Number(item.reviewQty) > this.getReviewQtyLimit(item, item.reviewType));
+        if (invalidType) {
+          wx.hideLoading();
+          wx.showToast({ title: this.getReviewTypeError(invalidType, invalidType.reviewType), icon: 'none' });
+          return;
+        }
         const invalid = this.data.reviewItems.find(item => {
           const qty = Number(item.reviewQty);
           const amount = Number(item.reviewAmount);

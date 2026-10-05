@@ -677,6 +677,9 @@
   color: #ff4444;
 }
 
+.review-type-row { flex-wrap: wrap; }
+.review-type-tip { margin: 12rpx 0 0 54rpx; font-size: 22rpx; line-height: 1.6; color: #f57c00; }
+
 .action-fail-tip {
   margin-bottom: 18rpx;
   text-align: center;

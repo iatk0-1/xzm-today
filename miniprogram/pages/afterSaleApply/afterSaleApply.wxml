@@ -20,7 +20,7 @@
         {{selectedItems.length === splitItems.length && splitItems.length > 0 ? '取消全选' : '全选'}}
       </view>
     </view>
-    
+    <view class="after-sale-type-tip">未发货商品仅支持仅退款；已发货商品支持退货退款，部分发货按已发和未发分别申请。</view>
     <view class="split-items-list">
       <view
         class="split-item {{item.selected ? 'selected' : ''}}"

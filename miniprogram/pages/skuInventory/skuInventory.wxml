@@ -1,10 +1,32 @@
 <view class="container">
-  <view class="inventory-tabs">
-    <view wx:for="{{inventoryTabs}}" wx:key="id" class="inventory-tab {{inventoryTab === item.id ? 'active' : ''}}" data-tab="{{item.id}}" bindtap="changeInventoryTab">{{item.name}}</view>
-  </view>
-  <view class="search-bar">
-    <input class="search-input" placeholder="搜索商品名称" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="search" />
-    <button class="search-btn" bindtap="search">搜索</button>
+  <view class="filter-bar">
+    <view class="filter-tabs">
+      <view wx:for="{{inventoryTabs}}" wx:key="id" class="inventory-tab {{inventoryTab === item.id ? 'active' : ''}}" data-tab="{{item.id}}" bindtap="changeInventoryTab">{{item.name}}</view>
+    </view>
+    <view class="relation-filter-section">
+      <view class="relation-filter-row">
+        <text class="relation-filter-label">档口</text>
+        <view class="relation-filter-fixed relation-filter-tag {{selectedStall === '' ? 'active' : ''}}" bindtap="selectStall" data-stall="all">全部</view>
+        <scroll-view class="relation-filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+          <view class="relation-filter-options">
+            <view class="relation-filter-tag {{selectedStall === item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}">{{item.name}}</view>
+          </view>
+        </scroll-view>
+      </view>
+      <view class="relation-filter-row">
+        <text class="relation-filter-label">标签</text>
+        <view class="relation-filter-fixed relation-filter-tag {{selectedTag === '' ? 'active' : ''}}" bindtap="selectTag" data-tag="all">全部</view>
+        <scroll-view class="relation-filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+          <view class="relation-filter-options">
+            <view class="relation-filter-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}">{{item.name}}</view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+    <view class="search-bar">
+      <input class="search-input" placeholder="搜索商品名称" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="search" />
+      <button class="search-btn" bindtap="search">搜索</button>
+    </view>
   </view>
   <button class="stock-shipping-btn" bindtap="openShippingModal">按照库存发货</button>
   <view class="product-list">
