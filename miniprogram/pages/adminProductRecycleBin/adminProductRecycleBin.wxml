@@ -121,4 +121,21 @@
       <text>{{hasMore ? '上拉加载更多' : '已经到底了'}}</text>
     </view>
   </scroll-view>
+  <view class="restore-mask" wx:if="{{restoreTarget}}" catchtap="closeRestoreSelection">
+    <view class="restore-panel" catchtap="stopFilterPanelTap">
+      <view class="restore-title">核对恢复款式</view>
+      <view class="restore-hint">该商品删除较早，请选择仍需出售的款式。所选款式及所属套装分组将恢复，商品先保持下架，核对后再上架。</view>
+      <scroll-view scroll-y class="restore-scroll">
+        <checkbox-group bindchange="changeRestoreSelection">
+          <label class="restore-sku" wx:for="{{restoreCandidates}}" wx:key="id">
+            <checkbox value="{{item.id}}" checked="{{item.selected}}" disabled="{{restoreBusy}}" />
+            <view><view>{{item.bundleGroupName ? item.bundleGroupName + ' · ' : ''}}{{item.spec || '默认'}} / {{item.size || '均码'}}</view><view class="restore-sku-price">售价 ¥{{item.retailPrice}}</view></view>
+          </label>
+        </checkbox-group>
+        <view class="restore-hint" wx:if="{{!restoreCandidates.length}}">暂无可恢复的有效款式</view>
+      </scroll-view>
+      <view class="restore-error" wx:if="{{restoreError}}">{{restoreError}}</view>
+      <view class="restore-actions"><button disabled="{{restoreBusy}}" bindtap="closeRestoreSelection">取消</button><button type="primary" disabled="{{restoreBusy || !restoreSkuIds.length}}" loading="{{restoreBusy}}" bindtap="confirmLegacyRestore">恢复所选款式</button></view>
+    </view>
+  </view>
 </view>

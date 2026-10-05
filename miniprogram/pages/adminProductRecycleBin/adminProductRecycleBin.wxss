@@ -288,3 +288,14 @@ page {
   background-color: #1890ff;
   color: #fff;
 }
+
+.restore-mask { position:fixed; top:0; right:0; bottom:0; left:0; z-index:120; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.45); }
+.restore-panel { width:650rpx; box-sizing:border-box; padding:30rpx; border-radius:18rpx; background:#fff; }
+.restore-title { font-size:32rpx; font-weight:600; }
+.restore-hint { margin:20rpx 0; font-size:25rpx; line-height:1.6; color:#666; }
+.restore-scroll { height:44vh; }
+.restore-sku { display:flex; align-items:center; gap:16rpx; padding:20rpx 0; border-bottom:1rpx solid #eee; font-size:28rpx; }
+.restore-sku-price { margin-top:8rpx; font-size:24rpx; color:#777; }
+.restore-error { margin-top:18rpx; color:#b3261e; font-size:25rpx; }
+.restore-actions { display:flex; gap:18rpx; margin-top:24rpx; }
+.restore-actions button { flex:1; margin:0; font-size:28rpx; }

@@ -23,7 +23,12 @@ Page(autoSearch.wrap(pageSync.wrap({
     selectedTagName: '',
     hasFilter: false,
     stallList: [],
-    tagList: []
+    tagList: [],
+    restoreTarget: '',
+    restoreCandidates: [],
+    restoreSkuIds: [],
+    restoreBusy: false,
+    restoreError: ''
   },
 
   onShow: function() {
@@ -134,13 +139,7 @@ Page(autoSearch.wrap(pageSync.wrap({
 
       const res = await api.get('/products/deleted', params);
 
-      let list = res.map(item => {
-        if (item.createdAt) {
-          const date = new Date(item.createdAt);
-          item.deleteTimeStr = `${date.getMonth()+1}-${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-        }
-        return item;
-      });
+      const list = res.map(item => ({ ...item, deleteTimeStr: this.formatDeletedTime(item.deletedAt) }));
 
       this.setData({
         products: isLoadMore ? [...this.data.products, ...list] : list,
@@ -282,38 +281,84 @@ Page(autoSearch.wrap(pageSync.wrap({
     });
   },
 
-  // 恢复商品
+  formatDeletedTime: function(value) {
+    if (!value) return '未知';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '未知';
+    const pad = number => String(number).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  },
+
+  // 有删除记录的商品精确恢复；旧数据先由管理员核对款式。
   restoreProduct: async function(e) {
-    const id = e.currentTarget.dataset.id;
-
-    wx.showModal({
-      title: '确认恢复',
-      content: '确定要恢复这件商品吗？商品和关联的 SKU 都将被恢复到删除前的状态。',
-      confirmColor: '#1890ff',
-      success: async (res) => {
-        if (res.confirm) {
-          wx.showLoading({ title: '恢复中...' });
-          try {
-            await api.post(`/products/deleted/${id}/restore`, {});
-            wx.hideLoading();
-            wx.showToast({ title: '恢复成功', icon: 'success' });
-
-            // 从列表中移除该商品
-            const products = this.data.products.filter(p => String(p.id) !== String(id));
-            this.setData({ products });
-
-          } catch (err) {
-            console.error('恢复失败:', err);
-            wx.hideLoading();
-            wx.showToast({ title: '恢复失败', icon: 'none' });
-          }
-        }
+    if (this.data.restoreBusy || this.data.restoreTarget) return;
+    const id = String(e.currentTarget.dataset.id);
+    this.setData({ restoreBusy: true, restoreError: '' });
+    try {
+      const preview = await api.get(`/products/deleted/${id}/restore-preview`);
+      if (preview.selectionRequired) {
+        this.setData({ restoreTarget: id, restoreCandidates: (preview.skus || []).map(sku => ({ ...sku, id: String(sku.id), selected: false })), restoreSkuIds: [] });
+        return;
       }
-    });
+      const confirmed = await new Promise(resolve => wx.showModal({
+        title: '确认恢复',
+        content: '将恢复本次随商品删除的款式和套装分组，并同步应生效的佣金。以前单独删除的款式不会恢复，已有订单佣金保持原值。',
+        confirmColor: '#1890ff',
+        success: result => resolve(result.confirm), fail: () => resolve(false)
+      }));
+      if (confirmed) await this.performRestore(id, {});
+    } catch (err) {
+      wx.showToast({ title: err.message || '加载恢复信息失败', icon: 'none' });
+    } finally {
+      this.setData({ restoreBusy: false });
+    }
+  },
+
+  changeRestoreSelection: function(e) {
+    if (this.data.restoreBusy) return;
+    const selected = new Set((e.detail.value || []).map(String));
+    const ids = this.data.restoreCandidates.filter(sku => selected.has(sku.id)).map(sku => sku.id);
+    this.setData({ restoreSkuIds: ids, restoreCandidates: this.data.restoreCandidates.map(sku => ({ ...sku, selected: selected.has(sku.id) })), restoreError: '' });
+  },
+
+  closeRestoreSelection: function() {
+    if (!this.data.restoreBusy) this.setData({ restoreTarget: '', restoreCandidates: [], restoreSkuIds: [], restoreError: '' });
+  },
+
+  confirmLegacyRestore: async function() {
+    if (this.data.restoreBusy || !this.data.restoreTarget) return;
+    if (!this.data.restoreSkuIds.length) {
+      this.setData({ restoreError: '请先选择需要恢复的款式' });
+      return;
+    }
+    this.setData({ restoreBusy: true, restoreError: '' });
+    try {
+      await this.performRestore(this.data.restoreTarget, { skuIds: this.data.restoreSkuIds });
+      this.setData({ restoreTarget: '', restoreCandidates: [], restoreSkuIds: [] });
+    } catch (err) {
+      this.setData({ restoreError: err.message || '恢复失败，请重试' });
+    } finally {
+      this.setData({ restoreBusy: false });
+    }
+  },
+
+  performRestore: async function(id, body) {
+    wx.showLoading({ title: '恢复中...' });
+    try {
+      const result = await api.post(`/products/deleted/${id}/restore`, body);
+      const products = this.data.products.filter(p => String(p.id) !== String(id));
+      const removed = this.data.products.length - products.length;
+      this.setData({ products, offset: Math.max(0, this.data.offset - removed) });
+      pageSync.publish('products', id);
+      wx.showToast({ title: result && result.product && result.product.status === 'off' ? '已恢复，请核对后上架' : '恢复成功', icon: 'none' });
+    } finally {
+      wx.hideLoading();
+    }
   }
 }, async function(changes) {
   await pageSync.updateList(this, changes, {
-    entity: 'products', field: 'products', url: id => '/products/deleted/' + id
+    entity: 'products', field: 'products', url: id => '/products/deleted/' + id,
+    normalize: function(item) { return { ...item, deleteTimeStr: this.formatDeletedTime(item.deletedAt) }; }
   });
 }), {
   input: 'onSearchInput',

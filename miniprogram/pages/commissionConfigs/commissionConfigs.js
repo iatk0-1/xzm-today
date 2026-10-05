@@ -73,7 +73,7 @@ Page({
   },
   confirmActivation() {
     return finance.confirmAction('确认佣金配置生效',
-      '将覆盖所有档口负责人已有商品的佣金，包括单独修改的佣金。其他配置自动失效，新商品继承本配置；已有订单佣金保持原值。');
+      '将覆盖所有档口负责人已有商品的佣金，包括回收站商品和单独修改的佣金。其他配置自动失效，新商品继承本配置；已有订单佣金保持原值。');
   },
   async activateConfig(event) {
     if (!this._authorized || this.data.busy) return;
