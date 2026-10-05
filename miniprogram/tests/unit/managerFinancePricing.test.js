@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const finance = require('../../utils/managerFinance');
 
-function pageHarness(file, { get, post, put, del, manager = false } = {}) {
+function pageHarness(file, { get, post, put, del, upload, manager = false } = {}) {
   let definition;
   const calls = [];
   const api = {
@@ -13,6 +13,7 @@ function pageHarness(file, { get, post, put, del, manager = false } = {}) {
     post: async (url, data) => { calls.push({ method: 'post', url, data }); return post ? post(url, data) : {}; },
     put: async (url, data) => { calls.push({ method: 'put', url, data }); return put ? put(url, data) : {}; },
     delete: async url => { calls.push({ method: 'delete', url }); return del ? del(url) : {}; },
+    uploadFile: async (url, file, data) => { calls.push({ method: 'upload', url, file, data }); return upload ? upload(url, file, data) : { url: 'https://example.com/voucher.jpg' }; },
     request: async options => { calls.push({ method: options.method.toLowerCase(), url: options.url, data: options.data, idempotencyKey: options.idempotencyKey }); return post ? post(options.url, options.data) : {}; }
   };
   const storage = new Map();
@@ -1741,6 +1742,94 @@ function readyAdminWithdrawal(page) {
   page.refresh = async () => {};
 }
 
+function readyOrderPayment(page, mode = 'OFFLINE') {
+  readyAdminWithdrawal(page);
+  page.setData({ tab: 'records', paymentVisible: true, settlementMode: mode, income: { profitSharingEnabled: true, settleableIncome: '100', selfWithdrawalEnabled: false },
+    settlementRows: page.data.rows, paidDate: '2026-10-01', paidTime: '09:00', paidAt: '2026-10-01T09:00:00+08:00', paymentMethod: '银行转账', voucher: '流水001' });
+}
+
+test('线下付款按钮打开选单弹窗，接口按管理员目标与结算通道隔离', async () => {
+  const { page, calls } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { get: async url =>
+    url.endsWith('/stalls') ? [{ id: '1', name: '一号档口' }, { id: '2', name: '二号档口' }]
+      : { content: [{ orderId: '365088797156708352', orderStatus: 'completed', availableAmount: '0.07', eligible: true, settlementStatus: '可结算', items: [] }], totalPages: 1 } });
+  readyAdminWithdrawal(page);page.setData({ tab: 'records' });
+  await page.openSettlement({ currentTarget: { dataset: { mode: 'OFFLINE' } } });
+  assert.equal(page.data.paymentVisible, true);assert.equal(page.data.settlementMode, 'OFFLINE');
+  assert.equal(page.data.settlementStallOptions.length, 3);
+  assert.equal(calls[1].url, '/stall-managers/99/settlement-orders');assert.equal(calls[1].data.channel, 'OFFLINE');
+  assert.equal(page.data.settlementRows[0].orderStatusLabel, '已完成');
+  page.closeSettlement();assert.equal(page.data.paymentVisible, false);
+});
+
+test('选单筛选按日期档口和商品关键词请求，筛选变化清空选择，分页保留已选合计', async () => {
+  const { page, calls } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { get: async (_, params) => ({
+    content: [{ orderId: 'order-' + params.page, eligible: true, availableAmount: params.page === 1 ? '0.07' : '1.02' }], totalPages: 2 }) });
+  readyOrderPayment(page);
+  page.setData({ settlementStartDate: '2026-10-01', settlementEndDate: '2026-10-05', settlementKeyword: ' 白衬衫 ', settlementStallOptions: [{ value: '', label: '全部' }, { value: '9007199254740993', label: '档口' }], settlementStallIndex: 1 });
+  await page.filterSettlementOrders();
+  assert.equal(calls[0].data.stallId, '9007199254740993');assert.equal(calls[0].data.startDate, '2026-10-01');assert.equal(calls[0].data.endDate, '2026-10-05');assert.equal(calls[0].data.keyword, '白衬衫');
+  page.withdrawalOrderChange({ detail: { value: ['order-1'] } });await page.loadMoreSettlementOrders();
+  assert.equal(page.data.selectedWithdrawalTotal, '0.07');assert.equal(page.data.settlementRows.length, 2);
+  page.withdrawalOrderChange({ detail: { value: ['order-1', 'order-2'] } });assert.equal(page.data.selectedWithdrawalTotal, '1.09');
+  await page.resetSettlementFilters();assert.equal(page.data.selectedOrders.length, 0);assert.equal(calls[2].data.stallId, undefined);
+});
+
+test('选单截止日期错误不查询，已关闭弹窗的迟到响应不会覆盖页面', async () => {
+  let done;
+  const { page, calls } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { get: async () => new Promise(resolve => { done = resolve; }) });
+  readyOrderPayment(page);page.setData({ settlementStartDate: '2026-10-05', settlementEndDate: '2026-10-01' });
+  await page.loadSettlementOrders(true);assert.equal(calls.length, 0);assert.match(page.data.error, /开始日期/);
+  page.setData({ settlementStartDate: '', settlementEndDate: '', settlementRows: [] });
+  const request = page.loadSettlementOrders(true);await Promise.resolve();
+  page.closeSettlement();done({ content: [{ orderId: 'late', eligible: true, availableAmount: '10' }], totalPages: 1 });await request;
+  assert.equal(page.data.settlementRows.length, 0);assert.equal(page.data.paymentVisible, false);
+});
+
+test('线下选单自动计算总佣金并提交整单编号，图片选填，成功关闭弹窗', async () => {
+  const { page, calls } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js');
+  readyOrderPayment(page);page.withdrawalOrderChange({ detail: { value: ['365088797156708352', '365088797156708353', '365088797156708354'] } });
+  page.setData({ voucherImages: ['https://example.com/receipt.jpg'] });
+  await page.settleOffline();
+  const request = calls.find(call => call.method === 'post');assert.equal(request.url, '/stall-managers/99/offline-settlements/by-orders');
+  assert.deepEqual(Array.from(request.data.orderIds), ['365088797156708352', '365088797156708353']);assert.equal(request.data.expectedAmount, '1.09');
+  assert.equal(request.data.allocations, undefined);assert.equal(request.data.amount, undefined);
+  assert.deepEqual(Array.from(request.data.voucherImages), ['https://example.com/receipt.jpg']);
+  assert.equal(page.data.paymentVisible, false);assert.equal(page.data.voucherImages.length, 0);
+});
+
+test('线下付款失败保留订单和凭证，未选择或取消确认不登记', async () => {
+  const { page, calls, wx } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { post: async () => { throw new Error('金额已变化'); } });
+  readyOrderPayment(page);await page.settleOffline();assert.equal(calls.length, 0);
+  page.updateOrderSelection(['365088797156708352']);wx.showModal = options => options.success({ confirm: false });
+  await page.settleOffline();assert.equal(calls.length, 0);
+  wx.showModal = options => options.success({ confirm: true });await page.settleOffline();
+  assert.equal(page.data.paymentVisible, true);assert.equal(page.data.voucher, '流水001');assert.equal(page.data.selectedOrders.length, 1);
+});
+
+test('凭证选择图片经管理员上传接口保存地址，可移除，上传失败保留已有凭证', async () => {
+  const { page, calls, wx } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { upload: async () => ({ url: 'https://example.com/receipt-new.jpg' }) });
+  readyOrderPayment(page);wx.chooseMedia = options => options.success({ tempFiles: [{ tempFilePath: '/tmp/image.jpg' }] });
+  await page.uploadVoucherImages();assert.equal(calls[0].method, 'upload');assert.equal(calls[0].url, '/admin/files/upload');assert.equal(calls[0].data.dir, 'commission-vouchers');
+  assert.deepEqual(Array.from(page.data.voucherImages), ['https://example.com/receipt-new.jpg']);
+  page.removeVoucherImage({ currentTarget: { dataset: { index: 0 } } });assert.equal(page.data.voucherImages.length, 0);
+  const failed = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { upload: async () => { throw new Error('上传失败'); } });
+  readyOrderPayment(failed.page);failed.page.setData({ voucherImages: ['https://example.com/existing.jpg'] });failed.wx.chooseMedia = wx.chooseMedia;
+  await failed.page.uploadVoucherImages();assert.equal(failed.page.data.voucherImages.length, 1);assert.match(failed.page.data.error, /上传失败/);
+});
+
+test('微信弹窗只允许核验成功订单被选中，分账提交使用同一订单选择', async () => {
+  const { page, calls } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js', { post: async (_, data) => pendingWithdrawal(data.requestKey) });
+  readyOrderPayment(page, 'WECHAT');page.withdrawalOrderChange({ detail: { value: ['365088797156708352', '365088797156708354'] } });
+  await page.withdrawSelectedOrders();const request = calls.find(call => call.method === 'post');
+  assert.deepEqual(Array.from(request.data.orderIds), ['365088797156708352']);assert.equal(page.data.paymentVisible, false);
+});
+
+test('缺失自助开关字段时负责人不能新提现，默认关闭并提示联系管理员', async () => {
+  const { page, calls } = pageHarness('../../pages/managerIncome/managerIncome.js', { manager: true });
+  readyToWithdraw(page);page.setData({ income: { profitSharingEnabled: true, manualWithdrawalAvailable: '20' } });
+  await page.withdrawAll();assert.equal(calls.length, 0);assert.match(page.data.error, /未开启自助提现/);
+});
+
 test('管理员选单仅接受合格订单并按分汇总，订单ID保持字符串', () => {
   const { page } = pageHarness('../../pages/stallManagerDetail/stallManagerDetail.js');
   readyAdminWithdrawal(page);
@@ -1764,7 +1853,8 @@ test('管理员代提现仅提交选定范围，关闭自助开关仍可代提�
   assert.equal(posts.length, 1);
   assert.equal(posts[0].url, '/stall-managers/99/profit-sharing/withdrawals');
   assert.deepEqual(Array.from(posts[0].data.orderIds), ['365088797156708352']);
-  assert.deepEqual(Object.keys(posts[0].data).sort(), ['orderIds', 'requestKey']);
+  assert.deepEqual(Object.keys(posts[0].data).sort(), ['expectedAmount', 'orderIds', 'requestKey']);
+  assert.equal(posts[0].data.expectedAmount, '0.07');
   assert.equal(posts[0].idempotencyKey, posts[0].data.requestKey);
   assert.equal(storage.get('adminManagerWithdrawal:42:99').requestKey, posts[0].data.requestKey);
   complete(pendingWithdrawal(posts[0].data.requestKey, { source: 'ADMIN' })); await first;
@@ -1835,7 +1925,7 @@ test('管理员明确拒绝且查询404才可重新选单，重试超时会撤�
 test('自助开关关闭会拦住负责人新提交，已有申请仍可查询', async () => {
   const { page, calls } = pageHarness('../../pages/managerIncome/managerIncome.js', { manager: true });
   readyToWithdraw(page);page.setData({ 'income.selfWithdrawalEnabled': false });
-  await page.withdrawAll();assert.equal(calls.length, 0);assert.match(page.data.error, /关闭自助提现/);
+  await page.withdrawAll();assert.equal(calls.length, 0);assert.match(page.data.error, /未开启自助提现/);
   const key = 'mw_disabled_read_12345678';
   page.setData({ pendingRequestKey: key });
   page.acceptRequest(pendingWithdrawal(key));
@@ -1855,7 +1945,7 @@ test('管理员开关请求单独作用于负责人，取消或接口失败会�
   assert.equal(page.data.selfWithdrawalChecked, false);
 });
 function readyToWithdraw(page) {
-  page.setData({ profile: { userId: '42', active: false }, income: { profitSharingEnabled: true, manualWithdrawalAvailable: '20' } });
+  page.setData({ profile: { userId: '42', active: false }, income: { selfWithdrawalEnabled: true, profitSharingEnabled: true, manualWithdrawalAvailable: '20' } });
   page.restoreRequestPointer();
 }
 

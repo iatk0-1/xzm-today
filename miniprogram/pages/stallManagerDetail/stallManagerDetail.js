@@ -11,7 +11,10 @@ const LIST_PATHS = {
 Page({
   data: {
     userId: '', profile: null, tab: 'profile', busy: false, error: '',
-    selfWithdrawalChecked: true, selectedOrders: [], selectedWithdrawalTotal: '0.00',
+    selfWithdrawalChecked: false, selectedOrders: [], selectedWithdrawalTotal: '0.00',
+    paymentVisible: false, settlementMode: 'OFFLINE', settlementRows: [], settlementLoading: false,
+    settlementPage: 1, settlementHasNext: false, settlementKeyword: '', settlementStartDate: '', settlementEndDate: '',
+    settlementStallOptions: [{ value: '', label: '全部档口' }], settlementStallIndex: 0, voucherImages: [],
     pendingAdminRequest: null, currentWithdrawal: null, adminRequestMissing: false, adminRequestUncertain: false,
     stalls: [], assignedStalls: [], assignmentIds: [], reason: '', income: {}, incomeDetailsVisible: false, activeChecked: false,
     assignmentVisible: false, availableStalls: [], newAssignmentIds: [],
@@ -114,7 +117,7 @@ Page({
       this.applyProfile(results[0], (results[2] || []).filter(stall => !stall.deletedAt && !stall.deleted));
       this.applyReceiver(results[3]);
       this.setData({
-        income: results[1], selfWithdrawalChecked: results[1].selfWithdrawalEnabled !== false, error: ''
+        income: results[1], selfWithdrawalChecked: results[1].selfWithdrawalEnabled === true, error: ''
       });
       this.restoreAdminWithdrawal();
       if (this.data.pendingAdminRequest) await this.recoverAdminWithdrawal();
@@ -450,26 +453,34 @@ Page({
       const allocations = Object.entries(this.data.allocations)
         .filter(([, value]) => value && finance.cents(value) > 0)
         .map(([recordId, amount]) => ({ recordId, amount: finance.money(amount) }));
-      if (!allocations.length) throw new Error('请为完成订单填写本次付款分配金额');
+      if (this.data.paymentVisible) {
+        this.assertWithdrawalAdmin();
+        if (this.data.settlementMode !== 'OFFLINE' || !this.data.selectedOrders.length) throw new Error('请选择可结算订单');
+      } else if (!allocations.length) throw new Error('请为完成订单填写本次付款分配金额');
       if (!this.data.paidAt) throw new Error('请选择实际付款日期和时间');
       const paidAt = finance.isoTime(this.data.paidAt, '实际付款时间');
       if (Date.parse(paidAt) > Date.now()) throw new Error('实际付款时间不能晚于当前时间');
       const body = {
-        allocations, amount: finance.money(this.data.settlementTotal),
+        allocations, amount: finance.money(this.data.paymentVisible ? this.data.selectedWithdrawalTotal : this.data.settlementTotal),
         paidAt,
         paymentMethod: finance.requireText(this.data.paymentMethod, '付款方式'),
         voucher: finance.requireText(this.data.voucher, '付款凭证号或凭证说明'),
         reason: this.data.settlementReason.trim() || '登记负责人已完成订单的线下佣金付款'
       };
+      if (this.data.voucherImages.length) body.voucherImages = this.data.voucherImages.slice();
       if (Number(body.amount) > Number(this.data.income.settleableIncome || 0)) {
         throw new Error('线下付款分配超过账户可结算余额');
       }
       const accepted = await finance.confirmAction('确认已经线下付款',
         '本次登记 ¥' + body.amount + '，系统不会转账。请确认关联订单与付款凭证正确。');
       if (!accepted) return false;
-      await api.post(this.base('offline-settlements'), body);
+      if (this.data.paymentVisible) {
+        const { allocations: ignored, amount, ...details } = body;
+        await api.post(this.base('offline-settlements/by-orders'), { ...details, orderIds: this.data.selectedOrders.slice(), expectedAmount: amount });
+      } else await api.post(this.base('offline-settlements'), body);
       this.setData({ allocations: {}, settlementTotal: '0.00', paidAt: '', paidDate: '', paidTime: '',
-        paymentMethod: '', paymentMethodIndex: -1, voucher: '', settlementReason: '', settlementNoteVisible: false });
+        paymentMethod: '', paymentMethodIndex: -1, voucher: '', voucherImages: [], settlementReason: '', settlementNoteVisible: false,
+        paymentVisible: false, selectedOrders: [], selectedWithdrawalTotal: '0.00', settlementRows: [] });
     });
   },
 
@@ -775,20 +786,27 @@ Page({
     }
   },
   updateOrderSelection(ids) {
-    const available = new Map(this.data.rows.filter(row => row.eligible === true).map(row => [String(row.orderId), row]));
+    const rows = this.data.paymentVisible ? this.data.settlementRows : this.data.rows;
+    const available = new Map(rows.filter(row => row.eligible === true).map(row => [String(row.orderId), row]));
     const selectedOrders = [...new Set(ids.map(String))].filter(id => available.has(id));
     let total = 0;
     selectedOrders.forEach(id => { total += finance.cents(available.get(id).availableAmount); });
     this.setData({ selectedOrders, selectedWithdrawalTotal: (total / 100).toFixed(2),
-      rows: this.data.rows.map(row => ({ ...row, selected: selectedOrders.includes(String(row.orderId)) })) });
+      [this.data.paymentVisible ? 'settlementRows' : 'rows']: rows.map(row => ({ ...row, selected: selectedOrders.includes(String(row.orderId)) })) });
   },
   withdrawalOrderChange(event) {
-    if (this.data.busy || this.data.pendingAdminRequest || this.data.tab !== 'eligibility') return;
+    if (this.data.busy || this.data.settlementLoading || (this.data.pendingAdminRequest && this.data.settlementMode === 'WECHAT') || (!this.data.paymentVisible && this.data.tab !== 'eligibility')) return;
+    if (event.detail.value.length > 100) {
+      this.fail(new Error('单次最多选择100笔订单，请缩小结算范围'));
+      this.updateOrderSelection(this.data.selectedOrders);
+      return;
+    }
     this.updateOrderSelection(event.detail.value);
   },
   selectWithdrawalOrders() {
-    if (this.data.busy || this.data.pendingAdminRequest || this.data.tab !== 'eligibility') return;
-    this.updateOrderSelection(this.data.selectedOrders.length ? [] : this.data.rows.filter(row => row.eligible === true).slice(0, 100).map(row => String(row.orderId)));
+    if (this.data.busy || (this.data.pendingAdminRequest && this.data.settlementMode === 'WECHAT') || (!this.data.paymentVisible && this.data.tab !== 'eligibility')) return;
+    const rows = this.data.paymentVisible ? this.data.settlementRows : this.data.rows;
+    this.updateOrderSelection(this.data.selectedOrders.length ? [] : rows.filter(row => row.eligible === true).slice(0, 100).map(row => String(row.orderId)));
   },
   async toggleSelfWithdrawal(event) {
     if (this.data.busy) return;
@@ -800,7 +818,7 @@ Page({
       await api.put(this.base('self-withdrawal'), { enabled });
       this.setData({ 'income.selfWithdrawalEnabled': enabled });
     });
-    this.setData({ selfWithdrawalChecked: this.data.income.selfWithdrawalEnabled !== false });
+    this.setData({ selfWithdrawalChecked: this.data.income.selfWithdrawalEnabled === true });
   },
   async withdrawSelectedOrders() {
     if (!this._authorized || this.data.busy) return;
@@ -813,7 +831,7 @@ Page({
       }
       const retry = !!this.data.pendingAdminRequest;
       if (!retry) {
-        if (this.data.tab !== 'eligibility') throw new Error('请在选单提现页面选择订单');
+        if (!((this.data.paymentVisible && this.data.settlementMode === 'WECHAT') || this.data.tab === 'eligibility')) throw new Error('请打开微信分账选单页面');
         if (!this.data.income.profitSharingEnabled) throw new Error('微信分账提现功能未开启');
         if (!this.data.selectedOrders.length || this.data.selectedOrders.length > 100) throw new Error('请选择1到100笔合格的已完成订单');
         finance.money(this.data.selectedWithdrawalTotal);
@@ -823,13 +841,16 @@ Page({
         : '负责人：' + (this.data.profile.nickname || this.data.userId) + '。仅提现选中的 ' + this.data.selectedOrders.length
           + ' 笔已完成订单佣金，预计 ¥' + this.data.selectedWithdrawalTotal + '，款项分账到该负责人本人微信零钱。')) return;
       if (this.adminWithdrawalStorageKey() !== storageKey) throw new Error('管理员账号或负责人已变化，请刷新后再操作');
-      const pending = { ...(this.data.pendingAdminRequest || { requestKey: finance.newWithdrawalRequestKey(), orderIds: this.data.selectedOrders.slice() }), rejected: false };
+      const pending = { ...(this.data.pendingAdminRequest || { requestKey: finance.newWithdrawalRequestKey(), orderIds: this.data.selectedOrders.slice(), expectedAmount: this.data.selectedWithdrawalTotal }), rejected: false };
       wx.setStorageSync(storageKey, pending);
       this.setData({ pendingAdminRequest: pending, adminRequestUncertain: true, adminRequestMissing: false });
-      const row = await api.request({ url: this.base('profit-sharing/withdrawals'), method: 'POST', data: { requestKey: pending.requestKey, orderIds: pending.orderIds }, idempotencyKey: pending.requestKey });
+      const body = { requestKey: pending.requestKey, orderIds: pending.orderIds };
+      if (pending.expectedAmount != null) body.expectedAmount = pending.expectedAmount;
+      const row = await api.request({ url: this.base('profit-sharing/withdrawals'), method: 'POST', data: body, idempotencyKey: pending.requestKey });
       if (this.adminWithdrawalStorageKey() !== storageKey) throw new Error('管理员账号或负责人已变化，请刷新后查询原申请');
       this.acceptAdminWithdrawal(row);
       this.setData({ selectedOrders: [] });
+      this.setData({ paymentVisible: false, settlementRows: [], selectedWithdrawalTotal: '0.00' });
       await this.refresh();
     } catch (error) {
       // 只有服务端明确拒绝且后续查询确认未创建，才允许放弃原订单范围。
@@ -877,6 +898,91 @@ Page({
   withdrawalProductImageError(event) {
     const { index, detailIndex } = event.currentTarget.dataset;
     if (this.data.rows[index] && this.data.rows[index].items[detailIndex]) this.setData({ ['rows[' + index + '].items[' + detailIndex + '].productImage']: '' });
+  },
+  async openSettlement(event) {
+    if (this.data.busy) return;
+    try {
+      this.assertWithdrawalAdmin();
+      const mode = event.currentTarget.dataset.mode;
+      if (!['OFFLINE', 'WECHAT'].includes(mode)) return;
+      this.updatePaidDateEnd();
+      this.setData({ paymentVisible: true, settlementMode: mode, settlementRows: [], selectedOrders: [], selectedWithdrawalTotal: '0.00',
+        settlementKeyword: '', settlementStartDate: '', settlementEndDate: '', settlementStallIndex: 0, error: '' });
+      const actorKey = this.adminWithdrawalStorageKey();
+      const stalls = await api.get(this.base('settlement-orders/stalls'));
+      if (this.adminWithdrawalStorageKey() !== actorKey || !this.data.paymentVisible || this.data.settlementMode !== mode) return;
+      this.setData({ settlementStallOptions: [{ value: '', label: '全部档口' }].concat((stalls || []).map(row => ({ value: String(row.id), label: row.name }))) });
+      await this.loadSettlementOrders(true);
+    } catch (error) { this.fail(error); }
+  },
+  closeSettlement() {
+    if (this.data.busy) return;
+    this._settlementSequence = (this._settlementSequence || 0) + 1;
+    this.setData({ paymentVisible: false, settlementLoading: false, selectedOrders: [], selectedWithdrawalTotal: '0.00', error: '' });
+  },
+  settlementFilterChange(event) {
+    if (this.data.busy) return;
+    this.setData({ [event.currentTarget.dataset.field]: event.detail.value });
+  },
+  async filterSettlementOrders() {
+    if (this.data.busy || this.data.settlementLoading) return;
+    this.updateOrderSelection([]);
+    await this.loadSettlementOrders(true);
+  },
+  async loadSettlementOrders(reset) {
+    if (!this.data.paymentVisible || (!reset && (this.data.busy || this.data.settlementLoading || !this.data.settlementHasNext))) return;
+    const sequence = (this._settlementSequence || 0) + 1; this._settlementSequence = sequence;
+    const actorKey = this.adminWithdrawalStorageKey();
+    const mode = this.data.settlementMode;
+    this.setData({ settlementLoading: true, error: '' });
+    try {
+      if (this.data.settlementStartDate && this.data.settlementEndDate && this.data.settlementStartDate > this.data.settlementEndDate) throw new Error('开始日期不能晚于结束日期');
+      const page = reset ? 1 : this.data.settlementPage + 1;
+      const params = { channel: mode, page, size: mode === 'WECHAT' ? 10 : 20 };
+      if (this.data.settlementStartDate) params.startDate = this.data.settlementStartDate;
+      if (this.data.settlementEndDate) params.endDate = this.data.settlementEndDate;
+      if (this.data.settlementKeyword.trim()) params.keyword = this.data.settlementKeyword.trim();
+      const stall = this.data.settlementStallOptions[Number(this.data.settlementStallIndex)];
+      if (stall && stall.value) params.stallId = stall.value;
+      const result = await api.get(this.base('settlement-orders'), params);
+      if (sequence !== this._settlementSequence || !this.data.paymentVisible || this.adminWithdrawalStorageKey() !== actorKey) return;
+      const rows = (result.content || []).map(row => ({ ...finance.incomeEligibilityRow(row), orderStatusLabel: finance.managerDetailRow(row, 'records').orderStatusLabel }));
+      this.setData({ settlementRows: reset ? rows : this.data.settlementRows.concat(rows), settlementPage: page, settlementHasNext: page < result.totalPages });
+      this.updateOrderSelection(this.data.selectedOrders);
+    } catch (error) { if (sequence === this._settlementSequence) this.fail(error); }
+    finally { if (sequence === this._settlementSequence) this.setData({ settlementLoading: false }); }
+  },
+  loadMoreSettlementOrders() { return this.loadSettlementOrders(false); },
+  resetSettlementFilters() {
+    if (this.data.busy || this.data.settlementLoading) return;
+    this.setData({ settlementStartDate: '', settlementEndDate: '', settlementStallIndex: 0, settlementKeyword: '' });
+    return this.filterSettlementOrders();
+  },
+  async uploadVoucherImages() {
+    if (this.data.busy || this.data.voucherImages.length >= 9) return;
+    this.setData({ busy: true, error: '' });
+    try {
+      const actorKey = this.adminWithdrawalStorageKey();
+      const result = await new Promise((resolve, reject) => wx.chooseMedia({ count: 9 - this.data.voucherImages.length, mediaType: ['image'], sourceType: ['album', 'camera'], success: resolve, fail: reject }));
+      for (const file of result.tempFiles || []) {
+        const uploaded = await api.uploadFile('/admin/files/upload', file.tempFilePath, { dir: 'commission-vouchers' });
+        if (this.adminWithdrawalStorageKey() !== actorKey) throw new Error('管理员账号已变化，请重新登录');
+        if (!uploaded.url || !/^https:\/\//.test(uploaded.url)) throw new Error('凭证图片上传未返回有效地址');
+        this.setData({ voucherImages: this.data.voucherImages.concat(uploaded.url) });
+      }
+    } catch (error) { if (!/cancel/.test(error.errMsg || '')) this.fail(error); }
+    finally { this.setData({ busy: false }); }
+  },
+  removeVoucherImage(event) {
+    if (!this.data.busy) this.setData({ voucherImages: this.data.voucherImages.filter((_, index) => index !== Number(event.currentTarget.dataset.index)) });
+  },
+  previewVoucherImage(event) {
+    const urls = event.currentTarget.dataset.saved ? event.currentTarget.dataset.urls : this.data.voucherImages;
+    if (Array.isArray(urls) && urls.length) wx.previewImage({ urls, current: urls[Number(event.currentTarget.dataset.index)] });
+  },
+  settlementProductImageError(event) {
+    const { index, detailIndex } = event.currentTarget.dataset;
+    this.setData({ ['settlementRows[' + index + '].items[' + detailIndex + '].productImage']: '' });
   },
   async mutate(title, operation) {
     if (!this._authorized || this.data.busy) return;

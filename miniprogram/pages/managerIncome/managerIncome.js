@@ -151,12 +151,12 @@ Page({
           return;
         }
       } else {
-        if (this.data.income.selfWithdrawalEnabled === false) throw new Error('管理员已关闭自助提现，请联系管理员办理佣金提现');
+        if (this.data.income.selfWithdrawalEnabled !== true) throw new Error('管理员未开启自助提现，请联系管理员办理佣金提现');
         if (!this.data.income.profitSharingEnabled) throw new Error('微信分账提现功能未开启');
         finance.money(this.data.income.manualWithdrawalAvailable);
       }
       const retry = !!this.data.pendingRequestKey;
-      if (this.data.income.selfWithdrawalEnabled === false) throw new Error('管理员已关闭自助提现，请联系管理员办理佣金提现');
+      if (this.data.income.selfWithdrawalEnabled !== true) throw new Error('管理员未开启自助提现，请联系管理员办理佣金提现');
       if (!await finance.confirmAction(retry ? '重试同一提现申请' : '确认提现全部合格佣金',
         retry ? '将沿用原申请编号提交，不能重复生成付款。最终金额按原申请快照核对。'
           : '本次申请全部当前合格、未付的已完成佣金，预计 ¥' + finance.money(this.data.income.manualWithdrawalAvailable)
