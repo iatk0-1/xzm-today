@@ -311,8 +311,8 @@ Page(pageSync.wrap({
   handleCustomerServiceContact: function(e) {
     customerServiceNavigation.openFromContact(e);
   },
-  goToAdmin: function() {
-    managementNavigation.openManagementMenu({ afterSale: true });
+  goToCreateProduct: function() {
+    managementNavigation.openProductCreate();
   },
 
   onShareAppMessage: function() {

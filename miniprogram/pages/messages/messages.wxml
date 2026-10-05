@@ -35,7 +35,7 @@
   <view class="bottom-tab-bar">
     <view class="tab-item" bindtap="goToIndex">首页</view>
     <view class="tab-item" bindtap="goToMarket">市集</view>
-    <view class="tab-item admin-portal" wx:if="{{isAdmin || isStallManager}}" bindtap="goToAdmin"><view class="red-plus-btn">+</view></view>
+    <view class="tab-item admin-portal" wx:if="{{isAdmin || isStallManager}}" bindtap="goToCreateProduct"><view class="red-plus-btn">+</view></view>
     <view class="tab-item active"><view class="message-tab-label">信息<text wx:if="{{messageUnreadCount > 0}}" class="message-tab-badge">{{messageUnreadLabel}}</text></view></view>
     <view class="tab-item" bindtap="goToUser">我</view>
   </view>

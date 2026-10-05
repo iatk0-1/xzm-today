@@ -19,6 +19,7 @@ function loadPage(cached, profile) {
     require(name) {
       if (name === '../../utils/auth') return auth;
       if (name === '../../utils/api') return { get: async () => profile };
+      if (name === '../../utils/workbench') return require('../../utils/workbench');
       return {};
     },
     wx: { setStorageSync: (key, value) => { stored = value; } },

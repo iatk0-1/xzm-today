@@ -136,11 +136,7 @@ Page({
   goToIndex() { wx.reLaunch({ url: '/pages/index/index' }); },
   goToMarket() { wx.reLaunch({ url: '/pages/market/market' }); },
   goToUser() { wx.reLaunch({ url: '/pages/user/user' }); },
-  goToAdmin() {
-    if (auth.isAdmin()) {
-      wx.reLaunch({ url: '/pages/admin/admin' });
-      return;
-    }
-    managementNavigation.openManagementMenu();
+  goToCreateProduct() {
+    managementNavigation.openProductCreate();
   }
 });

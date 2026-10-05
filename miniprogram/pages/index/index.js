@@ -522,9 +522,9 @@ Page(pageSync.wrap({
   handleCustomerServiceContact: function(e) { customerServiceNavigation.openFromContact(e); },
   goToLiveRoom: function() { wx.navigateTo({ url: '/pages/liveRoomList/index' }); },
 
-  // 老板专属入口
-  goToAdmin: function() {
-    managementNavigation.openManagementMenu();
+  // 加号直接进入商品新增页面。
+  goToCreateProduct: function() {
+    managementNavigation.openProductCreate();
   },
 
   // SKU 选规格与购物车逻辑

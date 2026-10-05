@@ -203,11 +203,6 @@ page {
   border-bottom: none;
 }
 
-.menu-item.catalog-manage-entry {
-  color: #1f2933;
-  font-weight: 600;
-}
-
 .menu-item .arrow {
   color: #cccccc;
   font-family: "Times New Roman", Times, serif;
@@ -225,58 +220,103 @@ page {
   border: none;
 }
 
-/* 打印员管理入口 */
-.menu-item.printers-entry {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
+/* 工作台：按角色显示入口，每行固定三个小按钮 */
+.workbench-section {
+  margin: 20rpx 20rpx 0;
+  padding: 30rpx;
+  background-color: #ffffff;
+  border: 1rpx solid #eeeeee;
+  border-radius: 20rpx;
+}
+
+.workbench-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.workbench-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.workbench-hint {
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.workbench-grid {
+  position: relative;
+  width: 100%;
+}
+
+.workbench-movable {
+  position: absolute;
+  z-index: 1;
+}
+
+.workbench-movable.is-dragging {
+  z-index: 10;
+}
+
+.workbench-movable.is-dragging .workbench-button {
+  background-color: #ffffff;
+  border-color: #333333;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.16);
+  transform: scale(1.04);
+}
+
+.workbench-drop-slot {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2rpx dashed #b7bdc8;
   border-radius: 12rpx;
-  padding: 20rpx 30rpx;
-  margin: 20rpx 0;
+  background-color: #f0f2f5;
 }
 
-.menu-item.printers-entry text {
-  color: #fff;
-  font-weight: 500;
-}
-
-.menu-item.printers-entry .arrow {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-/* 售后管理入口 */
-.menu-item.admin-after-sale-entry {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: #fff;
+/* 提高选择器优先级，并在模板中固定尺寸，避免原生按钮默认宽度撑出拖动格子。 */
+.workbench-movable .workbench-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 16rpx 12rpx;
+  border: 1rpx solid #e8eaed;
   border-radius: 12rpx;
-  padding: 20rpx 30rpx;
-  margin: 20rpx 0;
-}
-
-.menu-item.admin-after-sale-entry text {
-  color: #fff;
+  background-color: #f8f9fb;
+  color: #333333;
+  font-family: inherit;
+  font-size: 26rpx;
   font-weight: 500;
+  line-height: 1.5;
+  text-align: center;
+  white-space: normal;
+  word-break: break-all;
 }
 
-.menu-item.admin-after-sale-entry .arrow {
-  color: rgba(255, 255, 255, 0.8);
+.workbench-button-label {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  text-align: center;
+  white-space: normal;
+  word-break: break-all;
 }
 
-/* 快递批量管理入口 */
-.menu-item.express-batch-entry {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  color: #fff;
-  border-radius: 12rpx;
-  padding: 20rpx 30rpx;
-  margin: 20rpx 0;
+.workbench-button::after {
+  border: none;
 }
 
-.menu-item.express-batch-entry text {
-  color: #fff;
-  font-weight: 500;
-}
-
-.menu-item.express-batch-entry .arrow {
-  color: rgba(255, 255, 255, 0.8);
+.workbench-button-hover {
+  background-color: #eef0f3;
+  opacity: 0.8;
 }
 
 /* ==================

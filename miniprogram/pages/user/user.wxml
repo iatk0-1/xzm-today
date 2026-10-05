@@ -1,3 +1,4 @@
+<page-meta page-style="{{workbenchDraggingId ? 'overflow: hidden;' : ''}}"></page-meta>
 <view class="profile-container">
 
   <view class="header-section" style="padding-top: {{navTop + navHeight + 20}}px;">
@@ -62,52 +63,35 @@
       <text>联系客服</text>
       <text class="arrow">></text>
     </button>
-    <view class="menu-item printers-entry" wx:if="{{isAdmin}}" bindtap="goToPrinters">
-      <text>打印员管理</text>
-      <text class="arrow">></text>
+  </view>
+
+  <view class="workbench-section" wx:if="{{isAdmin || isStallManager}}">
+    <view class="workbench-header">
+      <view class="workbench-title">工作台</view>
+      <text class="workbench-hint">{{workbenchDraggingId ? '松手保存位置' : workbenchSaving ? '正在同步排序...' : '长按按钮可拖动排序'}}</text>
     </view>
-    <view class="menu-item admin-after-sale-entry" wx:if="{{isAdmin}}" bindtap="goToAdminAfterSale">
-      <text>售后管理</text>
-      <text class="arrow">></text>
-    </view>
-    <view class="menu-item shipping-sales-entry" wx:if="{{isAdmin}}" bindtap="goToShippingSales">
-      <text>售出数量统计</text>
-      <text class="arrow">></text>
-    </view>
-    <view class="menu-item sales-entry" wx:if="{{isAdmin || isStallManager}}" bindtap="goToSales">
-      <text>销售数据</text>
-      <text class="arrow">></text>
-    </view>
-    <view class="menu-item catalog-manage-entry" wx:if="{{isAdmin}}" bindtap="goToCatalogManage">
-      <text>档口与标签管理</text>
-      <text class="arrow">></text>
-    </view>
-    <view class="menu-item manager-manage-entry" wx:if="{{isAdmin}}" bindtap="goToStallManagers">
-      <text>档口负责人管理</text>
-      <text class="arrow">></text>
-    </view>
-    <view class="menu-item pricing-rules-entry" wx:if="{{isAdmin}}" bindtap="goToPricingRules">
-      <text>计价规则管理</text>
-      <text class="arrow">></text>
-    </view>
-    <view class="menu-item commission-configs-entry" wx:if="{{isAdmin}}" bindtap="goToCommissionConfigs">
-      <text>佣金配置</text>
-      <text class="arrow">></text>
-    </view>
-    <view class="menu-item manager-income-entry" wx:if="{{isStallManager}}" bindtap="goToManagerIncome">
-      <text>我的收入与提现</text>
-      <text class="arrow">></text>
-    </view>
-    <view class="menu-item change-request-manage-entry" wx:if="{{isAdmin}}" bindtap="goToChangeRequestManage">
-      <text>用户申请审批管理</text>
-      <text class="arrow">></text>
-    </view>
+    <movable-area class="workbench-grid" style="height: {{workbenchHeight}}px;">
+      <view wx:if="{{workbenchDraggingId}}" class="workbench-drop-slot" style="width: {{workbenchItemWidth}}px; height: {{workbenchItemHeight}}px; left: {{workbenchDropX}}px; top: {{workbenchDropY}}px;"></view>
+      <movable-view wx:for="{{workbenchItems}}" wx:key="renderKey"
+        class="workbench-movable {{workbenchDraggingId === item.id ? 'is-dragging' : ''}}"
+        style="width: {{workbenchItemWidth}}px; height: {{workbenchItemHeight}}px;"
+        x="{{item.x}}" y="{{item.y}}" direction="all" inertia="{{false}}" out-of-bounds="{{false}}"
+        disabled="{{workbenchDraggingId !== item.id}}" animation="{{workbenchDraggingId !== item.id}}"
+        data-entry="{{item.id}}" bindtouchstart="onWorkbenchTouchStart" bindlongpress="onWorkbenchDragStart"
+        bindchange="onWorkbenchDragMove" bindtouchend="onWorkbenchDragEnd" bindtouchcancel="onWorkbenchDragCancel">
+        <button class="workbench-button" bindtap="goToWorkbench" data-entry="{{item.id}}"
+          style="width: {{workbenchItemWidth}}px; height: {{workbenchItemHeight}}px; margin: 0;"
+          hover-class="{{workbenchDraggingId ? 'none' : 'workbench-button-hover'}}">
+          <text class="workbench-button-label">{{item.label}}</text>
+        </button>
+      </movable-view>
+    </movable-area>
   </view>
 
   <view class="bottom-tab-bar">
     <view class="tab-item" bindtap="goToIndex">首页</view>
     <view class="tab-item" bindtap="goToMarket">市集</view>
-    <view class="tab-item admin-portal" wx:if="{{isAdmin || isStallManager}}" bindtap="goToAdmin">
+    <view class="tab-item admin-portal" wx:if="{{isAdmin || isStallManager}}" bindtap="goToCreateProduct">
       <view class="red-plus-btn">+</view>
     </view>
     <view class="tab-item" bindtap="goToMessages"><view class="message-tab-label">信息<text wx:if="{{messageUnreadCount > 0}}" class="message-tab-badge">{{messageUnreadLabel}}</text></view></view>
