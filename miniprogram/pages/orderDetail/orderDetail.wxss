@@ -374,3 +374,6 @@ page { background-color: #f7f8fa; padding-bottom: calc(134rpx + env(safe-area-in
   font-size: 22rpx;
   color: #999;
 }
+
+/* 保留文字原有行内排版，商品标题继续由外层控制两行省略。 */
+.copyable-text { display: inline; }

@@ -47,12 +47,12 @@
       </view>
       <view class="info-row">
         <text class="info-label">收货人</text>
-        <text class="info-value">{{afterSale.orderDetail.recipientName}} {{afterSale.orderDetail.recipientPhone}}</text>
+        <text class="info-value" user-select="{{true}}">{{afterSale.orderDetail.recipientName}} {{afterSale.orderDetail.recipientPhone}}</text>
       </view>
       <view class="info-row info-row-top">
         <text class="info-label">收货地址</text>
         <view class="info-value-box info-value-box-column">
-          <text class="info-value info-value-multiline">{{afterSale.orderDetail.recipientAddress}}</text>
+          <text class="info-value info-value-multiline" user-select="{{true}}">{{afterSale.orderDetail.recipientAddress}}</text>
           <text class="copy-btn" catchtap="copyRecipientInfo">复制</text>
         </view>
       </view>
@@ -165,9 +165,9 @@
           <view class="timeline-line" wx:if="{{index < logs.length - 1}}"></view>
         </view>
         <view class="timeline-content">
-          <view class="timeline-status">{{item.actionDisplay}}</view>
-          <view class="timeline-time">{{item.time}}</view>
-          <view class="timeline-desc">{{item.note || item.operator}}</view>
+          <view class="timeline-status"><text user-select="{{true}}">{{item.actionDisplay}}</text></view>
+          <view class="timeline-time"><text user-select="{{true}}">{{item.time}}</text></view>
+          <view class="timeline-desc"><text user-select="{{true}}">{{item.note || item.operator}}</text></view>
         </view>
       </view>
     </view>

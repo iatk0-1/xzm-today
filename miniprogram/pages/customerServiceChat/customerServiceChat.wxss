@@ -13,6 +13,7 @@
 .msg-item { margin-bottom: 16px; display: flex; flex-direction: column; }
 .msg-left { align-items: flex-start; }.msg-right { align-items: flex-end; }
 .msg-bubble { max-width: 75%; padding: 10px 14px; border-radius: 8px; font-size: 14px; line-height: 1.5; word-break: break-all; }
+.msg-bubble .msg-content { display: block; white-space: pre-wrap; word-break: break-all; }
 .bubble-left { background: #fff; color: #333; }.bubble-right { background: #4a6cf7; color: #fff; }
 .msg-image-wrap { width: 180px; min-height: 90px; }.msg-image { width: 180px; border-radius: 6px; }.msg-image-fallback { width: 180px; height: 90px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: #e7eaf0; color: #667084; font-size: 11px; }.msg-video { width: 220px; height: 160px; border-radius: 6px; }.voice-bubble { min-width: 100px; }
 .mini-card { width: 220px; padding: 14px; background: #fff; border-radius: 8px; font-size: 14px; line-height: 1.5; }.card-link { display: block; margin-top: 8px; font-size: 12px; color: #5267cb; }

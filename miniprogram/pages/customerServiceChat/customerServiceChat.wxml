@@ -14,7 +14,7 @@
       <view wx:elif="{{item.messageType === 'image' && item.mediaUrl}}" class="msg-image-wrap"><image wx:if="{{!item.mediaLoadFailed}}" class="msg-image" src="{{item.mediaUrl}}" mode="widthFix" bindtap="previewImage" binderror="onMediaLoadError" data-id="{{item.id}}" data-url="{{item.mediaUrl}}"/><view wx:else class="msg-image-fallback" bindtap="previewImage" data-url="{{item.mediaUrl}}">图片暂未加载 · 点此查看</view></view>
       <video wx:elif="{{item.messageType === 'video' && item.mediaUrl}}" class="msg-video" src="{{item.mediaUrl}}" poster="{{item.metadata.ThumbUrl}}" controls object-fit="contain"/>
       <view wx:elif="{{item.messageType === 'voice' && item.mediaUrl}}" class="msg-bubble voice-bubble {{item.direction === 'staff' ? 'bubble-right' : 'bubble-left'}}" bindtap="playVoice" data-url="{{item.mediaUrl}}">▶ 点击播放语音</view>
-      <view wx:else class="msg-bubble {{item.direction === 'staff' ? 'bubble-right' : 'bubble-left'}}">{{item.displayContent}}</view>
+      <view wx:else class="msg-bubble {{item.direction === 'staff' ? 'bubble-right' : 'bubble-left'}}"><text class="msg-content" user-select="{{true}}">{{item.displayContent}}</text></view>
       <view wx:if="{{item.messageType === 'miniprogrampage' && canReply}}" class="card-reply" bindtap="reuseCard" data-metadata="{{item.metadata}}" data-cover="{{item.mediaUrl}}">回复此卡片</view>
       <view class="msg-meta">{{item.displayTime}} <text wx:if="{{item.status === 'sent'}}">已发送</text><text wx:if="{{item.status === 'failed'}}">发送失败</text><text wx:if="{{item.status === 'unknown'}}">发送结果待核对</text><text wx:if="{{item.status === 'pending'}}">发送中</text></view>
       <view wx:if="{{item.status === 'failed' && item.errorMessage}}" class="msg-error">{{item.errorMessage}}</view>

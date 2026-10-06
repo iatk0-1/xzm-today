@@ -313,3 +313,6 @@ page { background-color: #f2f2f2; }
 .admin-remark-actions .panel-btn { height: 72rpx; line-height: 72rpx; }
 .goods-product-link { display: inline-block; align-self: flex-start; margin-top: 8rpx; color: #1677c8; font-size: 22rpx; }
 .purchase-return-choice { padding: 18rpx 4rpx; font-size: 25rpx; color: #333; }
+
+/* 保留文字原有行内排版，商品标题继续由外层控制两行省略。 */
+.copyable-text { display: inline; }

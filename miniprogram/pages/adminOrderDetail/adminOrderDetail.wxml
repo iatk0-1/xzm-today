@@ -19,10 +19,10 @@
     <view class="location-icon">📍</view>
     <view class="address-content">
       <view class="user-row">
-        <text class="name">{{order.recipientName}}</text>
-        <text class="phone">{{order.recipientPhone}}</text>
+        <text class="name copyable-text" user-select="{{true}}">{{order.recipientName}}</text>
+        <text class="phone copyable-text" user-select="{{true}}">{{order.recipientPhone}}</text>
       </view>
-      <view class="detail-row">{{order.recipientAddress}}</view>
+      <view class="detail-row"><text class="copyable-text" user-select="{{true}}">{{order.recipientAddress}}</text></view>
       <view class="address-actions">
         <view class="contact-buyer-btn" bindtap="openRecipientEditor" wx:if="{{order.status === 'pending' || order.status === 'stocking' || order.status === 'paid'}}">修改收件信息</view>
         <view class="copy-recipient-btn" catchtap="copyRecipientInfo">复制收货信息</view>
@@ -35,7 +35,7 @@
     <view class="goods-item" wx:for="{{order.items}}" wx:key="id" wx:for-index="itemIndex">
       <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
       <view class="goods-info">
-        <view class="goods-title">{{item.productName}}</view>
+        <view class="goods-title"><text class="copyable-text" user-select="{{true}}">{{item.productName}}</text></view>
         <view class="goods-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
           <view class="bundle-sub" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
             <text class="bundle-sub-name">{{sub.bundleGroupName}}:</text>
@@ -54,7 +54,7 @@
         </view>
         <view class="goods-remark" wx:if="{{item.remark}}">
           <text class="remark-tag">备注</text>
-          <text class="remark-text">{{item.remark}}</text>
+          <text class="remark-text copyable-text" user-select="{{true}}">{{item.remark}}</text>
         </view>
         <view class="goods-remark admin-remark-row" bindtap="openAdminRemarkEditor" data-index="{{itemIndex}}">
           <text class="remark-tag admin-remark-tag">管理员备注</text>
@@ -120,7 +120,7 @@
           <view class="shipment-goods" wx:for="{{item.items}}" wx:for-item="goodsItem" wx:key="id">
             <image class="goods-img" src="{{goodsItem.skuImageUrl || goodsItem.productImage}}" mode="aspectFill"></image>
             <view class="goods-info">
-              <view class="goods-title">{{goodsItem.productName || '商品'}}</view>
+              <view class="goods-title"><text class="copyable-text" user-select="{{true}}">{{goodsItem.productName || '商品'}}</text></view>
               <view class="goods-sku">
                 <text wx:if="{{goodsItem.spec}}">{{goodsItem.spec}}</text>
                 <text wx:if="{{goodsItem.size}}"> / {{goodsItem.size}}</text>
