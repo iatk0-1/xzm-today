@@ -103,7 +103,10 @@ for (const role of ['admin', 'stall_manager', 'user']) {
     assert.deepEqual(fixture.toasts, []);
     if (role === 'admin') assert.equal(buttons.filter(button => button.label === '售后管理').length, 1);
     assert.equal(buttons.some(button => button.label === '发布新商品'), false);
-    const registeredPages = JSON.parse(fs.readFileSync(path.join(__dirname, '../../app.json'), 'utf8')).pages;
+    const appConfig = JSON.parse(fs.readFileSync(path.join(__dirname, '../../app.json'), 'utf8'));
+    const registeredPages = appConfig.pages.concat(
+      (appConfig.subPackages || appConfig.subpackages || []).flatMap(pkg => pkg.pages.map(page => `${pkg.root}/${page}`))
+    );
     for (const target of fixture.navigations) assert.ok(registeredPages.includes(target.slice(1)));
   });
 }

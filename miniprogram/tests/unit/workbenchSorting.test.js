@@ -210,7 +210,10 @@ test('账号和角色隔离，旧保存响应不能覆盖切换后的页面', as
 });
 
 test('所有动态按钮目标页面都已注册，模板绑定拖动、取消和滚动锁定', () => {
-  const pages = JSON.parse(fs.readFileSync(path.join(__dirname, '../../app.json'), 'utf8')).pages;
+  const appConfig = JSON.parse(fs.readFileSync(path.join(__dirname, '../../app.json'), 'utf8'));
+  const pages = appConfig.pages.concat(
+    (appConfig.subPackages || appConfig.subpackages || []).flatMap(pkg => pkg.pages.map(page => `${pkg.root}/${page}`))
+  );
   for (const role of ['admin', 'stall_manager']) {
     for (const entry of workbench.getOrderedEntries(role)) assert.ok(pages.includes(entry.url.slice(1)));
   }
