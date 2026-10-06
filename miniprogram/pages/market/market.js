@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/market/market.js
 const api = require('../../utils/api');
@@ -158,7 +159,7 @@ Page(pageSync.wrap({
       console.error('加载心愿失败:', err);
       // 请求失败时也保留上一版列表，避免刷新失败后页面突然变空。
       this.setData({ loading: false });
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     } finally {
       if (!silent) {
         wx.hideLoading();
@@ -203,7 +204,7 @@ Page(pageSync.wrap({
     try {
       await auth.ensureAuthenticated({ silent: true });
     } catch (err) {
-      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
       return;
     }
 
@@ -259,7 +260,7 @@ Page(pageSync.wrap({
 
       this.updateWishColumns(currentWishes);
 
-      const errorMsg = err.message || err.error || '操作失败';
+      const errorMsg = getErrorMessage(err, '操作失败');
       wx.showToast({ title: errorMsg, icon: 'none' });
     }
   },

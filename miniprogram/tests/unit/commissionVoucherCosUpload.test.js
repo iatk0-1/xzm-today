@@ -39,6 +39,7 @@ function harness({ credentialsFail = false, putFail = false, compressionFail = f
       module, exports: module.exports, wx, console: { log() {}, warn() {}, error() {} },
       Page: value => { definition = value; },
       require(name) {
+        if (name.endsWith('/error')) return require('../../utils/error');
         if (name === 'cos-wx-sdk-v5') return FakeCOS;
         if (name.endsWith('/auth')) return auth;
         if (name.endsWith('/config')) return config;

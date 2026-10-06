@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/search/search.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -51,7 +52,7 @@ Page({
 
     if (!this.data.hasMore || this.data.loading) return;
 
-    this.setData({ loading: true });
+    this.setData({ loading: true, loadError: '' });
     wx.showLoading({ title: '加载中...' });
 
     try {
@@ -94,7 +95,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('获取商品失败:', err);
-      this.setData({ loading: false });
+      this.setData({ loading: false, loadError: getErrorMessage(err, '商品列表加载失败，请稍后重试') });
     } finally {
       this.finishPendingSearch();
     }
@@ -156,7 +157,7 @@ Page({
       wx.showLoading({ title: '全网搜索中...' });
     }
 
-    this.setData({ loading: true, showHistory: false });
+    this.setData({ loading: true, showHistory: false, loadError: '' });
 
     try {
       const { page, pageSize } = this.data;
@@ -206,13 +207,18 @@ Page({
         wx.hideLoading();
       }
       console.error('搜索失败:', err);
-      this.setData({ loading: false });
+      this.setData({ loading: false, loadError: getErrorMessage(err, '搜索失败，请稍后重试') });
       if (reset) {
-        wx.showToast({ title: '搜索失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '搜索失败'), icon: 'none' });
       }
     } finally {
       this.finishPendingSearch();
     }
+  },
+
+  retrySearch: function() {
+    const reset = !this.data.results.length;
+    return this.data.searchType === 'all' ? this.fetchAllProducts(reset) : this.doSearch(reset);
   },
 
   finishPendingSearch: function() {
@@ -266,7 +272,7 @@ Page({
             this.setData({ recentSearches: [] });
             wx.showToast({ title: '已清空', icon: 'success' });
           } catch (err) {
-            wx.showToast({ title: '操作失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
           }
         }
       }

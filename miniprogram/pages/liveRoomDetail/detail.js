@@ -1,3 +1,4 @@
+const { getErrorMessage, isUnauthorized } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/liveRoomDetail/detail.js
 const api = require('../../utils/api');
@@ -132,7 +133,7 @@ Page(pageSync.wrap({
     } catch (err) {
       console.error('加载场次详情失败:', err);
       wx.hideLoading();
-      wx.showToast({ title: '加载失败，该场次可能已结束', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败，该场次可能已结束'), icon: 'none' });
       // 如果是 404 错误，说明场次已被删除，返回上一页
       if (err.statusCode === 404) {
         setTimeout(() => wx.navigateBack(), 1500);
@@ -214,7 +215,7 @@ Page(pageSync.wrap({
     } catch (err) {
       wx.hideLoading();
       console.error('开启直播失败:', err);
-      wx.showToast({ title: err.message || '开启失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '开启失败'), icon: 'none' });
     }
   },
 
@@ -239,7 +240,7 @@ Page(pageSync.wrap({
           } catch (err) {
             wx.hideLoading();
             console.error('结束直播失败:', err);
-            wx.showToast({ title: err.message || '结束失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '结束失败'), icon: 'none' });
           }
         }
       }
@@ -404,10 +405,10 @@ Page(pageSync.wrap({
       })
       .catch(function(err) {
         wx.hideLoading();
-        if (err.error === 'UNAUTHORIZED') {
+        if (isUnauthorized(err)) {
           wx.showToast({ title: '请先登录', icon: 'none' });
         } else {
-          wx.showToast({ title: '添加失败', icon: 'none' });
+          wx.showToast({ title: getErrorMessage(err, '添加失败'), icon: 'none' });
         }
       });
   },
@@ -491,7 +492,7 @@ Page(pageSync.wrap({
     } catch (err) {
       wx.hideLoading();
       console.error('添加购物车失败:', err);
-      wx.showToast({ title: '添加失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '添加失败'), icon: 'none' });
     }
   },
 
@@ -552,7 +553,7 @@ Page(pageSync.wrap({
           } catch (err) {
             wx.hideLoading();
             console.error('删除商品失败:', err);
-            wx.showToast({ title: '删除失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '删除失败'), icon: 'none' });
           }
         }
       }

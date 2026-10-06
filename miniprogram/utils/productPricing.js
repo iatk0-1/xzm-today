@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('./error');
 const api = require('./api');
 const auth = require('./auth');
 const finance = require('./managerFinance');
@@ -25,7 +26,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   page.productCost = function(value) {
     if (String(value == null ? '' : value).trim() === '') return null;
     try { return finance.money(value); }
-    catch (error) { throw new Error('默认成本：' + error.message); }
+    catch (error) { throw new Error('默认成本：' + getErrorMessage(error, '输入无效')); }
   };
 
   page.skuCost = function(value, required = !this.canManuallyPrice()) {
@@ -34,7 +35,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
       return null;
     }
     try { return finance.money(value); }
-    catch (error) { throw new Error('SKU成本：' + error.message); }
+    catch (error) { throw new Error('SKU成本：' + getErrorMessage(error, '输入无效')); }
   };
 
   page.loadPricingChoices = async function() {
@@ -136,7 +137,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
       if (token === this._ruleToken) {
         if (this.data.isStallManager) this.setData({ pricingRules: [] });
         this.showRule(null, '');
-        this.setData({ pricingError: error.message || '加载档口规则失败' });
+        this.setData({ pricingError: getErrorMessage(error, '加载档口规则失败') });
       }
     } finally {
       if (token === this._ruleToken) this.setData({ stallPricingLoading: false });
@@ -260,7 +261,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
         return { updatedCount };
       }
     } catch (error) {
-      if (sequence === this._pricingSequence) this.setData({ pricingError: error.message || '成本计价失败' });
+      if (sequence === this._pricingSequence) this.setData({ pricingError: getErrorMessage(error, '成本计价失败') });
       if (strict) throw error;
     } finally {
       if (sequence === this._pricingSequence) this.setData({ pricingBusy: false });
@@ -289,7 +290,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
         await this.useStallPricing();
       }
     } catch (error) {
-      this.setData({ pricingError: error.message || '加载计价规则失败' });
+      this.setData({ pricingError: getErrorMessage(error, '加载计价规则失败') });
     }
   };
 
@@ -479,8 +480,8 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
       await this.recalculatePricing(true);
       await originalSubmit.call(this);
     } catch (error) {
-      this.setData({ pricingError: error.message || '保存商品失败' });
-      wx.showToast({ title: error.message || '保存商品失败', icon: 'none' });
+      this.setData({ pricingError: getErrorMessage(error, '保存商品失败') });
+      wx.showToast({ title: getErrorMessage(error, '保存商品失败'), icon: 'none' });
     } finally {
       this._pricingSubmitting = false;
     }

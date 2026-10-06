@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -25,7 +26,7 @@ Page(autoSearch.wrap({
       this.loadStallList(), this.loadTagList(), this.reload()
     ])).catch(err => {
       console.error('售出数量统计页认证失败:', err);
-      wx.showToast({ title: '登录状态恢复失败，请重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请重试'), icon: 'none' });
     });
   },
 
@@ -78,7 +79,7 @@ Page(autoSearch.wrap({
     }).catch(err => {
       if (id !== this.overviewRequestId) return;
       console.error('加载售出数量概览失败:', err);
-      this.setData({ overviewError: true });
+      this.setData({ overviewError: getErrorMessage(err, '数据加载失败，请稍后重试') });
     }).finally(() => {
       if (id === this.overviewRequestId) this.setData({ overviewLoading: false });
     });
@@ -104,8 +105,8 @@ Page(autoSearch.wrap({
     }).catch(err => {
       if (id !== this.listRequestId) return;
       console.error('加载售出数量列表失败:', err);
-      this.setData({ loadError: true });
-      wx.showToast({ title: '加载统计列表失败，请重试', icon: 'none' });
+      this.setData({ loadError: getErrorMessage(err, '数据加载失败，请稍后重试') });
+      wx.showToast({ title: getErrorMessage(err, '加载统计列表失败，请重试'), icon: 'none' });
     }).finally(() => {
       if (id === this.listRequestId) this.setData({ loading: false });
     });

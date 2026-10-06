@@ -1,3 +1,4 @@
+const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const cosUpload = require('../../utils/cos-upload');
@@ -11,7 +12,7 @@ function formatMessage(m, formatTime) {
   try { metadata = typeof m.metadata === 'string' ? JSON.parse(m.metadata) : (m.metadata || {}); } catch (err) {}
   const mediaUrl = typeof m.mediaUrl === 'string'
     ? m.mediaUrl.replace(/^http:\/\/mmbiz\.qpic\.cn\//i, 'https://mmbiz.qpic.cn/') : m.mediaUrl;
-  return { ...m, mediaUrl, metadata, displayTime: formatTime(m.createdAt),
+  return { ...m, errorMessage: m.errorMessage ? getBusinessFailureMessage(m.errorMessage, '消息发送未完成，请核对发送状态') : m.errorMessage, mediaUrl, metadata, displayTime: formatTime(m.createdAt),
     displayContent: displayWechatEmoji(m.content) || '[' + m.messageType + ']' };
 }
 
@@ -68,7 +69,7 @@ Page({
       });
     } catch (err) {
       this.setData({ loading: false });
-      if (!silent) wx.showToast({ title: (err && err.message) || '加载失败', icon: 'none' });
+      if (!silent) wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
   },
   scrollToBottom() {
@@ -84,7 +85,7 @@ Page({
       const formatted = (earlier || []).map(m => formatMessage(m, raw => this.formatTime(raw)));
       this.setData({ messages: [...formatted, ...this.data.messages], hasMore: formatted.length >= 50,
         scrollToId: 'msg-' + before });
-    } catch (err) { wx.showToast({ title: '加载历史消息失败', icon: 'none' }); }
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '加载历史消息失败'), icon: 'none' }); }
     finally { this._loadingEarlier = false; }
   },
   formatTime(raw) {
@@ -255,7 +256,7 @@ Page({
       if (!this.data.draftThumbUrl) patch.draftThumbUrl = this.usableCover(kind === 'product'
         ? product.coverUrl : firstItem.productImage);
       this.setData(patch);
-    } catch (err) { wx.showToast({ title: (err && err.message) || '未找到对应详情', icon: 'none' }); }
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '未找到对应详情'), icon: 'none' }); }
   },
   closeComposer() { if (!this._sending && !this.data.uploadingCover) this.setData({ composerType: '' }); },
   stopTap() {},
@@ -325,7 +326,7 @@ Page({
     try {
       await api.post('/wechat/customer-service/sessions/' + this.data.id + '/claim', {});
       await this.refresh();
-    } catch (err) { wx.showToast({ title: (err && err.message) || '接入失败', icon: 'none' }); }
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '接入失败'), icon: 'none' }); }
   },
   close() {
     if (this._sending) return;
@@ -334,7 +335,7 @@ Page({
       try {
         await api.post('/wechat/customer-service/sessions/' + this.data.id + '/close', {});
         await this.refresh();
-      } catch (err) { wx.showToast({ title: (err && err.message) || '结束失败', icon: 'none' }); }
+      } catch (err) { wx.showToast({ title: getErrorMessage(err, '结束失败'), icon: 'none' }); }
     } });
   },
   async send() {
@@ -361,7 +362,7 @@ Page({
       await this.refresh(true);
     } catch (err) {
       if (!/cancel/i.test((err && err.errMsg) || '')) {
-        wx.showToast({ title: (err && err.message) || '发送失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '发送失败'), icon: 'none' });
       }
     }
     finally { this._sending = false; this.setData({ sending: false }); }
@@ -378,7 +379,7 @@ Page({
         this.setData({ messages: this.data.messages.map(m => String(m.id) === String(message.id) ? formatted : m) });
       }
       await this.refresh(true);
-    } catch (err) { wx.showToast({ title: (err && err.message) || '重试失败', icon: 'none' }); }
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '重试失败'), icon: 'none' }); }
     finally { this._sending = false; this.setData({ sending: false }); }
   },
   goBack() { wx.navigateBack(); }

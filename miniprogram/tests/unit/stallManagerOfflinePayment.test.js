@@ -16,7 +16,7 @@ function harness({ get, post, confirm = true } = {}) {
   const calls = [];
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../pages/stallManagerDetail/stallManagerDetail.js'), 'utf8'), {
     Page: value => { config = value; }, Date: FixedDate,
-    require: name => name.endsWith('/api') ? {
+    require: name => name.endsWith('/error') ? require('../../utils/error') : name.endsWith('/api') ? {
       async get(url, params) {
         calls.push({ method: 'get', url, params });
         return get ? get(url, params) : { content: [], totalElements: 0, totalPages: 0 };

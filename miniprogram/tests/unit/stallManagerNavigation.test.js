@@ -29,6 +29,7 @@ function loadPage(name, role) {
   });
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, `../../pages/${name}/${name}.js`), 'utf8'), {
     require(request) {
+        if (request.endsWith('/error')) return require('../../utils/error');
       if (request.endsWith('/auth')) return auth;
       if (request.endsWith('/managementNavigation')) return menuModule.exports;
       if (request.endsWith('/workbench')) return require('../../utils/workbench');

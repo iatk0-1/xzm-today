@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
@@ -61,7 +62,7 @@ Page({
       }
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: '上传失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '上传失败'), icon: 'none' });
       console.error('上传头像失败:', err);
     }
   },
@@ -100,7 +101,7 @@ Page({
       }, 1000);
     } catch (err) {
       this.setData({ saving: false });
-      wx.showToast({ title: '保存失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '保存失败'), icon: 'none' });
       console.error('保存失败:', err);
     }
   }

@@ -13,6 +13,7 @@ function harness({ get, post, authenticate, payment } = {}) {
     Page: value => { definition = value; },
     console: { error() {} }, setTimeout() {},
     require(name) {
+      if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/purchaseNotice')) return notices;
       if (name.endsWith('/auth')) return { ensureAuthenticated: async () => { if (authenticate) await authenticate(); } };
       if (name.endsWith('/api')) return {

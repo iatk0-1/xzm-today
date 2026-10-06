@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/bluetoothPrint/bluetoothPrint.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -124,7 +125,7 @@ Page({
       }
     } catch (err) {
       console.error('加载面单失败:', err);
-      wx.showToast({ title: '加载面单失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载面单失败'), icon: 'none' });
     } finally {
       wx.hideLoading();
     }
@@ -163,7 +164,7 @@ Page({
       wx.showToast({ title: '连接成功', icon: 'success' });
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: '连接失败：' + err.message, icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '蓝牙连接失败，请检查设备后重试'), icon: 'none' });
     }
   },
 
@@ -182,7 +183,7 @@ Page({
       }, 3000);
     } catch (err) {
       console.error('搜索设备失败:', err);
-      wx.showToast({ title: '搜索失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '搜索失败'), icon: 'none' });
     }
   },
 
@@ -203,7 +204,7 @@ Page({
       wx.showToast({ title: '连接成功', icon: 'success' });
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: '连接失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '连接失败'), icon: 'none' });
     }
   },
 
@@ -224,7 +225,7 @@ Page({
       });
       wx.showToast({ title: '已断开', icon: 'success' });
     } catch (err) {
-      wx.showToast({ title: '断开失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '断开失败'), icon: 'none' });
     }
   },
 
@@ -303,7 +304,7 @@ Page({
       wx.hideLoading();
       wx.showModal({
         title: '打印失败',
-        content: err.message || '未知错误',
+        content: getErrorMessage(err, '操作失败，请稍后重试'),
         showCancel: false
       });
     } finally {

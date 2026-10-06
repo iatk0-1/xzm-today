@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
@@ -31,7 +32,7 @@ Page({
       });
     } catch (err) {
       this.setData({ loading: false });
-      wx.showToast({ title: (err && err.message) || '订单加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '订单加载失败'), icon: 'none' });
     }
   }
 });

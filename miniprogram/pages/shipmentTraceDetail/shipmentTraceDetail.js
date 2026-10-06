@@ -1,3 +1,4 @@
+const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
@@ -52,7 +53,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       this.setData({ isLoading: false });
-      wx.showToast({ title: '加载物流失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载物流失败'), icon: 'none' });
     }
   },
 
@@ -76,7 +77,7 @@ Page({
       'trace refreshed from carrier': '物流信息已从承运商更新',
       'trace loaded from local events': '物流信息来自本地记录'
     };
-    return messageMap[message] || message || '';
+    return messageMap[message] || (message ? getBusinessFailureMessage(message, '暂未获取到最新物流，请稍后刷新') : '');
   },
 
   formatTraceStatus: function(statusText) {
@@ -154,7 +155,7 @@ Page({
             },
             fail: (err) => {
               if (!err || !String(err.errMsg || '').includes('cancel')) {
-                wx.showToast({ title: '打开联系人失败', icon: 'none' });
+                wx.showToast({ title: getErrorMessage(err, '打开联系人失败'), icon: 'none' });
               }
             }
           });

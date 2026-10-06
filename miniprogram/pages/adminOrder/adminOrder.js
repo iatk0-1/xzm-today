@@ -1,3 +1,4 @@
+const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 // adminOrder.js - 完整版
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -67,7 +68,7 @@ Page({
     try {
       await auth.ensureAuthenticated({ silent: true });
     } catch (err) {
-      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
       return;
     }
     this.loadLogisticsAccounts();
@@ -164,7 +165,7 @@ Page({
       });
     } catch (err) {
       console.error('加载物流账号失败:', err);
-      wx.showToast({ title: '加载物流账号失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载物流账号失败'), icon: 'none' });
     }
   },
 
@@ -187,7 +188,7 @@ Page({
           await api.patch(`/admin/orders-manage/orders/${item.orderId}/items/${item.orderItemId}/admin-remark`, { remark });
           this.updateAdminRemarkItem(item.orderId, item.orderItemId, remark);
           wx.showToast({ title: '已保存', icon: 'success' });
-        } catch (err) { wx.showToast({ title: err.message || '保存失败', icon: 'none' }); }
+        } catch (err) { wx.showToast({ title: getErrorMessage(err, '保存失败'), icon: 'none' }); }
       }
     });
   },
@@ -423,7 +424,7 @@ Page({
     } catch (err) {
       if (version !== (this.searchRequestVersion || 0)) return;
       console.error('搜索商品失败:', err);
-      wx.showToast({ title: '搜索商品失败，请重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '搜索商品失败，请重试'), icon: 'none' });
     } finally {
       if (version === (this.searchRequestVersion || 0)) this.setData({ searchLoading: false });
     }
@@ -546,9 +547,9 @@ Page({
         const skus = res.skus || res.skuMatrix || [];
         const updatedProduct = { ...product, skus };
         this._showSkuModal(updatedProduct);
-      }).catch(() => {
+      }).catch(err => {
         wx.hideLoading();
-        wx.showToast({ title: '加载 SKU 失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '加载 SKU 失败'), icon: 'none' });
       });
     } else {
       this._showSkuModal(product);
@@ -696,7 +697,7 @@ Page({
     }).catch(err => {
       if (requestVersion === this.pendingRequestVersion) {
         console.error('加载未发货商品失败:', err);
-        wx.showToast({ title: err.message || '加载失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
       }
       return false;
     }).finally(() => {
@@ -1065,7 +1066,7 @@ Page({
             uniqueKey: this.getPendingItemKey(item),
             canShip: shippableIds.has(String(item.orderItemId)) && Number(item.unshippedQty) > 0 });
         });
-        return { ...group, failedAtText: this.formatDate(group.failedAt),
+        return { ...group, reason: getBusinessFailureMessage(group.reason, '获取面单失败，请核查后重试'), failedAtText: this.formatDate(group.failedAt),
           orders: Array.from(orderMap.values()) };
       });
       if (!this.data.showFailedWaybills || version !== this.failedWaybillRequestVersion) return;
@@ -1076,7 +1077,7 @@ Page({
       });
     } catch (err) {
       if (version === this.failedWaybillRequestVersion) {
-        wx.showToast({ title: err.message || '查询失败列表失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '查询失败列表失败'), icon: 'none' });
       }
     } finally {
       if (version === this.failedWaybillRequestVersion) this.setData({ failedWaybillLoading: false });
@@ -1267,7 +1268,7 @@ Page({
     } catch (err) {
       console.error('刷新待发货状态失败:', err);
       wx.hideLoading();
-      wx.showToast({ title: '校验待发货状态失败，请重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '校验待发货状态失败，请重试'), icon: 'none' });
       return;
     }
     wx.hideLoading();
@@ -1281,7 +1282,7 @@ Page({
     try {
       task = await this.createBatchTask(account);
     } catch (err) {
-      wx.showToast({ title: err.message || '建立发货任务失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '建立发货任务失败'), icon: 'none' });
       return;
     }
     const neededWaybills = task.groups.length;
@@ -1298,7 +1299,13 @@ Page({
     this.generatePreview(task);
   },
 
+  sanitizeBatchTask: function(task) {
+    return task && { ...task, groups: (task.groups || []).map(group => ({ ...group,
+      reason: group.reason ? getBusinessFailureMessage(group.reason, '发货结果待核查，请核对面单和发货单') : group.reason })) };
+  },
+
   generatePreview: function(task) {
+    task = this.sanitizeBatchTask(task);
     // 以后端分组为准，避免同地址不同用户被误合并。
     const previewGroups = task.groups.map(group => {
       const orderIds = new Set(group.orderIds.map(String));
@@ -1312,7 +1319,7 @@ Page({
       };
     });
     this.setData({
-      batchTask: task,
+      batchTask: this.sanitizeBatchTask(task),
       previewGroups,
       canShip: true,
       showPreviewModal: true
@@ -1446,6 +1453,7 @@ Page({
   },
 
   updateBatchProgress: function(task) {
+    task = this.sanitizeBatchTask(task);
     const labels = {
       WAITING: '等待处理', PROCESSING: '正在处理', PROCESSING_WECHAT: '正在补报微信', SUCCESS: '发货完成',
       FAILED: '发货失败', BLOCKED: '商品被其他任务占用', SHIPMENT_CREATED_WECHAT_FAILED: '发货完成，微信同步失败',
@@ -1469,7 +1477,7 @@ Page({
       canRetryWechat: false
     }));
     this.setData({
-      batchTask: task,
+      batchTask: this.sanitizeBatchTask(task),
       batchProgress: {
         total: groups.length,
         completed: groups.filter(group => !['WAITING', 'PROCESSING', 'PROCESSING_WECHAT'].includes(group.status)).length,
@@ -1563,7 +1571,7 @@ Page({
             { note: result.content });
           this.updateBatchProgress(updated);
         } catch (err) {
-          wx.showToast({ title: err.message || '人工核查确认失败', icon: 'none' });
+          wx.showToast({ title: getErrorMessage(err, '人工核查确认失败'), icon: 'none' });
         }
       }
     });
@@ -1593,7 +1601,7 @@ Page({
                 { failedOrderIds, note: noteResult.content });
               this.updateBatchProgress(updated);
             } catch (err) {
-              wx.showToast({ title: err.message || '微信上报核查保存失败', icon: 'none' });
+              wx.showToast({ title: getErrorMessage(err, '微信上报核查保存失败'), icon: 'none' });
             }
           }
         });
@@ -1610,7 +1618,7 @@ Page({
       this.updateBatchProgress(updated);
       this.runBatchTask(false);
     } catch (err) {
-      wx.showToast({ title: err.message || '微信补报启动失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '微信补报启动失败'), icon: 'none' });
     }
   },
 
@@ -1651,7 +1659,7 @@ Page({
       }
       this.setData({ recentBatchTasks: tasks, showRecentBatchTasks: true });
     } catch (err) {
-      wx.showToast({ title: err.message || '查询历史任务失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '查询历史任务失败'), icon: 'none' });
     }
   },
 

@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const finance = require('../../utils/managerFinance');
@@ -333,7 +334,7 @@ Page({
       });
       return true;
     } catch (error) {
-      this.setData({ boundaryError: error.message || '分界点更新失败' });
+      this.setData({ boundaryError: getErrorMessage(error, '分界点更新失败') });
       return false;
     }
   },
@@ -378,7 +379,7 @@ Page({
     if (!this.data.profitRule) return { segments: this.cleanSegments() };
     let minimumProfit;
     try { minimumProfit = finance.money(this.data.minimumProfit); }
-    catch (error) { throw new Error('最低预期利润：' + error.message); }
+    catch (error) { throw new Error('最低预期利润：' + getErrorMessage(error, '输入无效')); }
     let profitPercent;
     try { profitPercent = finance.money(this.data.profitPercent, true); }
     catch (_) { throw new Error('利润比例须填写非负数字，最多两位小数且不超过99999999.99%'); }
@@ -455,6 +456,6 @@ Page({
   },
 
   fail(error) {
-    this.setData({ error: error.message || '规则操作失败' });
+    this.setData({ error: getErrorMessage(error, '规则操作失败') });
   }
 });

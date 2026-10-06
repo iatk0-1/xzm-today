@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/afterSaleDetail/afterSaleDetail.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -43,7 +44,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('加载售后详情失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
   },
 
@@ -247,7 +248,7 @@ Page({
                 this.loadAfterSaleDetail();
               }).catch(err => {
                 wx.hideLoading();
-                wx.showToast({ title: err.message || '提交失败', icon: 'none' });
+                wx.showToast({ title: getErrorMessage(err, '提交失败'), icon: 'none' });
               });
             }
           });
@@ -291,7 +292,7 @@ Page({
             this.loadAfterSaleDetail();
           } catch (err) {
             wx.hideLoading();
-            wx.showToast({ title: err.message || '撤销失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '撤销失败'), icon: 'none' });
           }
         }
       }

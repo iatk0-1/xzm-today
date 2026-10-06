@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const config = require('../../utils/config');
@@ -151,7 +152,7 @@ Page({
       this.connectWs();
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: '发起会话失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '发起会话失败'), icon: 'none' });
     }
   },
 
@@ -166,7 +167,7 @@ Page({
       });
       await this.loadMessages();
     } catch (err) {
-      wx.showToast({ title: '加载会话失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载会话失败'), icon: 'none' });
     }
   },
 
@@ -227,7 +228,7 @@ Page({
       const res = await api.post('/conversations/' + this.data.conversationId + '/messages', { type: 'text', content: text, perspective: this.data.myPerspective });
       this.appendMessage(this.formatMessage(res));
     } catch (err) {
-      wx.showToast({ title: '发送失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '发送失败'), icon: 'none' });
       this.setData({ inputText: text });
     }
   },
@@ -240,7 +241,7 @@ Page({
       const res = await api.post('/conversations/' + this.data.conversationId + '/messages', { type: 'product_card', productCard: JSON.stringify(card), perspective: this.data.myPerspective });
       this.appendMessage(this.formatMessage(res));
     } catch (err) {
-      wx.showToast({ title: '发送失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '发送失败'), icon: 'none' });
       this.setData({ showProductCard: true });
     }
   },
@@ -290,7 +291,7 @@ Page({
       this.appendMessage(this.formatMessage(res));
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: '图片发送失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '图片发送失败'), icon: 'none' });
     }
   },
 
@@ -316,7 +317,7 @@ Page({
       this.appendMessage(this.formatMessage(res));
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: '视频发送失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '视频发送失败'), icon: 'none' });
     }
   },
 

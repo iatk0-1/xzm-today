@@ -17,6 +17,7 @@ function loadPage(cached, profile) {
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../pages/user/user.js'), 'utf8'), {
     require(name) {
+        if (name.endsWith('/error')) return require('../../utils/error');
       if (name === '../../utils/auth') return auth;
       if (name === '../../utils/api') return { get: async () => profile };
       if (name === '../../utils/workbench') return require('../../utils/workbench');

@@ -35,6 +35,7 @@ function pageHarness(file, { get, post, put, del, upload, manager = false } = {}
       module, exports: module.exports, Page(value) { definition = value; },
       wx, console, setTimeout: () => 0, clearTimeout() {},
       require(name) {
+        if (name.endsWith('/error')) return require('../../utils/error');
         if (name.endsWith('/api') || name === './api') return api;
         if (name.endsWith('/auth') || name === './auth') return auth;
         if (name.endsWith('/media')) return { compressImage: async filePath => ({ path: filePath }) };

@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/wishDetail/wishDetail.js
 const api = require('../../utils/api');
@@ -79,7 +80,7 @@ Page(pageSync.wrap({
       console.error('加载心愿详情失败:', err);
       wx.showModal({
         title: '提示',
-        content: '找不到该心愿',
+        content: getErrorMessage(err, err && err.statusCode === 404 ? '找不到该心愿' : '心愿加载失败，请稍后重试'),
         showCancel: false,
         success: function() { wx.navigateBack(); }
       });
@@ -219,7 +220,7 @@ Page(pageSync.wrap({
     try {
       await auth.ensureAuthenticated({ silent: true });
     } catch (err) {
-      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
       return;
     }
 
@@ -242,7 +243,7 @@ Page(pageSync.wrap({
       wish.isLiked = originalLiked;
       wish.likes = originalLikes;
       this.setData({ wish: wish });
-      wx.showToast({ title: '操作失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
     }
   },
 
@@ -265,7 +266,7 @@ Page(pageSync.wrap({
           } catch (err) {
             wx.hideLoading();
             var msg = '删除失败';
-            if (err && err.message) msg = err.message;
+            msg = getErrorMessage(err, msg);
             wx.showToast({ title: msg, icon: 'none' });
           }
         }

@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('./error');
 const draft = require('./draft');
 
 function draftSnapshot(page) {
@@ -133,7 +134,7 @@ function integrateProductDraftExit(page) {
       return true;
     } catch (error) {
       console.error('草稿保存失败:', error);
-      if (!this._draftUnloaded) wx.showToast({ title: error.message || '草稿保存失败，请重试', icon: 'none' });
+      if (!this._draftUnloaded) wx.showToast({ title: getErrorMessage(error, '草稿保存失败，请重试'), icon: 'none' });
       return false;
     } finally {
       wx.hideLoading();

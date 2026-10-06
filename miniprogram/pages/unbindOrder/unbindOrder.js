@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/unbindOrder/unbindOrder.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -53,7 +54,7 @@ Page({
 
       this.setData({ orders: processedOrders, isLoading: false });
     } catch (err) {
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
       this.setData({ isLoading: false });
       console.error('loadShipmentOrders error:', err);
     } finally {
@@ -90,7 +91,7 @@ Page({
     } catch (err) {
       wx.showModal({
         title: '解绑失败',
-        content: err.message || '未知错误',
+        content: getErrorMessage(err, '操作失败，请稍后重试'),
         showCancel: false
       });
     } finally {

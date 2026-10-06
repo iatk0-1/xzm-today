@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/adminAfterSaleList/adminAfterSaleList.js
 const api = require('../../utils/api');
@@ -228,7 +229,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       })
       .catch(err => {
         console.error('加载售后列表失败:', err);
-        wx.showToast({ title: '加载失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
         this.setData({ isLoading: false });
         if (callback) callback();
       });

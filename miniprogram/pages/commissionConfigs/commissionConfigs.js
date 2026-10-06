@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const finance = require('../../utils/managerFinance');
@@ -87,5 +88,5 @@ Page({
       await this.load();
     } catch (error) { this.fail(error); } finally { this.setData({ busy: false }); }
   },
-  fail(error) { this.setData({ error: error.message || '佣金配置操作失败' }); }
+  fail(error) { this.setData({ error: getErrorMessage(error, '佣金配置操作失败') }); }
 });

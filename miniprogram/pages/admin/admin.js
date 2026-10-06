@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/admin/admin.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -124,7 +125,7 @@ const pageDefinition = {
       await auth.ensureAuthenticated({ silent: true });
     } catch (err) {
       console.error('管理员页面认证恢复失败:', err);
-      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
       return;
     }
 
@@ -134,7 +135,7 @@ const pageDefinition = {
         const stalls = await api.get('/stall-managers/stalls/mine');
         this.setData({ assignedStalls: stalls || [], recentStalls: stalls || [] });
       } catch (err) {
-        wx.showToast({ title: '加载负责档口失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '加载负责档口失败'), icon: 'none' });
         return;
       }
     }
@@ -458,7 +459,7 @@ const pageDefinition = {
     } catch (err) {
       console.error('加载商品失败:', err);
       wx.hideLoading();
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
   },
 
@@ -673,7 +674,7 @@ const pageDefinition = {
     } catch (err) {
       console.error('加载直播商品失败:', err);
       wx.hideLoading();
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
   },
 
@@ -1095,7 +1096,7 @@ const pageDefinition = {
     } catch (err) {
       wx.hideLoading();
       console.error('创建档口失败:', err);
-      wx.showToast({ title: '创建失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '创建失败'), icon: 'none' });
     }
   },
 
@@ -1121,7 +1122,7 @@ const pageDefinition = {
     } catch (err) {
       wx.hideLoading();
       console.error('创建标签失败:', err);
-      wx.showToast({ title: '创建失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '创建失败'), icon: 'none' });
     }
   },
 
@@ -1211,7 +1212,7 @@ const pageDefinition = {
       this.setData({ newCategoryName: '' });
     } catch (err) {
       console.error('创建尺码类型失败:', err);
-      wx.showToast({ title: '创建失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '创建失败'), icon: 'none' });
     }
   },
 
@@ -1232,7 +1233,7 @@ const pageDefinition = {
             await this.loadSizeCategories();
           } catch (err) {
             console.error('删除尺码类型失败:', err);
-            wx.showToast({ title: '删除失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '删除失败'), icon: 'none' });
           }
         }
       }
@@ -1280,7 +1281,7 @@ const pageDefinition = {
       }
     } catch (err) {
       console.error('创建尺码失败:', err);
-      wx.showToast({ title: '创建失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '创建失败'), icon: 'none' });
     }
   },
 
@@ -1313,7 +1314,7 @@ const pageDefinition = {
             }
           } catch (err) {
             console.error('删除尺码失败:', err);
-            wx.showToast({ title: '删除失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '删除失败'), icon: 'none' });
           }
         }
       }
@@ -1631,7 +1632,7 @@ const pageDefinition = {
       })
       .catch(err => {
         wx.hideLoading();
-        wx.showToast({ title: '获取失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '获取失败'), icon: 'none' });
       });
   },
 
@@ -1935,7 +1936,7 @@ const pageDefinition = {
       wx.hideLoading();
       wx.showModal({
         title: editId ? '保存失败' : '创建失败',
-        content: err && err.message ? err.message : (typeof err === 'object' ? JSON.stringify(err) : String(err)),
+        content: getErrorMessage(err, '保存失败，请稍后重试'),
         showCancel: false
       });
     }
@@ -2140,7 +2141,7 @@ const pageDefinition = {
       });
     } catch (err) {
       console.error('加载档口列表失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
   },
 
@@ -2157,7 +2158,7 @@ const pageDefinition = {
       });
     } catch (err) {
       console.error('加载标签列表失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
   },
 
@@ -2202,7 +2203,7 @@ const pageDefinition = {
     } catch (err) {
       wx.hideLoading();
       console.error('创建档口失败:', err);
-      wx.showToast({ title: '创建失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '创建失败'), icon: 'none' });
     }
   },
 
@@ -2229,7 +2230,7 @@ const pageDefinition = {
     } catch (err) {
       wx.hideLoading();
       console.error('创建标签失败:', err);
-      wx.showToast({ title: '创建失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '创建失败'), icon: 'none' });
     }
   },
 
@@ -2251,7 +2252,7 @@ const pageDefinition = {
             this.loadRecentStallsAndTags();
           } catch (err) {
             console.error('删除档口失败:', err);
-            wx.showToast({ title: '删除失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '删除失败'), icon: 'none' });
           }
         }
       }
@@ -2274,7 +2275,7 @@ const pageDefinition = {
     } catch (err) {
       wx.hideLoading();
       console.error('恢复档口失败:', err);
-      wx.showToast({ title: '恢复失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '恢复失败'), icon: 'none' });
     }
   },
 
@@ -2296,7 +2297,7 @@ const pageDefinition = {
             this.loadRecentStallsAndTags();
           } catch (err) {
             console.error('删除标签失败:', err);
-            wx.showToast({ title: '删除失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '删除失败'), icon: 'none' });
           }
         }
       }
@@ -2319,7 +2320,7 @@ const pageDefinition = {
     } catch (err) {
       wx.hideLoading();
       console.error('恢复标签失败:', err);
-      wx.showToast({ title: '恢复失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '恢复失败'), icon: 'none' });
     }
   },
 

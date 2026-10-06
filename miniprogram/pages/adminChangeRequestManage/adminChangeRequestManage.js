@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -195,7 +196,7 @@ Page(autoSearch.wrap({
         isLoadingMore: false
       });
     } catch (err) {
-      wx.showToast({ title: err.message || '加载申请失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载申请失败'), icon: 'none' });
       this.setData({ isLoading: false, isLoadingMore: false });
     } finally {
       this.setData({ isLoading: false, isLoadingMore: false });
@@ -238,7 +239,7 @@ Page(autoSearch.wrap({
         return [{ ...item, ...updated, status, statusText: status === 'approved' ? '已通过' : '已拒绝' }];
       }) });
     } catch (err) {
-      wx.showToast({ title: err.message || '操作失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
     } finally {
       wx.hideLoading();
     }

@@ -10,7 +10,7 @@ function harness({ get, put, confirm = true } = {}) {
   const calls = [];
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../pages/stallManagerDetail/stallManagerDetail.js'), 'utf8'), {
     Page: value => { config = value; },
-    require: name => name.endsWith('/api') ? {
+    require: name => name.endsWith('/error') ? require('../../utils/error') : name.endsWith('/api') ? {
       async get(url, params) { calls.push({ method: 'get', url, params }); return get(url, params); },
       async put(url, body) { calls.push({ method: 'put', url, body }); return put && put(url, body); }
     } : name.endsWith('/managerFinance') ? { ...finance, confirmAction: async () => confirm } : {},

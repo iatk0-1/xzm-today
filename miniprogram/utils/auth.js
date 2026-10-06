@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('./error');
 // miniprogram/utils/auth.js
 const api = require('./api');
 const config = require('./config');
@@ -362,7 +363,7 @@ function isPhoneBound() {
  * 将手机号绑定错误转换成适合用户阅读的中文提示。
  */
 function getPhoneBindErrorMessage(err) {
-  const rawMessage = err && err.message ? String(err.message) : '';
+  const rawMessage = err && typeof err.message === 'string' ? err.message : '';
 
   if (/another user|其他账户|其他用户/i.test(rawMessage)) {
     return '该手机号已被其他账户绑定，请联系客服协助处理。';
@@ -373,7 +374,7 @@ function getPhoneBindErrorMessage(err) {
   if (err && (err.statusCode === 409 || err.code === 'CONFLICT' || err.error === 'CONFLICT')) {
     return '手机号绑定存在冲突，请联系客服协助处理。';
   }
-  return rawMessage || '手机号绑定失败，请稍后重试；如仍无法处理，请联系客服。';
+  return getErrorMessage(err, '手机号绑定失败，请稍后重试；如仍无法处理，请联系客服。');
 }
 
 /**

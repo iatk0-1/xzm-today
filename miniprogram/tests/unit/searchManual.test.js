@@ -11,6 +11,7 @@ function setup(t) {
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../pages/search/search.js'), 'utf8'), {
     Page(value) { config = value; },
     require(name) {
+        if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/api')) return {
         get: async (url, params) => {
           if (url === '/products/query') { requests.push(params); return { content: [], hasNext: true }; }

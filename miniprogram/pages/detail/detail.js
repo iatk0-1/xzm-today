@@ -1,3 +1,4 @@
+const { getErrorMessage, isUnauthorized } = require('../../utils/error');
 // miniprogram/pages/detail/detail.js
 const api = require('../../utils/api');
 const { getPurchaseNotice } = require('../../utils/purchaseNotice');
@@ -107,7 +108,7 @@ Page({
         await this.getProductDetail(id);
         return; // 成功
       } catch (err) {
-        if (err && err.error === 'UNAUTHORIZED' && i < retries) {
+        if (err && isUnauthorized(err) && i < retries) {
           console.log('[detail] 未授权，等待认证后重试... 第' + (i + 1) + '次');
           await this.waitForAuth(3000);
           continue;
@@ -115,7 +116,8 @@ Page({
         // 最终失败
         wx.hideLoading();
         console.error('获取详情失败:', err);
-        wx.showModal({ title: '提示', content: '找不到该商品', showCancel: false });
+        wx.showModal({ title: '加载失败', content: getErrorMessage(err, err && err.statusCode === 404 ? '找不到该商品' : '商品加载失败，请稍后重试'), showCancel: false });
+        return;
       }
     }
   },
@@ -202,7 +204,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('获取详情失败:', err);
-      wx.showModal({ title: '提示', content: '找不到该商品', showCancel: false });
+      throw err;
     }
   },
 
@@ -724,10 +726,10 @@ Page({
         .catch(err => {
           wx.hideLoading();
           console.error('添加购物车失败:', err);
-          if (err.error === 'UNAUTHORIZED') {
+          if (isUnauthorized(err)) {
             wx.showToast({ title: '请先登录', icon: 'none' });
           } else {
-            wx.showToast({ title: '添加失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '添加失败'), icon: 'none' });
           }
         });
     }
@@ -754,10 +756,10 @@ Page({
       })
       .catch(function(err) {
         wx.hideLoading();
-        if (err.error === 'UNAUTHORIZED') {
+        if (isUnauthorized(err)) {
           wx.showToast({ title: '请先登录', icon: 'none' });
         } else {
-          wx.showToast({ title: '添加失败', icon: 'none' });
+          wx.showToast({ title: getErrorMessage(err, '添加失败'), icon: 'none' });
         }
       });
   },

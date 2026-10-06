@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('./utils/error');
 // miniprogram/app.js
 const auth = require('./utils/auth');
 const api = require('./utils/api');
@@ -85,8 +86,7 @@ App({
       .catch(function(err) {
         wx.hideLoading();
         var msg = '操作失败';
-        if (err && err.data && err.data.message) msg = err.data.message;
-        else if (err && err.message) msg = err.message;
+        msg = getErrorMessage(err, msg);
         wx.showToast({ title: msg, icon: 'none' });
       });
   },

@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
@@ -11,7 +12,7 @@ Page({
       this.setData({ staff: staff || [], loading: false });
     } catch (err) {
       this.setData({ loading: false });
-      wx.showToast({ title: (err && err.message) || '加载客服失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载客服失败'), icon: 'none' });
     }
   },
   onPhone(e) { this.setData({ phone: e.detail.value }); },
@@ -25,7 +26,7 @@ Page({
       this.setData({ phone: '' });
       await this.load();
       wx.showToast({ title: '已开通客服权限', icon: 'none' });
-    } catch (err) { wx.showToast({ title: (err && err.message) || '开通失败', icon: 'none' }); }
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '开通失败'), icon: 'none' }); }
   },
   remove(e) {
     const id = e.currentTarget.dataset.id;
@@ -34,7 +35,7 @@ Page({
       try {
         await api.delete('/wechat/customer-service/staff/' + id);
         await this.load();
-      } catch (err) { wx.showToast({ title: (err && err.message) || '撤销失败', icon: 'none' }); }
+      } catch (err) { wx.showToast({ title: getErrorMessage(err, '撤销失败'), icon: 'none' }); }
     } });
   }
 });

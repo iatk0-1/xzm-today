@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/checkout/checkout.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -21,7 +22,7 @@ Page({
       await auth.ensureAuthenticated({ silent: true });
     } catch (err) {
       console.error('结算页认证恢复失败:', err);
-      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
       return;
     }
 
@@ -92,7 +93,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('加载结算商品失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
   },
 
@@ -117,7 +118,7 @@ Page({
       });
     } catch (err) {
       console.error('加载购买须知失败:', err);
-      wx.showToast({ title: '购买须知加载失败，请点击重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '购买须知加载失败，请点击重试'), icon: 'none' });
     } finally {
       this._noticeLoading = false;
       this.setData({ purchaseNoticeLoading: false });
@@ -204,6 +205,8 @@ Page({
 
     this.setData({ submitting: true });
     wx.showLoading({ title: '创建订单...', mask: true });
+    let stage = 'auth';
+    let createdOrderId = null;
 
     try {
       await auth.ensureAuthenticated({ silent: true });
@@ -245,8 +248,11 @@ Page({
       };
 
       // 1. 创建订单
+      stage = 'create';
       const orderRes = await api.post('/orders', orderData);
       const orderId = orderRes.id;
+      createdOrderId = orderId;
+      stage = 'payment';
 
       // 2. 调用微信支付预下单
       if (!this.ensurePurchaseNoticeAgreed()) return;
@@ -281,7 +287,7 @@ Page({
             } else {
               wx.showModal({
                 title: '支付失败',
-                content: err.errMsg,
+                content: getErrorMessage(err, '支付未完成，请在订单列表核对支付状态后继续支付'),
                 showCancel: false
               });
             }
@@ -292,16 +298,21 @@ Page({
         wx.showModal({
           title: '支付准备失败',
           content: '未能获取支付参数',
-          showCancel: false
+          showCancel: false,
+          success: () => wx.redirectTo({ url: '/pages/orderDetail/orderDetail?id=' + orderId })
         });
       }
     } catch (err) {
       wx.hideLoading();
       console.error('订单创建失败:', err);
       wx.showModal({
-        title: '订单创建失败',
-        content: typeof err === 'object' ? JSON.stringify(err) : String(err),
-        showCancel: false
+        title: stage === 'payment' ? '支付准备失败' : (stage === 'auth' ? '登录恢复失败' : '订单创建失败'),
+        content: getErrorMessage(err, stage === 'payment' ? '订单已创建，请在订单详情继续支付' : '提交结果待确认，请先到订单列表核对，避免重复下单'),
+        showCancel: false,
+        success: () => {
+          if (createdOrderId) wx.redirectTo({ url: '/pages/orderDetail/orderDetail?id=' + createdOrderId });
+          else if (stage === 'create' && (!err || !err.statusCode || err.statusCode >= 500)) wx.redirectTo({ url: '/pages/orderList/orderList' });
+        }
       });
     } finally {
       wx.hideLoading();

@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/afterSaleApply/afterSaleApply.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -83,7 +84,7 @@ Page({
         });
       } catch (err) {
         console.error('加载售后记录失败:', err);
-        wx.showToast({ title: '售后记录加载失败，请稍后重试', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '售后记录加载失败，请稍后重试'), icon: 'none' });
         setTimeout(() => wx.navigateBack(), 1500);
         return;
       }
@@ -199,7 +200,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('加载订单失败:', err);
-      wx.showToast({ title: '加载订单失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载订单失败'), icon: 'none' });
     }
   },
 
@@ -410,7 +411,7 @@ Page({
           wx.hideLoading();
         } catch (err) {
           wx.hideLoading();
-          wx.showToast({ title: '上传失败', icon: 'none' });
+          wx.showToast({ title: getErrorMessage(err, '上传失败'), icon: 'none' });
           console.error('上传图片失败:', err);
         }
       }
@@ -501,7 +502,7 @@ Page({
       wx.hideLoading();
       console.error('提交售后失败:', err);
       wx.showToast({
-        title: err.message || '提交失败',
+        title: getErrorMessage(err, '提交失败'),
         icon: 'none',
         duration: 2000
       });

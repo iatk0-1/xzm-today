@@ -10,7 +10,7 @@ function harness({ admin = true, confirm = true, get = async () => [], write } =
   const calls = [];
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../pages/commissionConfigs/commissionConfigs.js'), 'utf8'), {
     Page: value => { config = value; },
-    require: name => name.endsWith('/auth') ? { ensureAuthenticated: async () => {}, isAdmin: () => admin }
+    require: name => name.endsWith('/error') ? require('../../utils/error') : name.endsWith('/auth') ? { ensureAuthenticated: async () => {}, isAdmin: () => admin }
       : name.endsWith('/managerFinance') ? { ...finance, confirmAction: async () => confirm }
         : { get: async url => { calls.push({ method: 'get', url }); return get(url); },
           post: async (url, body) => { calls.push({ method: 'post', url, body }); return write ? write(url, body) : { affectedProducts: 2 }; },

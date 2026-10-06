@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/adminProduct/adminProduct.js
 const api = require('../../utils/api');
@@ -246,7 +247,7 @@ Page(autoSearch.wrap({
       if (reset) {
         wx.hideLoading();
       }
-      wx.showToast({ title: '获取失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '获取失败'), icon: 'none' });
       this.setData({ isLoading: false });
     }
   },
@@ -423,7 +424,7 @@ Page(autoSearch.wrap({
       wx.showToast({ title: action === 'ADD' ? '关联成功' : '已取消关联', icon: 'success' });
     } catch (err) {
       this.setData({ relationOperating: false });
-      wx.showToast({ title: err.message || '关联操作失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '关联操作失败'), icon: 'none' });
     }
   },
 
@@ -475,7 +476,7 @@ Page(autoSearch.wrap({
       });
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: '操作失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
     }
   },
 
@@ -602,7 +603,7 @@ Page(autoSearch.wrap({
         } catch (err) {
           wx.hideLoading();
           this.setData({ batchOperating: false });
-          wx.showToast({ title: err?.message || '批量删除失败', icon: 'none' });
+          wx.showToast({ title: getErrorMessage(err, '批量删除失败'), icon: 'none' });
         }
       }
     });
@@ -667,7 +668,7 @@ Page(autoSearch.wrap({
       this.applyScheduleChanges(productIds, e.detail, true);
       wx.showToast({ title: `已设置${productIds.length}个商品`, icon: 'success' });
     } catch (err) {
-      wx.showToast({ title: err.message || '定时设置失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '定时设置失败'), icon: 'none' });
     } finally {
       this.setData({ batchOperating: false });
     }
@@ -724,7 +725,7 @@ Page(autoSearch.wrap({
           const count = result && result.updatedCount !== undefined ? result.updatedCount : productIds.length;
           wx.showToast({ title: count ? `已取消${count}个定时任务` : '所选商品已无定时任务', icon: count ? 'success' : 'none' });
         } catch (err) {
-          wx.showToast({ title: err.message || '取消定时失败', icon: 'none' });
+          wx.showToast({ title: getErrorMessage(err, '取消定时失败'), icon: 'none' });
         } finally {
           this._scheduleCancelConfirming = false;
           this.setData({ batchOperating: false });
@@ -796,7 +797,7 @@ Page(autoSearch.wrap({
         } catch (err) {
           wx.hideLoading();
           this.setData({ batchOperating: false });
-          wx.showToast({ title: err?.message || '批量操作失败', icon: 'none' });
+          wx.showToast({ title: getErrorMessage(err, '批量操作失败'), icon: 'none' });
         }
       }
     });
@@ -826,7 +827,7 @@ Page(autoSearch.wrap({
             this.planScheduleRefresh();
           } catch (err) {
             wx.hideLoading();
-            wx.showToast({ title: '删除失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '删除失败'), icon: 'none' });
           }
         }
       }

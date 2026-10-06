@@ -14,7 +14,7 @@ function harness(name, { get, put } = {}) {
   const finance = { requireText: value => String(value), confirmAction: async () => true };
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, `../../pages/${name}/${name}.js`), 'utf8'), {
     Page: config => { definition = config; },
-    require: module => module.endsWith('/api') ? api : module.endsWith('/auth')
+    require: module => module.endsWith('/error') ? require('../../utils/error') : module.endsWith('/api') ? api : module.endsWith('/auth')
       ? { ensureAuthenticated: async () => {}, isAdmin: () => true }
       : module.endsWith('/autoSearch') ? { wrap: config => config } : finance,
     wx: { showToast() {}, stopPullDownRefresh() {}, navigateTo: ({ url }) => navigations.push(url) },

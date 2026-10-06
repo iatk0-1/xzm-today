@@ -1,6 +1,7 @@
 // miniprogram/utils/api.js
 const config = require('./config');
 const { compressImage } = require('./media');
+const { normalizeApiError } = require('./error');
 
 let refreshPromise = null;
 
@@ -97,13 +98,9 @@ function shouldClearToken(statusCode) {
 }
 
 function normalizeHttpError(res, fallbackMessage) {
-  var data = res && res.data ? res.data : {};
-  var error = typeof data === 'object' ? data : { message: data };
-  if (!error.message && !error.error) {
-    error.message = fallbackMessage || ('请求失败 (' + res.statusCode + ')');
-  }
-  error.statusCode = res.statusCode;
-  return error;
+  return normalizeApiError(res && res.data, {
+    statusCode: res && res.statusCode, fallbackMessage: fallbackMessage || '请求失败，请稍后重试', source: 'http'
+  });
 }
 
 function wxRequest(options) {
@@ -114,7 +111,7 @@ function wxRequest(options) {
       data: options.data || {},
       header: options.header || {},
       success: resolve,
-      fail: reject
+      fail: err => reject(normalizeApiError(err, { source: 'network', fallbackMessage: '网络连接异常，请检查网络后重试' }))
     });
   });
 }
@@ -122,7 +119,7 @@ function wxRequest(options) {
 function rawRefreshSession() {
   var refreshToken = getRefreshToken();
   if (!refreshToken) {
-    return Promise.reject({ error: 'NO_REFRESH_TOKEN', message: '没有 Refresh Token' });
+    return Promise.reject({ error: 'NO_REFRESH_TOKEN', message: '登录已过期，请重新登录' });
   }
 
   return wxRequest({
@@ -136,7 +133,7 @@ function rawRefreshSession() {
       return res.data;
     }
 
-    var error = normalizeHttpError(res, 'Token 刷新失败');
+    var error = normalizeHttpError(res, '登录状态恢复失败，请稍后重试');
     if (shouldClearToken(res.statusCode)) {
       clearToken();
     }
@@ -240,7 +237,7 @@ async function requestWithRetry(options, retryState = {}) {
 
   if (res.statusCode === 401) {
     clearToken();
-    throw { error: 'UNAUTHORIZED', message: '未授权', statusCode: 401 };
+    throw normalizeApiError(res.data, { statusCode: 401, fallbackMessage: '登录已过期，请重新登录' });
   }
 
   throw normalizeHttpError(res);
@@ -284,7 +281,7 @@ function wxUploadFile(url, filePath, formData, idempotencyKey) {
         'Idempotency-Key': idempotencyKey
       },
       success: resolve,
-      fail: reject
+      fail: err => reject(normalizeApiError(err, { source: 'upload', fallbackMessage: '上传失败，请重新选择文件' }))
     });
   });
 }
@@ -305,15 +302,10 @@ async function uploadToBackend(url, filePath, formData, hasRetried, idempotencyK
 
   if (res.statusCode === 401) {
     clearToken();
-    throw { error: 'UNAUTHORIZED', message: '未授权', statusCode: 401 };
+    throw normalizeApiError(res.data, { statusCode: 401, fallbackMessage: '登录已过期，请重新登录' });
   }
 
-  const data = parseUploadResponse(res);
-  data.statusCode = res.statusCode;
-  if (!data.message && !data.error) {
-    data.message = '上传失败 (' + res.statusCode + ')';
-  }
-  throw data;
+  throw normalizeHttpError(res, '上传失败，请重新选择文件');
 }
 
 async function uploadFile(url, filePath, formData = {}, options = {}) {

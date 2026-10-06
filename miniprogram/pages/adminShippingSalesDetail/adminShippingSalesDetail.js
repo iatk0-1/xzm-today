@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
@@ -32,7 +33,7 @@ Page({
     wx.setNavigationBarTitle({ title: productName || '商品出货详情' });
     return auth.ensureAuthenticated({ silent: true }).then(() => this.loadAll()).catch(err => {
       console.error('商品出货详情页认证失败:', err);
-      wx.showToast({ title: '登录状态恢复失败，请重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请重试'), icon: 'none' });
     });
   },
   onShow() {
@@ -66,7 +67,7 @@ Page({
       }).catch(err => {
         if (id !== this.overviewRequestId) return;
         console.error('加载商品出货概览失败:', err);
-        this.setData({ overviewError: true });
+        this.setData({ overviewError: getErrorMessage(err, '数据加载失败，请稍后重试') });
       }).finally(() => {
         if (id === this.overviewRequestId) this.setData({ overviewLoading: false });
       });
@@ -91,7 +92,7 @@ Page({
     }).catch(err => {
       if (id !== this.skuRequestId) return;
       console.error('加载商品 SKU 出货明细失败:', err);
-      this.setData({ skuError: true });
+      this.setData({ skuError: getErrorMessage(err, '数据加载失败，请稍后重试') });
     }).finally(() => {
       if (id === this.skuRequestId) this.setData({ skuLoading: false });
     });
@@ -123,7 +124,7 @@ Page({
     }).catch(err => {
       if (id !== this.orderRequestId) return;
       console.error('加载商品关联订单失败:', err);
-      this.setData({ orderError: true });
+      this.setData({ orderError: getErrorMessage(err, '数据加载失败，请稍后重试') });
     }).finally(() => {
       if (id === this.orderRequestId) this.setData({ orderLoading: false });
     });

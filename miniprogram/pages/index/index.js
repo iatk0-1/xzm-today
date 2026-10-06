@@ -1,3 +1,5 @@
+const { getErrorMessage } = require('../../utils/error');
+const { isUnauthorized } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/index/index.js
 const api = require('../../utils/api');
@@ -245,7 +247,7 @@ Page(pageSync.wrap({
   },
 
   fetchProducts: async function(reset, silent) {
-    this.setData({ loading: true });
+    this.setData({ loading: true, loadError: '' });
 
     if (reset && !silent) {
       wx.showLoading({ title: '加载中...' });
@@ -309,12 +311,13 @@ Page(pageSync.wrap({
       }
       console.error('拉取商品失败:', err);
       this.setData({ loading: false });
-      // 不弹窗，允许空列表显示
-      this.setData({ productList: reset ? [] : this.data.productList });
+      this.setData({ loadError: getErrorMessage(err, '商品列表加载失败，请稍后重试') });
     } finally {
       this._productsTask = null;
     }
   },
+
+  retryProducts: function() { return this.getProductsList(!this.data.productList.length, { silent: true }); },
 
   // 触底加载更多
   onReachBottom: function() {
@@ -906,8 +909,8 @@ bundleInputBlur(e) {
       })
       .catch(function(err) {
         wx.hideLoading();
-        if (err.error === 'UNAUTHORIZED') wx.showToast({ title: '请先登录', icon: 'none' });
-        else wx.showToast({ title: '添加失败', icon: 'none' });
+        if (isUnauthorized(err)) wx.showToast({ title: '请先登录', icon: 'none' });
+        else wx.showToast({ title: getErrorMessage(err, '添加失败'), icon: 'none' });
       });
   },
 
@@ -997,10 +1000,10 @@ bundleInputBlur(e) {
         .catch(err => {
           wx.hideLoading();
           console.error('添加购物车失败:', err);
-          if (err.error === 'UNAUTHORIZED') {
+          if (isUnauthorized(err)) {
             wx.showToast({ title: '请先登录', icon: 'none' });
           } else {
-            wx.showToast({ title: '添加失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '添加失败'), icon: 'none' });
           }
         });
     }

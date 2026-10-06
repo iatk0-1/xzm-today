@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/purchaseOrders/purchaseOrders.js
 const api = require('../../utils/api');
@@ -173,7 +174,7 @@ Page(autoSearch.wrap({
     } catch (err) {
       if (requestId !== this._batchRequestId) return;
       console.error('加载报单批次失败:', err);
-      wx.showToast({ title: '批次加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '批次加载失败'), icon: 'none' });
       this.setData({ loading: false });
     }
   },
@@ -224,7 +225,7 @@ Page(autoSearch.wrap({
     } catch (err) {
       if (generation !== (this._detailGeneration || 0)) return;
       console.error('加载报单商品明细失败:', err);
-      wx.showToast({ title: '明细加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '明细加载失败'), icon: 'none' });
       this.updateBatch(batchId, { detailLoading: false });
     }
   },
@@ -307,7 +308,7 @@ Page(autoSearch.wrap({
           } catch (err) {
             wx.hideLoading();
             console.error('撤销失败:', err);
-            wx.showToast({ title: err?.message || '撤销失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '撤销失败'), icon: 'none' });
           }
         }
       }
@@ -346,7 +347,7 @@ Page(autoSearch.wrap({
           } catch (err) {
             wx.hideLoading();
             console.error('批量撤销失败:', err);
-            wx.showToast({ title: err?.message || '批量撤销失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '批量撤销失败'), icon: 'none' });
           }
         }
       }

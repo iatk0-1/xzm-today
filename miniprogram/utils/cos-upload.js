@@ -1,3 +1,4 @@
+const { normalizeApiError } = require('./error');
 /**
  * 腾讯云 COS 直传工具（STS PUT Object 方案）
  *
@@ -57,7 +58,7 @@ function readFile(filePath) {
       },
       fail: function (err) {
         console.error('[COS] 读取文件失败:', err);
-        reject(err);
+        reject(normalizeApiError(err, { source: 'upload', fallbackMessage: '图片上传失败，请重新选择图片后重试' }));
       }
     });
   });
@@ -116,7 +117,7 @@ function uploadFile(filePath, dir, onProgress, format) {
       }, function (err, data) {
         if (err) {
           console.error('[COS] PUT Object 失败:', err);
-          reject(err);
+          reject(normalizeApiError(err, { source: 'upload', fallbackMessage: '图片上传失败，请重新选择图片后重试' }));
           return;
         }
 
@@ -135,7 +136,7 @@ function uploadFile(filePath, dir, onProgress, format) {
       });
     } catch (err) {
       console.error('[COS] 上传流程失败:', err);
-      reject(err);
+      reject(normalizeApiError(err, { source: 'upload', fallbackMessage: '图片上传失败，请重新选择图片后重试' }));
     }
   });
 }

@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 
@@ -13,7 +14,7 @@ Page({
       this._authorized = true;
       await this.load(true);
     } catch (error) {
-      this.setData({ error: error.message });
+      this.setData({ error: getErrorMessage(error, '加载负责人失败') });
     }
   },
   onShow() {
@@ -45,7 +46,7 @@ Page({
         page, hasNext: page < result.totalPages
       });
     } catch (error) {
-      this.setData({ error: error.message || '加载负责人失败' });
+      this.setData({ error: getErrorMessage(error, '加载负责人失败') });
     } finally {
       this.setData({ loading: false });
     }
@@ -62,7 +63,7 @@ Page({
       const users = await api.get('/stall-managers/users', { keyword: this.data.keyword });
       this.setData({ users: users.content || users || [], adding: true });
     } catch (error) {
-      wx.showToast({ title: error.message || '搜索用户失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(error, '搜索用户失败'), icon: 'none' });
     }
   },
   async add(event) {
@@ -72,7 +73,7 @@ Page({
       await api.post('/stall-managers', { userId: String(event.currentTarget.dataset.id) });
       this.setData({ adding: false, users: [] });
     } catch (error) {
-      wx.showToast({ title: error.message || '新增负责人失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(error, '新增负责人失败'), icon: 'none' });
     } finally {
       this.setData({ loading: false });
     }

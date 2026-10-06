@@ -12,8 +12,9 @@
   </view>
 
   <scroll-view scroll-y class="wish-scroll-area">
+    <view wx:if="{{loadError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="loadWishes">{{loadError}} · 点击重试</view>
     
-    <view class="empty-state" wx:if="{{wishes.length === 0 && !isLoading}}">
+    <view class="empty-state" wx:if="{{wishes.length === 0 && !isLoading && !loadError}}">
       <view class="empty-text">暂时没有心愿数据</view>
     </view>
 

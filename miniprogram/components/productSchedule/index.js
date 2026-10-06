@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const { beijingParts, buildSchedule } = require('../../utils/productSchedule');
 
 Component({
@@ -31,7 +32,7 @@ Component({
       try {
         this.triggerEvent('confirm', buildSchedule(this.data.date, this.data.time, this.data.status));
       } catch (err) {
-        wx.showToast({ title: err.message, icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '设置失败，请稍后重试'), icon: 'none' });
       }
     },
     cancelSchedule() {

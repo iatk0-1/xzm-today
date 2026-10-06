@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/publishWish/publishWish.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -126,7 +127,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('发布心愿失败:', err);
-      wx.showToast({ title: (err && err.message) || '发布失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '发布失败'), icon: 'none' });
     } finally {
       this.setData({ submitting: false });
     }
@@ -165,7 +166,7 @@ Page({
         } catch (err) {
           failure = err instanceof Error
             ? err
-            : new Error((err && err.message) || ('第' + (index + 1) + '张图片上传失败'));
+            : new Error(getErrorMessage(err, '第' + (index + 1) + '张图片上传失败'));
         }
       }
     }

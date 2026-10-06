@@ -1,3 +1,4 @@
+const { getBusinessFailureMessage } = require('./error');
 // 金额以分校验；业务 ID 始终保持字符串，资金终态只信任后端。
 function money(value, allowZero = false) {
   const text = String(value == null ? '' : value).trim();
@@ -32,16 +33,38 @@ function isTerminal(status) { return ['SUCCESS', 'FAIL', 'CANCELLED'].includes(s
 function profitSharingStatus(status) {
   return ({ CREATED: '等待发起分账', PROCESSING: '微信分账处理中', SUCCESS: '分账到账成功', CLOSED: '分账已关闭' })[status] || '分账结果待查询（' + String(status || '未知') + '）';
 }
+// 这些字段是系统处理结果；审计记录和人工备注继续沿用 displayReason。
+function failureReason(value, fallback = '处理未完成，请查询原记录核对结果') {
+  const labels = { SYSTEM_ERROR: '微信服务暂时不可用，请稍后查询',
+    ACCOUNT_FROZEN: '收款账户已冻结，请核实账户状态',
+    NAME_MISMATCH: '收款姓名不匹配，请核实收款信息',
+    UNKNOWN: '处理结果待查询，请核对原记录' };
+  if (typeof value !== 'string') return getBusinessFailureMessage(value, fallback);
+  const text = value.trim();
+  if (labels[text]) return labels[text];
+  const coded = text.match(/^(微信(?:转账|分账)(?:失败|已关闭)[（(])([A-Z0-9_]+)[）)]$/);
+  if (coded) return labels[coded[2]] || fallback;
+  return getBusinessFailureMessage(text, fallback);
+}
+function incomeSummary(income) {
+  return { ...income, profitSharingReasons: (income.profitSharingReasons || []).map(row => ({ ...row,
+    reason: failureReason(row.reason, '该订单暂不符合提现条件，请核对订单明细') })) };
+}
+function legacyTransferRow(row) {
+  return { ...row, reason: row.reason ? failureReason(row.reason, '转账结果待查询，请核对原转账单') : row.reason,
+    channel: 'LEGACY_TRANSFER', statusLabel: transferStatus(row.status) };
+}
+
 function profitSharingRow(row) {
-  return { ...row, channel: 'PROFIT_SHARING', statusLabel: profitSharingStatus(row.status),
+  return { ...row, reason: row.reason ? failureReason(row.reason, '分账结果待查询，请核对原分账单') : row.reason, channel: 'PROFIT_SHARING', statusLabel: profitSharingStatus(row.status),
     terminal: row.status === 'SUCCESS' || row.status === 'CLOSED' };
 }
 function withdrawalRequestRow(row) {
   const labels = { PROCESSING: '提现处理中', SUCCESS: '全部到账', PARTIAL: '部分到账，请核对快照差额', BLOCKED: '本次未付款，请查看原因' };
   const itemLabels = { WAITING: '申请已记录，等待处理', PROCESSING: '微信处理中', SUCCESS: '已到账', CLOSED: '该笔未付，分账已关闭', BLOCKED: '本单未付，暂不符合条件' };
-  return { ...row, sourceLabel: row.source === 'ADMIN' ? '管理员代发起' : '负责人本人发起', requestedTime: displayTime(row.createdAt), statusLabel: labels[row.status] || '结果待查询',
+  return { ...row, reason: row.reason ? failureReason(row.reason) : row.reason, sourceLabel: row.source === 'ADMIN' ? '管理员代发起' : '负责人本人发起', requestedTime: displayTime(row.createdAt), statusLabel: labels[row.status] || '结果待查询',
     terminal: ['SUCCESS', 'PARTIAL', 'BLOCKED'].includes(row.status) && Number(row.heldAmount || 0) === 0,
-    items: (row.items || []).map(item => ({ ...item, deadlineLabel: item.deadline ? displayTime(item.deadline) : '不适用',
+    items: (row.items || []).map(item => ({ ...item, reason: item.reason ? failureReason(item.reason) : item.reason, deadlineLabel: item.deadline ? displayTime(item.deadline) : '不适用',
       statusLabel: itemLabels[item.status] || '结果待查询' })) };
 }
 function newWithdrawalRequestKey() {
@@ -111,7 +134,7 @@ function incomeRecordRow(row) {
   return { ...incomeProductRow(row), orderedTime: displayTime(row.orderedAt) };
 }
 function incomeEligibilityRow(row) {
-  return { ...row, orderedTime: displayTime(row.orderedAt),
+  return { ...row, reason: row.reason ? failureReason(row.reason, '该订单暂不符合提现条件，请核对订单明细') : row.reason, orderedTime: displayTime(row.orderedAt),
     deadlineLabel: row.deadline ? displayTime(row.deadline) : '不适用',
     items: (Array.isArray(row.items) ? row.items : []).map(incomeProductRow) };
 }
@@ -159,10 +182,10 @@ function managerDetailRow(row, tab) {
     afterSaleLabel: row.afterSaleStatus ? afterSaleLabels[row.afterSaleStatus] || '有售后记录' : '无售后',
     refundedLabel: displayMoney(row.refundedAmount),
     historyStatusLabel: row.status === 'UNCONFIRMED' ? '待核对' : row.status === 'EXCLUDED' ? '已核对 · 不计佣' : '已核对 · 计佣',
-    actionLabel: auditLabels[row.action] || '其他财务操作', reasonLabel: displayReason(row.reason),
+    actionLabel: auditLabels[row.action] || '其他财务操作', reasonLabel: ['sharing', 'withdrawals', 'eligibility'].includes(tab) && row.reason ? failureReason(row.reason) : displayReason(row.reason),
     receiverResultLabel: ({ SUCCESS: '已到账', CLOSED: '已关闭', PENDING: '处理中', PROCESSING: '处理中' })[row.receiverResult] || '待查询',
     channel: tab === 'sharing' ? 'PROFIT_SHARING' : 'LEGACY_TRANSFER',
     statusLabel: tab === 'sharing' ? profitSharingStatus(row.status) : transferStatus(row.status)
   };
 }
-module.exports = { money, cents, requireText, isoTime, confirmAction, segmentsWithLabels, toggleBoundary, changeBoundary, transferStatus, isTerminal, profitSharingStatus, profitSharingRow, withdrawalRequestRow, newWithdrawalRequestKey, displayText, timeMillis, displayTime, managerDetailRow, incomeRecordRow, incomeEligibilityRow, settlementOrderRow };
+module.exports = { failureReason, incomeSummary, legacyTransferRow, money, cents, requireText, isoTime, confirmAction, segmentsWithLabels, toggleBoundary, changeBoundary, transferStatus, isTerminal, profitSharingStatus, profitSharingRow, withdrawalRequestRow, newWithdrawalRequestKey, displayText, timeMillis, displayTime, managerDetailRow, incomeRecordRow, incomeEligibilityRow, settlementOrderRow };

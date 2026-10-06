@@ -105,6 +105,7 @@
     bindscrolltolower="onReachBottom"
     lower-threshold="50"
   >
+    <view wx:if="{{loadError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="retryProducts">{{loadError}} · 点击重试</view>
     <view class="waterfall-container">
       <!-- 左列 -->
       <view class="waterfall-column">

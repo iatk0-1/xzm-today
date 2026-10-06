@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const finance = require('../../utils/managerFinance');
@@ -38,7 +39,7 @@ Page({
       const current = auth.getUserInfo() || {};
       if (String(current.userId || current.id || '') !== expectedOwner) return;
       if (!profile || String(profile.userId) !== expectedOwner) throw new Error('负责人身份与当前账号不一致，请重新登录');
-      this.setData({ profile, income, error: '' });
+      this.setData({ profile, income: finance.incomeSummary(income), error: '' });
       this.restoreRequestPointer();
       await this.recoverRequest();
       await this.loadList(true);
@@ -70,7 +71,7 @@ Page({
         : tab === 'records' ? finance.incomeRecordRow(row)
         : tab === 'eligibility' ? finance.incomeEligibilityRow(row)
         : tab === 'sharing' ? finance.profitSharingRow(row)
-        : tab === 'withdrawals' ? { ...row, channel: 'LEGACY_TRANSFER', statusLabel: finance.transferStatus(row.status) }
+        : tab === 'withdrawals' ? finance.legacyTransferRow(row)
           : row);
       this.setData({ rows: reset ? rows : this.data.rows.concat(rows), page,
         hasNext: !Array.isArray(result) && page < result.totalPages });
@@ -173,7 +174,7 @@ Page({
       await this.refresh();
     } catch (error) {
       this.setData({ requestUncertain: !!this.data.pendingRequestKey });
-      this.fail(new Error(error.message || '提现提交结果暂不确定，请查询或使用同一申请编号重试'));
+      this.fail(new Error(getErrorMessage(error, '提现提交结果暂不确定，请查询或使用同一申请编号重试')));
     } finally { this.setData({ busy: false }); }
   },
   async queryRequest(event) {
@@ -229,5 +230,5 @@ Page({
     } catch (error) { this.fail(error); }
     finally { this.setData({ busy: false }); }
   },
-  fail(error) { this.setData({ error: error.message || error.errMsg || '加载收入失败' }); }
+  fail(error) { this.setData({ error: getErrorMessage(error, '加载收入失败') }); }
 });

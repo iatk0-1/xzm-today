@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // pages/printer-login/authorize.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -60,12 +61,7 @@ Page({
     } catch (err) {
       this.setData({ loading: false });
 
-      let errorMsg = '授权失败';
-      if (err && err.data && err.data.message) {
-        errorMsg = err.data.message;
-      } else if (err && err.message) {
-        errorMsg = err.message;
-      }
+      const errorMsg = getErrorMessage(err, '授权失败，请稍后重试');
 
       wx.showToast({
         title: errorMsg,

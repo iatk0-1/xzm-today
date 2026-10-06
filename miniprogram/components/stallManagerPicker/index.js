@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 
 Component({
@@ -44,7 +45,7 @@ Component({
       } catch (err) {
         if (session !== this._session) return;
         this.setData({ loadFailed: true });
-        wx.showToast({ title: err.message || '加载负责人失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '加载负责人失败'), icon: 'none' });
       } finally {
         if (session === this._session) this.setData({ loading: false });
       }
@@ -77,7 +78,7 @@ Component({
         this.setData({ candidates: this.markAssigned(users || []), searched: true });
       } catch (err) {
         if (session !== this._session || search !== this._search) return;
-        wx.showToast({ title: err.message || '搜索用户失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '搜索用户失败'), icon: 'none' });
       } finally {
         if (session === this._session && search === this._search) this.setData({ searching: false });
       }
@@ -104,7 +105,7 @@ Component({
         this.triggerEvent('changed', { stallId, managers: saved || [] });
         wx.showToast({ title: '负责人已更新', icon: 'success' });
       } catch (err) {
-        if (session === this._session) wx.showToast({ title: err.message || '保存负责人失败', icon: 'none' });
+        if (session === this._session) wx.showToast({ title: getErrorMessage(err, '保存负责人失败'), icon: 'none' });
       } finally {
         if (session === this._session) this.setData({ saving: false });
       }

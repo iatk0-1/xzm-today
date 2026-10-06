@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../../utils/error');
 // miniprogram/pages/logistics/printers/printers.js
 const api = require('../../../utils/api');
 const auth = require('../../../utils/auth');
@@ -23,7 +24,7 @@ Page({
       ]);
     } catch (err) {
       console.error('打印员页面认证恢复失败:', err);
-      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
     }
   },
 
@@ -79,7 +80,7 @@ Page({
         } catch (err) {
           wx.hideLoading();
           wx.showToast({
-            title: err.message || '创建失败',
+            title: getErrorMessage(err, '创建失败'),
             icon: 'none'
           });
         }
@@ -97,7 +98,7 @@ Page({
       });
     } catch (err) {
       console.error('加载打印员列表失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     } finally {
       wx.hideLoading();
     }
@@ -170,7 +171,7 @@ Page({
             this.loadPrinters();
           } catch (err) {
             wx.hideLoading();
-            wx.showToast({ title: err.message || '绑定失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '绑定失败'), icon: 'none' });
           }
         }
       }
@@ -195,7 +196,7 @@ Page({
             this.loadPrinters();
           } catch (err) {
             wx.hideLoading();
-            wx.showToast({ title: err.message || '解绑失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '解绑失败'), icon: 'none' });
           }
         }
       }
@@ -227,7 +228,7 @@ Page({
             }
           } catch (err) {
             wx.hideLoading();
-            wx.showToast({ title: err.message || '解绑失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '解绑失败'), icon: 'none' });
           }
         }
       }
@@ -274,7 +275,7 @@ Page({
         console.error('扫码失败:', err);
         if (err.errMsg.indexOf('cancel') === -1) {
           wx.showToast({
-            title: '扫码失败',
+            title: getErrorMessage(err, '扫码失败'),
             icon: 'none'
           });
         }

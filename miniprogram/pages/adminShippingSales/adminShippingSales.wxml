@@ -1,7 +1,7 @@
 <view class="page-wrapper">
   <view class="overview-card">
     <view class="overview-status" wx:if="{{overviewLoading}}">统计加载中...</view>
-    <view class="overview-status" wx:elif="{{overviewError}}" bindtap="loadOverview">统计加载失败，点击重试</view>
+    <view class="overview-status" wx:elif="{{overviewError}}" bindtap="loadOverview">{{overviewError}} · 点击重试</view>
     <view class="stat-row" wx:else>
       <view class="stat-item"><text class="stat-val">{{overview.soldQty}}</text><text class="stat-label">售出数量</text></view>
       <view class="stat-item"><text class="stat-val">{{overview.pendingQty}}</text><text class="stat-label">待发数量</text></view>
@@ -75,7 +75,7 @@
     <view class="load-more" wx:if="{{loading && items.length > 0}}">正在加载更多...</view>
     <view class="load-more" wx:elif="{{hasMore}}" bindtap="onReachBottom">加载更多</view>
     <view class="empty-state" wx:if="{{loading && items.length === 0}}">正在加载...</view>
-    <view class="empty-state" wx:elif="{{loadError && items.length === 0}}" bindtap="retryItems">加载失败，点击重试</view>
+    <view class="empty-state" wx:elif="{{loadError && items.length === 0}}" bindtap="retryItems">{{loadError}} · 点击重试</view>
     <view class="empty-state" wx:elif="{{items.length === 0}}">暂无统计数据</view>
   </view>
   <view class="modal" wx:if="{{showDateModal}}">

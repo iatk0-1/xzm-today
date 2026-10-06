@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/adminProductRecycleBin/adminProductRecycleBin.js
@@ -110,6 +111,7 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   // 加载商品列表
   loadProducts: async function(isLoadMore = false) {
+    this.setData({ loadError: '' });
     if (!this.data.hasMore && isLoadMore) {
       return;
     }
@@ -149,8 +151,8 @@ Page(autoSearch.wrap(pageSync.wrap({
       });
     } catch (err) {
       console.error('加载回收站失败:', err);
-      this.setData({ isLoading: false });
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      this.setData({ isLoading: false, loadError: getErrorMessage(err, '回收站加载失败') });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
   },
 
@@ -308,7 +310,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       }));
       if (confirmed) await this.performRestore(id, {});
     } catch (err) {
-      wx.showToast({ title: err.message || '加载恢复信息失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载恢复信息失败'), icon: 'none' });
     } finally {
       this.setData({ restoreBusy: false });
     }
@@ -336,7 +338,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       await this.performRestore(this.data.restoreTarget, { skuIds: this.data.restoreSkuIds });
       this.setData({ restoreTarget: '', restoreCandidates: [], restoreSkuIds: [] });
     } catch (err) {
-      this.setData({ restoreError: err.message || '恢复失败，请重试' });
+      this.setData({ restoreError: getErrorMessage(err, '恢复失败，请重试') });
     } finally {
       this.setData({ restoreBusy: false });
     }

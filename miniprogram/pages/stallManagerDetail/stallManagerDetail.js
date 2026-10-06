@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const finance = require('../../utils/managerFinance');
@@ -118,7 +119,7 @@ Page({
       this.applyProfile(results[0], (results[2] || []).filter(stall => !stall.deletedAt && !stall.deleted));
       this.applyReceiver(results[3]);
       this.setData({
-        income: results[1], selfWithdrawalChecked: results[1].selfWithdrawalEnabled === true, error: ''
+        income: finance.incomeSummary(results[1]), selfWithdrawalChecked: results[1].selfWithdrawalEnabled === true, error: ''
       });
       this.restoreAdminWithdrawal();
       if (this.data.pendingAdminRequest) await this.recoverAdminWithdrawal();
@@ -1011,6 +1012,6 @@ Page({
   },
 
   fail(error) {
-    this.setData({ [this.data.commissionEdit ? 'commissionError' : this.data.receiverVisible ? 'receiverError' : 'error']: error.message || error.errMsg || '操作失败' });
+    this.setData({ [this.data.commissionEdit ? 'commissionError' : this.data.receiverVisible ? 'receiverError' : 'error']: getErrorMessage(error, '操作失败') });
   }
 });

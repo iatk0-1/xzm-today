@@ -1,3 +1,4 @@
+const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 // miniprogram/pages/adminAfterSaleDetail/adminAfterSaleDetail.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -47,7 +48,7 @@ Page({
       await auth.ensureAuthenticated({ silent: true });
       const res = await api.get(`/after-sales/${this.data.afterSaleId}`);
       wx.hideLoading();
-      const formatted = this.formatAfterSaleDetail(res);
+      const formatted = this.formatAfterSaleDetail({ ...res, refundError: res.refundError ? getBusinessFailureMessage(res.refundError, '退款结果待核对，请查询原退款单') : res.refundError });
 
       this.setData({
         afterSale: formatted,
@@ -61,7 +62,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('加载售后详情失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
   },
 
@@ -472,7 +473,7 @@ Page({
       this.loadAfterSaleDetail();
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: err.message || '审核失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '审核失败'), icon: 'none' });
     }
   },
 
@@ -519,7 +520,7 @@ Page({
       this.loadAfterSaleDetail();
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: err.message || '操作失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
     }
   },
 
@@ -597,16 +598,23 @@ Page({
         }
       );
       wx.hideLoading();
-      if (result.status === 'failed') {
-        wx.showToast({ title: result.errorMessage || '退款失败，可重试', icon: 'none' });
-        return;
+      if (result.status === 'success') {
+        wx.showToast({ title: '协商退款成功', icon: 'success' });
+      } else {
+        wx.showModal({
+          title: result.status === 'processing' ? '退款处理中' : (result.status === 'failed' ? '退款失败' : '退款结果待确认'),
+          content: result.status === 'processing'
+            ? '微信正在处理这笔退款，请稍后刷新查看，无需重复提交。'
+            : getBusinessFailureMessage(result.errorMessage, result.status === 'failed'
+              ? '退款失败，请核对原退款单后再操作' : '退款结果待确认，请查询原退款单，勿重复提交。'),
+          showCancel: false
+        });
       }
-      wx.showToast({ title: '协商退款成功', icon: 'success' });
       this.hideNegotiatedRefundModal();
       this.loadAfterSaleDetail();
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: err.message || '协商退款失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '退款结果待核对，请刷新查看原退款单，勿重复提交'), icon: 'none' });
     }
   },
 
@@ -627,7 +635,7 @@ Page({
 
             wx.hideLoading();
             if (result.refundStatus === 'failed') {
-              wx.showToast({ title: result.refundError || '退款失败，可重试', icon: 'none' });
+              wx.showToast({ title: getBusinessFailureMessage(result.refundError, '退款失败，可重试'), icon: 'none' });
               this.loadAfterSaleDetail();
               return;
             }
@@ -636,11 +644,15 @@ Page({
               this.loadAfterSaleDetail();
               return;
             }
-            wx.showToast({ title: '退款成功', icon: 'success' });
+            if (result.refundStatus === 'success') {
+              wx.showToast({ title: '退款成功', icon: 'success' });
+            } else {
+              wx.showModal({ title: '退款结果待确认', content: getBusinessFailureMessage(result.refundError, '退款结果待确认，请查询原退款单，勿重复提交。'), showCancel: false });
+            }
             this.loadAfterSaleDetail();
           } catch (err) {
             wx.hideLoading();
-            wx.showToast({ title: err.message || '退款失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '退款结果待核对，请刷新查看原退款单，勿重复提交'), icon: 'none' });
           }
         }
       }

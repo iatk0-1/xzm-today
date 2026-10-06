@@ -9,6 +9,7 @@ function loadConfig(file, api, wx = {}) {
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../..', file), 'utf8'), {
     Page(value) { config = value; }, Component(value) { config = value; },
     require(name) {
+        if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/api')) return api;
       if (name.endsWith('/auth')) return { ensureAuthenticated: async () => {}, isAdmin: () => true };
       if (name.endsWith('/pageSync')) return { wrap: value => value };

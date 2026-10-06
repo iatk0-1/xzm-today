@@ -20,6 +20,7 @@ function setup({ manager = true, userId = 8, saved, assigned = [], failPublish =
     console: { log() {}, error() {}, warn() {} },
     setTimeout() {},
     require(name) {
+        if (name.endsWith('/error')) return require('../../utils/error');
       // 本文件验证档口记忆；计价集成由managerFinancePricing.test.js独立覆盖。
       if (name.endsWith('/productPricing')) return { integrateProductPricing(page) {
         page.canManuallyPrice = () => !manager;

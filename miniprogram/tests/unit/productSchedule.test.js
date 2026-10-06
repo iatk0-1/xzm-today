@@ -66,6 +66,7 @@ function loadPage(name, { fail = false, detail = {}, get } = {}) {
     clearTimeout(id) { if (timers[id - 1]) timers[id - 1].cancelled = true; }, Date, Set,
     wx: { showToast(value) { toasts.push(value.title); }, showLoading() {}, hideLoading() {}, showModal(value) { modals.push(value); } },
     require(moduleName) {
+      if (moduleName.endsWith('/error')) return require('../../utils/error');
       if (moduleName.endsWith('/api')) return {
         get: async (url, params) => get ? get(url, params) : detail, put: (url, data) => write('put', url, data),
         post: (url, data) => write('post', url, data)

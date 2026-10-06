@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/orderList/orderList.js
 const api = require('../../utils/api');
@@ -134,7 +135,7 @@ Page(pageSync.wrap({
     } catch (err) {
       wx.hideLoading();
       console.error('获取订单失败:', err);
-      wx.showToast({ title: '获取订单失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '获取订单失败'), icon: 'none' });
     }
   },
 
@@ -215,7 +216,7 @@ Page(pageSync.wrap({
           })
           .catch(function(err) {
             wx.hideLoading();
-            wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
           });
       }
     });
@@ -248,13 +249,13 @@ Page(pageSync.wrap({
           },
           fail: (err) => {
             if (err.errMsg !== 'requestPayment:fail cancel') {
-              wx.showModal({ title: '支付失败', content: err.errMsg, showCancel: false });
+              wx.showModal({ title: '支付失败', content: getErrorMessage(err, '支付未完成，请在订单列表核对支付状态后继续支付'), showCancel: false });
             }
           }
         });
       }
     } catch (err) {
-      wx.showModal({ title: '支付失败', content: JSON.stringify(err), showCancel: false });
+      wx.showModal({ title: '支付准备失败', content: getErrorMessage(err, '支付准备失败，请稍后重试'), showCancel: false });
     }
   },
 
@@ -276,7 +277,7 @@ Page(pageSync.wrap({
             this.refreshOrder(orderId);
           } catch (err) {
             wx.hideLoading();
-            wx.showToast({ title: '操作失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
           }
         }
       }

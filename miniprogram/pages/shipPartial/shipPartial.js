@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/shipPartial/shipPartial.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -232,7 +233,7 @@ Page({
         this.setData({ items: allItems });
       }
     } catch (err) {
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
       console.error('loadOrderItems error:', err);
     } finally {
       wx.hideLoading();
@@ -301,7 +302,7 @@ Page({
       });
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
       console.error('loadFromInventoryItems error:', err);
     }
   },
@@ -473,7 +474,7 @@ Page({
         if (err && err.errMsg && err.errMsg.indexOf('cancel') !== -1) {
           return;
         }
-        wx.showToast({ title: '扫码失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '扫码失败'), icon: 'none' });
       }
     });
   },
@@ -613,7 +614,7 @@ Page({
       wx.hideLoading();
       wx.showModal({
         title: '发货失败',
-        content: err.message || '未知错误',
+        content: getErrorMessage(err, '操作失败，请稍后重试'),
         showCancel: false
       });
     } finally {
@@ -699,7 +700,7 @@ Page({
       url: url,
       fail: (err) => {
         console.error('跳转到蓝牙打印失败:', err);
-        wx.showToast({ title: '跳转失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '跳转失败'), icon: 'none' });
       }
     });
   },
@@ -753,7 +754,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('从库存发货失败:', err);
-      wx.showToast({ title: err?.message || '发货失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '发货失败'), icon: 'none' });
       this.setData({ isSubmitting: false });
     }
   }

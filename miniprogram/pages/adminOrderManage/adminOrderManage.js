@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/adminOrderManage/adminOrderManage.js
@@ -263,7 +264,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     } catch (err) {
       wx.hideLoading();
       console.error('获取订单失败:', err);
-      wx.showToast({ title: '获取订单失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '获取订单失败'), icon: 'none' });
       this.setData({ isLoading: false, isLoadingMore: false });
     }
   },
@@ -353,7 +354,7 @@ Page(autoSearch.wrap(pageSync.wrap({
             wx.hideLoading();
             wx.showModal({
               title: '取消失败',
-              content: err.message || '取消运单失败',
+              content: getErrorMessage(err, '取消运单失败'),
               showCancel: false
             });
           }
@@ -386,7 +387,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       wx.showToast({ title: '管理员备注已保存', icon: 'success' });
       this.closeAdminRemarkEditor();
       await this.refreshOrder(panel.orderId);
-    } catch (err) { wx.showToast({ title: err.message || '保存失败', icon: 'none' }); }
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '保存失败'), icon: 'none' }); }
     finally { wx.hideLoading(); }
   },
 
@@ -412,7 +413,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       });
     } catch (err) {
       console.error('加载物流信息失败:', err);
-      wx.showToast({ title: '加载物流失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载物流失败'), icon: 'none' });
     } finally {
       wx.hideLoading();
     }
@@ -446,7 +447,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       this.closeCancelOrderPanel();
       await this.refreshOrder(orderId);
     } catch (err) {
-      wx.showToast({ title: err?.message || '操作失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
     } finally {
       wx.hideLoading();
     }
@@ -472,7 +473,7 @@ Page(autoSearch.wrap(pageSync.wrap({
               await api.post(`/admin/orders-manage/orders/${orderId}/cancel-refund/retry`);
               wx.showToast({ title: '已提交重试', icon: 'success' });
             } catch (err) {
-              wx.showToast({ title: err?.message || '重试失败', icon: 'none' });
+              wx.showToast({ title: getErrorMessage(err, '重试失败'), icon: 'none' });
             }
           }
         });
@@ -483,7 +484,7 @@ Page(autoSearch.wrap(pageSync.wrap({
         wx.showModal({ title: '关闭退款状态', content, showCancel: false });
       }
     } catch (err) {
-      wx.showToast({ title: err?.message || '查询失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '查询失败'), icon: 'none' });
     }
   },
 

@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -64,7 +65,7 @@ Page(pageSync.wrap({
       }
       this.loadGroups();
     } catch (err) {
-      wx.showToast({ title: '登录状态恢复失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败'), icon: 'none' });
     }
   },
 
@@ -134,7 +135,7 @@ Page(pageSync.wrap({
     } catch (err) {
       console.error('加载档口标签管理列表失败:', err);
       this.setData({ loading: false });
-      wx.showToast({ title: err.message || '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
   },
 
@@ -187,7 +188,7 @@ Page(pageSync.wrap({
       }
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: err.message || '新增失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '新增失败'), icon: 'none' });
     }
   },
 
@@ -397,7 +398,7 @@ Page(pageSync.wrap({
       wx.showToast({ title: '排序已保存', icon: 'none' });
     } catch (err) {
       this.setData({ saving: false });
-      wx.showToast({ title: err.message || '排序保存失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '排序保存失败'), icon: 'none' });
       // 保存失败就把服务端的顺序拉回来，避免界面和实际顺序不一致
       this.loadGroups();
     }
@@ -514,7 +515,7 @@ Page(pageSync.wrap({
       wx.showToast({ title: '名称已修改', icon: 'success' });
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: err.message || '修改名称失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '修改名称失败'), icon: 'none' });
     } finally {
       this.setData({ renaming: false });
     }
@@ -540,7 +541,7 @@ Page(pageSync.wrap({
       }
     } catch (err) {
       this.setData({ [`groups[${index}].visible`]: item.visible });
-      wx.showToast({ title: err.message || '设置失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '设置失败'), icon: 'none' });
     }
   },
 
@@ -578,7 +579,7 @@ Page(pageSync.wrap({
     } catch (err) {
       wx.hideLoading();
       this.setData({ deleting: false });
-      wx.showToast({ title: err.message || '删除失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '删除失败'), icon: 'none' });
     }
   },
 

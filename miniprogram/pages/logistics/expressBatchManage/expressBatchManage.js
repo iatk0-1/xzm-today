@@ -1,3 +1,4 @@
+const { getErrorMessage, getBusinessFailureMessage } = require('../../../utils/error');
 // miniprogram/pages/logistics/expressBatchManage/expressBatchManage.js
 const api = require('../../../utils/api');
 const auth = require('../../../utils/auth');
@@ -83,7 +84,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('加载运单失败:', err);
-      wx.showToast({ title: '加载运单失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载运单失败'), icon: 'none' });
     }
   },
 
@@ -151,7 +152,7 @@ Page({
       }
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: err.message || '上传失败，请重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '上传失败，请重试'), icon: 'none' });
     }
   },
 
@@ -347,7 +348,7 @@ Page({
           let content = '成功：' + successWaybillIds.size + ' 条';
           if (failItems.length > 0) {
             content += '\n失败：' + failItems.length + ' 条';
-            content += '\n原因：' + (failItems[0].error || '未知错误');
+            content += '\n原因：' + getBusinessFailureMessage(failItems[0].error, '取消运单未完成，请核查运单状态');
           }
 
           wx.showModal({
@@ -363,7 +364,7 @@ Page({
           console.error('批量取消失败:', err);
           wx.showModal({
             title: '操作失败',
-            content: err.message || '批量取消请求失败',
+            content: getErrorMessage(err, '批量取消请求失败'),
             showCancel: false,
             confirmText: '知道了'
           });

@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/manualShip/manualShip.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -55,8 +56,8 @@ Page({
       this.setData({ orderId: orderId });
       this.loadDeliveryCompanies();
       this.loadOrderDetail(orderId);
-    }).catch(() => {
-      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+    }).catch(err => {
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
     });
   },
 
@@ -193,7 +194,7 @@ Page({
       console.error('加载订单详情失败:', err);
       wx.showModal({
         title: '加载失败',
-        content: '无法加载订单信息',
+        content: getErrorMessage(err, '无法加载订单信息'),
         showCancel: false,
         success: () => wx.navigateBack()
       });
@@ -238,7 +239,7 @@ Page({
         if (err && err.errMsg && err.errMsg.indexOf('cancel') !== -1) {
           return;
         }
-        wx.showToast({ title: '扫码失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '扫码失败'), icon: 'none' });
       }
     });
   },
@@ -437,7 +438,7 @@ Page({
       wx.hideLoading();
       wx.showModal({
         title: '发货失败',
-        content: err.message || '未知错误',
+        content: getErrorMessage(err, '操作失败，请稍后重试'),
         showCancel: false
       });
     } finally {

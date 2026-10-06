@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const managementNavigation = require('../../utils/managementNavigation');
@@ -38,6 +39,8 @@ Page({
 
   onHide() { clearInterval(this._poll); this._poll = null; },
   onUnload() { clearInterval(this._poll); this._poll = null; },
+
+  retryContact() { return this.loadContact(false); },
 
   async loadContact(silent) {
     if (!silent) this.setData({ loading: true, loadError: false });
@@ -91,10 +94,12 @@ Page({
         messageUnreadCount: contactUnreadCount,
         messageUnreadLabel: customerServiceUnread.label(contactUnreadCount),
         loading: false,
+        loadError: false,
         refreshing: false
       });
     } catch (err) {
-      this.setData({ loading: false, refreshing: false, loadError: true });
+      this.setData({ loading: false, refreshing: false });
+      if (!silent) this.setData({ loadError: getErrorMessage(err, '消息加载失败，请稍后重试') });
     }
   },
 
@@ -113,7 +118,7 @@ Page({
       await api.post('/wechat/customer-service/sessions/' + id + '/claim', {});
       this.goSession({ currentTarget: { dataset: { id } } });
     } catch (err) {
-      wx.showToast({ title: (err && err.message) || '接入失败，请刷新', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '接入失败，请刷新'), icon: 'none' });
       this.loadContact(true);
     }
   },

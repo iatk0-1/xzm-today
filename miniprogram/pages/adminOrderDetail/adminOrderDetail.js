@@ -1,3 +1,4 @@
+const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
@@ -65,7 +66,7 @@ Page(pageSync.wrap({
       this.setData({ isLoading: false });
       wx.showModal({
         title: '加载失败',
-        content: err.message || '订单详情加载失败，请重试',
+        content: getErrorMessage(err, '订单详情加载失败，请重试'),
         showCancel: false
       });
       console.error('load order detail failed:', err);
@@ -220,7 +221,7 @@ Page(pageSync.wrap({
           wx.showToast({ title: '已解绑', icon: 'success' });
           this.loadOrderDetail();
         } catch (err) {
-          wx.showModal({ title: '解绑失败', content: err.message || '解绑快递单号失败', showCancel: false });
+          wx.showModal({ title: '解绑失败', content: getErrorMessage(err, '解绑快递单号失败'), showCancel: false });
         } finally {
           wx.hideLoading();
         }
@@ -288,7 +289,7 @@ Page(pageSync.wrap({
       this.closePartialUnbindPanel();
       this.loadOrderDetail();
     } catch (err) {
-      wx.showModal({ title: '解绑失败', content: err.message || '部分解绑失败', showCancel: false });
+      wx.showModal({ title: '解绑失败', content: getErrorMessage(err, '部分解绑失败'), showCancel: false });
     } finally {
       wx.hideLoading();
     }
@@ -313,7 +314,7 @@ Page(pageSync.wrap({
         showRefundPanel: true
       });
     } catch (err) {
-      wx.showModal({ title: '加载失败', content: err.message || '可退信息加载失败', showCancel: false });
+      wx.showModal({ title: '加载失败', content: getErrorMessage(err, '可退信息加载失败'), showCancel: false });
     } finally {
       wx.hideLoading();
     }
@@ -364,7 +365,7 @@ Page(pageSync.wrap({
       success: address => this.saveRecipient(address),
       fail: err => {
         if (!err || !String(err.errMsg || '').includes('cancel')) {
-          wx.showToast({ title: '获取微信收货地址失败', icon: 'none' });
+          wx.showToast({ title: getErrorMessage(err, '获取微信收货地址失败'), icon: 'none' });
         }
       }
     });
@@ -388,7 +389,7 @@ Page(pageSync.wrap({
       await api.patch(`/admin/orders-manage/orders/${this.data.orderId}/recipient`, value);
       wx.showToast({ title: '收件信息已保存', icon: 'success' });
       this.loadOrderDetail();
-    } catch (err) { wx.showToast({ title: err.message || '保存失败', icon: 'none' }); }
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '保存失败'), icon: 'none' }); }
     finally { wx.hideLoading(); }
   },
 
@@ -412,7 +413,7 @@ Page(pageSync.wrap({
       wx.showToast({ title: '管理员备注已保存', icon: 'success' });
       this.closeAdminRemarkEditor();
       this.loadOrderDetail();
-    } catch (err) { wx.showToast({ title: err.message || '保存失败', icon: 'none' }); }
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '保存失败'), icon: 'none' }); }
     finally { wx.hideLoading(); }
   },
 
@@ -492,15 +493,15 @@ Page(pageSync.wrap({
         });
       } else {
         wx.showModal({
-          title: '退款未成功',
-          content: res.errorMessage || '微信退款失败，请稍后重试',
+          title: res.status === 'failed' ? '退款失败' : '退款结果待确认',
+          content: getBusinessFailureMessage(res.errorMessage, res.status === 'failed' ? '退款失败，请核对原退款单后再操作' : '退款结果待确认，请查询原退款单，勿重复提交。'),
           showCancel: false
         });
       }
       this.closeRefundPanel();
       this.loadOrderDetail();
     } catch (err) {
-      wx.showModal({ title: '退款失败', content: err.message || '退款提交失败', showCancel: false });
+      wx.showModal({ title: '退款结果待核对', content: getErrorMessage(err, '退款结果待核对，请刷新查看原退款单，勿重复提交'), showCancel: false });
     } finally {
       wx.hideLoading();
     }

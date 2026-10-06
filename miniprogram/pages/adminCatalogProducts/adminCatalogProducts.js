@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -49,7 +50,7 @@ Page(autoSearch.wrap({
         this.loadManagers();
       }
     } catch (err) {
-      wx.showToast({ title: '登录状态恢复失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败'), icon: 'none' });
     }
   },
 
@@ -78,7 +79,7 @@ Page(autoSearch.wrap({
       });
     } catch (err) {
       this.setData({ pricingRuleError: '加载失败' });
-      wx.showToast({ title: err.message || '加载档口计价规则失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载档口计价规则失败'), icon: 'none' });
     }
   },
 
@@ -90,7 +91,7 @@ Page(autoSearch.wrap({
       this.setData({ managers: managers || [] });
     } catch (err) {
       if (revision !== (this._managerRevision || 0)) return;
-      wx.showToast({ title: err.message || '加载负责人失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载负责人失败'), icon: 'none' });
     }
   },
 
@@ -147,7 +148,7 @@ Page(autoSearch.wrap({
       wx.showToast({ title: '名称已修改', icon: 'success' });
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: err.message || '修改名称失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '修改名称失败'), icon: 'none' });
     } finally {
       this.setData({ renaming: false });
     }
@@ -232,7 +233,7 @@ Page(autoSearch.wrap({
     } catch (err) {
       console.error('加载分类商品失败:', err);
       this.setData({ loading: false });
-      wx.showToast({ title: err.message || '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
   },
 
@@ -342,7 +343,7 @@ Page(autoSearch.wrap({
         } catch (err) {
           wx.hideLoading();
           this.setData({ operating: false });
-          wx.showToast({ title: err.message || '批量操作失败', icon: 'none' });
+          wx.showToast({ title: getErrorMessage(err, '批量操作失败'), icon: 'none' });
         }
       }
     });

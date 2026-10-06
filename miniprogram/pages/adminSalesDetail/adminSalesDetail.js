@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // pages/adminSalesDetail/adminSalesDetail.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -45,7 +46,7 @@ Page({
       .then(() => this.loadAll())
       .catch(err => {
         console.error('销售详情页认证恢复失败:', err);
-        wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
       });
   },
 
@@ -56,6 +57,7 @@ Page({
   },
 
   loadOverview() {
+    this.setData({ overviewError: '' });
     const params = {};
     if (this.data.startDate) params.startDate = this.data.startDate;
     if (this.data.endDate) params.endDate = this.data.endDate;
@@ -68,19 +70,21 @@ Page({
         afterSaleAmount: res.afterSaleAmount || 0,
         pendingReviewQty: res.pendingReviewQty || 0
       }});
-    }).catch(err => console.error('加载概览失败:', err));
+    }).catch(err => { console.error('加载概览失败:', err); this.setData({ overviewError: getErrorMessage(err, '加载概览失败') }); });
   },
 
   loadSkus() {
+    this.setData({ skuError: '' });
     const params = { page: 1, size: 100 };
     if (this.data.startDate) params.startDate = this.data.startDate;
     if (this.data.endDate) params.endDate = this.data.endDate;
     api.get('/admin/sales/query/products/' + this.data.productId + '/skus', params).then(res => {
       this.setData({ skus: res.content || [], skuTotal: res.totalElements || 0 });
-    }).catch(err => console.error('加载SKU列表失败:', err));
+    }).catch(err => { console.error('加载SKU列表失败:', err); this.setData({ skuError: getErrorMessage(err, '加载SKU列表失败') }); });
   },
 
   loadOrders(reset) {
+    this.setData({ orderError: '' });
     const page = reset ? 1 : this.data.orderPage;
     const { orderSize, startDate, endDate } = this.data;
     const params = { page, size: orderSize };
@@ -105,8 +109,10 @@ Page({
           orderTotal: res.totalElements || 0
         });
       }
-    }).catch(err => console.error('加载订单列表失败:', err));
+    }).catch(err => { console.error('加载订单列表失败:', err); this.setData({ orderError: getErrorMessage(err, '加载订单列表失败') }); });
   },
+
+  retryOrders() { return this.loadOrders(true); },
 
   loadMoreOrders() {
     if (this.data.orders.length >= this.data.orderTotal) return;

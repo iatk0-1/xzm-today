@@ -2,7 +2,7 @@
   <!-- 销售数据统计 -->
   <view class="overview-card" wx:if="{{!isStallManager}}">
     <view class="overview-status" wx:if="{{overviewLoading}}">统计加载中...</view>
-    <view class="overview-status" wx:elif="{{overviewError}}" bindtap="loadOverview">统计加载失败，点击重试</view>
+    <view class="overview-status" wx:elif="{{overviewError}}" bindtap="loadOverview">{{overviewError}} · 点击重试</view>
     <block wx:else>
       <view class="stat-row">
         <view class="stat-item">
@@ -66,7 +66,7 @@
   <view class="overview-card filtered-overview-card">
     <view class="filtered-overview-title">筛选结果统计</view>
     <view class="overview-status" wx:if="{{filteredOverviewLoading}}">统计加载中...</view>
-    <view class="overview-status" wx:elif="{{filteredOverviewError}}" bindtap="loadFilteredOverview">统计加载失败，点击重试</view>
+    <view class="overview-status" wx:elif="{{filteredOverviewError}}" bindtap="loadFilteredOverview">{{filteredOverviewError}} · 点击重试</view>
     <block wx:else>
       <view class="stat-row">
         <view class="stat-item">
@@ -110,7 +110,7 @@
     <view class="load-more" wx:if="{{loading && products.length > 0}}">正在加载更多...</view>
     <view class="load-more" wx:elif="{{hasMore}}" bindtap="loadMore">加载更多</view>
     <view class="empty-state" wx:if="{{loading && products.length === 0}}">正在加载...</view>
-    <view class="empty-state" wx:elif="{{loadError}}" bindtap="loadProducts">加载失败，点击重试</view>
+    <view class="empty-state" wx:elif="{{loadError}}" bindtap="loadProducts">{{loadError}} · 点击重试</view>
     <view class="empty-state" wx:elif="{{products.length === 0}}">暂无销售记录</view>
   </view>
   <button class="back-to-top" bindtap="backToTop">回到顶部</button>

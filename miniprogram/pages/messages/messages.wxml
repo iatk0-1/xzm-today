@@ -1,4 +1,5 @@
 <view class="messages-page" style="padding-top: {{statusBarHeight}}px;">
+  <view wx:if="{{loadError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="retryContact">{{loadError}} · 点击重试</view>
   <view class="nav-bar"><view class="nav-title">消息</view><view wx:if="{{canServe && isAdmin}}" class="staff-manage-link" bindtap="goStaffManage">客服管理</view></view>
 
   <scroll-view class="conv-list" scroll-y refresher-enabled bindrefresherrefresh="onRefresh" refresher-triggered="{{refreshing}}">
@@ -25,10 +26,10 @@
         <view wx:if="{{item.unreadCount > 0}}" class="unread-badge">{{item.unreadLabel}}</view>
         <view wx:if="{{item.status === 'pending'}}" class="claim-mini-btn" catchtap="claimSession" data-id="{{item.id}}">接入</view>
       </view>
-      <view class="conv-empty" wx:if="{{sessions.length === 0 && !hasContacted && !loading}}">暂无客服会话</view>
+      <view class="conv-empty" wx:if="{{sessions.length === 0 && !hasContacted && !loading && !loadError}}">暂无客服会话</view>
     </block>
-    <view class="conv-empty" wx:if="{{!canServe && !hasContacted && !loading}}">
-      <text>{{loadError ? '消息加载失败，下拉重试' : '暂无消息'}}</text>
+    <view class="conv-empty" wx:if="{{!canServe && !hasContacted && !loading && !loadError}}">
+      <text>{{loadError || '暂无消息'}}</text>
     </view>
   </scroll-view>
 

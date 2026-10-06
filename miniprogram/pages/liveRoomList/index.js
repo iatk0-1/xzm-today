@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/liveRoomList/index.js
 const api = require('../../utils/api');
@@ -51,7 +52,7 @@ Page(pageSync.wrap({
 
     if (!this.data.hasMore || this.data.isLoading) return;
 
-    this.setData({ isLoading: true });
+    this.setData({ isLoading: true, loadError: '' });
 
     try {
       await auth.ensureAuthenticated({ silent: true });
@@ -100,12 +101,11 @@ Page(pageSync.wrap({
       });
     } catch (err) {
       console.error('加载直播场次失败:', err);
-      this.setData({
-        hasData: false,
-        isLoading: false
-      });
+      this.setData({ isLoading: false, loadError: getErrorMessage(err, '直播场次加载失败，请稍后重试') });
     }
   },
+
+  retryLiveSessions: function() { return this.loadLiveSessions(!this.data.allSessions.length); },
 
   // 按年月分组
   groupByMonth: function(sessions) {
@@ -224,7 +224,7 @@ Page(pageSync.wrap({
     } catch (err) {
       wx.hideLoading();
       console.error('创建直播失败:', err);
-      wx.showToast({ title: err.message || '创建失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '创建失败'), icon: 'none' });
     }
   },
 

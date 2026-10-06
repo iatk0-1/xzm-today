@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/user/user.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -192,7 +193,7 @@ Page({
       console.error('保存工作台排序失败:', err);
       if (stillCurrent()) {
         this.setWorkbenchLayout(drag.original);
-        wx.showToast({ title: '排序保存失败，请重试', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '排序保存失败，请重试'), icon: 'none' });
       }
     } finally {
       if (stillCurrent()) this.setData({ workbenchSaving: false });
@@ -318,7 +319,7 @@ Page({
         }
       });
     } catch (err) {
-      wx.showToast({ title: err.message || '获取可切换角色失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '获取可切换角色失败'), icon: 'none' });
     }
   },
 

@@ -82,7 +82,8 @@
   <!-- 商品列表 -->
   <scroll-view scroll-y class="product-scroll" bindscrolltolower="loadMore">
     <!-- 空状态 -->
-    <view class="empty-state" wx:if="{{products.length === 0 && !isLoading}}">
+    <view wx:if="{{loadError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="resetAndLoad">{{loadError}} · 点击重试</view>
+    <view class="empty-state" wx:if="{{products.length === 0 && !isLoading && !loadError}}">
       <image class="empty-icon" src="/images/empty.png" mode="aspectFit"></image>
       <view class="empty-text">回收站是空的</view>
       <view class="empty-subtext">暂无已删除的商品</view>

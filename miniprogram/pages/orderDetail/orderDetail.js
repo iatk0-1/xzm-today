@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/orderDetail/orderDetail.js
 const api = require('../../utils/api');
@@ -99,7 +100,7 @@ Page(pageSync.wrap({
       }
     } catch (err) {
       wx.hideLoading();
-      wx.showToast({ title: '拉取订单失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '拉取订单失败'), icon: 'none' });
       console.error(err);
     }
   },
@@ -347,7 +348,7 @@ Page(pageSync.wrap({
       success: (address) => this.submitAddressChangeRequest(address),
       fail: (err) => {
         if (!err || !String(err.errMsg || '').includes('cancel')) {
-          wx.showToast({ title: '获取微信收货地址失败', icon: 'none' });
+          wx.showToast({ title: getErrorMessage(err, '获取微信收货地址失败'), icon: 'none' });
         }
       }
     });
@@ -367,7 +368,7 @@ Page(pageSync.wrap({
       });
       wx.showToast({ title: '已提交，等待管理员审批', icon: 'success' });
       this.loadChangeRequests(this.data.order.id);
-    } catch (err) { wx.showToast({ title: err.message || '提交失败', icon: 'none' }); }
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '提交失败'), icon: 'none' }); }
     finally { wx.hideLoading(); }
   },
 
@@ -393,7 +394,7 @@ Page(pageSync.wrap({
           });
           wx.showToast({ title: '备注申请已提交', icon: 'success' });
           this.loadChangeRequests(this.data.order.id);
-        } catch (err) { wx.showToast({ title: err.message || '提交失败', icon: 'none' }); }
+        } catch (err) { wx.showToast({ title: getErrorMessage(err, '提交失败'), icon: 'none' }); }
         finally { wx.hideLoading(); }
       }
     });
@@ -419,13 +420,13 @@ Page(pageSync.wrap({
           },
           fail: (err) => {
             if (err.errMsg !== 'requestPayment:fail cancel') {
-              wx.showModal({ title: '支付失败', content: err.errMsg, showCancel: false });
+              wx.showModal({ title: '支付失败', content: getErrorMessage(err, '支付未完成，请在订单列表核对支付状态后继续支付'), showCancel: false });
             }
           }
         });
       }
     } catch (err) {
-      wx.showModal({ title: '支付失败', content: JSON.stringify(err), showCancel: false });
+      wx.showModal({ title: '支付准备失败', content: getErrorMessage(err, '支付准备失败，请稍后重试'), showCancel: false });
     }
   },
 
@@ -436,7 +437,7 @@ Page(pageSync.wrap({
     try {
       await auth.ensureAuthenticated({ silent: true });
     } catch (err) {
-      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
       return;
     }
 
@@ -492,7 +493,7 @@ Page(pageSync.wrap({
           })
           .catch(function(err) {
             wx.hideLoading();
-            wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
           });
       }
     });
@@ -532,7 +533,7 @@ Page(pageSync.wrap({
             this.loadOrderDetail(this.data.order.id);
           } catch (err) {
             wx.hideLoading();
-            wx.showToast({ title: '操作失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
           }
         }
       }

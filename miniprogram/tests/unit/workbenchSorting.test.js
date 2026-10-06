@@ -37,12 +37,13 @@ function fixture(options = {}) {
   };
   const module = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../utils/managementNavigation.js'), 'utf8'), {
-    require: name => name === './auth' ? auth : workbench, module, wx
+    require: name => name.endsWith('/error') ? require('../../utils/error') : name === './auth' ? auth : workbench, module, wx
   });
   let definition;
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../pages/user/user.js'), 'utf8'), {
     Page: value => { definition = value; }, wx, console: { error() {} },
     require(name) {
+        if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/workbench')) return workbench;
       if (name.endsWith('/auth')) return auth;
       if (name.endsWith('/api')) return api;
@@ -130,10 +131,10 @@ test('保存过程中阻止再次拖动，接口失败恢复原顺序并提示',
   assert.equal(env.page.data.workbenchSaving, true);
   env.page.onWorkbenchDragStart(event('picking'));
   assert.equal(env.page._workbenchDrag, null);
-  write.reject(new Error('模拟断网'));
+  write.reject({ errMsg: 'request:fail connection closed' });
   await saving;
   assert.deepEqual(ids(env.page), original);
-  assert.deepEqual(env.toasts, ['排序保存失败，请重试']);
+  assert.deepEqual(env.toasts, ['网络连接异常，请检查网络后重试']);
 });
 
 test('未跨格和取消手势均复位，不向后端保存', async () => {

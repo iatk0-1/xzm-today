@@ -1,3 +1,5 @@
+const { getErrorMessage } = require('../../utils/error');
+const { isUnauthorized } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/cart/cart.js
 const api = require('../../utils/api');
@@ -77,11 +79,11 @@ Page(pageSync.wrap({
       wx.hideLoading();
       console.error('加载购物车失败:', err);
       // 如果是因为未登录，清空本地购物车并提示
-      if (err.error === 'UNAUTHORIZED') {
+      if (isUnauthorized(err)) {
         wx.showToast({ title: '请先登录', icon: 'none' });
         this.setData({ cartList: [] });
       } else {
-        wx.showToast({ title: '加载失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
       }
     }
   },
@@ -138,7 +140,7 @@ Page(pageSync.wrap({
       this.calculateTotal();
     } catch (err) {
       console.error('更新商品选中状态失败:', err);
-      wx.showToast({ title: '操作失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
     }
   },
 
@@ -156,7 +158,7 @@ Page(pageSync.wrap({
       this.calculateTotal();
     } catch (err) {
       console.error('全选操作失败:', err);
-      wx.showToast({ title: '操作失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
     }
   },
 
@@ -188,7 +190,7 @@ Page(pageSync.wrap({
         this.calculateTotal();
       } catch (err) {
         console.error('更新数量失败:', err);
-        wx.showToast({ title: '操作失败', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
       }
     } else if (type === 'minus') {
       if (item.count > 1) {
@@ -200,7 +202,7 @@ Page(pageSync.wrap({
           this.calculateTotal();
         } catch (err) {
           console.error('更新数量失败:', err);
-          wx.showToast({ title: '操作失败', icon: 'none' });
+          wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
         }
       } else {
         // 数量为 1 时，点击"-"直接删除，不再确认
@@ -333,7 +335,7 @@ Page(pageSync.wrap({
       wx.showToast({ title: '已移除', icon: 'success' });
     } catch (err) {
       console.error('删除商品失败:', err);
-      wx.showToast({ title: '删除失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '删除失败'), icon: 'none' });
     }
   }
 }, async function(changes) {

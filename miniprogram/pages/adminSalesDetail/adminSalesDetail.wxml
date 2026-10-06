@@ -1,4 +1,7 @@
 <view class="page-wrapper">
+  <view wx:if="{{orderError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="retryOrders">{{orderError}} · 点击重试</view>
+  <view wx:if="{{skuError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="loadSkus">{{skuError}} · 点击重试</view>
+  <view wx:if="{{overviewError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="loadOverview">{{overviewError}} · 点击重试</view>
   <!-- 商品名称 -->
   <view class="product-header">
     <text class="product-title">{{productName}}</text>

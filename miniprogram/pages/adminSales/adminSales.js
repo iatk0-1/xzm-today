@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 // pages/adminSales/adminSales.js
 const api = require('../../utils/api');
@@ -54,7 +55,7 @@ Page(autoSearch.wrap({
       })
       .catch(err => {
         console.error('销售统计页认证恢复失败:', err);
-        wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+        wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
       });
   },
 
@@ -113,7 +114,7 @@ Page(autoSearch.wrap({
     }).catch(err => {
       if (requestId !== this.overviewRequestId) return;
       console.error('加载销售统计失败:', err);
-      this.setData({ overviewError: true });
+      this.setData({ overviewError: getErrorMessage(err, '数据加载失败，请稍后重试') });
     }).finally(() => {
       if (requestId === this.overviewRequestId) this.setData({ overviewLoading: false });
     });
@@ -135,7 +136,7 @@ Page(autoSearch.wrap({
     }).catch(err => {
       if (requestId !== this.filteredOverviewRequestId) return;
       console.error('加载筛选销售统计失败:', err);
-      this.setData({ filteredOverviewError: true });
+      this.setData({ filteredOverviewError: getErrorMessage(err, '数据加载失败，请稍后重试') });
     }).finally(() => {
       if (requestId === this.filteredOverviewRequestId) this.setData({ filteredOverviewLoading: false });
     });
@@ -164,8 +165,8 @@ Page(autoSearch.wrap({
     }).catch(err => {
       if (requestId !== this.productRequestId) return;
       console.error('加载商品销售列表失败:', err);
-      if (replace) this.setData({ loadError: true });
-      wx.showToast({ title: '加载商品销售列表失败，请重试', icon: 'none' });
+      if (replace) this.setData({ loadError: getErrorMessage(err, '数据加载失败，请稍后重试') });
+      wx.showToast({ title: getErrorMessage(err, '加载商品销售列表失败，请重试'), icon: 'none' });
     }).finally(() => {
       if (requestId === this.productRequestId) this.setData({ loading: false });
     });

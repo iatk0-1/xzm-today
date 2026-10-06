@@ -29,8 +29,9 @@
   </view>
 
   <view class="result-box">
+    <view wx:if="{{loadError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="retrySearch">{{loadError}} · 点击重试</view>
     <!-- 搜索后的结果展示 -->
-    <view wx:if="{{results.length === 0 && searched}}" class="empty-tip">没有找到相关的衣服哦~</view>
+    <view wx:if="{{results.length === 0 && searched && !loadError && !loading}}" class="empty-tip">没有找到相关的衣服哦~</view>
 
     <view class="goods-list" wx:if="{{results.length > 0}}">
       <!-- 左列 -->

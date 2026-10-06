@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const db = wx.cloud.database();
 const _ = db.command;
 
@@ -5,7 +6,7 @@ Page({
   data: {
     currentTab: 'unlinked', // unlinked(待寻觅) 或 linked(已关联)
     wishes: [],
-    isLoading: true
+    isLoading: true, loadError: ''
   },
 
   onLoad: function() {
@@ -20,7 +21,7 @@ Page({
 
   // 1. 根据当前 Tab 拉取心愿
   loadWishes: function() {
-    this.setData({ isLoading: true, wishes: [] });
+    this.setData({ isLoading: true, wishes: [], loadError: '' });
     wx.showLoading({ title: '计算热度中...' });
 
     // 核心过滤：如果是 unlinked，找 productId 为 null 或不存在的；反之找存在且不为 null 的
@@ -53,6 +54,7 @@ Page({
         fail: err => {
           wx.hideLoading();
           console.error(err);
+          this.setData({ isLoading: false, loadError: getErrorMessage(err, '心愿列表加载失败，请稍后重试') });
         }
       });
   },
@@ -111,7 +113,8 @@ Page({
             }
           }
         });
-      }
+      },
+      fail: err => { wx.hideLoading(); wx.showToast({ title: getErrorMessage(err, '商品列表加载失败'), icon: 'none' }); }
     });
   },
 
@@ -124,7 +127,8 @@ Page({
         wx.hideLoading();
         wx.showToast({ title: '绑定成功！', icon: 'success' });
         this.setData({ wishes: this.data.wishes.filter(item => item._id !== wishId) });
-      }
+      },
+      fail: err => { wx.hideLoading(); wx.showToast({ title: getErrorMessage(err, '绑定失败'), icon: 'none' }); }
     });
   },
 
@@ -143,7 +147,8 @@ Page({
               wx.hideLoading();
               wx.showToast({ title: '已解除', icon: 'success' });
               this.setData({ wishes: this.data.wishes.filter(item => item._id !== wishId) });
-            }
+            },
+            fail: err => { wx.hideLoading(); wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' }); }
           });
         }
       }
@@ -163,7 +168,8 @@ Page({
             success: () => {
               wx.showToast({ title: '已删除', icon: 'success' });
               this.setData({ wishes: this.data.wishes.filter(item => item._id !== wishId) });
-            }
+            },
+            fail: err => { wx.hideLoading(); wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' }); }
           });
         }
       }

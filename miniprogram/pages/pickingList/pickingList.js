@@ -1,3 +1,4 @@
+const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/pickingList/pickingList.js
@@ -71,7 +72,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       this.setData({ refundOrders: orders, refundLoading: false });
     } catch (err) {
       this.setData({ refundLoading: false, showRefundModal: false });
-      wx.showModal({ title: '加载失败', content: err.message || '关联订单加载失败', showCancel: false });
+      wx.showModal({ title: '加载失败', content: getErrorMessage(err, '关联订单加载失败'), showCancel: false });
     }
   },
 
@@ -165,7 +166,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     } catch (err) {
       if (err && [400, 401, 403, 404, 422].includes(err.statusCode)) {
         wx.removeStorageSync(storageKey);
-        return { status: 'not_submitted', errorMessage: err.message || '退款请求未获受理' };
+        return { status: 'not_submitted', errorMessage: getErrorMessage(err, '退款请求未获受理') };
       }
       const result = await this.queryRefundRequest(refundBase, requestKey);
       if (result.status !== 'unknown') wx.removeStorageSync(storageKey);
@@ -200,7 +201,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       if (!freshEntry) throw new Error('这笔订单已无待报数量，请刷新后再看');
       await this.executeRefunds(this.limitRefundEntries([freshEntry], Number(this.data.refundSku.recommendQty)), true);
     } catch (err) {
-      wx.showModal({ title: '退款未完成', content: err.message || '刷新关联订单失败', showCancel: false });
+      wx.showModal({ title: '退款未完成', content: getErrorMessage(err, '刷新关联订单失败'), showCancel: false });
     } finally {
       this.setData({ refundBusy: false });
     }
@@ -235,7 +236,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       if (!limited.length) throw new Error('当前已无待报数量，请刷新后再看');
       await this.executeRefunds(limited, true);
     } catch (err) {
-      wx.showModal({ title: '退款未完成', content: err.message || '刷新关联订单失败', showCancel: false });
+      wx.showModal({ title: '退款未完成', content: getErrorMessage(err, '刷新关联订单失败'), showCancel: false });
     } finally {
       this.setData({ refundBusy: false });
     }
@@ -260,19 +261,19 @@ Page(autoSearch.wrap(pageSync.wrap({
           processing += Number(entry.pendingQty || 0);
         } else if (result.status === 'unknown') {
           unknown += Number(entry.pendingQty || 0);
-          message = `订单 ${entry.order.outTradeNo || entry.order.id}：${result.errorMessage}`;
+          message = `订单 ${entry.order.outTradeNo || entry.order.id}：${getBusinessFailureMessage(result.errorMessage, '退款结果待核对，请查询原退款单')}`;
           break;
         } else if (result.status === 'not_submitted') {
-          message = result.errorMessage;
+          message = getBusinessFailureMessage(result.errorMessage, '退款结果待核对，请查询原退款单');
           break;
         } else {
           failed += Number(entry.pendingQty || 0);
-          message = result.errorMessage || '微信退款失败，已暂停后续订单';
+          message = getBusinessFailureMessage(result.errorMessage, '微信退款失败，已暂停后续订单');
           break;
         }
       }
     } catch (err) {
-      message = err.message || '退款尚未提交，已暂停后续订单';
+      message = getErrorMessage(err, '退款尚未提交，已暂停后续订单');
     } finally {
       this.setData({ refundBusy: false, showRefundModal: false, refundOrders: [], refundSku: null });
       try {
@@ -375,7 +376,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       });
     } catch (err) {
       console.error('加载推荐拣货单失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
       this.setData({ loading: false });
     }
   },
@@ -607,7 +608,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     } catch (err) {
       wx.hideLoading();
       console.error('报单失败:', err);
-      wx.showToast({ title: err?.message || '报单失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '报单失败'), icon: 'none' });
     }
   }
 }, async function(changes) {

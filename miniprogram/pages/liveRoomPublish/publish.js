@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/liveRoomPublish/publish.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -9,17 +10,7 @@ const { integrateProductPricing } = require('../../utils/productPricing');
 
 // 统一把请求异常转成能看懂的文案，避免 TypeError 被 JSON.stringify 成 "{}"
 function formatRequestError(err) {
-  if (!err) return '未知错误';
-  if (typeof err === 'string') return err;
-  if (err.message) return err.message;
-  if (typeof err.error === 'string' && err.error) return err.error;
-  if (err.errMsg) return err.errMsg;
-  try {
-    var text = JSON.stringify(err);
-    return (text && text !== '{}') ? text : '请求失败，请查看控制台日志';
-  } catch (e) {
-    return '请求失败，请查看控制台日志';
-  }
+  return getErrorMessage(err, '操作失败，请稍后重试');
 }
 
 
@@ -224,7 +215,7 @@ const pageDefinition = {
     } catch (err) {
       wx.hideLoading();
       console.error('加载商品失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
   },
 
@@ -540,7 +531,7 @@ const pageDefinition = {
     } catch (err) {
       wx.hideLoading();
       console.error('创建档口失败:', err);
-      wx.showToast({ title: '创建失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '创建失败'), icon: 'none' });
     }
   },
 
@@ -565,7 +556,7 @@ const pageDefinition = {
     } catch (err) {
       wx.hideLoading();
       console.error('创建标签失败:', err);
-      wx.showToast({ title: '创建失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '创建失败'), icon: 'none' });
     }
   },
 
@@ -615,7 +606,7 @@ const pageDefinition = {
       this.setData({ newCategoryName: '' });
     } catch (err) {
       console.error('创建尺码类型失败:', err);
-      wx.showToast({ title: '创建失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '创建失败'), icon: 'none' });
     }
   },
 
@@ -633,7 +624,7 @@ const pageDefinition = {
             await this.loadSizeCategories();
           } catch (err) {
             console.error('删除尺码类型失败:', err);
-            wx.showToast({ title: '删除失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '删除失败'), icon: 'none' });
           }
         }
       }
@@ -677,7 +668,7 @@ const pageDefinition = {
       }
     } catch (err) {
       console.error('创建尺码失败:', err);
-      wx.showToast({ title: '创建失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '创建失败'), icon: 'none' });
     }
   },
 
@@ -707,7 +698,7 @@ const pageDefinition = {
             }
           } catch (err) {
             console.error('删除尺码失败:', err);
-            wx.showToast({ title: '删除失败', icon: 'none' });
+            wx.showToast({ title: getErrorMessage(err, '删除失败'), icon: 'none' });
           }
         }
       }

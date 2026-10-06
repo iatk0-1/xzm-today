@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -67,7 +68,7 @@ Page(autoSearch.wrap({
       }
     } catch (err) {
       console.error('加载库存筛选项失败:', err);
-      wx.showToast({ title: err.message || '加载筛选项失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载筛选项失败'), icon: 'none' });
     }
   },
   async loadProducts(reset = true) {
@@ -103,7 +104,7 @@ Page(autoSearch.wrap({
     } catch (err) {
       if (this._listVersion !== version) return;
       console.error('加载仓库库存失败:', err);
-      wx.showToast({ title: err.message || '加载库存失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载库存失败'), icon: 'none' });
       this.setData({ loading: false });
     }
   },
@@ -232,7 +233,7 @@ Page(autoSearch.wrap({
         wx.setStorageSync(this.batchReceiveStorageKey(), { payload, preview: this.data.batchReceiveItems });
       } catch (err) {
         console.error('保存批量入库请求失败:', err);
-        wx.showToast({ title: '保存入库请求失败，请重试', icon: 'none' }); return;
+        wx.showToast({ title: getErrorMessage(err, '保存入库请求失败，请重试'), icon: 'none' }); return;
       }
       this._pendingBatchReceive = payload;
     }
@@ -248,7 +249,7 @@ Page(autoSearch.wrap({
     } catch (err) {
       if (err.statusCode >= 400 && err.statusCode < 500 && err.statusCode !== 408) this.clearPendingBatchReceive();
       console.error('批量入库失败:', err);
-      wx.showToast({ title: err.message || '入库结果待确认，请重试原批次', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '入库结果待确认，请重试原批次'), icon: 'none' });
     } finally { this.setData({ batchReceiveSaving: false }); }
   },
   selectProduct(e) {
@@ -301,7 +302,7 @@ Page(autoSearch.wrap({
     } catch (err) {
       if (this._detailVersion !== version) return;
       this.setData({ detailLoading: false });
-      wx.showToast({ title: err.message || '加载库存明细失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '加载库存明细失败'), icon: 'none' });
     }
   },
   switchTab(e) { this.setData({ activeTab: e.currentTarget.dataset.tab }); },
@@ -343,7 +344,7 @@ Page(autoSearch.wrap({
       wx.showToast({ title: '操作成功', icon: 'success' });
     } catch (err) {
       console.error('仓库库存操作失败:', err);
-      wx.showToast({ title: err.message || '操作失败', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
     } finally { this.setData({ saving: false }); }
   },
   revokeLedger(e) {
@@ -360,7 +361,7 @@ Page(autoSearch.wrap({
           await this.refreshSku(skuId);
           await this.loadLedger(skuId);
           wx.showToast({ title: '已撤销', icon: 'success' });
-        } catch (err) { wx.showToast({ title: err.message || '撤销失败', icon: 'none' }); }
+        } catch (err) { wx.showToast({ title: getErrorMessage(err, '撤销失败'), icon: 'none' }); }
         finally { this.setData({ saving: false }); }
       }
     });
@@ -398,7 +399,7 @@ Page(autoSearch.wrap({
         grouped.set(key, product);
       });
       this.setData({ shippingProducts: [...grouped.values()] });
-    } catch (err) { wx.showToast({ title: err.message || '加载可发库存失败', icon: 'none' }); }
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '加载可发库存失败'), icon: 'none' }); }
     finally { this.setData({ shippingLoading: false }); }
   },
   closeShippingModal() { if (!this.data.matching) this.setData({ showShippingModal: false }); },
@@ -438,7 +439,7 @@ Page(autoSearch.wrap({
         wx.showModal({ title: '部分库存暂无可发订单', content: '有 ' + unmatched + ' 件未匹配到订单，是否继续发货已匹配的商品？',
           success: res => { if (res.confirm) navigate(); } });
       } else navigate();
-    } catch (err) { wx.showToast({ title: err.message || '匹配发货订单失败', icon: 'none' }); }
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '匹配发货订单失败'), icon: 'none' }); }
     finally { this.setData({ matching: false }); }
   },
   getSourceText(source) {

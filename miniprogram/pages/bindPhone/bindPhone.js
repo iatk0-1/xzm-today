@@ -1,3 +1,4 @@
+const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/bindPhone/bindPhone.js
 const auth = require('../../utils/auth');
 const api = require('../../utils/api');
@@ -15,7 +16,7 @@ Page({
       }
     } catch (err) {
       console.error('绑定手机号页认证恢复失败:', err);
-      wx.showToast({ title: '登录状态恢复失败，请稍后重试', icon: 'none' });
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
     }
   },
 
