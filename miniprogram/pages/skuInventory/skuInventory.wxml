@@ -28,9 +28,20 @@
       <button class="search-btn" bindtap="search">搜索</button>
     </view>
   </view>
-  <button class="stock-shipping-btn" bindtap="openShippingModal">按照库存发货</button>
+  <view class="inventory-action-bar">
+    <view class="select-all" bindtap="toggleSelectAll">
+      <view class="inventory-checkbox {{allSelected ? 'checked' : ''}}"><text wx:if="{{allSelected}}">✓</text></view>
+      <text>全选</text>
+    </view>
+    <button class="batch-receive-btn" bindtap="openBatchReceiveModal" disabled="{{!selectedCount && !batchRetryPending}}">{{batchRetryPending ? '入库待确认' : '批量入库'}}</button>
+    <button class="stock-shipping-btn" bindtap="openShippingModal">按照库存发货</button>
+  </view>
+  <view class="selection-summary" wx:if="{{selectedCount}}">已选 {{selectedCount}} 个商品</view>
   <view class="product-list">
-    <view class="product-item" wx:for="{{productList}}" wx:key="id" bindtap="selectProduct" data-item="{{item}}">
+    <view class="product-item {{item.selected ? 'selected' : ''}}" wx:for="{{productList}}" wx:key="id" bindtap="selectProduct" data-item="{{item}}">
+      <view class="product-select" catchtap="toggleProductSelection" data-id="{{item.id}}">
+        <view class="inventory-checkbox {{item.selected ? 'checked' : ''}} {{!item.skus.length ? 'disabled' : ''}}"><text wx:if="{{item.selected}}">✓</text></view>
+      </view>
       <image class="product-image" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
       <view class="product-info">
         <view class="product-name">{{item.name}}</view>
@@ -51,6 +62,39 @@
     </view>
     <view class="empty-state" wx:if="{{!productList.length && !loading}}">暂无符合条件的商品</view>
     <view class="loading-state" wx:if="{{loading}}">加载中...</view>
+  </view>
+
+  <view class="modal" wx:if="{{showBatchReceiveModal}}">
+    <view class="modal-mask" bindtap="closeBatchReceiveModal"></view>
+    <view class="modal-content batch-receive-modal">
+      <view class="modal-title">确认入库数量</view>
+      <view class="batch-source-tabs">
+        <view class="inventory-tab {{batchReceiveSource === 'normal' ? 'active' : ''}}" data-source="normal" bindtap="changeBatchReceiveSource">报单入库</view>
+        <view class="inventory-tab {{batchReceiveSource === 'history' ? 'active' : ''}}" data-source="history" bindtap="changeBatchReceiveSource">历史入库</view>
+      </view>
+      <view class="batch-receive-tip">{{batchReceiveSource === 'normal' ? '自动抵扣报单欠货，超出报单的数量计入异常库存。' : '录入历史遗留库存，不抵扣报单欠货，不产生超收异常。'}} 数量为0的规格不入库。</view>
+      <view class="batch-pending-tip" wx:if="{{batchRetryPending && !batchReceiveSaving}}">上次入库结果待确认，请重试原批次，确认期间不能修改数量和来源。</view>
+      <scroll-view class="batch-receive-list" scroll-y="true">
+        <view class="batch-receive-row" wx:for="{{batchReceiveItems}}" wx:key="skuId">
+          <image class="batch-item-image" src="{{item.imageUrl}}" mode="aspectFill" />
+          <view class="batch-item-info">
+            <view class="batch-item-name">{{item.productName}}</view>
+            <view class="batch-item-sku">{{item.spec || '默认规格'}} {{item.size}}</view>
+            <view class="batch-item-sku" wx:if="{{batchReceiveSource === 'normal'}}">欠货 {{item.shortageQty}} 件</view>
+          </view>
+          <view class="batch-qty-editor">
+            <button class="batch-qty-adjust" bindtap="adjustBatchReceiveQty" data-index="{{index}}" data-delta="-1" disabled="{{batchReceiveSaving || batchRetryPending || item.qty <= 0}}">−</button>
+            <input class="batch-qty-input" type="number" value="{{item.qty}}" bindinput="onBatchReceiveQtyInput" bindblur="normalizeBatchReceiveQty" data-index="{{index}}" disabled="{{batchReceiveSaving || batchRetryPending}}" />
+            <button class="batch-qty-adjust" bindtap="adjustBatchReceiveQty" data-index="{{index}}" data-delta="1" disabled="{{batchReceiveSaving || batchRetryPending}}">+</button>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="batch-receive-summary">本次入库 {{batchReceiveSkuCount}} 个 SKU，总计 {{batchReceiveTotal}} 件</view>
+      <view class="modal-footer">
+        <button class="btn-cancel" bindtap="closeBatchReceiveModal" disabled="{{batchReceiveSaving}}">{{batchRetryPending ? '稍后确认' : '取消'}}</button>
+        <button class="btn-confirm" bindtap="confirmBatchReceive" loading="{{batchReceiveSaving}}" disabled="{{batchReceiveSaving || !batchReceiveTotal}}">{{batchRetryPending ? '确认入库结果' : '确认入库'}}</button>
+      </view>
+    </view>
   </view>
 
   <view class="modal" wx:if="{{showSkuModal}}">

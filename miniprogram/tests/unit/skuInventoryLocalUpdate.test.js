@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const Module = require('node:module');
 let config;
 global.Page = value => { config = value; };
-global.wx = { showToast() {} };
+global.wx = { showToast() {}, getStorageSync() {} };
 const requests = [];
 const queryRequests = [];
 const responses = [];

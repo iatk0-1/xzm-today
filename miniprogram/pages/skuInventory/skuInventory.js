@@ -4,7 +4,7 @@ const auth = require('../../utils/auth');
 
 function normalizeSku(row) {
   return {
-    id: row.skuId, spec: row.spec || '', size: row.size || '', imageUrl: '',
+    id: row.skuId, spec: row.spec || '', size: row.size || '', imageUrl: row.skuImageUrl || '',
     availableQty: row.qty || 0, shortageQty: row.shortageQty || 0,
     abnormalQty: row.abnormalQty || 0,
     shippableQty: row.shippableQty == null ? (row.qty || 0) : row.shippableQty,
@@ -14,6 +14,13 @@ function normalizeSku(row) {
 }
 function positiveInteger(value) {
   return /^\d+$/.test(String(value)) && Number.isSafeInteger(Number(value)) && Number(value) > 0;
+}
+function batchQuantity(value) {
+  const text = String(value == null ? '' : value).trim();
+  if (!text) return 0;
+  if (!/^\d+$/.test(text)) return null;
+  const qty = Number(text);
+  return Number.isSafeInteger(qty) && qty <= 2147483647 ? qty : null;
 }
 
 Page(autoSearch.wrap({
@@ -30,10 +37,13 @@ Page(autoSearch.wrap({
     activeTab: 'operate', operateType: 'normal', inputQty: '', note: '',
     stocktakeDirection: 'gain', stocktakeCategory: 'normal', abnormalAction: 'keep',
     saving: false, showShippingModal: false, shippingLoading: false,
-    shippingProducts: [], matching: false
+    shippingProducts: [], matching: false,
+    selectedCount: 0, allSelected: false,
+    showBatchReceiveModal: false, batchReceiveItems: [], batchReceiveSource: 'normal',
+    batchReceiveTotal: 0, batchReceiveSkuCount: 0, batchReceiveSaving: false, batchRetryPending: false
   },
 
-  onLoad() { this.loadProducts(); this.loadFilterOptions(); },
+  onLoad() { this.loadProducts(); this.loadFilterOptions(); this.restoreBatchReceive(); },
   onShow() {
     if (this._refreshAfterShipping) {
       this._refreshAfterShipping = false;
@@ -64,7 +74,7 @@ Page(autoSearch.wrap({
     if (!reset && (!this.data.hasMore || this.data.loading)) return;
     const version = (this._listVersion || 0) + 1;
     this._listVersion = version;
-    if (reset) this.setData({ page: 1, productList: [], hasMore: true });
+    if (reset) this.setData({ page: 1, productList: [], hasMore: true, selectedCount: 0, allSelected: false });
     this.setData({ loading: true });
     try {
       await auth.ensureAuthenticated({ silent: true });
@@ -79,7 +89,7 @@ Page(autoSearch.wrap({
       const grouped = new Map(existing.map(product => [String(product.id), { ...product, skus: [...product.skus] }]));
       (result.content || []).forEach(row => {
         const key = String(row.productId);
-        const product = grouped.get(key) || { id: row.productId, name: row.productName, coverUrl: row.coverUrl, skus: [] };
+        const product = grouped.get(key) || { id: row.productId, name: row.productName, coverUrl: row.coverUrl, selected: false, skus: [] };
         const sku = normalizeSku(row);
         const index = product.skus.findIndex(item => String(item.id) === String(sku.id));
         if (index < 0) product.skus.push(sku); else product.skus[index] = sku;
@@ -89,6 +99,7 @@ Page(autoSearch.wrap({
         productList: [...grouped.values()], page: query.page + 1,
         hasMore: Boolean(result.hasNext), loading: false
       });
+      this.updateProductSelection();
     } catch (err) {
       if (this._listVersion !== version) return;
       console.error('加载仓库库存失败:', err);
@@ -118,6 +129,128 @@ Page(autoSearch.wrap({
   },
   onKeywordInput(e) { this.setData({ keyword: e.detail.value }); },
   search() { return this.loadProducts(); },
+  updateProductSelection() {
+    const selectable = this.data.productList.filter(product => product.skus && product.skus.length);
+    const selectedCount = selectable.filter(product => product.selected).length;
+    this.setData({ selectedCount, allSelected: selectable.length > 0 && selectedCount === selectable.length });
+  },
+  toggleProductSelection(e) {
+    const id = e.currentTarget.dataset.id;
+    this.setData({ productList: this.data.productList.map(product => String(product.id) === String(id)
+      && product.skus.length ? { ...product, selected: !product.selected } : product) });
+    this.updateProductSelection();
+  },
+  toggleSelectAll() {
+    const selected = !this.data.allSelected;
+    this.setData({ productList: this.data.productList.map(product => ({ ...product, selected: selected && product.skus.length > 0 })) });
+    this.updateProductSelection();
+  },
+  batchReceiveStorageKey() {
+    const user = auth.getUserInfo ? auth.getUserInfo() : {};
+    return 'warehouseBatchReceive_' + ((user && user.userId) || 'admin');
+  },
+  restoreBatchReceive() {
+    try {
+      const saved = wx.getStorageSync(this.batchReceiveStorageKey());
+      if (!saved || !saved.payload || !saved.payload.requestId || !Array.isArray(saved.preview)) return;
+      this._pendingBatchReceive = saved.payload;
+      this.setData({ batchReceiveItems: saved.preview, batchReceiveSource: saved.payload.source,
+        batchRetryPending: true, showBatchReceiveModal: true });
+      this.updateBatchReceiveSummary();
+    } catch (err) { console.error('读取待确认批量入库记录失败:', err); }
+  },
+  openBatchReceiveModal() {
+    if (this.data.batchReceiveSaving) return;
+    if (this._pendingBatchReceive) {
+      this.setData({ showBatchReceiveModal: true });
+      return;
+    }
+    const selected = this.data.productList.filter(product => product.selected && product.skus.length);
+    if (!selected.length) { wx.showToast({ title: '请先选择要入库的商品', icon: 'none' }); return; }
+    const items = selected.flatMap(product => product.skus.map(sku => ({
+      skuId: sku.id, productId: product.id, productName: product.name,
+      imageUrl: sku.imageUrl || product.coverUrl || '/images/default-goods-image.png',
+      spec: sku.spec, size: sku.size, shortageQty: sku.shortageQty || 0, qty: 0
+    })));
+    this.setData({ batchReceiveItems: items, batchReceiveSource: 'normal', showBatchReceiveModal: true,
+      batchReceiveTotal: 0, batchReceiveSkuCount: 0, batchRetryPending: false });
+  },
+  closeBatchReceiveModal() {
+    if (!this.data.batchReceiveSaving) this.setData({ showBatchReceiveModal: false });
+  },
+  changeBatchReceiveSource(e) {
+    if (this.data.batchReceiveSaving || this.data.batchRetryPending) return;
+    const source = e.currentTarget.dataset.source;
+    if (['normal', 'history'].includes(source)) this.setData({ batchReceiveSource: source });
+  },
+  setBatchReceiveQty(index, qty) {
+    if (this.data.batchReceiveSaving || this.data.batchRetryPending || !this.data.batchReceiveItems[index]) return;
+    this.setData({ batchReceiveItems: this.data.batchReceiveItems.map((item, i) => i === index ? { ...item, qty } : item) });
+    this.updateBatchReceiveSummary();
+  },
+  adjustBatchReceiveQty(e) {
+    const { index, delta } = e.currentTarget.dataset;
+    const item = this.data.batchReceiveItems[Number(index)];
+    if (!item) return;
+    const qty = Math.max(0, (batchQuantity(item.qty) || 0) + Number(delta));
+    if (batchQuantity(qty) !== null) this.setBatchReceiveQty(Number(index), qty);
+  },
+  onBatchReceiveQtyInput(e) { this.setBatchReceiveQty(Number(e.currentTarget.dataset.index), e.detail.value); },
+  normalizeBatchReceiveQty(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.batchReceiveItems[index];
+    if (!item) return;
+    const qty = batchQuantity(item.qty);
+    if (qty === null) { wx.showToast({ title: '入库数量请输入非负整数', icon: 'none' }); return; }
+    this.setBatchReceiveQty(index, qty);
+  },
+  updateBatchReceiveSummary() {
+    const quantities = this.data.batchReceiveItems.map(item => batchQuantity(item.qty) || 0);
+    this.setData({ batchReceiveTotal: quantities.reduce((sum, qty) => sum + qty, 0),
+      batchReceiveSkuCount: quantities.filter(qty => qty > 0).length });
+  },
+  clearPendingBatchReceive() {
+    this._pendingBatchReceive = null;
+    this.setData({ batchRetryPending: false });
+    try { wx.removeStorageSync(this.batchReceiveStorageKey()); }
+    catch (err) { console.error('清除待确认批量入库记录失败:', err); }
+  },
+  async confirmBatchReceive() {
+    if (this.data.batchReceiveSaving) return;
+    let payload = this._pendingBatchReceive;
+    if (!payload) {
+      if (this.data.batchReceiveItems.some(item => batchQuantity(item.qty) === null)) {
+        wx.showToast({ title: '入库数量请输入非负整数', icon: 'none' }); return;
+      }
+      const items = this.data.batchReceiveItems.filter(item => batchQuantity(item.qty) > 0)
+        .map(item => ({ skuId: item.skuId, qty: batchQuantity(item.qty) }));
+      if (!items.length) { wx.showToast({ title: '至少填写一个大于0的入库数量', icon: 'none' }); return; }
+      if (items.length > 500) { wx.showToast({ title: '一次最多入库500个规格，请分批操作', icon: 'none' }); return; }
+      payload = { requestId: 'receipt_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+        source: this.data.batchReceiveSource, items };
+      try {
+        wx.setStorageSync(this.batchReceiveStorageKey(), { payload, preview: this.data.batchReceiveItems });
+      } catch (err) {
+        console.error('保存批量入库请求失败:', err);
+        wx.showToast({ title: '保存入库请求失败，请重试', icon: 'none' }); return;
+      }
+      this._pendingBatchReceive = payload;
+    }
+    this.setData({ batchReceiveSaving: true, batchRetryPending: true });
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      await api.post('/sku-inventory/batch-receive', payload);
+      this.clearPendingBatchReceive();
+      this.setData({ showBatchReceiveModal: false });
+      payload.items.forEach(item => require('../../utils/pageSync').publish('picking-skus', item.skuId));
+      wx.showToast({ title: '批量入库成功', icon: 'success' });
+      await this.loadProducts();
+    } catch (err) {
+      if (err.statusCode >= 400 && err.statusCode < 500 && err.statusCode !== 408) this.clearPendingBatchReceive();
+      console.error('批量入库失败:', err);
+      wx.showToast({ title: err.message || '入库结果待确认，请重试原批次', icon: 'none' });
+    } finally { this.setData({ batchReceiveSaving: false }); }
+  },
   selectProduct(e) {
     const product = e.currentTarget.dataset.item;
     if (product.skus && product.skus.length) this.openSkuModal(product, product.skus[0]);
@@ -244,6 +377,7 @@ Page(autoSearch.wrap({
       patch.currentQty = patch.selectedSku.availableQty;
     }
     this.setData(patch);
+    this.updateProductSelection();
     require('../../utils/pageSync').publish('picking-skus', skuId);
   },
   matchesTab(product) {
