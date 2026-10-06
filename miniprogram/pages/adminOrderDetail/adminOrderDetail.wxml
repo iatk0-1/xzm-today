@@ -137,9 +137,12 @@
         </view>
 
         <view class="logistics-trace" wx:if="{{logisticsTraceMap[item.id] && logisticsTraceMap[item.id].nodes && logisticsTraceMap[item.id].nodes.length > 0}}">
-          <view class="trace-title">物流轨迹</view>
+          <view class="trace-header">
+            <text class="trace-title">物流轨迹</text>
+            <text class="trace-toggle" wx:if="{{logisticsTraceMap[item.id].nodes.length > 1}}" catchtap="toggleShipmentTrace" data-id="{{item.id}}">{{logisticsTraceMap[item.id].expanded ? '收缩' : '展开'}}</text>
+          </view>
           <view class="trace-list">
-            <view class="trace-item" wx:for="{{logisticsTraceMap[item.id].nodes}}" wx:for-item="node" wx:key="time">
+            <view class="trace-item" wx:for="{{logisticsTraceMap[item.id].visibleNodes}}" wx:for-item="node" wx:key="index">
               <text class="trace-time">{{node.timeDisplay}}</text>
               <text class="trace-content">{{node.description}}</text>
             </view>

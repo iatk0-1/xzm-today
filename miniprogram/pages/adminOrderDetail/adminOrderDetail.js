@@ -153,17 +153,32 @@ Page(pageSync.wrap({
       const traceList = await api.get(`/orders/${orderId}/shipments/trace`);
       const traceMap = {};
       (traceList || []).forEach(trace => {
-        if (trace.nodes) {
-          trace.nodes.forEach(node => {
-            node.timeDisplay = this.formatTime(node.time);
-          });
-        }
-        traceMap[trace.shipmentId] = trace;
+        const nodes = (trace.nodes || []).map(node => ({
+          ...node,
+          timeDisplay: this.formatTime(node.time)
+        }));
+        traceMap[trace.shipmentId] = {
+          ...trace,
+          nodes,
+          expanded: false,
+          visibleNodes: nodes.slice(0, 1)
+        };
       });
       this.setData({ logisticsTraceMap: traceMap });
     } catch (err) {
-      console.error('load logistics trace failed:', err);
+      console.error('加载物流轨迹失败:', err);
     }
+  },
+
+  toggleShipmentTrace(e) {
+    const shipmentId = e.currentTarget.dataset.id;
+    const trace = this.data.logisticsTraceMap[shipmentId];
+    if (!trace || trace.nodes.length <= 1) return;
+    const expanded = !trace.expanded;
+    this.setData({
+      [`logisticsTraceMap.${shipmentId}.expanded`]: expanded,
+      [`logisticsTraceMap.${shipmentId}.visibleNodes`]: expanded ? trace.nodes : trace.nodes.slice(0, 1)
+    });
   },
 
   copyOrderSn() {

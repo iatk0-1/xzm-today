@@ -135,15 +135,20 @@
         </view>
 
         <!-- 物流轨迹摘要 -->
-        <view class="logistics-trace-summary" wx:if="{{logisticsTraceMap[item.id]}}" bindtap="viewShipmentTrace" data-id="{{item.id}}">
+        <view class="logistics-trace-summary" wx:if="{{logisticsTraceMap[item.id]}}">
           <view class="trace-summary-header">
-            <text class="trace-summary-title">物流轨迹</text>
-            <text class="trace-summary-link">查看详情</text>
+            <view class="trace-summary-heading">
+              <text class="trace-summary-title">物流轨迹</text>
+              <text class="trace-summary-toggle" wx:if="{{logisticsTraceMap[item.id].nodes.length > 1}}" catchtap="toggleShipmentTrace" data-id="{{item.id}}">{{logisticsTraceMap[item.id].expanded ? '收缩' : '展开'}}</text>
+            </view>
+            <text class="trace-summary-link" catchtap="viewShipmentTrace" data-id="{{item.id}}">查看详情</text>
           </view>
-          <view class="trace-summary-body" wx:if="{{logisticsTraceMap[item.id].latestNode}}">
-            <text class="trace-summary-status">{{logisticsTraceMap[item.id].latestNode.description}}</text>
-            <text class="trace-summary-time">{{logisticsTraceMap[item.id].latestNode.timeDisplay}}</text>
-          </view>
+          <block wx:if="{{logisticsTraceMap[item.id].latestNode}}">
+            <view class="trace-summary-body" wx:for="{{logisticsTraceMap[item.id].visibleNodes}}" wx:for-item="node" wx:key="index">
+              <text class="trace-summary-status">{{node.description}}</text>
+              <text class="trace-summary-time">{{node.timeDisplay}}</text>
+            </view>
+          </block>
           <view class="trace-summary-empty" wx:else>暂无物流轨迹</view>
         </view>
       </view>

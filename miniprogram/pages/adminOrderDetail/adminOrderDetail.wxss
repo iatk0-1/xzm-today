@@ -119,7 +119,9 @@ page { background-color: #f2f2f2; }
 .btn-cancel-waybill { background: #1a1a1a; color: #fff; }
 
 .logistics-trace { margin-top: 16rpx; padding-top: 16rpx; border-top: 1rpx solid #eee; }
-.trace-title { font-size: 24rpx; font-weight: 600; color: #666; margin-bottom: 12rpx; }
+.trace-header { display: flex; align-items: center; gap: 12rpx; margin-bottom: 12rpx; }
+.trace-title { font-size: 24rpx; font-weight: 600; color: #666; }
+.trace-toggle { padding: 8rpx 0; font-size: 22rpx; color: #576b95; flex-shrink: 0; }
 .trace-list { display: flex; flex-direction: column; gap: 12rpx; }
 .trace-item { display: flex; gap: 16rpx; align-items: flex-start; }
 .trace-time { min-width: 280rpx; flex-shrink: 0; font-size: 22rpx; color: #999; white-space: nowrap; line-height: 1.6; }

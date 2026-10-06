@@ -1,4 +1,4 @@
-page { background-color: #f7f8fa; padding-bottom: 120rpx; }
+page { background-color: #f7f8fa; padding-bottom: calc(134rpx + env(safe-area-inset-bottom)); }
 .after-sale-tag {
   align-self: flex-start;
   margin-top: 8rpx;
@@ -81,7 +81,7 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
 .info-label { font-size: 24rpx; color: #999; }
 .info-val-box { display: flex; align-items: center; }
 .info-val { font-size: 24rpx; color: #333; font-family: -apple-system, sans-serif; }
-.btn-copy { font-size: 20rpx; color: #1a1a1a; border: 1rpx solid #1a1a1a; padding: 2rpx 12rpx; border-radius: 6rpx; margin-left: 16rpx; }
+.btn-copy { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box; min-height: 36rpx; line-height: 1.4; white-space: nowrap; font-size: 20rpx; color: #1a1a1a; border: 1rpx solid #1a1a1a; padding: 4rpx 12rpx; border-radius: 6rpx; margin-left: 16rpx; }
 
 /* 售后记录卡片 */
 .after-sale-card { margin-top: 0; }
@@ -157,19 +157,18 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 110rpx;
+  min-height: calc(110rpx + env(safe-area-inset-bottom));
   background: #fff;
   border-top: 1rpx solid #eee;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding: 0 20rpx env(safe-area-inset-bottom);
+  padding: 23rpx 20rpx calc(23rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   z-index: 100;
-  gap: 12rpx;
 }
-.btn-ghost,
-.btn-solid {
+.bottom-action-bar > .btn-ghost,
+.bottom-action-bar > .btn-solid {
   flex: 1;
   min-width: 0;
   max-width: 220rpx;
@@ -184,6 +183,12 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
   font-size: 26rpx;
   white-space: nowrap;
   border-radius: 32rpx;
+}
+.bottom-action-bar > .btn-ghost + .btn-ghost,
+.bottom-action-bar > .btn-ghost + .btn-solid,
+.bottom-action-bar > .btn-solid + .btn-ghost,
+.bottom-action-bar > .btn-solid + .btn-solid {
+  margin-left: 12rpx;
 }
 .btn-ghost { color: #333; background: #fff; border: 1rpx solid #ddd; }
 .btn-ghost::after { display: none; }
@@ -320,7 +325,21 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
   color: #111;
 }
 
+.trace-summary-heading {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.trace-summary-toggle {
+  padding: 8rpx 0;
+  font-size: 22rpx;
+  color: #576b95;
+  flex-shrink: 0;
+}
+
 .trace-summary-link {
+  padding: 8rpx 0 8rpx 16rpx;
   font-size: 22rpx;
   color: #576b95;
   flex-shrink: 0;
@@ -331,6 +350,11 @@ page { background-color: #f7f8fa; padding-bottom: 120rpx; }
   display: flex;
   flex-direction: column;
   gap: 8rpx;
+}
+
+.trace-summary-body + .trace-summary-body {
+  padding-top: 14rpx;
+  border-top: 1rpx solid #eee;
 }
 
 .trace-summary-status {

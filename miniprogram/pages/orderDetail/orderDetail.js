@@ -192,7 +192,7 @@ Page(pageSync.wrap({
   loadLogisticsTraceList: async function(orderId) {
     try {
       const traceList = await api.get(`/orders/${orderId}/shipments/trace`);
-      if (traceList && traceList.length > 0) {
+      if (traceList) {
         var self = this;
         var traceMap = {};
         traceList.forEach(function(trace) {
@@ -203,9 +203,13 @@ Page(pageSync.wrap({
               isLatest: index === 0
             };
           });
+          var previousTrace = self.data.logisticsTraceMap[trace.shipmentId];
+          var expanded = !!(previousTrace && previousTrace.expanded);
           traceMap[trace.shipmentId] = {
             ...trace,
             nodes: nodes,
+            expanded: expanded,
+            visibleNodes: expanded ? nodes : nodes.slice(0, 1),
             latestNode: nodes.length > 0 ? nodes[0] : null
           };
         });
@@ -214,6 +218,18 @@ Page(pageSync.wrap({
     } catch (err) {
       console.error('加载物流轨迹失败:', err);
     }
+  },
+
+  // 每个发货单独立展开或收缩物流轨迹
+  toggleShipmentTrace: function(e) {
+    const shipmentId = e.currentTarget.dataset.id;
+    const trace = this.data.logisticsTraceMap[shipmentId];
+    if (!trace || trace.nodes.length <= 1) return;
+    const expanded = !trace.expanded;
+    this.setData({
+      [`logisticsTraceMap.${shipmentId}.expanded`]: expanded,
+      [`logisticsTraceMap.${shipmentId}.visibleNodes`]: expanded ? trace.nodes : trace.nodes.slice(0, 1)
+    });
   },
 
   // 进入单个发货单的物流轨迹详情页
