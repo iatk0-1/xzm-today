@@ -1,6 +1,6 @@
 /* 仓库库存：实物、报单欠货和异常分别展示。 */
 page { background: #f6f7f9; }
-.container { padding: 16rpx; padding-bottom: 48rpx; box-sizing: border-box; }
+.container { width: 100%; min-width: 0; align-items: stretch; padding: 16rpx; padding-bottom: 48rpx; box-sizing: border-box; }
 .filter-bar { background: #fff; border-radius: 12rpx; padding: 16rpx; margin-bottom: 14rpx; box-sizing: border-box; width: 100%; }
 .filter-tabs { display: flex; gap: 10rpx; margin-bottom: 14rpx; }
 .inventory-tab { flex: 1; height: 56rpx; line-height: 56rpx; text-align: center; font-size: 24rpx; color: #666; background: #f2f4f7; border-radius: 10rpx; box-sizing: border-box; }
@@ -15,18 +15,18 @@ page { background: #f6f7f9; }
 .relation-filter-tag.active { background: #f2f4f7; color: #1f2933; font-weight: 800; box-shadow: inset 0 -4rpx 0 #1f2933; }
 .search-bar { display: flex; gap: 10rpx; }
 .search-input { flex: 1; min-width: 0; height: 58rpx; background: #f6f7f9; border-radius: 10rpx; padding: 0 18rpx; font-size: 24rpx; box-sizing: border-box; }
-.search-btn { width: 112rpx; height: 58rpx; line-height: 58rpx; margin: 0; background: #1f2933; color: #fff; font-size: 24rpx; border-radius: 10rpx; padding: 0; box-sizing: border-box; }
+.search-bar > .search-btn { width: 112rpx; min-width: 0; flex: 0 0 112rpx; height: 58rpx; line-height: 58rpx; margin: 0; background: #1f2933; color: #fff; font-size: 24rpx; border-radius: 10rpx; padding: 0; box-sizing: border-box; }
 .search-btn::after, .stock-shipping-btn::after { border: none; }
-.inventory-action-bar { display: flex; align-items: center; gap: 12rpx; padding: 14rpx 16rpx; margin-bottom: 14rpx; border-radius: 12rpx; background: #fff; }
+.inventory-action-bar { width: 100%; min-width: 0; box-sizing: border-box; display: flex; align-items: center; padding: 14rpx 16rpx; margin-bottom: 14rpx; border-radius: 12rpx; background: #fff; }
 .select-all { display: flex; align-items: center; gap: 10rpx; font-size: 24rpx; color: #1f2933; flex-shrink: 0; }
 .inventory-checkbox { width: 34rpx; height: 34rpx; border: 2rpx solid #cbd2dc; border-radius: 6rpx; display: flex; align-items: center; justify-content: center; box-sizing: border-box; flex-shrink: 0; color: #fff; font-size: 24rpx; }
 .inventory-checkbox.checked { background: #1f2933; border-color: #1f2933; }
 .inventory-checkbox.disabled { opacity: .4; }
-.batch-receive-btn, .stock-shipping-btn { height: 58rpx; line-height: 58rpx; padding: 0; color: #fff; font-size: 24rpx; border-radius: 10rpx; margin: 0; }
+.inventory-action-bar > .batch-receive-btn, .inventory-action-bar > .stock-shipping-btn { flex: 1 1 0%; width: 0; min-width: 0; box-sizing: border-box; height: 58rpx; line-height: 58rpx; padding: 0; color: #fff; font-size: 24rpx; border-radius: 10rpx; margin: 0 0 0 16rpx; white-space: nowrap; }
 .batch-receive-btn { flex: 1; background: #1f2933; }
 .batch-receive-btn[disabled] { color: #a1a8b3; background: #f2f4f7; }
 .batch-receive-btn::after, .batch-qty-adjust::after { border: none; }
-.stock-shipping-btn { width: 208rpx; flex-shrink: 0; background: #1f2933; }
+.stock-shipping-btn { background: #1f2933; }
 .selection-summary { padding: 0 12rpx 14rpx; color: #667085; font-size: 23rpx; }
 .product-select { flex-shrink: 0; padding: 6rpx 0; }
 .product-item.selected { background: #f5f7fa; }

@@ -1,4 +1,4 @@
-page { background-color: #f7f8fa; padding-bottom: calc(134rpx + env(safe-area-inset-bottom)); }
+page { background-color: #f7f8fa; padding-bottom: calc(118rpx + env(safe-area-inset-bottom)); }
 .after-sale-tag {
   align-self: flex-start;
   margin-top: 8rpx;
@@ -157,13 +157,13 @@ page { background-color: #f7f8fa; padding-bottom: calc(134rpx + env(safe-area-in
   bottom: 0;
   left: 0;
   width: 100%;
-  min-height: calc(110rpx + env(safe-area-inset-bottom));
+  min-height: calc(94rpx + env(safe-area-inset-bottom));
   background: #fff;
   border-top: 1rpx solid #eee;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding: 23rpx 20rpx calc(23rpx + env(safe-area-inset-bottom));
+  padding: 15rpx 20rpx calc(15rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   z-index: 100;
 }
