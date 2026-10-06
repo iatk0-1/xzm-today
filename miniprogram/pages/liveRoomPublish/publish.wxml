@@ -181,15 +181,17 @@
       <input class="input-box" placeholder="规则自动售价" value="{{defaultPrice}}" disabled />
     </view>
     <view class="muted">默认成本用于新SKU，已有SKU通过一键填充或批量设置成本更新。</view>
-    <view class="label">计价规则：{{pricingRuleName || '尚未选择'}} {{pricingRuleVersion ? 'v' + pricingRuleVersion : ''}}</view>
-    <view>{{ruleSource}}</view>
+    <view class="label">计价规则：{{pricingRuleName || '尚未选择'}}<text wx:if="{{isAdmin && pricingRuleVersion}}"> v{{pricingRuleVersion}}</text></view>
+    <view wx:if="{{isAdmin}}">{{ruleSource}}</view>
     <picker wx:if="{{!isStallManager || (selectedStalls.length && pricingRules.length > 1 && !stallPricingLoading)}}" range="{{pricingRules}}" range-key="name" bindchange="choosePricingRule">
       <view class="switch-size-btn">选择其他计价规则</view>
     </picker>
     <view wx:elif="{{!selectedStalls.length}}" class="muted">请先选择分配给你的档口，再选择计价规则。</view>
     <view wx:elif="{{stallPricingLoading}}" class="muted">正在加载档口计价规则...</view>
     <view wx:else class="muted">负责人必须使用所属档口规则，售价自动计算。</view>
-    <view wx:for="{{pricingRuleSegments}}" wx:key="index">{{item.label}}：{{item.formula}}</view>
+    <block wx:if="{{isAdmin}}">
+      <view wx:for="{{pricingRuleSegments}}" wx:key="index">{{item.label}}：{{item.formula}}</view>
+    </block>
     <view class="pricing-error" wx:if="{{pricingError}}">{{pricingError}}</view>
     <view class="muted" wx:if="{{pricingBusy}}">正在计算价格…</view>
   </view>

@@ -227,7 +227,9 @@
     <view wx:else class="label">计价规则：{{pricingRuleName || '未选择'}}</view>
     <view class="muted" wx:if="{{isStallManager && !selectedStalls.length}}">请先选择分配给你的档口，再选择计价规则。</view>
     <view class="muted" wx:if="{{isStallManager && stallPricingLoading}}">正在加载档口计价规则...</view>
-    <view class="pricing-rule-segment" wx:for="{{pricingRuleSegments}}" wx:key="index">{{item.label}}：{{item.formula}}</view>
+    <block wx:if="{{isAdmin}}">
+      <view class="pricing-rule-segment" wx:for="{{pricingRuleSegments}}" wx:key="index">{{item.label}}：{{item.formula}}</view>
+    </block>
     <button class="pricing-apply-btn" bindtap="applyPricingRule" loading="{{pricingBusy}}" disabled="{{pricingBusy || !pricingRuleId || !pricingRuleSegments.length}}">一键应用</button>
     <view class="pricing-error" wx:if="{{pricingError}}">{{pricingError}}</view>
   </view>
