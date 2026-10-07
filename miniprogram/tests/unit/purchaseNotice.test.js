@@ -54,16 +54,16 @@ test('多商品相同须知去重，不同须知按商品完整展示', () => {
   assert.deepEqual(sections.map(section => [section.title, section.content]), [['上衣、裤子', '规则一'], ['外套', '规则二']]);
 });
 
-test('立即购买结算默认勾选，从详情读取最新须知且保留大整数商品编号', async () => {
+test('立即购买结算默认未勾选，从详情读取最新须知且保留大整数商品编号', async () => {
   const { page, calls } = harness({ get: async () => ({ product: { name: '衣服', purchaseNotice: '最新规则' } }) });
   await page.loadLocalCheckoutItems(page.data.checkoutItems);
-  assert.equal(page.data.purchaseNoticeAgreed, true);
+  assert.equal(page.data.purchaseNoticeAgreed, false);
   assert.equal(page.data.purchaseNoticeReady, true);
   assert.equal(page.data.purchaseNoticeSections[0].content, '最新规则');
   assert.deepEqual(calls[0], ['get', '/products/90071992547409931']);
   await page.openPurchaseNotice();
   assert.equal(page.data.showPurchaseNotice, true);
-  assert.equal(page.data.purchaseNoticeAgreed, true);
+  assert.equal(page.data.purchaseNoticeAgreed, false);
   page.closePurchaseNotice();
   assert.equal(page.data.showPurchaseNotice, false);
 });
@@ -73,19 +73,30 @@ test('购物车结算相同商品多款式只查询一次，旧商品展示默�
     items: [{ productId: '10', skuId: '11', price: 20, count: 1 }, { productId: '10', skuId: '12', price: 20, count: 1 }]
   } : { product: { name: '旧衣服' } } });
   await page.loadCartSelectedItems();
+  assert.equal(page.data.purchaseNoticeAgreed, false);
   assert.equal(page.data.totalPrice, '40.00');
   assert.equal(calls.filter(call => call[1] === '/products/10').length, 1);
   assert.equal(page.data.purchaseNoticeSections[0].content, notices.DEFAULT_PURCHASE_NOTICE);
 });
 
-test('取消勾选后外部和内部提交入口都不创建订单、不调用支付', async () => {
+test('默认未勾选时外部和内部提交入口都提示阅读勾选，不创建订单、不调用支付', async () => {
   const { page, calls, toasts } = harness();
   page.data.purchaseNoticeReady = true;
-  page.togglePurchaseNoticeAgreement();
   await page.submitOrder();
   await page.submitOrderInternal();
   assert.equal(calls.length, 0);
-  assert.equal(toasts[0], '请先阅读并同意购买须知');
+  assert.deepEqual(toasts, ['请阅读购买须知并勾选', '请阅读购买须知并勾选']);
+});
+
+test('手动勾选后再次取消，下单仍提示阅读勾选且不发送请求', async () => {
+  const { page, calls, toasts } = harness();
+  page.data.purchaseNoticeReady = true;
+  page.togglePurchaseNoticeAgreement();
+  assert.equal(page.data.purchaseNoticeAgreed, true);
+  page.togglePurchaseNoticeAgreement();
+  await page.submitOrder();
+  assert.equal(calls.length, 0);
+  assert.equal(toasts[0], '请阅读购买须知并勾选');
 });
 
 test('须知加载失败拦住下单，点击须知重试成功后可阅读', async () => {
@@ -95,6 +106,7 @@ test('须知加载失败拦住下单，点击须知重试成功后可阅读', as
     return { product: { name: '衣服', purchaseNotice: '商品规则' } };
   } });
   await page.loadPurchaseNotices();
+  page.togglePurchaseNoticeAgreement();
   await page.submitOrder();
   assert.equal(page.data.purchaseNoticeReady, false);
   assert.equal(calls.some(call => call[0] === 'post'), false);
@@ -108,6 +120,7 @@ test('勾选后允许创建订单和支付，处理期间重复点击不重复�
   let finishPayment;
   const { page, calls } = harness({ payment: options => { finishPayment = options.complete; } });
   await page.loadPurchaseNotices();
+  page.togglePurchaseNoticeAgreement();
   const submitting = page.submitOrder();
   await new Promise(resolve => setImmediate(resolve));
   page.togglePurchaseNoticeAgreement();
@@ -125,6 +138,7 @@ test('勾选后允许创建订单和支付，处理期间重复点击不重复�
 test('认证等待期间失去同意状态，不发送订单请求', async () => {
   const { page, calls } = harness({ authenticate: async () => { page.data.purchaseNoticeAgreed = false; } });
   page.data.purchaseNoticeReady = true;
+  page.togglePurchaseNoticeAgreement();
   await page.submitOrder();
   assert.equal(calls.length, 0);
   assert.equal(page.data.submitting, false);
@@ -133,6 +147,7 @@ test('认证等待期间失去同意状态，不发送订单请求', async () =>
 test('订单响应期间失去同意状态，不发送预支付请求', async () => {
   const { page, calls } = harness({ post: async () => { page.data.purchaseNoticeAgreed = false; return { id: '123' }; } });
   page.data.purchaseNoticeReady = true;
+  page.togglePurchaseNoticeAgreement();
   await page.submitOrder();
   assert.equal(calls.filter(call => call[0] === 'post').length, 1);
   assert.equal(calls.some(call => call[0] === 'payment'), false);
@@ -145,6 +160,7 @@ test('预支付响应期间失去同意状态，不拉起微信支付', async ()
     return { package: 'prepay_id=test' };
   } });
   page.data.purchaseNoticeReady = true;
+  page.togglePurchaseNoticeAgreement();
   await page.submitOrder();
   assert.equal(calls.some(call => call[0] === 'payment'), false);
 });

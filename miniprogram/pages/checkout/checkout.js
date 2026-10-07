@@ -9,7 +9,7 @@ Page({
     address: null,
     checkoutItems: [],
     totalPrice: 0,
-    purchaseNoticeAgreed: true,
+    purchaseNoticeAgreed: false,
     purchaseNoticeSections: [],
     purchaseNoticeReady: false,
     purchaseNoticeLoading: false,
@@ -143,7 +143,7 @@ Page({
 
   ensurePurchaseNoticeAgreed: function() {
     if (!this.data.purchaseNoticeAgreed) {
-      wx.showToast({ title: '请先阅读并同意购买须知', icon: 'none' });
+      wx.showToast({ title: '请阅读购买须知并勾选', icon: 'none' });
       return false;
     }
     if (!this.data.purchaseNoticeReady) {
