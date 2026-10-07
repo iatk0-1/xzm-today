@@ -30,7 +30,19 @@ page { background-color: #ffffff; }
 
 .wish-card {
   background: #ffffff;
+  position: relative;
 }
+
+.management-hint { margin-top: 14px; color: #666; font-size: 11px; }
+.wish-selection {
+  position: absolute; top: 8px; left: 8px; z-index: 2;
+  width: 24px; height: 24px; border: 1px solid #999; border-radius: 50%;
+  background: #fff; color: #fff; display: flex; align-items: center; justify-content: center;
+  box-sizing: border-box; font-size: 15px;
+}
+.wish-selection.selected { background: #111; border-color: #111; }
+.wish-selection.unavailable { width: auto; padding: 0 8px; border-radius: 12px; color: #999; font-size: 10px; }
+.wish-selection-outline { position: absolute; top: -4px; right: -4px; bottom: -4px; left: -4px; border: 2px solid #111; border-radius: 4px; pointer-events: none; }
 
 .card-img {
   width: 100%; display: block;
@@ -68,6 +80,20 @@ page { background-color: #ffffff; }
 }
 
 /* 悬浮发布按钮 */
+.wish-management-actions {
+  position: fixed; right: 20px; bottom: calc(147px + env(safe-area-inset-bottom));
+  z-index: 100; display: flex; align-items: center; gap: 10px;
+}
+.wish-action {
+  min-width: 50px; height: 40px; padding: 0 12px; box-sizing: border-box;
+  display: flex; justify-content: center; align-items: center;
+  background: #fff; border: 1px solid #ddd; border-radius: 20px; color: #111;
+  font-size: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+}
+.wish-action-manage { padding: 0; background: #111; color: #fff; border-color: #111; }
+.wish-action-delete { color: #d32f2f; border-color: #d32f2f; }
+.wish-action.disabled { opacity: 0.45; }
+.market-scroll { padding-bottom: 180px; box-sizing: border-box; }
 .fab-upload {
   position: fixed; right: 20px; bottom: calc(85px + env(safe-area-inset-bottom));
   width: 50px; height: 50px; background-color: #111111; border-radius: 50%;

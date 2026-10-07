@@ -90,3 +90,15 @@ test('发货、解绑和售后变更只通知涉及的订单，查询不产生�
   assert.deepEqual(batches[0].filter(item => item.entity === 'after-sales').map(item => item.id), ['9']);
   page.onUnload();
 });
+
+test('批量删除心愿仅广播后端确认删除的心愿ID', async () => {
+  const batches = [];
+  const page = sync.wrap({}, changes => batches.push(changes));
+  page.onLoad();
+  sync.recordMutation('/wishes/batch/delete', 'POST', { wishIds: ['101', '102'] },
+    { count: 2, wishIds: ['101', '102'] });
+  await page.onShow();
+  assert.deepEqual(batches[0].map(item => ({ entity: item.entity, id: item.id, removed: item.removed })),
+    [{ entity: 'wishes', id: '101', removed: true }, { entity: 'wishes', id: '102', removed: true }]);
+  page.onUnload();
+});

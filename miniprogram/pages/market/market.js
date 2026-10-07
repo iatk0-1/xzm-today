@@ -14,6 +14,11 @@ Page(pageSync.wrap({
     rightColumn: [],  // 右列心愿
     isAdmin: false,
     isStallManager: false,
+    managingWishes: false,
+    selectedWishIds: [],
+    selectedWishCount: 0,
+    allWishesSelected: false,
+    deletingWishes: false,
     messageUnreadCount: 0,
     messageUnreadLabel: '0',
     // 分页参数
@@ -57,7 +62,7 @@ Page(pageSync.wrap({
 
   // 触底加载更多
   onReachBottom: function() {
-    if (!this.data.hasMore || this.data.loading) return;
+    if (!this.data.hasMore || this.data.loading || this.data.deletingWishes) return;
     this.loadWishes(false);
   },
 
@@ -75,6 +80,10 @@ Page(pageSync.wrap({
   },
 
   refreshMarketData: function() {
+    if (this.data.deletingWishes) {
+      this.setData({ refreshing: false });
+      return Promise.resolve();
+    }
     if (this._isRefreshingMarket) {
       return this._wishesTask || Promise.resolve();
     }
@@ -105,6 +114,9 @@ Page(pageSync.wrap({
     } else {
       this.setData({ isAdmin: false });
     }
+    const wasManaging = this.data.managingWishes;
+    if (!this.data.isAdmin) this.setData({ managingWishes: false, selectedWishIds: [] });
+    if (wasManaging) this.updateWishColumns(this.data.wishes, {}, true);
   },
 
   // 从后端 API 获取心愿列表（支持分页）
@@ -169,26 +181,42 @@ Page(pageSync.wrap({
     }
   },
 
-  updateWishColumns: function(wishes, extraData) {
-    const leftColumn = [];
-    const rightColumn = [];
-    wishes.forEach(function(item, index) {
-      if (index % 2 === 0) {
-        leftColumn.push(item);
-      } else {
-        rightColumn.push(item);
-      }
+  updateWishColumns: function(wishes, extraData, preserveColumns = false) {
+    const selectable = this.data.isAdmin ? wishes : [];
+    const selectableIds = new Set(selectable.map(wish => String(wish.id)));
+    const selectedWishIds = (this.data.managingWishes ? this.data.selectedWishIds : [])
+      .filter(id => selectableIds.has(id));
+    const selectedIds = new Set(selectedWishIds);
+    wishes = wishes.map(wish => ({ ...wish,
+      canDelete: selectableIds.has(String(wish.id)),
+      selected: selectedIds.has(String(wish.id))
+    }));
+    const byId = new Map(wishes.map(item => [String(item.id), item]));
+    const leftColumn = preserveColumns
+      ? this.data.leftColumn.filter(item => byId.has(String(item.id))).map(item => byId.get(String(item.id))) : [];
+    const rightColumn = preserveColumns
+      ? this.data.rightColumn.filter(item => byId.has(String(item.id))).map(item => byId.get(String(item.id))) : [];
+    if (!preserveColumns) wishes.forEach(function(item, index) {
+      if (index % 2 === 0) leftColumn.push(item);
+      else rightColumn.push(item);
     });
 
     this.setData(Object.assign({
       wishes: wishes,
       leftColumn: leftColumn,
-      rightColumn: rightColumn
+      rightColumn: rightColumn,
+      selectedWishIds: selectedWishIds,
+      selectedWishCount: selectedWishIds.length,
+      allWishesSelected: selectable.length > 0 && selectedWishIds.length === selectable.length
     }, extraData || {}));
   },
 
   // 改造：点赞/取消点赞
   handleLike: async function(e) {
+    if (this.data.managingWishes) {
+      this.toggleWishSelection(e);
+      return;
+    }
     console.log('=== handleLike 开始 ===');
     console.log('event dataset:', e.currentTarget.dataset);
 
@@ -265,8 +293,99 @@ Page(pageSync.wrap({
     }
   },
 
+  toggleWishManagement: async function() {
+    if (this.data.deletingWishes) return;
+    if (!auth.isAdmin()) {
+      this.checkAdmin();
+      wx.showToast({ title: '仅管理员可管理心愿', icon: 'none' });
+      return;
+    }
+    if (!this.data.managingWishes) {
+      try {
+        await auth.ensureAuthenticated({ silent: true });
+        this.checkAdmin();
+        if (!this.data.isAdmin) {
+          wx.showToast({ title: '仅管理员可管理心愿', icon: 'none' });
+          return;
+        }
+      } catch (err) {
+        wx.showToast({ title: getErrorMessage(err, '请先登录'), icon: 'none' });
+        return;
+      }
+    }
+    this.setData({ managingWishes: !this.data.managingWishes, selectedWishIds: [] });
+    this.updateWishColumns(this.data.wishes, {}, true);
+  },
+
+  toggleWishSelection: function(e) {
+    if (!auth.isAdmin() || !this.data.managingWishes || this.data.deletingWishes) return;
+    const id = String(e.currentTarget.dataset.id);
+    const wish = this.data.wishes.find(item => String(item.id) === id);
+    if (!wish || !wish.canDelete) {
+      wx.showToast({ title: '该心愿不可选，请刷新后重试', icon: 'none' });
+      return;
+    }
+    const selected = new Set(this.data.selectedWishIds);
+    if (selected.has(id)) selected.delete(id);
+    else selected.add(id);
+    this.setData({ selectedWishIds: Array.from(selected) });
+    this.updateWishColumns(this.data.wishes, {}, true);
+  },
+
+  toggleSelectAllWishes: function() {
+    if (!auth.isAdmin() || this.data.deletingWishes || !this.data.managingWishes) return;
+    // 全选当前已加载、且当前身份有删除权限的心愿；新加载的卡片仍可单独勾选。
+    const selectedWishIds = this.data.allWishesSelected ? []
+      : this.data.wishes.filter(wish => wish.canDelete).map(wish => String(wish.id));
+    this.setData({ selectedWishIds: Array.from(new Set(selectedWishIds)) });
+    this.updateWishColumns(this.data.wishes, {}, true);
+  },
+
+  deleteSelectedWishes: async function() {
+    if (!auth.isAdmin() || !this.data.managingWishes || this.data.deletingWishes) return;
+    const wishIds = this.data.selectedWishIds.slice();
+    if (!wishIds.length) {
+      wx.showToast({ title: '请先选择心愿', icon: 'none' });
+      return;
+    }
+    if (wishIds.length > 1000) {
+      wx.showToast({ title: '一次最多删除1000条心愿', icon: 'none' });
+      return;
+    }
+    this.setData({ deletingWishes: true });
+    let loadingShown = false;
+    try {
+      const result = await new Promise((resolve, reject) => wx.showModal({
+        title: '删除心愿',
+        content: `确定删除选中的 ${wishIds.length} 条心愿吗？删除后将不再展示。`,
+        confirmText: '删除', confirmColor: '#d32f2f', success: resolve, fail: reject
+      }));
+      if (!result.confirm) return;
+      // 等待当前分页请求完成，避免删除后旧请求把已删除卡片追加回来。
+      if (this._wishesTask) await this._wishesTask;
+      wx.showLoading({ title: '删除中...', mask: true });
+      loadingShown = true;
+      const response = await api.post('/wishes/batch/delete', { wishIds });
+      const removed = new Set(response.wishIds.map(String));
+      this.setData({ selectedWishIds: [] });
+      this.updateWishColumns(this.data.wishes.filter(wish => !removed.has(String(wish.id))));
+      wx.hideLoading();
+      loadingShown = false;
+      // 删除会改变后端分页偏移，重新加载首屏以免后续翻页漏掉心愿。
+      await this.loadWishes(true, true);
+      wx.showToast({ title: `已删除${response.count}条心愿`, icon: 'none' });
+    } catch (err) {
+      console.error('批量删除心愿失败:', err);
+      wx.showToast({ title: getErrorMessage(err, '删除失败，请稍后重试'), icon: 'none' });
+    } finally {
+      if (loadingShown) wx.hideLoading();
+      this.setData({ deletingWishes: false });
+    }
+  },
+
   // 上传心愿
   uploadWish: function() {
+    if (this.data.deletingWishes) return;
     wx.navigateTo({
       url: '/pages/publishWish/publishWish'
     });
@@ -274,6 +393,10 @@ Page(pageSync.wrap({
 
   // 跳转到心愿详情
   goToWishDetail: function(e) {
+    if (this.data.managingWishes) {
+      this.toggleWishSelection(e);
+      return;
+    }
     var wishId = e.currentTarget.dataset.id;
     if (wishId) {
       this._skipNextMarketRefresh = true;
@@ -286,6 +409,10 @@ Page(pageSync.wrap({
 
   // 跳转到商品
   goToProduct: function(e) {
+    if (this.data.managingWishes) {
+      this.toggleWishSelection({ currentTarget: { dataset: { id: e.currentTarget.dataset.wishId } } });
+      return;
+    }
     const productId = e.currentTarget.dataset.id;
     if (productId) {
       this._skipNextMarketRefresh = true;
@@ -347,9 +474,5 @@ Page(pageSync.wrap({
       return { ...wish, images, image: wish.image || images[0] || '', title: wish.title || wish.content || '' };
     }
   });
-  const byId = new Map(this.data.wishes.map(item => [String(item.id), item]));
-  this.setData({
-    leftColumn: this.data.leftColumn.filter(item => byId.has(String(item.id))).map(item => byId.get(String(item.id))),
-    rightColumn: this.data.rightColumn.filter(item => byId.has(String(item.id))).map(item => byId.get(String(item.id)))
-  });
+  this.updateWishColumns(this.data.wishes, {}, true);
 }));

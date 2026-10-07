@@ -14,12 +14,16 @@
     <view class="header-section">
       <view class="page-title">Curation Market</view>
       <view class="page-subtitle">探索 · 许愿 · 为你寻觅</view>
+      <view class="management-hint" wx:if="{{isAdmin && managingWishes}}">已选 {{selectedWishCount}} 条 · 全选当前已加载的心愿</view>
     </view>
 
     <view class="masonry-grid" wx:if="{{wishes.length > 0}}">
       <!-- 左列 -->
       <view class="masonry-column">
         <view class="wish-card" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToWishDetail" data-id="{{item.id}}">
+
+          <view wx:if="{{managingWishes}}" class="wish-selection {{item.selected ? 'selected' : ''}} {{!item.canDelete ? 'unavailable' : ''}}">{{item.canDelete ? (item.selected ? '✓' : '') : '不可选'}}</view>
+          <view wx:if="{{managingWishes && item.selected}}" class="wish-selection-outline"></view>
 
           <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
 
@@ -38,7 +42,7 @@
             </view>
 
             <view class="buy-section" wx:else>
-              <view class="btn-buy-black" catchtap="goToProduct" data-id="{{item.linkedProductId}}">BUY NOW</view>
+              <view class="btn-buy-black" catchtap="goToProduct" data-id="{{item.linkedProductId}}" data-wish-id="{{item.id}}">BUY NOW</view>
             </view>
           </view>
         </view>
@@ -48,6 +52,9 @@
       <view class="masonry-column">
         <view class="wish-card" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToWishDetail" data-id="{{item.id}}">
 
+          <view wx:if="{{managingWishes}}" class="wish-selection {{item.selected ? 'selected' : ''}} {{!item.canDelete ? 'unavailable' : ''}}">{{item.canDelete ? (item.selected ? '✓' : '') : '不可选'}}</view>
+          <view wx:if="{{managingWishes && item.selected}}" class="wish-selection-outline"></view>
+
           <image class="card-img" src="{{item.image}}" mode="widthFix"></image>
 
           <view class="card-content">
@@ -65,7 +72,7 @@
             </view>
 
             <view class="buy-section" wx:else>
-              <view class="btn-buy-black" catchtap="goToProduct" data-id="{{item.linkedProductId}}">BUY NOW</view>
+              <view class="btn-buy-black" catchtap="goToProduct" data-id="{{item.linkedProductId}}" data-wish-id="{{item.id}}">BUY NOW</view>
             </view>
           </view>
         </view>
@@ -74,6 +81,12 @@
 
     <view class="empty-state" wx:elif="{{!loading}}">暂无心愿，点击右下角成为第一个策展人</view>
   </scroll-view>
+
+  <view class="wish-management-actions" wx:if="{{isAdmin}}">
+    <view wx:if="{{managingWishes}}" class="wish-action wish-action-select {{deletingWishes ? 'disabled' : ''}}" bindtap="toggleSelectAllWishes">{{allWishesSelected ? '取消全选' : '全选'}}</view>
+    <view wx:if="{{managingWishes}}" class="wish-action wish-action-delete {{deletingWishes || !selectedWishCount ? 'disabled' : ''}}" bindtap="deleteSelectedWishes">{{deletingWishes ? '删除中' : '删除'}}</view>
+    <view class="wish-action wish-action-manage {{deletingWishes ? 'disabled' : ''}}" bindtap="toggleWishManagement">{{managingWishes ? '取消' : '管理'}}</view>
+  </view>
 
   <view class="fab-upload" bindtap="uploadWish">
     <view class="fab-icon">+</view>

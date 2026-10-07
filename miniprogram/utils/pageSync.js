@@ -35,6 +35,7 @@ function recordMutation(url, method, data = {}, result) {
   if (path === '/live-sessions' && result) publish('live-sessions', result.id);
   if (path === '/wishes' && result) publish('wishes', result.id, false, { created: true });
   if (path === '/wishes/batch' && result) (result.wishes || []).forEach(item => publish('wishes', item.id, false, { created: true }));
+  if (path === '/wishes/batch/delete' && result) (result.wishIds || []).forEach(id => publish('wishes', id, true));
   if (['/stalls', '/tags'].includes(path) && result) publish(path.slice(1), (result.stall || result.tag || result).id);
   const conversation = path.match(/^\/conversations\/(\d+)(?:\/(messages|read))?$/);
   if (conversation) publish('conversations', conversation[1], method === 'DELETE', { perspective: data.perspective, read: conversation[2] === 'read' });
