@@ -8,6 +8,7 @@ const managementNavigation = require('../../utils/managementNavigation');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const customerServiceUnread = require('../../utils/customerServiceUnread');
 const { formatStock, hasStock, isProductSoldOut, isSkuSoldOut } = require('../../utils/stock');
+const { findSelectedSku, getSkuOptions, getDefaultSkuSelection, getSkuOptionSelection } = require('../../utils/skuSelection');
 const app = getApp();
 
 Page(pageSync.wrap({
@@ -42,6 +43,8 @@ Page(pageSync.wrap({
     currentProduct: null,
     uniqueColors: [],
     uniqueSizes: [],
+    colorOptions: [],
+    sizeOptions: [],
     selectedColor: '',
     selectedSize: '',
     currentSkuPrice: null,
@@ -566,11 +569,17 @@ if (bundleGroups && bundleGroups.length > 0) {
   var joinedNames = bundleNames.join('，'); // 拼接文案，如：上衣，裤子，牛仔裤
 
   var rawSel = bundleGroups.map(function(bg) {
-    var skus = bg.skus || [];
-    var colors = Array.from(new Set(skus.map(function(s) { return s.color || s.spec; })));
-    var sizes = Array.from(new Set(skus.map(function(s) { return s.size; })));
-    var hasStock = skus.some(function(s) { return s.unlimitedStock || s.stock > 0; });
-    return { bundleGroupName: bg.name, skus: skus, uniqueColors: colors, uniqueSizes: sizes, selectedColor: '', selectedSize: '', selectedSku: null, quantity: 1, isOutOfStock: !hasStock };
+    var skus = (bg.skus || []).map(function(sku) {
+      return Object.assign({}, sku, {
+        skuId: sku.skuId || sku.id,
+        color: sku.color || sku.spec,
+        price: sku.price != null ? sku.price : sku.retailPrice,
+        stock: sku.stock != null ? sku.stock : sku.stockMain,
+        unlimitedStock: sku.unlimitedStock === true || sku.isUnlimitedStock === true
+      });
+    });
+    return Object.assign({ bundleGroupName: bg.name, skus: skus, selectedSku: null, quantity: 1,
+      isOutOfStock: skus.length === 0 || skus.every(isSkuSoldOut) }, getDefaultSkuSelection(skus));
   });
   var result = this._computeBundleSelections(rawSel, -1, null, null);
   this.setData({ 
@@ -581,32 +590,17 @@ if (bundleGroups && bundleGroups.length > 0) {
     currentSkuSoldOut: false,
     quantity: 1,
     showSku: true,
-    bundleSelections: result.bundleSelections, 
-    bundleAllSelected: result.bundleAllSelected,
+    ...result,
     bundlePriceRange: rangeStr, // ✨ 价格区间下发到前端
-    bundleNamesStr: result.bundleNamesStr // ✨ 修复：初始化时接收大脑传来的“待选择”状态
   });
   return;
 }
 
-    let colors = [];
-    let sizes = [];
-
-    if (product.skuMatrix && product.skuMatrix.length > 0) {
-      // 后端返回：color (颜色), size (尺码)
-      colors = Array.from(new Set(product.skuMatrix.map(s => s.color || '')));
-      sizes = Array.from(new Set(product.skuMatrix.map(s => s.size || '')));
-      // 过滤空值
-      colors = colors.filter(c => c);
-      sizes = sizes.filter(s => s);
-    }
+    const selection = getDefaultSkuSelection(product.skuMatrix || []);
 
     this.setData({
       currentProduct: product,
-      uniqueColors: colors,
-      uniqueSizes: sizes,
-      selectedColor: colors.length === 1 ? colors[0] : '',
-      selectedSize: sizes.length === 1 ? sizes[0] : '',
+      ...selection,
       currentSkuPrice: null,
       currentSkuStock: null,
       currentSkuImage: product.coverUrl || product.image,
@@ -626,46 +620,54 @@ if (bundleGroups && bundleGroups.length > 0) {
   },
 
   selectColor(e) {
-    this.setData({ selectedColor: e.currentTarget.dataset.color });
+    const selection = getSkuOptionSelection(this.data.currentProduct.skuMatrix || [],
+      this.data.selectedColor, this.data.selectedSize, 'selectedColor', e.currentTarget.dataset.color);
+    if (!selection) return;
+    this.setData(selection);
     this.checkSkuMatch();
   },
 
   selectSize(e) {
-    this.setData({ selectedSize: e.currentTarget.dataset.size });
+    const selection = getSkuOptionSelection(this.data.currentProduct.skuMatrix || [],
+      this.data.selectedColor, this.data.selectedSize, 'selectedSize', e.currentTarget.dataset.size);
+    if (!selection) return;
+    this.setData(selection);
     this.checkSkuMatch();
   },
 
   checkSkuMatch() {
-    const { currentProduct, selectedColor, selectedSize } = this.data;
-    if (selectedColor && selectedSize && currentProduct.skuMatrix) {
-      const match = currentProduct.skuMatrix.find(s =>
-        s.color === selectedColor && s.size === selectedSize
-      );
-      if (match) {
-        // 有 SKU 信息，使用 SKU 的价格、库存和图片
-        this.setData({
-          currentSkuPrice: match.price,
-          currentSkuStock: match.stock,
-          currentSkuUnlimited: match.unlimitedStock || false,
-          currentSkuSoldOut: isSkuSoldOut(match),
-          currentSkuStockText: formatStock(match.stock, match.unlimitedStock),
-          currentSkuId: match.skuId,
-          currentSkuImage: match.imageUrl || (currentProduct.coverUrl || currentProduct.image),
-          quantity: this.normalizeSkuQuantity(this.data.quantity, match.stock, match.unlimitedStock)
-        });
-      } else {
-        // 没有匹配的 SKU 信息，库存为 0，使用商品封面图
-        this.setData({
-          currentSkuPrice: null,
-          currentSkuStock: 0,
-          currentSkuUnlimited: false,
-          currentSkuSoldOut: false,
-          currentSkuStockText: '0',
-          currentSkuId: null,
-          currentSkuImage: currentProduct.coverUrl || currentProduct.image,
-          quantity: 1
-        });
-      }
+    const product = this.data.currentProduct;
+    if (!product) return;
+    const { selectedColor, selectedSize } = this.data;
+    const skus = product.skuMatrix || [];
+    const match = findSelectedSku(skus, selectedColor, selectedSize);
+    const options = getSkuOptions(skus, selectedColor);
+    if (match) {
+      this.setData({
+        ...options,
+        currentSkuPrice: match.price,
+        currentSkuStock: match.stock,
+        currentSkuUnlimited: match.unlimitedStock || false,
+        currentSkuSoldOut: false,
+        currentSkuStockText: formatStock(match.stock, match.unlimitedStock),
+        currentSkuId: match.skuId,
+        currentSkuImage: match.imageUrl || product.coverUrl || product.image,
+        quantity: this.normalizeSkuQuantity(this.data.quantity, match.stock, match.unlimitedStock)
+      });
+    } else {
+      // 未选完整或没有可售组合时，清掉旧 SKU 的价格、库存和图片。
+      const soldOut = skus.length === 0 || skus.every(isSkuSoldOut);
+      this.setData({
+        ...options,
+        currentSkuPrice: null,
+        currentSkuStock: soldOut ? 0 : null,
+        currentSkuUnlimited: false,
+        currentSkuSoldOut: soldOut,
+        currentSkuStockText: soldOut ? '0' : null,
+        currentSkuId: null,
+        currentSkuImage: product.coverUrl || product.image,
+        quantity: 1
+      });
     }
   },
 
@@ -732,31 +734,24 @@ if (bundleGroups && bundleGroups.length > 0) {
       var ns = Object.assign({}, s);
 
       if (i === changeIdx && changeField) {
-          // 极简反选逻辑：再点一次选中的规格，即视为取消
-          if (ns[changeField] === changeValue) {
-              ns[changeField] = ''; 
-          } else {
-              ns[changeField] = changeValue;
-          }
-      }
-
-      ns.selectedSku = null;
-      var needColor = ns.uniqueColors && ns.uniqueColors.length > 0;
-      var needSize = ns.uniqueSizes && ns.uniqueSizes.length > 0;
-      var colorOk = !needColor || ns.selectedColor;
-      var sizeOk = !needSize || ns.selectedSize;
-
-      if (colorOk && sizeOk && ns.skus && ns.skus.length > 0) {
-          var match = ns.skus.find(function(sku) {
-              var cMatch = !needColor || (sku.color || sku.spec) === ns.selectedColor;
-              var sMatch = !needSize || sku.size === ns.selectedSize;
-              return cMatch && sMatch;
-          });
-          if (match) {
-            ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price || match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
-            if (!ns.quantity) ns.quantity = 1; // 默认数量置为1
-            ns.computedPrice = parseFloat((Number(ns.selectedSku.price || 0) * ns.quantity).toFixed(2)); // ✨ 新增：自动计算并挂载卡片小计金额
+        var selection = getSkuOptionSelection(ns.skus || [], ns.selectedColor, ns.selectedSize, changeField, changeValue);
+        if (selection) {
+          // 保留套装子项再次点击可取消的交互。
+          if (ns[changeField] === changeValue) ns[changeField] = '';
+          else Object.assign(ns, selection);
         }
+      }
+      Object.assign(ns, getSkuOptions(ns.skus || [], ns.selectedColor));
+      ns.selectedSku = null;
+      ns.computedPrice = null;
+      var needColor = ns.uniqueColors.length > 0;
+      var needSize = ns.uniqueSizes.length > 0;
+      var match = findSelectedSku(ns.skus || [], ns.selectedColor, ns.selectedSize);
+      if (match) {
+        ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price != null ? match.price : match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
+        if (!ns.quantity) ns.quantity = 1;
+        if (!match.unlimitedStock) ns.quantity = Math.min(ns.quantity, Number(match.stock));
+        ns.computedPrice = parseFloat((Number(ns.selectedSku.price || 0) * ns.quantity).toFixed(2));
       }
 
       // ✨ 核心逻辑：拦截买家刚刚点击的那件商品，提取它的专属图片上报

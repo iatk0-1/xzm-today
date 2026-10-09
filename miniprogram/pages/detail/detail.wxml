@@ -208,14 +208,14 @@
         <view class="bundle-card-specs" wx:if="{{sel.uniqueColors.length > 0}}">
           <text class="spec-label">颜色</text>
           <view class="sku-options minimal">
-            <view class="sku-tag minimal {{sel.selectedColor === item ? 'active' : ''}}" wx:for="{{sel.uniqueColors}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleColor" data-index="{{bgIdx}}" data-color="{{item}}">{{item}}</view>
+            <view class="sku-tag minimal {{sel.selectedColor === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{sel.colorOptions}}" wx:key="value" wx:for-item="item" bindtap="selectBundleColor" data-index="{{bgIdx}}" data-color="{{item.value}}">{{item.value}}</view>
           </view>
         </view>
         
         <view class="bundle-card-specs" wx:if="{{sel.uniqueSizes.length > 0}}">
           <text class="spec-label">尺码</text>
           <view class="sku-options minimal">
-            <view class="sku-tag minimal {{sel.selectedSize === item ? 'active' : ''}}" wx:for="{{sel.uniqueSizes}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleSize" data-index="{{bgIdx}}" data-size="{{item}}">{{item}}</view>
+            <view class="sku-tag minimal {{sel.selectedSize === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{sel.sizeOptions}}" wx:key="value" wx:for-item="item" bindtap="selectBundleSize" data-index="{{bgIdx}}" data-size="{{item.value}}">{{item.value}}</view>
           </view>
         </view>
 
@@ -233,14 +233,14 @@
     <view class="sku-section" wx:if="{{uniqueColors.length > 0}}">
       <view class="sku-title">颜色</view>
       <view class="sku-options">
-        <view class="sku-tag {{selectedColor === item ? 'active' : ''}}" wx:for="{{uniqueColors}}" wx:key="*this" bindtap="selectColor" data-color="{{item}}">{{item}}</view>
+        <view class="sku-tag {{selectedColor === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{colorOptions}}" wx:key="value" bindtap="selectColor" data-color="{{item.value}}">{{item.value}}</view>
       </view>
     </view>
 
     <view class="sku-section" wx:if="{{uniqueSizes.length > 0}}">
       <view class="sku-title">尺码</view>
       <view class="sku-options">
-        <view class="sku-tag {{selectedSize === item ? 'active' : ''}}" wx:for="{{uniqueSizes}}" wx:key="*this" bindtap="selectSize" data-size="{{item}}">{{item}}</view>
+        <view class="sku-tag {{selectedSize === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{sizeOptions}}" wx:key="value" bindtap="selectSize" data-size="{{item.value}}">{{item.value}}</view>
       </view>
     </view>
   </scroll-view>

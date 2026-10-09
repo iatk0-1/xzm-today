@@ -4,6 +4,7 @@ const api = require('../../utils/api');
 const { getPurchaseNotice } = require('../../utils/purchaseNotice');
 const auth = require('../../utils/auth');
 const { formatStock, hasStock, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
+const { findSelectedSku, getSkuOptions, getDefaultSkuSelection, getSkuOptionSelection } = require('../../utils/skuSelection');
 const { createShareImage } = require('../../utils/shareImage');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 
@@ -24,6 +25,8 @@ Page({
     skuAction: 'cart',
     uniqueColors: [],
     uniqueSizes: [],
+    colorOptions: [],
+    sizeOptions: [],
     selectedColor: '',
     selectedSize: '',
     currentSkuPrice: null,
@@ -179,8 +182,7 @@ Page({
         detailImgs: product.detailImages || [],
         uniqueColors: colors,
         uniqueSizes: sizes,
-        selectedColor: colors.length === 1 ? colors[0] : '',
-        selectedSize: sizes.length === 1 ? sizes[0] : '',
+        ...getDefaultSkuSelection(skuMatrix),
         bundleSelections: [],
         bundleAllSelected: false
       });
@@ -417,7 +419,6 @@ Page({
     this.setData({ isAdmin: !!auth.isAdmin(), isStallManager: !!auth.isStallManager() });
 
     const action = e.currentTarget.dataset.action || 'cart';
-    const { uniqueColors, uniqueSizes } = this.data;
 
     // Build bundle groups from API or from skuMatrix
     var bundleGroups = product.bundleGroups;
@@ -447,14 +448,7 @@ Page({
             unlimitedStock: sku.unlimitedStock === true || sku.isUnlimitedStock === true
           });
         });
-        var colors = [...new Set(skus.map(function(s) { return s.color || s.spec; }))];
-        var sizes = [...new Set(skus.map(function(s) { return s.size; }))];
-        return {
-          bundleGroupName: bg.name, skus: skus, uniqueColors: colors, uniqueSizes: sizes,
-          selectedColor: colors.length === 1 ? colors[0] : '',
-          selectedSize: sizes.length === 1 ? sizes[0] : '',
-          selectedSku: null
-        };
+        return Object.assign({ bundleGroupName: bg.name, skus: skus, selectedSku: null }, getDefaultSkuSelection(skus));
       });
       var result = this._computeBundleSelections(rawSel, -1, null, null);
       this.setData({
@@ -468,13 +462,12 @@ Page({
     }
 
     // 普通商品
-    const initialColor = uniqueColors.length === 1 ? uniqueColors[0] : '';
-    const initialSize = uniqueSizes.length === 1 ? uniqueSizes[0] : '';
+    const selection = getDefaultSkuSelection(product.skuMatrix || []);
     const hasNoSku = !product.skuMatrix || product.skuMatrix.length === 0;
     this.setData({
       showSku: true, skuAction: action,
       bundleSelections: [],
-      selectedColor: initialColor, selectedSize: initialSize,
+      ...selection,
       currentSkuImage: product.coverUrl,
       currentSkuId: null,
       currentSkuStock: hasNoSku ? 0 : null,
@@ -483,11 +476,7 @@ Page({
       currentSkuSoldOut: hasNoSku,
       quantity: 1
     });
-    if (uniqueColors.length === 1 && uniqueSizes.length === 1) {
-      this.checkSkuMatch();
-    } else {
-      this.setData({ currentSkuPrice: null });
-    }
+    this.checkSkuMatch();
   },
 
   closeSkuPanel() {
@@ -495,46 +484,54 @@ Page({
   },
 
   selectColor(e) {
-    this.setData({ selectedColor: e.currentTarget.dataset.color });
+    const selection = getSkuOptionSelection(this.data.product.skuMatrix || [],
+      this.data.selectedColor, this.data.selectedSize, 'selectedColor', e.currentTarget.dataset.color);
+    if (!selection) return;
+    this.setData(selection);
     this.checkSkuMatch();
   },
 
   selectSize(e) {
-    this.setData({ selectedSize: e.currentTarget.dataset.size });
+    const selection = getSkuOptionSelection(this.data.product.skuMatrix || [],
+      this.data.selectedColor, this.data.selectedSize, 'selectedSize', e.currentTarget.dataset.size);
+    if (!selection) return;
+    this.setData(selection);
     this.checkSkuMatch();
   },
 
   checkSkuMatch() {
-    const { product, selectedColor, selectedSize } = this.data;
-    if (selectedColor && selectedSize && product.skuMatrix) {
-      const match = product.skuMatrix.find(s =>
-        s.color === selectedColor && s.size === selectedSize
-      );
-      if (match) {
-        // 有 SKU 信息，使用 SKU 的价格、库存和图片
-        this.setData({
-          currentSkuPrice: match.price,
-          currentSkuStock: match.stock,
-          currentSkuUnlimited: match.unlimitedStock || false,
-          currentSkuSoldOut: isSkuSoldOut(match),
-          currentSkuStockText: formatStock(match.stock, match.unlimitedStock),
-          currentSkuId: match.skuId,
-          currentSkuImage: match.imageUrl || product.coverUrl,
-          quantity: this.normalizeSkuQuantity(this.data.quantity, match.stock, match.unlimitedStock)
-        });
-      } else {
-        // 没有匹配的 SKU 信息，库存为 0，价格使用商品展示价格
-        this.setData({
-          currentSkuPrice: product.retailPrice || product.displayPrice,
-          currentSkuStock: 0,
-          currentSkuUnlimited: false,
-          currentSkuSoldOut: false,
-          currentSkuStockText: '0',
-          currentSkuId: null,
-          currentSkuImage: product.coverUrl,
-          quantity: 1
-        });
-      }
+    const product = this.data.product;
+    if (!product) return;
+    const { selectedColor, selectedSize } = this.data;
+    const skus = product.skuMatrix || [];
+    const match = findSelectedSku(skus, selectedColor, selectedSize);
+    const options = getSkuOptions(skus, selectedColor);
+    if (match) {
+      this.setData({
+        ...options,
+        currentSkuPrice: match.price,
+        currentSkuStock: match.stock,
+        currentSkuUnlimited: match.unlimitedStock || false,
+        currentSkuSoldOut: false,
+        currentSkuStockText: formatStock(match.stock, match.unlimitedStock),
+        currentSkuId: match.skuId,
+        currentSkuImage: match.imageUrl || product.coverUrl,
+        quantity: this.normalizeSkuQuantity(this.data.quantity, match.stock, match.unlimitedStock)
+      });
+    } else {
+      // 未选完整或没有可售组合时，清掉旧 SKU 的价格、库存和图片。
+      const soldOut = skus.length === 0 || skus.every(isSkuSoldOut);
+      this.setData({
+        ...options,
+        currentSkuPrice: product.retailPrice || product.displayPrice || null,
+        currentSkuStock: soldOut ? 0 : null,
+        currentSkuUnlimited: false,
+        currentSkuSoldOut: soldOut,
+        currentSkuStockText: soldOut ? '0' : null,
+        currentSkuId: null,
+        currentSkuImage: product.coverUrl,
+        quantity: 1
+      });
     }
   },
 
@@ -602,15 +599,17 @@ Page({
     var totalPrice = 0;
     var newSel = sel.map(function(s, i) {
       var ns = Object.assign({}, s);
-      if (i === changeIdx && changeField) ns[changeField] = changeValue;
+      if (i === changeIdx && changeField) {
+        var selection = getSkuOptionSelection(ns.skus || [], ns.selectedColor, ns.selectedSize, changeField, changeValue);
+        if (selection) Object.assign(ns, selection);
+      }
+      Object.assign(ns, getSkuOptions(ns.skus || [], ns.selectedColor));
       ns.selectedSku = null;
-      if (ns.selectedColor && ns.selectedSize && ns.skus && ns.skus.length > 0) {
-        var match = ns.skus.find(function(sku) { return (sku.color || sku.spec) === ns.selectedColor && sku.size === ns.selectedSize; });
-        if (match) {
-          ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price || match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
-          totalPrice += Number(ns.selectedSku.price) || 0;
-          anyOk = true;
-        }
+      var match = findSelectedSku(ns.skus || [], ns.selectedColor, ns.selectedSize);
+      if (match) {
+        ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price != null ? match.price : match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
+        totalPrice += Number(ns.selectedSku.price) || 0;
+        anyOk = true;
       }
       var displaySku = ns.selectedSku || (ns.skus && ns.skus.length > 0 ? ns.skus[0] : null);
       ns.displayImage = displaySku ? displaySku.imageUrl : '';

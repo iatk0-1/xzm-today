@@ -837,6 +837,16 @@ page {
   font-weight: bold; /* 选中时文字加粗 */
 }
 
+/* 缺货规格置灰，点击处理函数也会校验库存。 */
+.sku-tag.disabled {
+  background: #f5f5f5;
+  color: #ccc;
+  border-color: transparent;
+  font-weight: normal;
+  text-decoration: line-through;
+  pointer-events: none;
+}
+
 .sku-btn-confirm {
   background: #000; /* 确认按钮纯黑背景 */
   color: #fff; /* 确认按钮纯白文字 */
