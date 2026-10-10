@@ -19,7 +19,8 @@
   </view>
 
   <view class="order-items-section">
-    <view class="section-label">商品清单</view>
+    <view class="section-label">商品清单 · 共 {{itemQuantity}} 件（一套算一件）</view>
+    <view class="shipping-hint" wx:if="{{!checkoutItems.length}}">暂无结算商品，请返回挑选商品。</view>
     
     <view class="item-card" wx:for="{{checkoutItems}}" wx:key="id">
       <image class="item-img" src="{{item.coverUrl || item.image}}" mode="aspectFill"></image>
@@ -42,8 +43,13 @@
         
         <view class="item-bottom">
           <view class="item-price">¥ {{item.finalPrice || item.price}}</view>
-          <view class="item-count">x {{item.count}}</view>
+          <view class="quantity-controls">
+            <button size="mini" data-index="{{index}}" data-delta="-1" bindtap="changeQuantity" disabled="{{item.count <= 1 || submitting || orderCreated}}">−</button>
+            <text>{{item.count}}{{item.bundleConfig && item.bundleConfig.length ? '套' : '件'}}</text>
+            <button size="mini" data-index="{{index}}" data-delta="1" bindtap="changeQuantity" disabled="{{submitting || orderCreated}}">＋</button>
+          </view>
         </view>
+        <view class="remove-item" data-index="{{index}}" bindtap="removeItem" wx:if="{{!submitting && !orderCreated}}">移除商品</view>
         <view class="item-remark">
           <input class="remark-input" placeholder="给这件商品加个备注..." value="{{item.remark}}" bindinput="onRemarkInput" data-index="{{index}}" maxlength="200" />
         </view>
@@ -54,12 +60,16 @@
   <view class="summary-section">
     <view class="summary-row">
       <text class="sum-label">商品小计</text>
-      <text class="sum-value">¥ {{totalPrice}}</text>
+      <text class="sum-value">¥ {{goodsAmount}}</text>
     </view>
     <view class="summary-row">
       <text class="sum-label">运费</text>
-      <text class="sum-value">¥ 0.00</text>
+      <text class="sum-value" wx:if="{{shippingReady}}">¥ {{shippingFee}}</text>
+      <text class="sum-value" wx:else>{{!address ? '选择地址后计算' : (shippingLoading ? '计算中…' : '待计算')}}</text>
     </view>
+    <view class="shipping-error" wx:if="{{shippingError}}" bindtap="refreshShippingQuote">{{shippingError}} · 点击重试</view>
+    <view class="shipping-error" wx:if="{{shippingMessage}}">{{shippingMessage}}</view>
+    <view class="shipping-hint" wx:elif="{{shippingReady && maxQuantity}}">当前收货省份每单最多购买 {{maxQuantity}} 件</view>
     <view class="summary-row total-row">
       <text class="sum-label">合计</text>
       <text class="sum-value total-val">¥ {{totalPrice}}</text>
@@ -80,7 +90,7 @@
         <text class="agreement-link" catchtap="openPurchaseNotice">购买须知</text>
       </view>
     </view>
-    <view class="btn-pay {{!purchaseNoticeAgreed || !purchaseNoticeReady || submitting ? 'disabled' : ''}}" bindtap="submitOrder">{{submitting ? '支付处理中' : '立即支付'}}</view>
+    <view class="btn-pay {{!orderCreated && (!purchaseNoticeAgreed || !purchaseNoticeReady || submitting || !shippingReady || !shippingAllowed) ? 'disabled' : ''}}" bindtap="submitOrder">{{submitting ? '支付处理中' : (orderCreated ? '查看订单并支付' : '立即支付')}}</view>
   </view>
 
 </view>

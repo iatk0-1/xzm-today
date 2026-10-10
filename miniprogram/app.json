@@ -25,6 +25,7 @@
     "pages/stallManagers/stallManagers",
     "pages/pricingRules/pricingRules",
     "pages/commissionConfigs/commissionConfigs",
+    "pages/shippingTemplates/shippingTemplates",
     "pages/managerIncome/managerIncome",
     "pages/adminChangeRequestManage/adminChangeRequestManage",
     "pages/adminCatalogProducts/adminCatalogProducts",

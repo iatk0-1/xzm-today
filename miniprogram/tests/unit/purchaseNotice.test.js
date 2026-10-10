@@ -17,7 +17,7 @@ function harness({ get, post, authenticate, payment } = {}) {
       if (name.endsWith('/purchaseNotice')) return notices;
       if (name.endsWith('/auth')) return { ensureAuthenticated: async () => { if (authenticate) await authenticate(); } };
       if (name.endsWith('/api')) return {
-        get: async url => { calls.push(['get', url]); return get ? get(url) : { product: { name: '衣服' } }; },
+        get: async url => { calls.push(['get', url]); if (url === '/orders/shipping-quote') return { shippingFee: '0.00', allowed: true, maxQuantity: null }; return get ? get(url) : { product: { name: '衣服' } }; },
         post: async (url, body) => {
           calls.push(['post', url, body]);
           return post ? post(url, body) : url === '/orders' ? { id: '123' } : { package: 'prepay_id=test', timeStamp: '1' };
@@ -35,6 +35,8 @@ function harness({ get, post, authenticate, payment } = {}) {
   const page = { ...definition, data: structuredClone(definition.data), setData(patch) { Object.assign(this.data, patch); } };
   page.data.address = { recipient: '测试买家', phone: '13800000000', province: '测试省', city: '测试市', district: '测试区', detail: '测试地址' };
   page.data.checkoutItems = [{ productId: '90071992547409931', skuId: '90071992547409932', name: '衣服', count: 1, price: 20 }];
+  page.data.shippingReady = true;
+  page.data.shippingAllowed = true;
   return { page, calls, toasts };
 }
 
@@ -60,7 +62,7 @@ test('立即购买结算默认未勾选，从详情读取最新须知且保留�
   assert.equal(page.data.purchaseNoticeAgreed, false);
   assert.equal(page.data.purchaseNoticeReady, true);
   assert.equal(page.data.purchaseNoticeSections[0].content, '最新规则');
-  assert.deepEqual(calls[0], ['get', '/products/90071992547409931']);
+  assert.deepEqual(calls.find(call => call[1].startsWith('/products/')), ['get', '/products/90071992547409931']);
   await page.openPurchaseNotice();
   assert.equal(page.data.showPurchaseNotice, true);
   assert.equal(page.data.purchaseNoticeAgreed, false);

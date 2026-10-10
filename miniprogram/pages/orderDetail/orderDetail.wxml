@@ -60,15 +60,19 @@
     <view class="money-breakdown">
       <view class="money-row">
         <text class="money-label">商品总价</text>
-        <text class="money-val">¥ {{order.totalPrice}}</text>
+        <text class="money-val">¥ {{order.goodsAmount}}</text>
       </view>
       <view class="money-row">
         <text class="money-label">运费</text>
-        <text class="money-val">¥ 0.00</text>
+        <text class="money-val">¥ {{order.shippingFee}}</text>
       </view>
       <view class="money-row total">
         <text class="money-label">实付款</text>
         <text class="money-val final">¥ {{order.payAmount}}</text>
+      </view>
+      <view class="money-row" wx:if="{{order.shippingRefundStatus}}">
+        <text class="money-label">运费退款</text>
+        <text class="money-val">¥ {{order.shippingRefundAmount}} · {{order.shippingRefundStatus === 'success' ? '成功' : (order.shippingRefundStatus === 'failed' ? '失败' : '处理中')}}</text>
       </view>
     </view>
   </view>

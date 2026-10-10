@@ -8,7 +8,11 @@ Page({
   data: {
     address: null,
     checkoutItems: [],
-    totalPrice: 0,
+    totalPrice: '0.00',
+    goodsAmount: '0.00', shippingFee: '0.00', itemQuantity: 0,
+    shippingReady: false, shippingLoading: false, shippingError: '',
+    shippingAllowed: false, maxQuantity: null, shippingMessage: '',
+    orderCreated: false,
     purchaseNoticeAgreed: false,
     purchaseNoticeSections: [],
     purchaseNoticeReady: false,
@@ -30,6 +34,7 @@ Page({
     let localItems = wx.getStorageSync('checkoutItems') || [];
 
     if (localItems && localItems.length > 0) {
+      this._localCheckout = true;
       // 立即购买模式，使用本地数据
       await this.loadLocalCheckoutItems(localItems);
     } else {
@@ -50,6 +55,8 @@ Page({
       checkoutItems: items,
       totalPrice: total.toFixed(2)
     });
+    this.recalculateGoods();
+    await this.refreshShippingQuote();
     await this.loadPurchaseNotices();
   },
 
@@ -89,6 +96,8 @@ Page({
         checkoutItems: checkoutItems,
         totalPrice: total.toFixed(2)
       });
+      this.recalculateGoods();
+      await this.refreshShippingQuote();
       await this.loadPurchaseNotices();
     } catch (err) {
       wx.hideLoading();
@@ -112,6 +121,7 @@ Page({
         if (!res || !res.product) throw new Error('购买须知加载失败');
         return res.product;
       }));
+      if (items !== this.data.checkoutItems) return;
       this.setData({
         purchaseNoticeSections: buildPurchaseNoticeSections(products),
         purchaseNoticeReady: true
@@ -122,6 +132,7 @@ Page({
     } finally {
       this._noticeLoading = false;
       this.setData({ purchaseNoticeLoading: false });
+      if (items !== this.data.checkoutItems && this.data.checkoutItems.length) await this.loadPurchaseNotices();
     }
   },
 
@@ -153,6 +164,67 @@ Page({
     return true;
   },
 
+  recalculateGoods: function() {
+    let cents = 0, quantity = 0;
+    (this.data.checkoutItems || []).forEach(item => {
+      cents += Math.round(Number(item.finalPrice != null ? item.finalPrice : item.price || 0) * 100) * Number(item.count);
+      quantity += Number(item.count);
+    });
+    this.setData({ goodsAmount: (cents / 100).toFixed(2), itemQuantity: quantity,
+      totalPrice: ((cents + Math.round(Number(this.data.shippingFee || 0) * 100)) / 100).toFixed(2) });
+  },
+
+  refreshShippingQuote: async function() {
+    const revision = this._quoteRevision = (this._quoteRevision || 0) + 1;
+    this.recalculateGoods();
+    const { address, itemQuantity } = this.data;
+    this.setData({ shippingReady: false, shippingAllowed: false, shippingError: '',
+      shippingMessage: '', maxQuantity: null, shippingFee: '0.00', totalPrice: this.data.goodsAmount });
+    if (!address || !itemQuantity) { this.setData({ shippingLoading: false }); return; }
+    this.setData({ shippingLoading: true });
+    try {
+      const quote = await api.get('/orders/shipping-quote', { province: address.province, quantity: itemQuantity });
+      if (revision !== this._quoteRevision) return;
+      const fee = Number(quote.shippingFee);
+      if (!Number.isFinite(fee) || fee < 0 || typeof quote.allowed !== 'boolean') throw new Error('运费计算结果无效，请重试');
+      this.setData({ shippingFee: fee.toFixed(2), shippingReady: true, shippingAllowed: quote.allowed,
+        maxQuantity: quote.maxQuantity, shippingMessage: quote.message || '' });
+      this.recalculateGoods();
+    } catch (error) {
+      if (revision === this._quoteRevision) this.setData({ shippingError: getErrorMessage(error, '运费计算失败，请点击重试') });
+    } finally {
+      if (revision === this._quoteRevision) this.setData({ shippingLoading: false });
+    }
+  },
+
+  changeQuantity: async function(event) {
+    if (this.data.submitting || this.data.orderCreated) return;
+    const index = Number(event.currentTarget.dataset.index), delta = Number(event.currentTarget.dataset.delta);
+    const item = this.data.checkoutItems[index];
+    if (!item || ![1, -1].includes(delta)) return;
+    const count = Number(item.count) + delta;
+    if (!Number.isSafeInteger(count) || count < 1 || count > 2147483647) return;
+    const items = this.data.checkoutItems.map((entry, i) => i === index ? { ...entry, count } : entry);
+    this.setData({ checkoutItems: items });
+    this.persistLocalItems();
+    await this.refreshShippingQuote();
+  },
+
+  removeItem: async function(event) {
+    if (this.data.submitting || this.data.orderCreated) return;
+    const items = this.data.checkoutItems.filter((_, i) => i !== Number(event.currentTarget.dataset.index));
+    this.setData({ checkoutItems: items, purchaseNoticeAgreed: false, purchaseNoticeReady: false, purchaseNoticeSections: [] });
+    this.persistLocalItems();
+    await this.refreshShippingQuote();
+    if (items.length) await this.loadPurchaseNotices();
+  },
+
+  persistLocalItems: function() {
+    if (this._localCheckout) wx.setStorageSync('checkoutItems', this.data.checkoutItems);
+  },
+
+  onUnload: function() { this._quoteRevision = (this._quoteRevision || 0) + 1; },
+
   // 输入商品备注
   onRemarkInput: function(e) {
     const index = e.currentTarget.dataset.index;
@@ -164,6 +236,7 @@ Page({
 
   // 选择收货地址
   chooseAddress: function() {
+    if (this.data.submitting || this.data.orderCreated) return;
     wx.chooseAddress({
       success: (res) => {
         this.setData({
@@ -176,6 +249,7 @@ Page({
             detail: res.detailInfo
           }
         });
+        this.refreshShippingQuote();
       },
       fail: (err) => {
         console.error('获取地址失败或取消', err);
@@ -190,8 +264,10 @@ Page({
 
   // 内部提交订单方法
   submitOrderInternal: async function() {
-    if (this.data.submitting || !this.ensurePurchaseNoticeAgreed()) return;
-    const { address, checkoutItems, totalPrice } = this.data;
+    if (this.data.submitting) return;
+    if (this._createdOrderId) { wx.redirectTo({ url: '/pages/orderDetail/orderDetail?id=' + this._createdOrderId }); return; }
+    if (!this.ensurePurchaseNoticeAgreed()) return;
+    const { address, checkoutItems } = this.data;
 
     if (!address) {
       wx.showToast({ title: '请先选择收货地址', icon: 'none' });
@@ -203,6 +279,12 @@ Page({
       return;
     }
 
+    if (!this.data.shippingReady || this.data.shippingLoading) {
+      wx.showToast({ title: this.data.shippingError || '请等待运费计算完成', icon: 'none' }); return;
+    }
+    if (!this.data.shippingAllowed) {
+      wx.showModal({ title: '收货地址件数限制', content: this.data.shippingMessage, showCancel: false }); return;
+    }
     this.setData({ submitting: true });
     wx.showLoading({ title: '创建订单...', mask: true });
     let stage = 'auth';
@@ -225,6 +307,7 @@ Page({
           productName: item.name,
           productImage: item.image || item.coverUrl
         };
+        if (!this._localCheckout && item.id) orderItem.cartItemId = item.id;
         // 套装商品：传递 bundleConfig
         if (item.bundleConfig && item.bundleConfig.length > 0) {
           orderItem.bundleConfig = item.bundleConfig;
@@ -244,7 +327,8 @@ Page({
         recipientProvince: address.province,
         recipientCity: address.city,
         recipientDistrict: address.district,
-        recipientDetail: address.detail
+        recipientDetail: address.detail,
+        expectedShippingFee: this.data.shippingFee
       };
 
       // 1. 创建订单
@@ -252,6 +336,9 @@ Page({
       const orderRes = await api.post('/orders', orderData);
       const orderId = orderRes.id;
       createdOrderId = orderId;
+      this._createdOrderId = orderId;
+      this.setData({ orderCreated: true });
+      wx.removeStorageSync('checkoutItems');
       stage = 'payment';
 
       // 2. 调用微信支付预下单
@@ -275,8 +362,7 @@ Page({
             wx.showToast({ title: '支付成功!', icon: 'success' });
             // 清除本地结算数据
             wx.removeStorageSync('checkoutItems');
-            // 清除购物车选中商品
-            api.delete('/cart/selected').catch(() => {});
+            // 后端仅清理实际提交的商品，结算页移除的购物车商品继续保留。
             setTimeout(() => {
               wx.reLaunch({ url: '/pages/index/index' });
             }, 1500);
@@ -305,6 +391,12 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('订单创建失败:', err);
+      if (err && ['SHIPPING_FEE_CHANGED', 'SHIPPING_QUANTITY_EXCEEDED'].includes(err.code)) {
+        await this.refreshShippingQuote();
+        wx.showModal({ title: err.code === 'SHIPPING_FEE_CHANGED' ? '运费已更新' : '收货地址件数限制',
+          content: getErrorMessage(err, '请核对地址、商品和金额后再次提交'), showCancel: false });
+        return;
+      }
       wx.showModal({
         title: stage === 'payment' ? '支付准备失败' : (stage === 'auth' ? '登录恢复失败' : '订单创建失败'),
         content: getErrorMessage(err, stage === 'payment' ? '订单已创建，请在订单详情继续支付' : '提交结果待确认，请先到订单列表核对，避免重复下单'),

@@ -89,7 +89,7 @@ for (const role of ['admin', 'stall_manager', 'user']) {
     assert.match(workbenchTemplate, /wx:for="\{\{workbenchItems\}\}"/);
     assert.match(workbenchTemplate, /class="workbench-button" bindtap="goToWorkbench" data-entry="\{\{item.id\}\}"/);
     const buttons = visible ? Array.from(fixture.page.data.workbenchItems) : [];
-    assert.equal(buttons.length, role === 'admin' ? 14 : role === 'stall_manager' ? 4 : 0);
+    assert.equal(buttons.length, role === 'admin' ? 15 : role === 'stall_manager' ? 4 : 0);
     if (role === 'stall_manager') {
       assert.deepEqual(buttons.map(button => button.label), ['商品上下架管理', '拣货推荐', '销售数据', '我的收入与提现']);
     }

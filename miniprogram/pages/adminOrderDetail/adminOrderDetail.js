@@ -35,6 +35,16 @@ Page(pageSync.wrap({
     this.loadOrderDetail();
   },
 
+  async retryShippingRefund() {
+    if (this._shippingRefundBusy) return;
+    this._shippingRefundBusy = true;
+    try {
+      await api.post('/admin/orders-manage/orders/' + this.data.orderId + '/shipping-refund/retry', {});
+      await this.loadOrderDetail();
+    } catch (error) { wx.showToast({ title: getErrorMessage(error, '运费退款重试失败'), icon: 'none' }); }
+    finally { this._shippingRefundBusy = false; }
+  },
+
   async loadOrderDetail() {
     wx.showLoading({ title: '加载中...' });
     try {

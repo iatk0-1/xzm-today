@@ -1,0 +1,35 @@
+<view class="page">
+  <view class="title">快递运费模板</view>
+  <view class="hint">每单收一次运费，一套商品算一件。未配置的省份免运费、不限件数。</view>
+  <view class="error" wx:if="{{error}}">{{error}}</view>
+  <view class="hint" wx:if="{{loading}}">加载中…</view>
+  <block wx:if="{{editing}}">
+    <view class="card">
+      <view class="label">模板名称</view>
+      <input class="input" value="{{name}}" placeholder="请输入模板名称" maxlength="100" bindinput="inputName" disabled="{{busy}}" />
+      <view class="status {{enabled ? 'active' : ''}}">{{enabled ? '正在生效，保存后立即生效' : '未生效，保存后仍不生效'}}</view>
+    </view>
+    <view class="card rule" wx:for="{{rules}}" wx:key="provinceCode">
+      <view class="row"><text class="province">{{item.provinceName}}</text><button size="mini" data-index="{{index}}" bindtap="removeProvince" disabled="{{busy}}">移除省份</button></view>
+      <view class="label">整单运费（元）</view>
+      <input class="input" type="digit" value="{{item.shippingFee}}" placeholder="留空免运费，可填0" data-index="{{index}}" data-field="shippingFee" bindinput="inputRule" disabled="{{busy}}" maxlength="11" />
+      <view class="label">最多购买件数</view>
+      <input class="input" type="number" value="{{item.maxQuantity}}" placeholder="留空不限件数" data-index="{{index}}" data-field="maxQuantity" bindinput="inputRule" disabled="{{busy}}" maxlength="10" />
+    </view>
+    <picker range="{{provinces}}" value="{{provinceIndex}}" range-key="name" bindchange="addProvince" disabled="{{busy}}"><view class="add">＋ 添加省份规则</view></picker>
+    <view class="hint">运费和件数上限可以分别留空；移除省份规则后，该省免运费、不限件数。</view>
+    <button class="primary" bindtap="save" disabled="{{busy}}" loading="{{busy}}">{{enabled ? '保存并立即生效' : '保存模板'}}</button>
+    <button bindtap="cancelEdit" disabled="{{busy}}">取消</button>
+  </block>
+  <block wx:else>
+    <view class="card" wx:for="{{templates}}" wx:key="id">
+      <view class="row"><text class="province">{{item.name}}</text><text class="status {{item.enabled ? 'active' : ''}}">{{item.enabled ? '生效中' : '未生效'}}</text></view>
+      <view class="rule-summary" wx:for="{{item.rules}}" wx:for-item="rule" wx:key="provinceCode"><text>{{rule.provinceName}}</text><text>{{rule.feeLabel}} · {{rule.quantityLabel}}</text></view>
+      <view class="hint" wx:if="{{!item.rules.length}}">全部省份免运费、不限件数</view>
+      <view class="actions"><button size="mini" data-id="{{item.id}}" bindtap="editTemplate" disabled="{{busy}}">编辑</button><button size="mini" data-id="{{item.id}}" bindtap="changeEnabled" disabled="{{busy}}">{{item.enabled ? '停用' : '生效'}}</button></view>
+    </view>
+    <view class="hint" wx:if="{{!loading && !templates.length}}">尚无模板，当前免运费、不限件数。</view>
+    <button class="primary" bindtap="newTemplate" disabled="{{busy || loading}}">新增运费模板</button>
+    <button wx:if="{{error}}" bindtap="load" disabled="{{loading || busy}}">重新加载</button>
+  </block>
+</view>

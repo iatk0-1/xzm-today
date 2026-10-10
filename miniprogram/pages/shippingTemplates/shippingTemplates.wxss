@@ -1,0 +1,19 @@
+page { background: #f7f7f7; color: #222; }
+.page { padding: 32rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); }
+.title { font-size: 38rpx; font-weight: 600; margin-bottom: 16rpx; }
+.hint { color: #777; font-size: 25rpx; line-height: 1.7; margin: 16rpx 0 24rpx; }
+.card { background: #fff; border-radius: 16rpx; padding: 28rpx; margin: 24rpx 0; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.row button { margin: 0; flex-shrink: 0; }
+.province { font-size: 30rpx; font-weight: 600; overflow-wrap: anywhere; }
+.status { color: #777; font-size: 24rpx; margin-top: 18rpx; }
+.active { color: #18794e; }
+.label { font-size: 26rpx; margin: 22rpx 0 12rpx; }
+.input { background: #f7f7f7; border: 1rpx solid #eee; border-radius: 8rpx; padding: 20rpx; font-size: 28rpx; }
+.rule-summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12rpx; padding-top: 22rpx; font-size: 25rpx; color: #555; }
+.actions { display: flex; gap: 20rpx; justify-content: flex-end; margin-top: 24rpx; }
+.actions button { margin: 0; }
+.add { background: #fff; text-align: center; border: 1rpx dashed #bbb; border-radius: 12rpx; padding: 26rpx; }
+.error { background: #fff0f0; color: #b42318; font-size: 26rpx; line-height: 1.7; padding: 22rpx; border-radius: 10rpx; }
+button { margin-top: 20rpx; font-size: 28rpx; }
+button.primary { background: #222; color: #fff; }

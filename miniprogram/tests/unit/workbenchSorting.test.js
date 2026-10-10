@@ -65,7 +65,7 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
 test('排序缓存去重、过滤无权限入口并追加新增入口，普通用户无按钮', () => {
   const entries = workbench.getOrderedEntries('stall_manager', ['income', 'income', 'inventory', 'unknown']);
   assert.deepEqual(entries.map(item => item.id), ['income', 'productManage', 'picking', 'sales']);
-  assert.equal(workbench.getOrderedEntries('admin', {}).length, 14);
+  assert.equal(workbench.getOrderedEntries('admin', {}).length, 15);
   assert.deepEqual(workbench.getOrderedEntries('user', ['inventory']), []);
 });
 
@@ -84,7 +84,7 @@ test('读取服务端排序恢复位置，跨设备无本地缓存也能恢复',
   const env = fixture({ read: () => Promise.resolve({ userId: '9007199254740993', role: 'admin', entries: ['applications', 'sales'] }) });
   await settle();
   assert.deepEqual(ids(env.page).slice(0, 2), ['applications', 'sales']);
-  assert.equal(ids(env.page).length, 14);
+  assert.equal(ids(env.page).length, 15);
   assert.deepEqual(env.cache.get('workbenchOrder:v1:9007199254740993:admin').slice(0, 2), ['applications', 'sales']);
   assert.equal(env.requests[0].url, '/users/me/workbench-order');
 });

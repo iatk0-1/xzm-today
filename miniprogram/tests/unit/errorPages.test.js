@@ -32,6 +32,9 @@ function checkoutHarness({ failureAt, error, paymentError } = {}) {
   page.data.address = { recipient: '测试买家', phone: '13800000000', province: '测试省', city: '测试市', district: '测试区', detail: '测试地址' };
   page.data.checkoutItems = [{ skuId: '2', name: '上衣', count: 1, price: 20 }];
   page.data.purchaseNoticeReady = true;
+  page.data.purchaseNoticeAgreed = true;
+  page.data.shippingReady = true;
+  page.data.shippingAllowed = true;
   return { page, calls, modals, toasts, redirects };
 }
 

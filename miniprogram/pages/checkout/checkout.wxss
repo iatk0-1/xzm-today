@@ -74,3 +74,9 @@ page { background-color: #f9f9f9; }
 .purchase-notice-product { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
 .purchase-notice-text { display: block; font-size: 13px; line-height: 1.9; color: #555; white-space: pre-wrap; word-break: break-all; }
 .purchase-notice-dismiss { margin: 12px 18px 18px; background: #111; border-radius: 4px; color: #fff; text-align: center; line-height: 42px; font-size: 14px; }
+
+.quantity-controls { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.quantity-controls button { margin: 0; padding: 0 10px; line-height: 30px; min-width: 30px; }
+.remove-item { color: #888; font-size: 12px; align-self: flex-end; padding: 8px 0; }
+.shipping-error { color: #b42318; font-size: 13px; line-height: 1.7; margin: 12px 0; }
+.shipping-hint { color: #777; font-size: 12px; line-height: 1.7; margin: 10px 0; }
