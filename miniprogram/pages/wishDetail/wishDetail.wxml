@@ -5,7 +5,7 @@
   </view>
 
   <!-- 心愿图片 -->
-  <swiper class="wish-swiper" indicator-dots="{{wish.images.length > 1}}" circular="{{wish.images.length > 1}}" wx:if="{{wish.images.length}}">
+  <swiper class="wish-swiper" indicator-dots="{{wish.images.length > 1}}" circular="{{false}}" wx:if="{{wish.images.length}}">
     <swiper-item wx:for="{{wish.images}}" wx:key="*this">
       <image class="wish-image" src="{{item}}" mode="aspectFill" catchtap="previewImage" data-index="{{index}}"></image>
     </swiper-item>
