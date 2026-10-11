@@ -22,8 +22,8 @@ function harness(options = {}) {
         get: async (url, data) => {
           calls.push(['get', url, data]);
           if (url === '/orders/shipping-quote') return options.quote ? options.quote(data) : {
-            shippingFee: data.province === '西藏' ? '15.00' : '12.00', maxQuantity: data.province === '西藏' ? 3 : 5,
-            allowed: data.quantity <= (data.province === '西藏' ? 3 : 5), message: data.quantity > 3 ? '收货地址每单最多3件，请修改地址或商品' : '' };
+            shippingFee: (Math.ceil(data.quantity / (data.province === '西藏' ? 1 : 5)) * (data.province === '西藏' ? 15 : 12)).toFixed(2),
+            firstQuantity: data.province === '西藏' ? 1 : 5, allowed: true, message: '' };
           return { product: { name: '测试商品' } };
         },
         post: async (url, body) => { calls.push(['post', url, body]); return options.post ? options.post(url, body) : url === '/orders' ? { id: '123' } : { package: 'test', timeStamp: '1' }; },
@@ -40,47 +40,50 @@ function harness(options = {}) {
   page.data.purchaseNoticeReady = true;
   return { page, calls, modals, toasts, storage };
 }
-const event = (index, delta) => ({ currentTarget: { dataset: { index, delta } } });
 function deferred() { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; }
 
-test('套装按购买套数计件，西藏整单只加15元，金额按分计算', async () => {
+test('套装按购买套数计件，西藏首单1件时3件收45元，金额按分计算', async () => {
   const { page, calls } = harness();
   await page.refreshShippingQuote();
   assert.equal(page.data.itemQuantity, 3);
   assert.equal(page.data.goodsAmount, '50.01');
-  assert.equal(page.data.totalPrice, '65.01');
+  assert.equal(page.data.shippingFee, '45.00');
+  assert.equal(page.data.totalPrice, '95.01');
   assert.equal(calls[0][2].quantity, 3);
   await page.submitOrder();
   const payload = calls.find(c => c[1] === '/orders')[2];
-  assert.equal(payload.expectedShippingFee, '15.00');
+  assert.equal(payload.expectedShippingFee, '45.00');
   assert.equal(payload.items[1].qty, 2);
   assert.ok(calls.some(c => c[0] === 'payment'));
   assert.ok(!calls.some(c => c[0] === 'delete'));
 });
 
-test('超限不创建订单，减少数量或换地址后可再次提交', async () => {
-  const { page, calls, modals } = harness();
-  await page.changeQuantity(event(0, 1));
-  await page.submitOrder();
-  assert.equal(page.data.itemQuantity, 4);
-  assert.equal(modals[0].title, '收货地址件数限制');
-  assert.ok(!calls.some(c => c[1] === '/orders'));
+test('换地址后重新计算运费，商品数量保持不变', async () => {
+  const { page } = harness();
+  const items = JSON.stringify(page.data.checkoutItems);
+  await page.refreshShippingQuote();
+  assert.equal(page.data.shippingFee, '45.00');
   page.setData({ address: { ...page.data.address, province: '新疆' } });
   await page.refreshShippingQuote();
   assert.equal(page.data.shippingAllowed, true);
   assert.equal(page.data.shippingFee, '12.00');
-  await page.changeQuantity(event(0, -1));
   assert.equal(page.data.itemQuantity, 3);
+  assert.equal(JSON.stringify(page.data.checkoutItems), items);
 });
 
-test('移除商品仅改本次结算，立即购买同步本地数据，移除全部不能支付', async () => {
-  const { page, calls, storage } = harness();
-  page._localCheckout = true;
-  await page.removeItem(event(0));
-  assert.equal(page.data.checkoutItems.length, 1);
-  assert.equal(storage.get('checkoutItems').length, 1);
-  assert.equal(page.data.itemQuantity, 2);
-  await page.removeItem(event(0));
+test('结算页没有修改数量和移除入口，空商品仍不能提交，运费浮层可开关', async () => {
+  const { page, calls } = harness();
+  assert.equal(page.changeQuantity, undefined);
+  assert.equal(page.removeItem, undefined);
+  page.toggleShippingTip(); assert.equal(page.data.showShippingTip, true);
+  page.closeShippingTip(); assert.equal(page.data.showShippingTip, false);
+  page.toggleShippingTip(); page.toggleShippingTip(); assert.equal(page.data.showShippingTip, false);
+  const template = fs.readFileSync(path.join(__dirname, '../../pages/checkout/checkout.wxml'), 'utf8');
+  assert.ok(!/changeQuantity|removeItem|移除商品/.test(template));
+  assert.match(template, /catchtap="toggleShippingTip"/);
+  assert.match(template, /西藏、新疆等特殊地区按照商品件数计算运费。/);
+  page.setData({ checkoutItems: [] });
+  await page.refreshShippingQuote();
   await page.submitOrder();
   assert.equal(page.data.shippingReady, false);
   assert.equal(page.data.totalPrice, '0.00');
@@ -108,10 +111,9 @@ test('快速换省份的旧报价不能覆盖最新省份的运费', async () =>
   const a = page.refreshShippingQuote();
   page.setData({ address: { ...page.data.address, province: '新疆' } });
   const b = page.refreshShippingQuote();
-  second.resolve({ shippingFee: '12.00', allowed: true, maxQuantity: 5 }); await b;
-  first.resolve({ shippingFee: '15.00', allowed: false, maxQuantity: 3 }); await a;
+  second.resolve({ shippingFee: '12.00', allowed: true, firstQuantity: 5 }); await b;
+  first.resolve({ shippingFee: '45.00', allowed: true, firstQuantity: 1 }); await a;
   assert.equal(page.data.shippingFee, '12.00');
-  assert.equal(page.data.maxQuantity, 5);
   assert.equal(page.data.shippingAllowed, true);
 });
 

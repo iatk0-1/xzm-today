@@ -11,7 +11,7 @@ Page({
     totalPrice: '0.00',
     goodsAmount: '0.00', shippingFee: '0.00', itemQuantity: 0,
     shippingReady: false, shippingLoading: false, shippingError: '',
-    shippingAllowed: false, maxQuantity: null, shippingMessage: '',
+    shippingAllowed: false, showShippingTip: false,
     orderCreated: false,
     purchaseNoticeAgreed: false,
     purchaseNoticeSections: [],
@@ -179,7 +179,7 @@ Page({
     this.recalculateGoods();
     const { address, itemQuantity } = this.data;
     this.setData({ shippingReady: false, shippingAllowed: false, shippingError: '',
-      shippingMessage: '', maxQuantity: null, shippingFee: '0.00', totalPrice: this.data.goodsAmount });
+      shippingFee: '0.00', totalPrice: this.data.goodsAmount });
     if (!address || !itemQuantity) { this.setData({ shippingLoading: false }); return; }
     this.setData({ shippingLoading: true });
     try {
@@ -187,8 +187,7 @@ Page({
       if (revision !== this._quoteRevision) return;
       const fee = Number(quote.shippingFee);
       if (!Number.isFinite(fee) || fee < 0 || typeof quote.allowed !== 'boolean') throw new Error('运费计算结果无效，请重试');
-      this.setData({ shippingFee: fee.toFixed(2), shippingReady: true, shippingAllowed: quote.allowed,
-        maxQuantity: quote.maxQuantity, shippingMessage: quote.message || '' });
+      this.setData({ shippingFee: fee.toFixed(2), shippingReady: true, shippingAllowed: quote.allowed });
       this.recalculateGoods();
     } catch (error) {
       if (revision === this._quoteRevision) this.setData({ shippingError: getErrorMessage(error, '运费计算失败，请点击重试') });
@@ -197,31 +196,9 @@ Page({
     }
   },
 
-  changeQuantity: async function(event) {
-    if (this.data.submitting || this.data.orderCreated) return;
-    const index = Number(event.currentTarget.dataset.index), delta = Number(event.currentTarget.dataset.delta);
-    const item = this.data.checkoutItems[index];
-    if (!item || ![1, -1].includes(delta)) return;
-    const count = Number(item.count) + delta;
-    if (!Number.isSafeInteger(count) || count < 1 || count > 2147483647) return;
-    const items = this.data.checkoutItems.map((entry, i) => i === index ? { ...entry, count } : entry);
-    this.setData({ checkoutItems: items });
-    this.persistLocalItems();
-    await this.refreshShippingQuote();
-  },
-
-  removeItem: async function(event) {
-    if (this.data.submitting || this.data.orderCreated) return;
-    const items = this.data.checkoutItems.filter((_, i) => i !== Number(event.currentTarget.dataset.index));
-    this.setData({ checkoutItems: items, purchaseNoticeAgreed: false, purchaseNoticeReady: false, purchaseNoticeSections: [] });
-    this.persistLocalItems();
-    await this.refreshShippingQuote();
-    if (items.length) await this.loadPurchaseNotices();
-  },
-
-  persistLocalItems: function() {
-    if (this._localCheckout) wx.setStorageSync('checkoutItems', this.data.checkoutItems);
-  },
+  toggleShippingTip: function() { this.setData({ showShippingTip: !this.data.showShippingTip }); },
+  closeShippingTip: function() { if (this.data.showShippingTip) this.setData({ showShippingTip: false }); },
+  stopShippingTipTap: function() {},
 
   onUnload: function() { this._quoteRevision = (this._quoteRevision || 0) + 1; },
 
@@ -283,7 +260,7 @@ Page({
       wx.showToast({ title: this.data.shippingError || '请等待运费计算完成', icon: 'none' }); return;
     }
     if (!this.data.shippingAllowed) {
-      wx.showModal({ title: '收货地址件数限制', content: this.data.shippingMessage, showCancel: false }); return;
+      wx.showToast({ title: '请重新计算运费后提交', icon: 'none' }); return;
     }
     this.setData({ submitting: true });
     wx.showLoading({ title: '创建订单...', mask: true });
@@ -391,9 +368,9 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('订单创建失败:', err);
-      if (err && ['SHIPPING_FEE_CHANGED', 'SHIPPING_QUANTITY_EXCEEDED'].includes(err.code)) {
+      if (err && err.code === 'SHIPPING_FEE_CHANGED') {
         await this.refreshShippingQuote();
-        wx.showModal({ title: err.code === 'SHIPPING_FEE_CHANGED' ? '运费已更新' : '收货地址件数限制',
+        wx.showModal({ title: '运费已更新',
           content: getErrorMessage(err, '请核对地址、商品和金额后再次提交'), showCancel: false });
         return;
       }

@@ -1,35 +1,57 @@
+<scroll-view class="page-scroll" scroll-y refresher-enabled="{{!editing && !busy && dragIndex < 0}}" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bounces="{{false}}">
 <view class="page">
   <view class="title">快递运费模板</view>
-  <view class="hint">每单收一次运费，一套商品算一件。未配置的省份免运费、不限件数。</view>
-  <view class="error" wx:if="{{error}}">{{error}}</view>
+  <view class="hint">一套商品算一件。运费按商品件数与首单件数向上取整计费，未配置运费的省份免运费。</view>
+  <view class="error" wx:if="{{error && !editing}}">{{error}}</view>
   <view class="hint" wx:if="{{loading}}">加载中…</view>
   <block wx:if="{{editing}}">
-    <view class="card">
-      <view class="label">模板名称</view>
-      <input class="input" value="{{name}}" placeholder="请输入模板名称" maxlength="100" bindinput="inputName" disabled="{{busy}}" />
+    <view class="card editor-card">
+      <view class="name-row">
+        <text class="name-label">模板名称</text>
+        <input class="input name-input" value="{{name}}" placeholder="请输入模板名称" maxlength="100" bindinput="inputName" disabled="{{busy}}" />
+      </view>
       <view class="status {{enabled ? 'active' : ''}}">{{enabled ? '正在生效，保存后立即生效' : '未生效，保存后仍不生效'}}</view>
+      <view class="sort-hint">长按左侧图标拖动排序，排序随模板一起保存</view>
+      <view class="rule-columns">
+        <view class="drag-handle"></view>
+        <text class="province-cell">省份</text>
+        <text class="value-cell">运费（元）</text>
+        <text class="value-cell">首单件数</text>
+        <view class="remove-cell"></view>
+      </view>
+      <scroll-view wx:if="{{rules.length}}" class="rule-scroll" scroll-y scroll-top="{{ruleScrollTop}}" scroll-with-animation="{{false}}" bindscroll="onRuleScroll" style="height: {{rules.length * 48 < ruleViewportHeight ? rules.length * 48 : ruleViewportHeight}}px;">
+        <movable-area class="rule-area" style="height: {{rules.length * 48}}px;">
+          <movable-view class="rule-row {{dragIndex === index ? 'dragging' : ''}}" wx:for="{{rules}}" wx:key="provinceCode" y="{{item.y}}" direction="vertical" disabled="{{true}}" animation="{{dragIndex !== index}}" bindtouchmove="onDragTouchMove" bindtouchend="onDragEnd" bindtouchcancel="onDragCancel">
+            <view class="drag-handle" data-index="{{index}}" catchtouchstart="onDragHandleTouchStart" catchlongpress="onDragStart" catchtouchmove="onDragTouchMove" catchtouchend="onDragEnd" catchtouchcancel="onDragCancel" catchtap="noop">⋮⋮</view>
+            <picker class="province-cell" range="{{provinces}}" value="{{item.provinceIndex}}" range-key="name" data-index="{{index}}" bindchange="changeProvince" disabled="{{busy || dragIndex >= 0}}">
+              <view class="province-select"><text class="province-name">{{item.provinceName}}</text><text class="province-arrow">▾</text></view>
+            </picker>
+            <input class="input rule-input value-cell" type="digit" value="{{item.shippingFee}}" placeholder="免运费" data-index="{{index}}" data-field="shippingFee" bindinput="inputRule" disabled="{{busy || dragIndex >= 0}}" maxlength="11" />
+            <input class="input rule-input value-cell" type="number" value="{{item.firstQuantity}}" placeholder="整单计费" data-index="{{index}}" data-field="firstQuantity" bindinput="inputRule" disabled="{{busy || dragIndex >= 0}}" maxlength="10" />
+            <button class="remove-cell remove-rule" aria-label="移除{{item.provinceName}}规则" data-index="{{index}}" bindtap="removeProvince" disabled="{{busy || dragIndex >= 0}}">×</button>
+          </movable-view>
+        </movable-area>
+      </scroll-view>
+      <view class="hint empty-rules" wx:if="{{!rules.length}}">暂无省份规则，点击下方添加</view>
+      <view class="province-actions">
+        <picker class="add-province" range="{{provinces}}" value="{{provinceIndex}}" range-key="name" bindchange="addProvince" disabled="{{busy || dragIndex >= 0}}"><view class="add">＋ 添加省份规则</view></picker>
+        <button class="complete-provinces" bindtap="completeProvinces" disabled="{{busy || dragIndex >= 0}}">补全省份</button>
+      </view>
     </view>
-    <view class="card rule" wx:for="{{rules}}" wx:key="provinceCode">
-      <view class="row"><text class="province">{{item.provinceName}}</text><button size="mini" data-index="{{index}}" bindtap="removeProvince" disabled="{{busy}}">移除省份</button></view>
-      <view class="label">整单运费（元）</view>
-      <input class="input" type="digit" value="{{item.shippingFee}}" placeholder="留空免运费，可填0" data-index="{{index}}" data-field="shippingFee" bindinput="inputRule" disabled="{{busy}}" maxlength="11" />
-      <view class="label">最多购买件数</view>
-      <input class="input" type="number" value="{{item.maxQuantity}}" placeholder="留空不限件数" data-index="{{index}}" data-field="maxQuantity" bindinput="inputRule" disabled="{{busy}}" maxlength="10" />
-    </view>
-    <picker range="{{provinces}}" value="{{provinceIndex}}" range-key="name" bindchange="addProvince" disabled="{{busy}}"><view class="add">＋ 添加省份规则</view></picker>
-    <view class="hint">运费和件数上限可以分别留空；移除省份规则后，该省免运费、不限件数。</view>
-    <button class="primary" bindtap="save" disabled="{{busy}}" loading="{{busy}}">{{enabled ? '保存并立即生效' : '保存模板'}}</button>
+    <view class="hint">运费留空免运费；首单件数留空整单收一次，填写后按件数分档计费。例如首单2件，3～4件收2倍运费。</view>
+    <button class="primary" bindtap="save" disabled="{{busy || dragIndex >= 0}}" loading="{{busy}}">{{enabled ? '保存并立即生效' : '保存模板'}}</button>
     <button bindtap="cancelEdit" disabled="{{busy}}">取消</button>
   </block>
   <block wx:else>
     <view class="card" wx:for="{{templates}}" wx:key="id">
       <view class="row"><text class="province">{{item.name}}</text><text class="status {{item.enabled ? 'active' : ''}}">{{item.enabled ? '生效中' : '未生效'}}</text></view>
       <view class="rule-summary" wx:for="{{item.rules}}" wx:for-item="rule" wx:key="provinceCode"><text>{{rule.provinceName}}</text><text>{{rule.feeLabel}} · {{rule.quantityLabel}}</text></view>
-      <view class="hint" wx:if="{{!item.rules.length}}">全部省份免运费、不限件数</view>
+      <view class="hint" wx:if="{{!item.rules.length}}">全部省份免运费</view>
       <view class="actions"><button size="mini" data-id="{{item.id}}" bindtap="editTemplate" disabled="{{busy}}">编辑</button><button size="mini" data-id="{{item.id}}" bindtap="changeEnabled" disabled="{{busy}}">{{item.enabled ? '停用' : '生效'}}</button></view>
     </view>
-    <view class="hint" wx:if="{{!loading && !templates.length}}">尚无模板，当前免运费、不限件数。</view>
+    <view class="hint" wx:if="{{!loading && !templates.length}}">尚无模板，当前免运费。</view>
     <button class="primary" bindtap="newTemplate" disabled="{{busy || loading}}">新增运费模板</button>
     <button wx:if="{{error}}" bindtap="load" disabled="{{loading || busy}}">重新加载</button>
   </block>
 </view>
+</scroll-view>

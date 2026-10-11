@@ -75,8 +75,10 @@ page { background-color: #f9f9f9; }
 .purchase-notice-text { display: block; font-size: 13px; line-height: 1.9; color: #555; white-space: pre-wrap; word-break: break-all; }
 .purchase-notice-dismiss { margin: 12px 18px 18px; background: #111; border-radius: 4px; color: #fff; text-align: center; line-height: 42px; font-size: 14px; }
 
-.quantity-controls { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-.quantity-controls button { margin: 0; padding: 0 10px; line-height: 30px; min-width: 30px; }
-.remove-item { color: #888; font-size: 12px; align-self: flex-end; padding: 8px 0; }
+.shipping-label { position: relative; display: flex; align-items: center; gap: 5px; }
+.shipping-question { position: relative; width: 14px; height: 14px; border: 1px solid #bbb; border-radius: 50%; box-sizing: border-box; text-align: center; line-height: 12px; font-size: 10px; color: #999; }
+.shipping-question::before { content: ''; position: absolute; inset: -6px; }
+.shipping-tip { position: absolute; top: 26px; left: 0; width: 210px; padding: 10px 12px; box-sizing: border-box; border-radius: 6px; background: #333; color: #fff; font-size: 12px; line-height: 1.7; z-index: 10; box-shadow: 0 3px 12px rgba(0, 0, 0, .12); }
+.shipping-tip::before { content: ''; position: absolute; top: -5px; left: 40px; width: 10px; height: 10px; background: #333; transform: rotate(45deg); }
 .shipping-error { color: #b42318; font-size: 13px; line-height: 1.7; margin: 12px 0; }
 .shipping-hint { color: #777; font-size: 12px; line-height: 1.7; margin: 10px 0; }
