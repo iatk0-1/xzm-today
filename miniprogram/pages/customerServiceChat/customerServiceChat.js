@@ -95,7 +95,11 @@ Page({
     const pad = n => String(n).padStart(2, '0');
     return pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
   },
-  onInput(e) { this.setData({ inputText: e.detail.value, inputCursor: e.detail.cursor }); },
+  onInput(e) {
+    // 文字由 model:value 同步；这里只记录输入和光标，不把旧值异步回写到原生输入框。
+    this.data.inputText = e.detail.value;
+    this.data.inputCursor = Number.isInteger(e.detail.cursor) ? e.detail.cursor : -1;
+  },
   onInputFocus() { this.setData({ inputFocused: true }); },
   onInputBlur() { this.setData({ inputFocused: false }); },
   hideInputKeyboard() {
@@ -338,12 +342,15 @@ Page({
       } catch (err) { wx.showToast({ title: getErrorMessage(err, '结束失败'), icon: 'none' }); }
     } });
   },
-  async send() {
+  async send(e) {
+    if (!this.data.canReply || this._sending) return;
+    // 键盘发送事件携带输入法最终确认的文字，可能晚于最后一次 input 事件。
+    if (e && e.detail && typeof e.detail.value === 'string') this.onInput(e);
     const inputText = this.data.inputText || '';
     const content = inputText.trim();
     if (!content) return;
     await this.performSend(async () => ({ content }), () => {
-      if (this.data.inputText === inputText) this.setData({ inputText: '' });
+      if (this.data.inputText === inputText) this.setData({ inputText: '', inputCursor: -1 });
     });
   },
   async performSend(buildPayload, onCreated) {

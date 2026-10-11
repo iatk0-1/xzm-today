@@ -10,7 +10,7 @@
 }
 .nav-title { font-size: 16px; font-weight: bold; }
 .staff-manage-link { margin-left: 12px; font-size: 12px; color: #5267cb; padding: 8px 0; white-space: nowrap; }
-.conv-list { flex: 1; width: 100%; overflow-y: auto; padding-bottom: 100rpx; box-sizing: border-box; }
+.conv-list { flex: 1; height: 0; min-height: 0; width: 100%; overflow-y: auto; box-sizing: border-box; }
 .conv-item {
   position: relative; display: flex; align-items: center;
   width: 100%; min-height: 78px; padding: 14px 16px;
@@ -25,8 +25,10 @@
 .conv-name { max-width: 82px; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 15px; color: #333; white-space: nowrap; }
 .conv-role {
   flex-shrink: 0; margin-left: 8px; padding: 1px 6px;
-  border: 1rpx solid #5f79ee; border-radius: 3px;
-  color: #5f79ee; font-size: 10px; line-height: 16px;
+  /* 独立盒子配合整像素边框，避免真机 text 细边框出现缺边。 */
+  display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+  border: 1px solid #5f79ee; border-radius: 3px;
+  color: #5f79ee; font-size: 10px; line-height: 16px; white-space: nowrap;
 }
 .role-pending { color: #df7a24; border-color: #dfac81; }
 .unread-badge { flex-shrink: 0; min-width: 18px; height: 18px; margin-left: 8px; padding: 0 3px; box-sizing: border-box; border-radius: 10px; background: #ed4545; color: #fff; text-align: center; line-height: 18px; font-size: 10px; }
@@ -41,7 +43,8 @@
 .conv-contact-button::after { display: none; }
 .conv-empty { text-align: center; color: #bbb; font-size: 14px; padding: 60px 0; }
 .bottom-tab-bar {
-  position: fixed; bottom: 0; left: 0; width: 100%; height: 100rpx;
+  /* 导航栏参与纵向布局，连同安全区一起占位，避免遮住最后一条会话。 */
+  position: relative; width: 100%; height: 100rpx;
   background-color: #fff; display: flex; z-index: 100;
   border-top: 1rpx solid rgba(0,0,0,0.04);
   padding-bottom: env(safe-area-inset-bottom); flex-shrink: 0;

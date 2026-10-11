@@ -138,6 +138,7 @@ test('发送后保持输入焦点，点击或滑动消息列表才收起键盘',
   await page.send();
   assert.equal(page.data.inputFocused, true);
   assert.equal(page.data.inputText, '');
+  assert.equal(page.data.inputCursor, -1);
   assert.equal(keyboardHides, 0);
   page.hideInputKeyboard();
   assert.equal(page.data.inputFocused, false);
@@ -162,6 +163,63 @@ test('发送途中继续输入的新内容不会被上一条消息清空', async
   finishPost({ id: 204, direction: 'staff', content: '第一条', status: 'sent' });
   await sending;
   assert.equal(posts.at(-1).data.content, '第一条');
+  assert.equal(page.data.inputText, '第二条');
+  postResult = {};
+});
+
+test('键盘发送使用输入法最终确认的文字，成功后清空内容和光标', async () => {
+  session = activeSession(); newest = []; posts.length = 0;
+  const page = createPage();
+  await page.refresh();
+  page.onInputFocus();
+  page.onInput({ detail: { value: 'ni', cursor: 2 } });
+  postResult = { id: 205, direction: 'staff', content: '你好', status: 'sent' };
+
+  await page.send({ type: 'confirm', detail: { value: '你好' } });
+
+  assert.equal(posts.at(-1).data.content, '你好');
+  assert.equal(page.data.inputText, '');
+  assert.equal(page.data.inputCursor, -1);
+  assert.equal(page.data.inputFocused, true);
+  postResult = {};
+});
+
+test('发送接口失败时保留输入草稿，可再次发送', async () => {
+  session = activeSession(); newest = []; posts.length = 0;
+  const page = createPage();
+  await page.refresh();
+  page.onInput({ detail: { value: '重试这条回复', cursor: 6 } });
+  // 等接口真正被调用后再拒绝，避免产生未处理的 Promise 拒绝。
+  let failPost;
+  postResult = new Promise((resolve, reject) => { failPost = reject; });
+  const sending = page.send();
+  await Promise.resolve();
+  failPost(new Error('网络请求失败'));
+  await sending;
+  assert.equal(page.data.inputText, '重试这条回复');
+  assert.equal(page.data.sending, false);
+
+  postResult = { id: 206, direction: 'staff', content: '重试这条回复', status: 'sent' };
+  await page.send();
+  assert.equal(posts.length, 2);
+  assert.equal(page.data.inputText, '');
+  postResult = {};
+});
+
+test('发送中重复触发键盘发送不会覆盖下一条草稿或重复提交', async () => {
+  session = activeSession(); newest = []; posts.length = 0;
+  const page = createPage();
+  await page.refresh();
+  page.onInput({ detail: { value: '第一条', cursor: 3 } });
+  let finishPost;
+  postResult = new Promise(resolve => { finishPost = resolve; });
+  const sending = page.send();
+  page.onInput({ detail: { value: '第二条', cursor: 3 } });
+  await page.send({ type: 'confirm', detail: { value: '第一条' } });
+  finishPost({ id: 207, direction: 'staff', content: '第一条', status: 'sent' });
+  await sending;
+
+  assert.equal(posts.length, 1);
   assert.equal(page.data.inputText, '第二条');
   postResult = {};
 });

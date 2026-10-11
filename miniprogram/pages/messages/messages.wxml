@@ -8,7 +8,7 @@
       <view class="conv-body">
         <view class="conv-top">
           <text class="conv-name">现在买</text>
-          <text class="conv-role">我的咨询</text>
+          <view class="conv-role">我的咨询</view>
           <text class="conv-time">{{latestStaffReplyAt || firstMessageTime}}</text>
         </view>
         <view class="conv-preview">{{latestStaffReplyAt ? '客服曾回复 · 点击查看' : '点击进入微信客服会话'}}</view>
@@ -20,7 +20,7 @@
       <view wx:for="{{sessions}}" wx:key="id" class="conv-item" bindtap="goSession" data-id="{{item.id}}">
         <view class="conv-avatar-wrap"><image class="conv-avatar" src="{{item.avatarUrl || '/images/avatar.png'}}" mode="aspectFill"/></view>
         <view class="conv-body">
-          <view class="conv-top"><text class="conv-name">{{item.displayName}}</text><text class="conv-role {{item.status === 'pending' ? 'role-pending' : ''}}">{{item.status === 'pending' ? '待接入' : (item.status === 'active' ? '接待中' : '已结束')}}</text><text class="conv-time">{{item.displayTime}}</text></view>
+          <view class="conv-top"><text class="conv-name">{{item.displayName}}</text><view class="conv-role {{item.status === 'pending' ? 'role-pending' : ''}}">{{item.status === 'pending' ? '待接入' : (item.status === 'active' ? '接待中' : '已结束')}}</view><text class="conv-time">{{item.displayTime}}</text></view>
           <view class="conv-preview">{{item.preview}}</view>
         </view>
         <view wx:if="{{item.unreadCount > 0}}" class="unread-badge">{{item.unreadLabel}}</view>
