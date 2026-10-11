@@ -108,29 +108,33 @@
           </view>
           <view wx:for="{{failure.orders}}" wx:key="orderId" wx:for-item="order">
             <view class="order-header pending-order-header">
-              <view class="order-summary">
+              <view class="order-summary" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{order.orderId}}">
                 <text class="summary-chip" wx:if="{{order.adminSeqNo}}">序号 {{order.adminSeqNo}}</text>
                 <view class="summary-row">
-                  <view class="summary-main"><text class="summary-label">订单号</text><text class="order-no">{{order.orderNo}}</text></view>
-                  <text class="copy-link summary-action" catchtap="copyOrderNo" data-order-no="{{order.orderNo}}">复制</text>
-                  <text class="copy-link summary-action" catchtap="goToOrderDetail" data-order-id="{{order.orderId}}">查看详情</text>
+                  <view class="summary-main">
+                    <text class="summary-label">订单号</text>
+                    <view class="order-number">
+                      <text class="order-no">{{order.orderNo}}</text>
+                      <text class="copy-link summary-action" catchtap="copyOrderNo" data-order-no="{{order.orderNo}}">复制</text>
+                    </view>
+                  </view>
                 </view>
                 <text class="order-date">{{order.createdAt}}</text>
                 <view class="summary-row recipient-row">
-                  <view class="summary-main recipient-main"><text class="summary-label">收件人</text><text class="recipient-name">{{order.recipientName}}</text><text class="recipient-phone">{{order.recipientPhone}}</text></view>
+                  <view class="summary-main recipient-main"><text class="summary-label">收件人</text><text class="recipient-name" user-select="{{true}}">{{order.recipientName}}</text><text class="recipient-phone" user-select="{{true}}">{{order.recipientPhone}}</text></view>
                   <text class="copy-link summary-action" catchtap="copyRecipientInfo" data-name="{{order.recipientName}}" data-phone="{{order.recipientPhone}}" data-address="{{order.recipientAddress}}">复制</text>
                 </view>
-                <text class="recipient-address">{{order.recipientAddress}}</text>
+                <text class="recipient-address" user-select="{{true}}">{{order.recipientAddress}}</text>
               </view>
             </view>
             <view class="order-items pending-order-items">
-              <view class="order-item pending-order-item" wx:for="{{order.items}}" wx:key="uniqueKey" wx:for-item="item">
+              <view class="order-item pending-order-item" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{order.orderId}}" wx:for="{{order.items}}" wx:key="uniqueKey" wx:for-item="item">
                 <image class="item-image" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
                 <view class="item-info">
-                  <view class="item-name">{{item.productName}}</view>
-                  <view class="item-sku">{{item.skuSpec}} {{item.skuSize}}</view>
+                  <view class="item-name"><text user-select="{{true}}">{{item.productName}}</text></view>
+                  <view class="item-sku"><text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text></view>
                   <view class="item-qty">总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}</view>
-                  <view class="item-after-sale admin-remark-line" bindtap="editAdminRemark" data-item="{{item}}">管理员备注：{{item.adminRemark || '点击添加'}}</view>
+                  <view class="item-after-sale admin-remark-line" catchtap="editAdminRemark" data-item="{{item}}">管理员备注：{{item.adminRemark || '点击添加'}}</view>
                   <view class="item-after-sale" wx:if="{{item.afterSaleQty > 0}}">{{item.afterSaleStatusText || '售后'}} {{item.afterSaleQty}} 件</view>
                   <view class="failed-unavailable" wx:if="{{!item.canShip}}">当前无可发数量</view>
                 </view>
@@ -161,43 +165,44 @@
       <scroll-view class="pending-modal-list" scroll-y="true" enable-flex="true">
         <view class="pending-order-group" wx:for="{{pendingOrderGroups}}" wx:key="orderId" wx:for-item="group">
           <view class="order-header pending-order-header">
-            <view class="order-summary">
+            <view class="order-summary" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{group.orderId}}">
               <text class="summary-chip" wx:if="{{group.adminSeqNo}}">序号 {{group.adminSeqNo}}</text>
               <view class="summary-row">
                 <view class="summary-main">
                   <text class="summary-label">订单号</text>
-                  <text class="order-no">{{group.orderNo}}</text>
+                  <view class="order-number">
+                    <text class="order-no">{{group.orderNo}}</text>
+                    <text class="copy-link summary-action" catchtap="copyOrderNo" data-order-no="{{group.orderNo}}">复制</text>
+                  </view>
                 </view>
-                <text class="copy-link summary-action" catchtap="copyOrderNo" data-order-no="{{group.orderNo}}">复制</text>
-                <text class="copy-link summary-action" catchtap="goToOrderDetail" data-order-id="{{group.orderId}}">查看详情</text>
               </view>
               <text class="order-date">{{group.createdAt}}</text>
               <view class="summary-row recipient-row">
                 <view class="summary-main recipient-main">
                   <text class="summary-label">收件人</text>
-                  <text class="recipient-name">{{group.recipientName}}</text>
-                  <text class="recipient-phone">{{group.recipientPhone}}</text>
+                  <text class="recipient-name" user-select="{{true}}">{{group.recipientName}}</text>
+                  <text class="recipient-phone" user-select="{{true}}">{{group.recipientPhone}}</text>
                 </view>
                 <text class="copy-link summary-action" catchtap="copyRecipientInfo" data-name="{{group.recipientName}}" data-phone="{{group.recipientPhone}}" data-address="{{group.recipientAddress}}">复制</text>
               </view>
-              <text class="recipient-address">{{group.recipientAddress}}</text>
+              <text class="recipient-address" user-select="{{true}}">{{group.recipientAddress}}</text>
             </view>
           </view>
 
           <view class="order-items pending-order-items">
-            <view class="order-item pending-order-item" wx:for="{{group.items}}" wx:key="uniqueKey" wx:for-item="item">
+            <view class="order-item pending-order-item" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{group.orderId}}" wx:for="{{group.items}}" wx:key="uniqueKey" wx:for-item="item">
               <image class="item-image" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
               <view class="item-info">
-                <view class="item-name">{{item.productName}}</view>
-                <view class="item-sku">{{item.skuSpec}} {{item.skuSize}}</view>
+                <view class="item-name"><text user-select="{{true}}">{{item.productName}}</text></view>
+                <view class="item-sku"><text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text></view>
                 <view class="item-qty">总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}</view>
-                <view class="item-after-sale admin-remark-line" bindtap="editAdminRemark" data-item="{{item}}">管理员备注：{{item.adminRemark || '点击添加'}}</view>
+                <view class="item-after-sale admin-remark-line" catchtap="editAdminRemark" data-item="{{item}}">管理员备注：{{item.adminRemark || '点击添加'}}</view>
                 <view class="item-after-sale" wx:if="{{item.afterSaleQty > 0}}">
                   <text>{{item.afterSaleStatusText || '售后'}} {{item.afterSaleQty}} 件</text>
                   <text>可发 {{item.unshippedQty}}</text>
                 </view>
               </view>
-              <view class="pending-item-actions">
+              <view class="pending-item-actions" catchtap="stopPendingShipEvent">
                 <view class="stepper">
                   <view class="stepper-btn {{item.shipQty <= 0 ? 'disabled' : ''}}" bindtap="onPendingShipDecrease" data-pending-index="{{item.pendingIndex}}">−</view>
                   <input class="stepper-input" type="number" value="{{item.shipQty}}" bindinput="onPendingShipQtyInput" data-pending-index="{{item.pendingIndex}}" />
@@ -240,60 +245,61 @@
         <view class="order-checkbox {{group.selected ? 'checked' : ''}}" bindtap="toggleGroupSelect" data-index="{{index}}">
           <text wx:if="{{group.selected}}">✓</text>
         </view>
-        <view class="order-summary">
+        <view class="order-summary" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{group.orderId}}">
           <text class="summary-chip" wx:if="{{group.adminSeqNo}}">序号 {{group.adminSeqNo}}</text>
           <view class="summary-row">
             <view class="summary-main">
               <text class="summary-label">订单号</text>
-              <text class="order-no">{{group.orderNo}}</text>
+              <view class="order-number">
+                <text class="order-no">{{group.orderNo}}</text>
+                <text class="copy-link summary-action" catchtap="copyOrderNo" data-order-no="{{group.orderNo}}">复制</text>
+              </view>
             </view>
-            <text class="copy-link summary-action" catchtap="copyOrderNo" data-order-no="{{group.orderNo}}">复制</text>
-            <text class="copy-link summary-action" catchtap="goToOrderDetail" data-order-id="{{group.orderId}}">查看详情</text>
           </view>
           <text class="order-date">{{group.createdAt}}</text>
           <view class="summary-row recipient-row">
             <view class="summary-main recipient-main">
               <text class="summary-label">收件人</text>
-              <text class="recipient-name">{{group.recipientName}}</text>
-              <text class="recipient-phone">{{group.recipientPhone}}</text>
+              <text class="recipient-name" user-select="{{true}}">{{group.recipientName}}</text>
+              <text class="recipient-phone" user-select="{{true}}">{{group.recipientPhone}}</text>
             </view>
             <text class="copy-link summary-action" catchtap="copyRecipientInfo" data-name="{{group.recipientName}}" data-phone="{{group.recipientPhone}}" data-address="{{group.recipientAddress}}">复制</text>
           </view>
-          <text class="recipient-address">{{group.recipientAddress}}</text>
+          <text class="recipient-address" user-select="{{true}}">{{group.recipientAddress}}</text>
         </view>
       </view>
 
       <view class="order-items">
-        <view class="order-item" wx:for="{{group.items}}" wx:key="uniqueKey" wx:for-item="item" wx:for-index="itemIndex">
+        <view class="order-item" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{group.orderId}}" wx:for="{{group.items}}" wx:key="uniqueKey" wx:for-item="item" wx:for-index="itemIndex">
           <!-- 售后占用后无可发数量：不可选、灰色 -->
           <block wx:if="{{!item.canShip}}">
-            <view class="item-checkbox disabled"></view>
+            <view class="item-checkbox disabled" catchtap="stopPendingShipEvent"></view>
             <image class="item-image refunded" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
             <view class="item-info">
-              <view class="item-name">{{item.productName}}</view>
-              <view class="item-sku">{{item.skuSpec}} {{item.skuSize}} <text class="refund-tag">{{item.afterSaleStatusText || '售后'}}</text></view>
+              <view class="item-name"><text user-select="{{true}}">{{item.productName}}</text></view>
+              <view class="item-sku"><text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text> <text class="refund-tag">{{item.afterSaleStatusText || '售后'}}</text></view>
               <view class="item-qty">售后 {{item.afterSaleQty || 0}} 件，暂无可发数量</view>
             </view>
           </block>
           <!-- 正常商品：可选、可编辑数量 -->
           <block wx:else>
-            <view class="item-checkbox {{item.selected ? 'checked' : ''}}" bindtap="toggleItemSelect" data-group-index="{{index}}" data-item-index="{{itemIndex}}">
+            <view class="item-checkbox {{item.selected ? 'checked' : ''}}" catchtap="toggleItemSelect" data-group-index="{{index}}" data-item-index="{{itemIndex}}">
               <text wx:if="{{item.selected}}">✓</text>
             </view>
             <image class="item-image" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
             <view class="item-info">
-              <view class="item-name">{{item.productName}}</view>
-              <view class="item-sku">{{item.skuSpec}} {{item.skuSize}}</view>
+              <view class="item-name"><text user-select="{{true}}">{{item.productName}}</text></view>
+              <view class="item-sku"><text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text></view>
               <view class="item-qty">
                 总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}
               </view>
-              <view class="item-after-sale admin-remark-line" bindtap="editAdminRemark" data-item="{{item}}">管理员备注：{{item.adminRemark || '点击添加'}}</view>
+              <view class="item-after-sale admin-remark-line" catchtap="editAdminRemark" data-item="{{item}}">管理员备注：{{item.adminRemark || '点击添加'}}</view>
               <view class="item-after-sale" wx:if="{{item.afterSaleQty > 0}}">
                 <text>{{item.afterSaleStatusText || '售后'}} {{item.afterSaleQty}} 件</text>
                 <text>可发 {{item.unshippedQty}}</text>
               </view>
             </view>
-            <view class="item-ship-qty">
+            <view class="item-ship-qty" catchtap="stopPendingShipEvent">
               <view class="stepper">
                 <view class="stepper-btn {{item.shipQty <= 0 ? 'disabled' : ''}}" bindtap="onDecrease" data-group-index="{{index}}" data-item-index="{{itemIndex}}">−</view>
                 <input class="stepper-input" type="number" value="{{item.shipQty}}" bindinput="onShipQtyInput" data-group-index="{{index}}" data-item-index="{{itemIndex}}" />
@@ -304,13 +310,11 @@
         </view>
       </view>
     </view>
-    
     <!-- 空状态 -->
     <view class="empty-state" wx:if="{{orderGroups.length === 0 && !loading}}">
       <text wx:if="{{searchKeyword}}">未找到相关商品</text>
       <text wx:else>暂无未发货订单</text>
     </view>
-    
     <!-- 加载状态 -->
     <view class="loading-state" wx:if="{{loading}}">
       <text>加载中...</text>
@@ -382,14 +386,14 @@
           <view class="preview-title">包裹 {{index + 1}} (共 {{group.totalItems}} 件)</view>
           <view class="preview-recipient">
             <view class="preview-recipient-head">
-              <text>{{group.recipientName}} {{group.recipientPhone}}</text>
+              <text user-select="{{true}}">{{group.recipientName}} {{group.recipientPhone}}</text>
               <text class="copy-link" catchtap="copyRecipientInfo" data-name="{{group.recipientName}}" data-phone="{{group.recipientPhone}}" data-address="{{group.recipientAddress}}">复制</text>
             </view>
-            <text>{{group.recipientAddress}}</text>
+            <text user-select="{{true}}">{{group.recipientAddress}}</text>
           </view>
           <view class="preview-items">
             <view class="preview-item" wx:for="{{group.items}}" wx:key="uniqueKey" wx:for-item="item">
-              <text>{{item.productName}} {{item.skuSpec}} {{item.skuSize}} × {{item.shipQty}}</text>
+              <text user-select="{{true}}">{{item.productName}}</text> <text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text> <text>× {{item.shipQty}}</text>
             </view>
           </view>
         </view>

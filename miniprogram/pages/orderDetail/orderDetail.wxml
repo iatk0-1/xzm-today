@@ -29,18 +29,18 @@
 
   <view class="info-card goods-card">
     <view class="shop-title">Curation Market</view>
-    <view class="goods-item" wx:for="{{order.items}}" wx:key="id" bindtap="goToProduct" data-product-id="{{item.productId}}">
+    <view class="goods-item" wx:for="{{order.items}}" wx:key="id" bindtap="goToProduct" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-product-id="{{item.productId}}">
       <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
       <view class="goods-info">
         <view class="goods-title"><text class="copyable-text" user-select="{{true}}">{{item.productName}}</text></view>
         <!-- 套装子项列表 -->
         <view class="goods-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
           <view class="bundle-sub" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
-            <text class="bundle-sub-name">{{sub.bundleGroupName}}:</text>
-            <text class="bundle-sub-spec">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
+            <text class="bundle-sub-name" user-select="{{true}}">{{sub.bundleGroupName}}:</text>
+            <text class="bundle-sub-spec" user-select="{{true}}">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
           </view>
         </view>
-        <view class="goods-sku" wx:else>{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}</view>
+        <view class="goods-sku" wx:else><text user-select="{{true}}">{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}</text></view>
         <view class="after-sale-tag" wx:if="{{item.afterSaleSummary && item.afterSaleSummary.hasAfterSale}}">
           {{item.afterSaleSummary.statusText}} {{item.afterSaleSummary.totalQty}}/{{item.totalOrderQty}}
           <text wx:if="{{item.afterSaleSummary.shipmentBlockedQty > 0}}"> · 可发 {{item.afterSaleSummary.canShipQty}}</text>
@@ -119,11 +119,7 @@
             <image class="goods-img" src="{{goodsItem.skuImageUrl || goodsItem.productImage}}" mode="aspectFill"></image>
             <view class="goods-info">
               <view class="goods-title"><text class="copyable-text" user-select="{{true}}">{{goodsItem.productName || '商品'}}</text></view>
-              <view class="goods-sku">
-                <text wx:if="{{goodsItem.bundleGroupName}}">{{goodsItem.bundleGroupName}}: </text>
-                <text wx:if="{{goodsItem.spec}}">{{goodsItem.spec}}</text>
-                <text wx:if="{{goodsItem.size}}"> / {{goodsItem.size}}</text>
-              </view>
+              <view class="goods-sku"><text user-select="{{true}}">{{goodsItem.bundleGroupName ? goodsItem.bundleGroupName + ': ' : ''}}{{goodsItem.spec || ''}}{{goodsItem.size ? ' / ' + goodsItem.size : ''}}</text></view>
               <view class="goods-qty">× {{goodsItem.shipQty}}</view>
             </view>
           </view>

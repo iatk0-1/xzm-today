@@ -54,7 +54,7 @@
       <view class="empty-text">暂无相关订单</view>
     </view>
 
-    <view class="order-card" wx:for="{{orders}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+    <view class="order-card" wx:for="{{orders}}" wx:key="id" bindtap="goToDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-id="{{item.id}}">
 
       <view class="card-header">
         <view class="header-left">
@@ -84,18 +84,16 @@
         <view class="goods-item" wx:for="{{item.items}}" wx:for-item="goods" wx:key="id">
           <image class="goods-img" src="{{goods.skuImageUrl || goods.productImage}}" mode="aspectFill"></image>
           <view class="goods-info">
-            <view class="goods-title">{{goods.productName}}</view>
+            <view class="goods-title"><text user-select="{{true}}">{{goods.productName}}</text></view>
             <!-- 套装子项列表 -->
             <view class="goods-bundle" wx:if="{{goods.bundleConfig && goods.bundleConfig.length > 0}}">
               <view class="bundle-sub" wx:for="{{goods.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
-                <text class="bundle-sub-name">{{sub.bundleGroupName}}:</text>
-                <text class="bundle-sub-spec">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
+                <text class="bundle-sub-name" user-select="{{true}}">{{sub.bundleGroupName}}:</text>
+                <text class="bundle-sub-spec" user-select="{{true}}">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
               </view>
             </view>
-            <view class="goods-sku" wx:else>
-              {{goods.productSpec || '图片色'}} / {{goods.productSize || '均码'}}
-            </view>
-            <view class="picking-product-link" wx:if="{{pickingSkuId && goods.productId}}" catchtap="goToProduct" data-product-id="{{goods.productId}}">查看商品详情 ›</view>
+            <view class="goods-sku" wx:else><text user-select="{{true}}">{{goods.productSpec || '图片色'}} / {{goods.productSize || '均码'}}</text></view>
+            <view class="picking-product-link" wx:if="{{pickingSkuId && goods.productId}}" catchtap="goToProduct" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-product-id="{{goods.productId}}">查看商品详情 ›</view>
             <view class="remark-badge" wx:if="{{goods.remark}}">{{goods.remark}}</view>
             <view class="remark-badge admin-remark-badge" catchtap="openAdminRemarkEditor" data-order="{{item.id}}" data-item="{{goods}}">管理员：{{goods.adminRemark || '添加'}}</view>
             <view class="goods-price-row">
@@ -141,10 +139,10 @@
         <!-- 收件人信息 -->
         <view class="recipient-info" wx:if="{{item.recipientName}}">
           <view class="recipient-head">
-            <text>{{item.recipientName}} {{item.recipientPhone}}</text>
+            <text user-select="{{true}}">{{item.recipientName}} {{item.recipientPhone}}</text>
             <text class="copy-link" catchtap="copyRecipientInfo" data-name="{{item.recipientName}}" data-phone="{{item.recipientPhone}}" data-address="{{item.recipientAddress}}">复制</text>
           </view>
-          <text class="recipient-address">{{item.recipientAddress}}</text>
+          <text class="recipient-address" user-select="{{true}}">{{item.recipientAddress}}</text>
         </view>
         
         <!-- 物流信息 -->

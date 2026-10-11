@@ -195,6 +195,7 @@ page { background-color: #f2f2f2; }
 .summary-chip { align-self: flex-start; flex-shrink: 0; font-size: 22rpx; color: #576b95; background: #eef3fb; padding: 2rpx 10rpx; border-radius: 6rpx; max-width: 100%; box-sizing: border-box; }
 .summary-action { align-self: flex-start; }
 .order-no { font-size: 26rpx; font-weight: 600; min-width: 0; word-break: break-all; }
+.order-number { display: inline-flex; align-items: center; gap: 8rpx; min-width: 0; }
 .order-date { font-size: 22rpx; color: #999; margin-top: 4rpx; }
 .recipient-row { margin-top: 4rpx; }
 .recipient-main { row-gap: 4rpx; }

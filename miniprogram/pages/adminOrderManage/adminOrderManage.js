@@ -5,6 +5,7 @@ const pageSync = require('../../utils/pageSync');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const orderNavigation = require('../../utils/orderNavigation');
 
 // 状态映射（前端中文 -> 后端英文）
 const STATUS_MAP = {
@@ -30,6 +31,11 @@ const STATUS_DISPLAY_MAP = {
 };
 
 Page(autoSearch.wrap(pageSync.wrap({
+  onOrderTouchStart: orderNavigation.onTouchStart,
+  onOrderTouchMove: orderNavigation.onTouchMove,
+  onOrderTouchEnd: orderNavigation.onTouchEnd,
+  onOrderTouchCancel: orderNavigation.onTouchCancel,
+
   data: {
     pickingSkuId: '',
     pickingStatus: '',
@@ -99,6 +105,7 @@ Page(autoSearch.wrap(pageSync.wrap({
   },
 
   goToDetail: function(e) {
+    if (!orderNavigation.canNavigate(this, e)) return;
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
       url: `/pages/adminOrderDetail/adminOrderDetail?id=${id}`
@@ -364,6 +371,7 @@ Page(autoSearch.wrap(pageSync.wrap({
   },
 
   goToProduct: function(e) {
+    if (!orderNavigation.canNavigate(this, e)) return;
     const id = e.currentTarget.dataset.productId;
     if (id) wx.navigateTo({ url: `/pages/detail/detail?id=${id}` });
   },

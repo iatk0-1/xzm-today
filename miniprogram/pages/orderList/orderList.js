@@ -4,6 +4,7 @@ const pageSync = require('../../utils/pageSync');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const orderNavigation = require('../../utils/orderNavigation');
 const customerServiceOrder = require('../../utils/customerServiceOrder');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 
@@ -32,6 +33,11 @@ const STATUS_DISPLAY_MAP = {
 };
 
 Page(pageSync.wrap({
+  onOrderTouchStart: orderNavigation.onTouchStart,
+  onOrderTouchMove: orderNavigation.onTouchMove,
+  onOrderTouchEnd: orderNavigation.onTouchEnd,
+  onOrderTouchCancel: orderNavigation.onTouchCancel,
+
   data: {
     tabs: ['全部', '待付款', '备货中', '待发货', '部分发货', '已发货', '已完成', '退款/售后', '已关闭'],
     currentTab: '全部',
@@ -74,6 +80,7 @@ Page(pageSync.wrap({
   },
 
   goToDetail: function(e) {
+    if (!orderNavigation.canNavigate(this, e)) return;
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
       url: `/pages/orderDetail/orderDetail?id=${id}`

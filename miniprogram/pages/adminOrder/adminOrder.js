@@ -3,9 +3,15 @@ const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/erro
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const orderNavigation = require('../../utils/orderNavigation');
 const BATCH_TASK_STORAGE = 'admin_order_active_batch_task';
 
 Page({
+  onOrderTouchStart: orderNavigation.onTouchStart,
+  onOrderTouchMove: orderNavigation.onTouchMove,
+  onOrderTouchEnd: orderNavigation.onTouchEnd,
+  onOrderTouchCancel: orderNavigation.onTouchCancel,
+
   data: {
     searchKeyword: '',
     searchDropdown: [],  // 搜索下拉列表
@@ -137,6 +143,7 @@ Page({
   },
 
   goToOrderDetail: function(e) {
+    if (!orderNavigation.canNavigate(this, e)) return;
     const orderId = e.currentTarget.dataset.orderId;
     if (!orderId) return;
     wx.navigateTo({ url: `/pages/adminOrderDetail/adminOrderDetail?id=${orderId}` });

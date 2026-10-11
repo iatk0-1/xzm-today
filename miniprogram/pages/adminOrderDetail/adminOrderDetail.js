@@ -2,10 +2,16 @@ const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/erro
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const orderNavigation = require('../../utils/orderNavigation');
 const { getExpressName } = require('../../utils/expressCompany');
 
 const pageSync = require('../../utils/pageSync');
 Page(pageSync.wrap({
+  onOrderTouchStart: orderNavigation.onTouchStart,
+  onOrderTouchMove: orderNavigation.onTouchMove,
+  onOrderTouchEnd: orderNavigation.onTouchEnd,
+  onOrderTouchCancel: orderNavigation.onTouchCancel,
+
   data: {
     orderId: null,
     order: null,
@@ -361,6 +367,7 @@ Page(pageSync.wrap({
   },
 
   goToProduct(e) {
+    if (!orderNavigation.canNavigate(this, e)) return;
     const id = e.currentTarget.dataset.productId;
     if (id) wx.navigateTo({ url: `/pages/detail/detail?id=${encodeURIComponent(id)}` });
   },

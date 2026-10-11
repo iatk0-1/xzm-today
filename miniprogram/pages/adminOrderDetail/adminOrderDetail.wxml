@@ -32,18 +32,17 @@
 
   <view class="info-card goods-card">
     <view class="shop-title">订单商品</view>
-    <view class="goods-item" wx:for="{{order.items}}" wx:key="id" wx:for-index="itemIndex" bindtap="goToProduct" data-product-id="{{item.productId}}">
+    <view class="goods-item" wx:for="{{order.items}}" wx:key="id" wx:for-index="itemIndex" bindtap="goToProduct" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-product-id="{{item.productId}}">
       <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
       <view class="goods-info">
         <view class="goods-title"><text class="copyable-text" user-select="{{true}}">{{item.productName}}</text></view>
         <view class="goods-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
           <view class="bundle-sub" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
-            <text class="bundle-sub-name">{{sub.bundleGroupName}}:</text>
-            <text class="bundle-sub-spec">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
+            <text class="bundle-sub-name" user-select="{{true}}">{{sub.bundleGroupName}}:</text>
+            <text class="bundle-sub-spec" user-select="{{true}}">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
           </view>
         </view>
-        <view class="goods-sku" wx:else>{{item.productSpec || '默认规格'}} / {{item.productSize || '均码'}}</view>
-        <view class="goods-product-link" wx:if="{{item.productId}}" catchtap="goToProduct" data-product-id="{{item.productId}}">查看商品详情 ›</view>
+        <view class="goods-sku" wx:else><text user-select="{{true}}">{{item.productSpec || '默认规格'}} / {{item.productSize || '均码'}}</text></view>
         <view class="after-sale-tag" wx:if="{{item.afterSaleSummary && item.afterSaleSummary.hasAfterSale}}">
           {{item.afterSaleSummary.statusText}} {{item.afterSaleSummary.totalQty}}/{{item.totalOrderQty}}
           <text wx:if="{{item.afterSaleSummary.shipmentBlockedQty > 0}}"> · 可发 {{item.afterSaleSummary.canShipQty}}</text>
@@ -69,16 +68,12 @@
         <text class="money-val">¥ {{order.goodsAmount}}</text>
       </view>
       <view class="money-row">
-        <text class="money-label">运费</text>
+        <text class="money-label">运费{{order.shippingRefundStatus === 'success' ? '(已退款)' : ''}}</text>
         <text class="money-val">¥ {{order.shippingFee}}</text>
       </view>
       <view class="money-row total">
         <text class="money-label">实付款</text>
         <text class="money-val final">¥ {{order.payAmount}}</text>
-      </view>
-      <view class="money-row" wx:if="{{order.shippingRefundStatus}}">
-        <text class="money-label">运费退款</text>
-        <text class="money-val">¥ {{order.shippingRefundAmount}} · {{order.shippingRefundStatus === 'success' ? '成功' : (order.shippingRefundStatus === 'failed' ? '失败' : '处理中')}}</text>
       </view>
       <button size="mini" wx:if="{{order.shippingRefundStatus === 'failed'}}" bindtap="retryShippingRefund">重试运费退款</button>
     </view>
@@ -126,10 +121,7 @@
             <image class="goods-img" src="{{goodsItem.skuImageUrl || goodsItem.productImage}}" mode="aspectFill"></image>
             <view class="goods-info">
               <view class="goods-title"><text class="copyable-text" user-select="{{true}}">{{goodsItem.productName || '商品'}}</text></view>
-              <view class="goods-sku">
-                <text wx:if="{{goodsItem.spec}}">{{goodsItem.spec}}</text>
-                <text wx:if="{{goodsItem.size}}"> / {{goodsItem.size}}</text>
-              </view>
+              <view class="goods-sku"><text user-select="{{true}}">{{goodsItem.spec || ''}}{{goodsItem.size ? ' / ' + goodsItem.size : ''}}</text></view>
               <view class="goods-qty">x {{goodsItem.shipQty}}</view>
             </view>
           </view>

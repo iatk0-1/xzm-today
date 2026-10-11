@@ -4,6 +4,7 @@ const pageSync = require('../../utils/pageSync');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const orderNavigation = require('../../utils/orderNavigation');
 const { getExpressName } = require('../../utils/expressCompany');
 const customerServiceOrder = require('../../utils/customerServiceOrder');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
@@ -12,6 +13,11 @@ const customerServiceNavigation = require('../../utils/customerServiceNavigation
 const PAYMENT_TIMEOUT_MINUTES = 30;
 
 Page(pageSync.wrap({
+  onOrderTouchStart: orderNavigation.onTouchStart,
+  onOrderTouchMove: orderNavigation.onTouchMove,
+  onOrderTouchEnd: orderNavigation.onTouchEnd,
+  onOrderTouchCancel: orderNavigation.onTouchCancel,
+
   data: {
     order: null,
     isLoading: true,
@@ -373,6 +379,7 @@ Page(pageSync.wrap({
   },
 
   goToProduct: function(e) {
+    if (!orderNavigation.canNavigate(this, e)) return;
     const id = e.currentTarget.dataset.productId;
     if (id) wx.navigateTo({ url: `/pages/detail/detail?id=${encodeURIComponent(id)}` });
   },
