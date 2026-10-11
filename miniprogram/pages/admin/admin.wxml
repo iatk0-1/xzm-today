@@ -384,11 +384,29 @@
   </view>
 
   <view class="search-bar-wrap">
-    <input class="search-input" placeholder="输入商品名称快速查找..." value="{{searchKeyword}}" bindinput="onSearchInput" />
+    <input class="search-input" placeholder="搜索商品名称、档口或标签" value="{{searchKeyword}}" bindinput="onSearchInput" bindconfirm="searchRelatedProducts" confirm-type="search" />
+    <view class="related-search-btn" bindtap="searchRelatedProducts">搜索</view>
   </view>
 
-  <scroll-view scroll-y class="product-scroll-list">
-    <view class="product-row" wx:for="{{filteredProducts}}" wx:key="id" bindtap="toggleRelated" data-item="{{item}}">
+  <view class="relation-filters">
+    <view class="relation-filter-row">
+      <text class="relation-filter-label">档口</text>
+      <view class="relation-filter-fixed relation-filter-tag {{relatedStall === '' ? 'active' : ''}}" bindtap="selectRelatedStall" data-stall="all">全部</view>
+      <scroll-view class="relation-filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+        <view class="relation-filter-options"><view class="relation-filter-tag {{relatedStall == item.id ? 'active' : ''}}" wx:for="{{relatedStalls}}" wx:key="id" bindtap="selectRelatedStall" data-stall="{{item.id}}">{{item.name}}</view></view>
+      </scroll-view>
+    </view>
+    <view class="relation-filter-row">
+      <text class="relation-filter-label">标签</text>
+      <view class="relation-filter-fixed relation-filter-tag {{relatedTag === '' ? 'active' : ''}}" bindtap="selectRelatedTag" data-tag="all">全部</view>
+      <scroll-view class="relation-filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+        <view class="relation-filter-options"><view class="relation-filter-tag {{relatedTag == item.id ? 'active' : ''}}" wx:for="{{relatedTags}}" wx:key="id" bindtap="selectRelatedTag" data-tag="{{item.id}}">{{item.name}}</view></view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="product-scroll-list" bindscrolltolower="loadMoreRelatedProducts">
+    <view class="product-row" wx:for="{{filteredProducts}}" wx:key="id" bindtap="toggleRelated" data-id="{{item.id}}">
       <view class="checkbox {{item.selected ? 'checked' : ''}}"></view>
       <image class="row-img" src="{{item.coverUrl}}" mode="aspectFill"></image>
       <view class="row-info">
@@ -396,10 +414,14 @@
         <view class="row-price">¥ {{item.displayPrice || item.retailPrice}}</view>
       </view>
     </view>
-    <view wx:if="{{filteredProducts.length === 0}}" class="empty-tip">未找到相关商品</view>
+    <view wx:if="{{relatedLoading}}" class="empty-tip">加载中...</view>
+    <view wx:elif="{{relatedError}}" class="empty-tip" bindtap="searchRelatedProducts">{{relatedError}}，点击重试</view>
+    <view wx:elif="{{filteredProducts.length === 0}}" class="empty-tip">未找到相关商品</view>
+    <view wx:elif="{{!relatedHasMore}}" class="empty-tip">已加载全部商品</view>
   </scroll-view>
 
   <view class="modal-footer">
+    <view class="related-selection-count">已选择 {{relatedSelection.length}} 件商品</view>
     <view class="btn-confirm-modal" bindtap="confirmRelated">确认选择</view>
   </view>
 </view>

@@ -1,3 +1,5 @@
+@import "../../styles/relationFilters.wxss";
+
 page { background-color: #f2f2f2; padding-bottom: 160rpx; /* 将原本的60rpx加大到160rpx，留足悬浮按钮的空间 */ }
 .admin-container { padding: 24rpx; }
 
@@ -267,12 +269,17 @@ line-height: 88rpx; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; }
 .modal-mask { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
 .related-modal { position: fixed; bottom: -100%; left: 0; width: 100%; height: 80vh; background: #fff; border-radius: 16px 16px 0 0; z-index: 1000; display: flex; flex-direction: column; transition: all 0.3s ease-in-out; }
 .related-modal.show { bottom: 0; }
+.related-modal > view { flex-shrink: 0; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #f0f0f0; }
 .modal-title { font-size: 16px; font-weight: bold; }
 .modal-close { font-size: 24px; color: #999; padding: 0 10px; }
-.search-bar-wrap { padding: 10px 20px; background: #f9f9f9; }
+.search-bar-wrap { display: flex; align-items: center; gap: 12rpx; padding: 10px 20px; background: #f9f9f9; }
+.search-bar-wrap .search-input { flex: 1; min-width: 0; }
+.related-search-btn { flex-shrink: 0; padding: 16rpx 24rpx; background: #1a1a1a; color: #fff; border-radius: 8rpx; font-size: 26rpx; }
+.related-modal .relation-filters { margin: 10rpx 40rpx; flex-shrink: 0; }
+.related-selection-count { color: #666; font-size: 24rpx; margin-bottom: 12rpx; }
 .search-input { background: #fff; height: 36px; border-radius: 18px; padding: 0 15px; font-size: 13px; border: 1px solid #eee; }
-.product-scroll-list { flex: 1; padding: 10px 20px; overflow-y: auto; }
+.product-scroll-list { flex: 1; height: 0; min-height: 0; padding: 10px 20px; overflow-y: auto; box-sizing: border-box; }
 .product-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
 .checkbox { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; margin-right: 15px; }
 .checkbox.checked { background: #000; border-color: #000; position: relative; }

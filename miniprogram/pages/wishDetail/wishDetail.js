@@ -3,12 +3,14 @@ const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/wishDetail/wishDetail.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const { getLinkedProductIds, productPlaceholder, loadLinkedProducts } = require('../../utils/wishProducts');
 const { createShareImage } = require('../../utils/shareImage');
 
 Page(pageSync.wrap({
   data: {
     wish: { images: [] },
     wishId: null,
+    linkedProducts: [],
     canDelete: false,
     canEdit: false,
     createdAtDisplay: '',
@@ -43,11 +45,17 @@ Page(pageSync.wrap({
     this.checkDeletePermission(this.data.wish);
   },
 
+  onUnload: function() {
+    this._wishRequestVersion = (this._wishRequestVersion || 0) + 1;
+  },
+
   // 加载心愿详情
   loadWishDetail: async function() {
+    var version = this._wishRequestVersion = (this._wishRequestVersion || 0) + 1;
     wx.showLoading({ title: '加载中...' });
     try {
       var res = await api.get('/wishes/' + this.data.wishId);
+      if (version !== this._wishRequestVersion) return;
       wx.hideLoading();
 
       var createdAtDisplay = '';
@@ -66,6 +74,7 @@ Page(pageSync.wrap({
 
       this.setData({
         wish: wish,
+        linkedProducts: getLinkedProductIds(wish).map(productPlaceholder),
         createdAtDisplay: createdAtDisplay,
         shareImages: { single: '', double: '', triple: '' },
         shareImageCount: 0,
@@ -77,7 +86,10 @@ Page(pageSync.wrap({
 
       // 检查删除权限：管理员 或 心愿创建者
       this.checkDeletePermission(wish);
+      var products = await loadLinkedProducts(wish, id => api.get('/products/' + id));
+      if (version === this._wishRequestVersion) this.setData({ linkedProducts: products });
     } catch (err) {
+      if (version !== this._wishRequestVersion) return;
       wx.hideLoading();
       console.error('加载心愿详情失败:', err);
       wx.showModal({
@@ -288,8 +300,8 @@ Page(pageSync.wrap({
   },
 
   // 跳转到关联商品
-  goToProduct: function() {
-    var productId = this.data.wish.linkedProductId;
+  goToProduct: function(e) {
+    var productId = e.currentTarget.dataset.id;
     if (productId) {
       wx.navigateTo({ url: '/pages/detail/detail?id=' + productId });
     }

@@ -14,6 +14,18 @@
 
   <!-- 内容区 -->
   <view class="content-section">
+    <view class="linked-section" wx:if="{{linkedProducts.length}}">
+      <view class="linked-label">关联商品 · {{linkedProducts.length}} 件</view>
+      <scroll-view class="linked-product-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+        <view class="linked-product-list">
+          <view class="linked-product-card" wx:for="{{linkedProducts}}" wx:key="id" bindtap="goToProduct" data-id="{{item.id}}">
+            <image wx:if="{{item.coverUrl}}" class="linked-product-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+            <view wx:else class="linked-product-cover linked-product-placeholder">暂无图片</view>
+            <view class="linked-product-name">{{item.name}}</view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
     <view class="wish-title">{{wish.title || wish.content}}</view>
     <view class="wish-content" wx:if="{{wish.content && wish.content !== wish.title}}">{{wish.content}}</view>
 
@@ -24,13 +36,6 @@
         <text class="like-count">热度 {{wish.likes || 0}}</text>
       </view>
       <text class="like-hint">点赞支持这个心愿，达到50热度主理人将为你寻觅</text>
-    </view>
-
-    <!-- 已关联商品入口 -->
-    <view class="linked-section" wx:if="{{wish.linkedProductId}}">
-      <view class="section-divider"></view>
-      <view class="linked-label">已关联商品</view>
-      <view class="btn-go-product" bindtap="goToProduct">查看商品详情 →</view>
     </view>
 
     <!-- 底部信息 -->

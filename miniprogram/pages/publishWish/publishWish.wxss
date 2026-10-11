@@ -1,3 +1,5 @@
+@import "../../styles/relationFilters.wxss";
+
 page { background-color: #ffffff; }
 .publish-wrapper { padding: 40rpx; padding-bottom: 180rpx; }
 
@@ -9,16 +11,16 @@ page { background-color: #ffffff; }
 .section-title { font-size: 32rpx; font-weight: 700; color: #111; }
 .section-tip { margin-top: 8rpx; font-size: 22rpx; color: #999; }
 .image-count { font-size: 24rpx; color: #666; }
-.image-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18rpx; margin-bottom: 50rpx; }
-.image-item, .add-image-btn { position: relative; height: 240rpx; border-radius: 12rpx; overflow: hidden; background: #f8f9fa; }
-.preview-img { width: 100%; height: 190rpx; display: block; }
+.image-drag-area { width: 100%; position: relative; margin-bottom: 50rpx; }
+.image-drag-item { position: absolute; z-index: 1; }
+.image-drag-item.is-dragging { z-index: 99; box-shadow: 0 10rpx 30rpx rgba(0,0,0,.2); border-radius: 12rpx; }
+.image-drag-item.is-dragging .image-item { transform: scale(1.05); }
+.image-item { width: 100%; height: 100%; position: relative; border-radius: 12rpx; overflow: hidden; background: #f8f9fa; }
+.preview-img { width: 100%; height: 100%; display: block; }
 .cover-tag { position: absolute; top: 8rpx; left: 8rpx; padding: 4rpx 10rpx; color: #fff; background: rgba(0,0,0,.7); border-radius: 6rpx; font-size: 20rpx; }
 .delete-btn { position: absolute; top: 6rpx; right: 6rpx; width: 42rpx; height: 42rpx; line-height: 38rpx; text-align: center; color: #fff; background: rgba(0,0,0,.65); border-radius: 50%; font-size: 34rpx; }
-.sort-actions { height: 50rpx; display: flex; align-items: center; justify-content: space-between; padding: 0 12rpx; background: #f2f2f2; }
-.sort-btn { width: 46rpx; text-align: center; color: #111; font-size: 36rpx; }
-.sort-btn.disabled { color: #ccc; }
-.image-index { color: #777; font-size: 20rpx; }
-.add-image-btn { box-sizing: border-box; height: 240rpx; border: 2rpx dashed #ddd; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #999; }
+.image-index { position: absolute; bottom: 8rpx; right: 8rpx; padding: 2rpx 10rpx; border-radius: 6rpx; background: rgba(0,0,0,.5); color: #fff; font-size: 20rpx; }
+.add-image-btn { position: absolute; box-sizing: border-box; border-radius: 12rpx; background: #f8f9fa; border: 2rpx dashed #ddd; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #999; }
 .upload-icon { font-size: 58rpx; line-height: 1; font-weight: 200; margin-bottom: 14rpx; color: #bbb; }
 .upload-text { font-size: 22rpx; letter-spacing: 1rpx; }
 
@@ -48,17 +50,16 @@ page { background-color: #ffffff; }
 .remove-product { color: #999; font-size: 24rpx; padding: 16rpx; }
 .add-product { margin-top: 24rpx; padding: 24rpx; border: 1rpx dashed #ccc; text-align: center; font-size: 26rpx; border-radius: 8rpx; }
 .product-picker-mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 2000; }
-.product-picker { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2001; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 30rpx 32rpx calc(30rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
+.product-picker { position: fixed; left: 0; right: 0; bottom: 0; height: 82vh; display: flex; flex-direction: column; z-index: 2001; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 30rpx 32rpx calc(30rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
+.product-picker > view { flex-shrink: 0; }
 .picker-header { display: flex; align-items: center; justify-content: space-between; color: #111; font-size: 32rpx; font-weight: 600; }
 .picker-header text:last-child { font-size: 46rpx; padding: 0 12rpx; color: #999; }
 .product-search { display: flex; align-items: center; gap: 20rpx; margin-top: 24rpx; background: #f5f5f5; padding: 18rpx 22rpx; border-radius: 10rpx; font-size: 26rpx; }
 .product-search input { flex: 1; min-width: 0; }
-.product-filters { display: flex; gap: 20rpx; margin: 24rpx 0; }
-.product-filter { flex: 1; min-width: 0; padding: 18rpx; background: #f8f8f8; border-radius: 8rpx; font-size: 24rpx; }
-.product-filter view { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.product-scroll { height: 42vh; }
-.product-radio { width: 38rpx; height: 38rpx; border-radius: 50%; border: 2rpx solid #ddd; text-align: center; line-height: 38rpx; font-size: 24rpx; flex-shrink: 0; }
-.product-radio.selected { background: #111; color: #fff; border-color: #111; }
+.product-picker .relation-filters { margin: 24rpx 0; }
+.product-scroll { flex: 1; height: 0; min-height: 0; }
+.product-checkbox { width: 38rpx; height: 38rpx; border-radius: 6rpx; border: 2rpx solid #ddd; text-align: center; line-height: 38rpx; font-size: 24rpx; flex-shrink: 0; }
+.product-checkbox.selected { background: #111; color: #fff; border-color: #111; }
 .picker-status { padding: 32rpx; color: #999; text-align: center; font-size: 24rpx; }
 .picker-selected { padding: 16rpx 0; font-size: 24rpx; color: #666; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .picker-confirm { margin-top: 20rpx; padding: 24rpx; text-align: center; background: #111; color: #fff; border-radius: 8rpx; font-size: 28rpx; }

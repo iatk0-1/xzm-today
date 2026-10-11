@@ -2,10 +2,12 @@ const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/publishWish/publishWish.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const { getLinkedProductIds, productPlaceholder, loadLinkedProducts } = require('../../utils/wishProducts');
 
 const MAX_WISH_IMAGES = 99;
 const MAX_PICK_COUNT = 20;
 const UPLOAD_CONCURRENCY = 3;
+const IMAGE_COLUMNS = 3;
 
 Page({
   data: {
@@ -14,21 +16,28 @@ Page({
     loadFailed: false,
     canLinkProduct: false,
     isStallManager: false,
-    linkedProduct: null,
+    linkedProducts: [],
     expectedPrice: null,
     showProductPicker: false,
-    pickerProduct: null,
+    pickerProducts: [],
     productKeyword: '',
     productList: [],
     productLoading: false,
     productHasMore: true,
     productPage: 1,
     productError: '',
-    stallOptions: [{ name: '全部档口', id: '' }],
-    tagOptions: [{ name: '全部标签', id: '' }],
-    stallIndex: 0,
-    tagIndex: 0,
+    stallOptions: [],
+    tagOptions: [],
+    productStall: '',
+    productTag: '',
     imageList: [],
+    imageItems: [],
+    dragIndex: -1,
+    imageItemSize: 105,
+    imageStep: 114,
+    imageAreaHeight: 105,
+    uploadImageX: 0,
+    uploadImageY: 0,
     maxImages: MAX_WISH_IMAGES,
     splitByImage: false,
     title: '',
@@ -37,6 +46,7 @@ Page({
   },
 
   onLoad: async function(options) {
+    this.initImageGrid();
     this.setData({ wishId: options.id || '', loading: true });
     wx.setNavigationBarTitle({ title: options.id ? '编辑心愿' : '发布心愿' });
     try {
@@ -48,15 +58,9 @@ Page({
         this._existingImages = new Set(images);
         this.setData({ imageList: images, title: wish.title || wish.content || '', content: wish.content || '',
           expectedPrice: wish.expectedPrice == null ? null : wish.expectedPrice,
-          linkedProduct: wish.linkedProductId ? { id: wish.linkedProductId, name: '已关联商品（' + wish.linkedProductId + '）' } : null });
-        if (wish.linkedProductId) {
-          try {
-            var product = await api.get('/products/' + wish.linkedProductId);
-            this.setData({ linkedProduct: product.product || product });
-          } catch (err) {
-            // 商品失效时保留原关联，管理员或负责人仍可更换或移除。
-          }
-        }
+          linkedProducts: getLinkedProductIds(wish).map(productPlaceholder) });
+        this.refreshImageGrid(images);
+        this.setData({ linkedProducts: await loadLinkedProducts(wish, id => api.get('/products/' + id)) });
       }
     } catch (err) {
       this.setData({ loadFailed: true });
@@ -67,23 +71,121 @@ Page({
   },
 
   onUnload: function() {
-    clearTimeout(this._productSearchTimer);
-    this._productQueryVersion = (this._productQueryVersion || 0) + 1;
+    this._imageDrag = null;
+    this.closeProductPicker();
+  },
+
+  onHide: function() {
+    this.cancelImageDrag();
+  },
+
+  onReady: function() {
+    if (!wx.createSelectorQuery) return;
+    wx.createSelectorQuery().in(this).select('.image-drag-area').boundingClientRect(rect => {
+      if (rect && rect.width > 0) this.initImageGrid(rect.width);
+    }).exec();
+  },
+
+  onResize: function() {
+    this.cancelImageDrag();
+    this.initImageGrid();
+  },
+
+  initImageGrid: function(width) {
+    var info = wx.getWindowInfo ? wx.getWindowInfo() : { windowWidth: 375 };
+    var ratio = (info.windowWidth || 375) / 750;
+    var gap = 18 * ratio;
+    var gridWidth = width || (info.windowWidth || 375) - 80 * ratio;
+    var step = (gridWidth + gap) / IMAGE_COLUMNS;
+    this.setData({ imageStep: step, imageItemSize: step - gap });
+    this.refreshImageGrid();
+  },
+
+  refreshImageGrid: function(images = this.data.imageList, orderedItems) {
+    // 图片地址可能重复，给每个格子保留独立 ID，拖动时不复用错误的节点。
+    var available = this.data.imageItems.slice();
+    var items = orderedItems || images.map(url => {
+      var index = available.findIndex(item => item.url === url);
+      if (index >= 0) return available.splice(index, 1)[0];
+      this._imageItemId = (this._imageItemId || 0) + 1;
+      return { id: 'wish_image_' + this._imageItemId, url: url };
+    });
+    var step = this.data.imageStep;
+    var positioned = items.map((item, index) => ({ ...item,
+      x: (index % IMAGE_COLUMNS) * step, y: Math.floor(index / IMAGE_COLUMNS) * step }));
+    var count = images.length + (images.length < MAX_WISH_IMAGES ? 1 : 0);
+    var rows = Math.max(1, Math.ceil(count / IMAGE_COLUMNS));
+    this.setData({ imageList: images.slice(), imageItems: positioned, dragIndex: -1,
+      imageAreaHeight: (rows - 1) * step + this.data.imageItemSize,
+      uploadImageX: (images.length % IMAGE_COLUMNS) * step,
+      uploadImageY: Math.floor(images.length / IMAGE_COLUMNS) * step });
+    this._imageDrag = null;
+  },
+
+  onImageDragStart: function(e) {
+    if (this.data.submitting || this.data.loading || this._imageDrag) return;
+    var index = Number(e.currentTarget.dataset.index);
+    var item = this.data.imageItems[index];
+    if (!item) return;
+    this._imageDrag = { id: item.id, index: index, x: item.x, y: item.y };
+    this._suppressImageTapUntil = Date.now() + 350;
+    this.setData({ dragIndex: index });
+    if (wx.vibrateShort) wx.vibrateShort({ type: 'light' });
+  },
+
+  onImageDragMove: function(e) {
+    var drag = this._imageDrag;
+    if (!drag || e.currentTarget.dataset.id !== drag.id
+        || !['touch', 'touch-out-of-bounds'].includes(e.detail.source)) return;
+    if (Number.isFinite(e.detail.x) && Number.isFinite(e.detail.y)) {
+      drag.x = e.detail.x;
+      drag.y = e.detail.y;
+      // 只同步当前格子的坐标，松手或取消时能准确回到网格位置。
+      this.setData({ ['imageItems[' + drag.index + '].x']: drag.x,
+        ['imageItems[' + drag.index + '].y']: drag.y });
+    }
+  },
+
+  onImageDragEnd: function() {
+    var drag = this._imageDrag;
+    if (!drag) return;
+    var items = this.data.imageItems.slice();
+    var step = this.data.imageStep;
+    var column = Math.max(0, Math.min(IMAGE_COLUMNS - 1, Math.round(drag.x / step)));
+    var row = Math.max(0, Math.round(drag.y / step));
+    var target = Math.min(items.length - 1, row * IMAGE_COLUMNS + column);
+    if (target !== drag.index) {
+      var moving = items.splice(drag.index, 1)[0];
+      items.splice(target, 0, moving);
+    }
+    this._suppressImageTapUntil = Date.now() + 350;
+    this.refreshImageGrid(items.map(item => item.url), items);
+  },
+
+  cancelImageDrag: function() {
+    if (!this._imageDrag) return;
+    this._suppressImageTapUntil = Date.now() + 350;
+    this.refreshImageGrid();
   },
 
   openProductPicker: async function() {
     if (!this.data.canLinkProduct || this.data.loading || this.data.submitting) return;
-    this.setData({ showProductPicker: true, pickerProduct: this.data.linkedProduct });
+    if (this.data.showProductPicker) return;
+    this.setData({ showProductPicker: true, pickerProducts: this.data.linkedProducts.slice() });
+    var optionsVersion = this._productOptionsVersion = (this._productOptionsVersion || 0) + 1;
     this.loadProducts(true);
     try {
       var results = await Promise.all([
         api.get(this.data.isStallManager ? '/stall-managers/stalls/mine' : '/stalls/all'),
         api.get('/tags/all')
       ]);
-      this.setData({ stallOptions: [{ name: '全部档口', id: '' }].concat(results[0] || []),
-        tagOptions: [{ name: '全部标签', id: '' }].concat(results[1] || []) });
+      if (optionsVersion !== this._productOptionsVersion) return;
+      this.setData({ stallOptions: Array.isArray(results[0]) ? results[0] : [],
+        tagOptions: Array.isArray(results[1]) ? results[1] : [] });
     } catch (err) {
-      wx.showToast({ title: getErrorMessage(err, '加载筛选项失败，请重新打开选择窗口'), icon: 'none' });
+      if (optionsVersion === this._productOptionsVersion) {
+        wx.showToast({ title: getErrorMessage(err, '加载筛选项失败，请重新打开选择窗口'), icon: 'none' });
+      }
     }
   },
 
@@ -91,6 +193,7 @@ Page({
     clearTimeout(this._productSearchTimer);
     this._productSearchTimer = null;
     this._productQueryVersion = (this._productQueryVersion || 0) + 1;
+    this._productOptionsVersion = (this._productOptionsVersion || 0) + 1;
     this.setData({ showProductPicker: false, productLoading: false });
   },
 
@@ -112,12 +215,12 @@ Page({
   },
 
   changeProductStall: function(e) {
-    this.setData({ stallIndex: Number(e.detail.value) });
+    this.setData({ productStall: e.currentTarget.dataset.stall === 'all' ? '' : String(e.currentTarget.dataset.stall) });
     return this.searchProducts();
   },
 
   changeProductTag: function(e) {
-    this.setData({ tagIndex: Number(e.detail.value) });
+    this.setData({ productTag: e.currentTarget.dataset.tag === 'all' ? '' : String(e.currentTarget.dataset.tag) });
     return this.searchProducts();
   },
 
@@ -133,16 +236,15 @@ Page({
     var page = reset ? 1 : this.data.productPage;
     var params = { page: page, size: 20 };
     var keyword = this.data.productKeyword.trim();
-    var stall = this.data.stallOptions[this.data.stallIndex];
-    var tag = this.data.tagOptions[this.data.tagIndex];
     if (keyword) params.keyword = keyword;
-    if (stall && stall.id) params.stallId = stall.id;
-    if (tag && tag.id) params.tagId = tag.id;
+    if (this.data.productStall) params.stallId = this.data.productStall;
+    if (this.data.productTag) params.tagId = this.data.productTag;
     this.setData({ productLoading: true, productError: '', ...(reset ? { productList: [], productHasMore: true } : {}) });
     try {
       var res = await api.get('/wishes/linkable-products', params);
       if (version !== this._productQueryVersion) return;
-      var list = res.content || [];
+      var selected = new Set(this.data.pickerProducts.map(item => String(item.id)));
+      var list = (res.content || []).map(item => ({ ...item, selected: selected.has(String(item.id)) }));
       this.setData({ productList: reset ? list : this.data.productList.concat(list), productPage: page + 1,
         productHasMore: res.hasNext !== undefined ? res.hasNext : list.length === 20 });
     } catch (err) {
@@ -153,21 +255,33 @@ Page({
   },
 
   selectProduct: function(e) {
-    var product = this.data.productList.find(item => String(item.id) === String(e.currentTarget.dataset.id));
-    if (product) this.setData({ pickerProduct: product });
+    var id = String(e.currentTarget.dataset.id);
+    var product = this.data.productList.find(item => String(item.id) === id);
+    if (!product) return;
+    var selected = this.data.pickerProducts.slice();
+    var index = selected.findIndex(item => String(item.id) === id);
+    if (index >= 0) selected.splice(index, 1);
+    else selected.push(product);
+    var ids = new Set(selected.map(item => String(item.id)));
+    this.setData({ pickerProducts: selected,
+      productList: this.data.productList.map(item => ({ ...item, selected: ids.has(String(item.id)) })) });
   },
 
   confirmProduct: function() {
-    if (!this.data.pickerProduct) return wx.showToast({ title: '请选择商品', icon: 'none' });
-    this.setData({ linkedProduct: this.data.pickerProduct, splitByImage: false });
+    if (!this.data.canLinkProduct || this.data.submitting) return;
+    this.setData({ linkedProducts: this.data.pickerProducts.slice(),
+      ...(this.data.pickerProducts.length ? { splitByImage: false } : {}) });
     this.closeProductPicker();
   },
 
-  removeLinkedProduct: function() {
-    if (this.data.canLinkProduct && !this.data.submitting) this.setData({ linkedProduct: null });
+  removeLinkedProduct: function(e) {
+    if (!this.data.canLinkProduct || this.data.submitting || this.data.loading) return;
+    var id = String(e.currentTarget.dataset.id);
+    this.setData({ linkedProducts: this.data.linkedProducts.filter(item => String(item.id) !== id) });
   },
 
   chooseImage: function() {
+    if (this.data.submitting || this.data.loading || this._imageDrag) return;
     var remaining = MAX_WISH_IMAGES - this.data.imageList.length;
     if (remaining <= 0) {
       return wx.showToast({ title: '最多上传99张图片', icon: 'none' });
@@ -183,37 +297,22 @@ Page({
           .map(function(file) { return file.tempFilePath; })
           .filter(Boolean);
         var imageList = this.data.imageList.concat(selected).slice(0, MAX_WISH_IMAGES);
-        this.setData({ imageList: imageList });
+        this.refreshImageGrid(imageList);
       }
     });
   },
 
   removeImage: function(e) {
+    if (this.data.submitting || this.data.loading || this._imageDrag) return;
     var index = Number(e.currentTarget.dataset.index);
     var imageList = this.data.imageList.slice();
+    if (!Number.isInteger(index) || index < 0 || index >= imageList.length) return;
     imageList.splice(index, 1);
-    this.setData({ imageList: imageList });
-  },
-
-  moveImageLeft: function(e) {
-    this.moveImage(Number(e.currentTarget.dataset.index), -1);
-  },
-
-  moveImageRight: function(e) {
-    this.moveImage(Number(e.currentTarget.dataset.index), 1);
-  },
-
-  moveImage: function(index, offset) {
-    var target = index + offset;
-    var imageList = this.data.imageList.slice();
-    if (index < 0 || target < 0 || index >= imageList.length || target >= imageList.length) return;
-    var temp = imageList[index];
-    imageList[index] = imageList[target];
-    imageList[target] = temp;
-    this.setData({ imageList: imageList });
+    this.refreshImageGrid(imageList);
   },
 
   previewImage: function(e) {
+    if (this._imageDrag || Date.now() < (this._suppressImageTapUntil || 0)) return;
     var index = Number(e.currentTarget.dataset.index || 0);
     var urls = this.data.imageList;
     if (urls.length > 0) {
@@ -222,7 +321,7 @@ Page({
   },
 
   toggleSplitByImage: function(e) {
-    if (this.data.linkedProduct || this.data.wishId) {
+    if (this.data.linkedProducts.length || this.data.wishId) {
       this.setData({ splitByImage: false });
       return;
     }
@@ -234,7 +333,8 @@ Page({
 
   submitWish: async function() {
     if (this.data.submitting || this.data.loading || this.data.loadFailed) return;
-    if (this.data.linkedProduct || this.data.wishId) this.setData({ splitByImage: false });
+    if (this._imageDrag) this.onImageDragEnd();
+    if (this.data.linkedProducts.length || this.data.wishId) this.setData({ splitByImage: false });
 
     var imageList = this.data.imageList;
     var title = (this.data.title || '').trim();
@@ -267,7 +367,7 @@ Page({
         expectedPrice: this.data.expectedPrice
       };
       if (this.data.canLinkProduct) {
-        payload.linkedProductId = this.data.linkedProduct ? this.data.linkedProduct.id : null;
+        payload.linkedProductIds = this.data.linkedProducts.map(item => item.id);
         if (this.data.wishId) payload.updateLinkedProduct = true;
       }
 

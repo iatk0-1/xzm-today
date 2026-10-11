@@ -72,13 +72,6 @@ page { background-color: #ffffff; }
 }
 .heart-btn { font-size: 16px; color: #111111; padding-right: 15px; }
 
-/* 已上架的黑底购买按钮 */
-.btn-buy-black {
-  width: 100%; text-align: center; background: #111111; color: #ffffff;
-  font-family: "Times New Roman", Times, serif; font-size: 11px;
-  padding: 10px 0; letter-spacing: 1.5px;
-}
-
 /* 悬浮发布按钮 */
 .wish-management-actions {
   position: fixed; right: 20px; bottom: calc(147px + env(safe-area-inset-bottom));

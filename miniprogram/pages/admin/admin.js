@@ -101,8 +101,16 @@ const pageDefinition = {
     manualRelated: [],
     showRelatedModal: false,
     searchKeyword: '',
-    allProducts: [],
     filteredProducts: [],
+    relatedStalls: [],
+    relatedTags: [],
+    relatedStall: '',
+    relatedTag: '',
+    relatedSelection: [],
+    relatedPage: 1,
+    relatedLoading: false,
+    relatedHasMore: true,
+    relatedError: '',
 
     // 档口/标签管理弹窗相关
     showStallManageModal: false,
@@ -174,6 +182,7 @@ const pageDefinition = {
   },
 
   onUnload() {
+    this.closeRelatedModal();
     // 页面卸载只清理退出提醒，草稿只能由用户主动保存。
     if (this._alertEnabled) {
       wx.disableAlertBeforeUnload();
@@ -1612,81 +1621,103 @@ const pageDefinition = {
   },
 
   // ================= 关联商品 =================
-  openRelatedModal() {
-    wx.showLoading({ title: '加载中...' });
-    api.get('/products', { limit: 20, offset: 0 })
-      .then(res => {
-        wx.hideLoading();
-        const selectedIds = this.data.manualRelated.map(item =>
-          typeof item === 'object' ? item.id : item
-        );
-        // 排除当前正在编辑的商品本身
-        const editId = this.data.editId ? String(this.data.editId) : null;
-
-        const productList = Array.isArray(res)
-          ? res
-          : (res && Array.isArray(res.content) ? res.content : []);
-
-        let validProducts = productList.filter(p =>
-          p && p.name && p.coverUrl && (!editId || String(p.id) !== editId)
-        );
-
-        let products = validProducts.map(p => ({
-          ...p,
-          selected: selectedIds.includes(p.id) || selectedIds.includes(String(p.id))
-        }));
-        this.setData({
-          allProducts: products,
-          filteredProducts: products,
-          showRelatedModal: true,
-          searchKeyword: ''
-        });
-      })
-      .catch(err => {
-        wx.hideLoading();
-        wx.showToast({ title: getErrorMessage(err, '获取失败'), icon: 'none' });
-      });
+  async openRelatedModal() {
+    if (this.data.showRelatedModal) return;
+    this.setData({ showRelatedModal: true, searchKeyword: '', relatedStall: '', relatedTag: '',
+      relatedSelection: this.data.manualRelated.slice() });
+    const optionsVersion = this._relatedOptionsVersion = (this._relatedOptionsVersion || 0) + 1;
+    const productTask = this.loadRelatedProducts(true);
+    try {
+      const [stalls, tags] = await Promise.all([
+        api.get(auth.isStallManager() ? '/stall-managers/stalls/mine' : '/stalls/all'),
+        api.get('/tags/all')
+      ]);
+      if (optionsVersion !== this._relatedOptionsVersion) return;
+      this.setData({ relatedStalls: Array.isArray(stalls) ? stalls : [], relatedTags: Array.isArray(tags) ? tags : [] });
+    } catch (err) {
+      if (optionsVersion === this._relatedOptionsVersion) {
+        wx.showToast({ title: getErrorMessage(err, '加载档口和标签失败，请重新打开选择窗口'), icon: 'none' });
+      }
+    }
+    await productTask;
   },
 
   closeRelatedModal() {
-    this.setData({ showRelatedModal: false });
+    clearTimeout(this._relatedSearchTimer);
+    this._relatedSearchTimer = null;
+    this._relatedQueryVersion = (this._relatedQueryVersion || 0) + 1;
+    this._relatedOptionsVersion = (this._relatedOptionsVersion || 0) + 1;
+    this.setData({ showRelatedModal: false, relatedLoading: false });
   },
 
   onSearchInput(e) {
-    const keyword = e.detail.value.trim().toLowerCase();
-    this.setData({ searchKeyword: keyword });
-    if (!keyword) {
-      this.setData({ filteredProducts: this.data.allProducts });
-      return;
+    this.setData({ searchKeyword: e.detail.value || '', filteredProducts: [], relatedLoading: false });
+    clearTimeout(this._relatedSearchTimer);
+    this._relatedQueryVersion = (this._relatedQueryVersion || 0) + 1;
+    this._relatedSearchTimer = setTimeout(() => this.searchRelatedProducts(), 350);
+  },
+
+  searchRelatedProducts() {
+    clearTimeout(this._relatedSearchTimer);
+    this._relatedSearchTimer = null;
+    return this.loadRelatedProducts(true);
+  },
+
+  selectRelatedStall(e) {
+    this.setData({ relatedStall: e.currentTarget.dataset.stall === 'all' ? '' : String(e.currentTarget.dataset.stall) });
+    return this.searchRelatedProducts();
+  },
+
+  selectRelatedTag(e) {
+    this.setData({ relatedTag: e.currentTarget.dataset.tag === 'all' ? '' : String(e.currentTarget.dataset.tag) });
+    return this.searchRelatedProducts();
+  },
+
+  loadMoreRelatedProducts() {
+    if (this._relatedSearchTimer) return;
+    return this.loadRelatedProducts(false);
+  },
+
+  async loadRelatedProducts(reset) {
+    if (!this.data.showRelatedModal || (!reset && (this.data.relatedLoading || !this.data.relatedHasMore))) return;
+    const version = this._relatedQueryVersion = (this._relatedQueryVersion || 0) + 1;
+    const page = reset ? 1 : this.data.relatedPage;
+    const params = { page, size: 20, status: 'all', manage: true };
+    if (this.data.searchKeyword.trim()) params.keyword = this.data.searchKeyword.trim();
+    if (this.data.relatedStall) params.stallId = this.data.relatedStall;
+    if (this.data.relatedTag) params.tagId = this.data.relatedTag;
+    this.setData({ relatedLoading: true, relatedError: '', ...(reset ? { filteredProducts: [], relatedHasMore: true } : {}) });
+    try {
+      const res = await api.get('/products/query', params);
+      if (version !== this._relatedQueryVersion) return;
+      const raw = res.content || [];
+      const selectedIds = new Set(this.data.relatedSelection.map(item => String(typeof item === 'object' ? item.id : item)));
+      const list = raw.filter(item => item && item.name && String(item.id) !== String(this.data.editId || ''))
+        .map(item => ({ ...item, selected: selectedIds.has(String(item.id)) }));
+      this.setData({ filteredProducts: reset ? list : this.data.filteredProducts.concat(list), relatedPage: page + 1,
+        relatedHasMore: res.hasNext !== undefined ? res.hasNext : raw.length === 20 });
+    } catch (err) {
+      if (version === this._relatedQueryVersion) this.setData({ relatedError: getErrorMessage(err, '商品加载失败') });
+    } finally {
+      if (version === this._relatedQueryVersion) this.setData({ relatedLoading: false });
     }
-    let filtered = this.data.allProducts.filter(p =>
-      p.name && p.name.toLowerCase().includes(keyword)
-    );
-    this.setData({ filteredProducts: filtered });
   },
 
   toggleRelated(e) {
-    let item = e.currentTarget.dataset.item;
-    let all = this.data.allProducts;
-    let filtered = this.data.filteredProducts;
-
-    let indexInAll = all.findIndex(p => p.id === item.id);
-    if (indexInAll > -1) {
-      all[indexInAll].selected = !all[indexInAll].selected;
-    }
-
-    let indexInFiltered = filtered.findIndex(p => p.id === item.id);
-    if (indexInFiltered > -1) {
-      filtered[indexInFiltered].selected = all[indexInAll].selected;
-    }
-
-    this.setData({ allProducts: all, filteredProducts: filtered });
+    const item = this.data.filteredProducts.find(product => String(product.id) === String(e.currentTarget.dataset.id));
+    if (!item) return;
+    const selected = this.data.relatedSelection.slice();
+    const index = selected.findIndex(product => String(typeof product === 'object' ? product.id : product) === String(item.id));
+    if (index >= 0) selected.splice(index, 1);
+    else selected.push(item);
+    this.setData({ relatedSelection: selected, filteredProducts: this.data.filteredProducts.map(product =>
+      String(product.id) === String(item.id) ? { ...product, selected: index < 0 } : product) });
   },
 
   confirmRelated() {
     this._markDirty();
-    let selectedItems = this.data.allProducts.filter(p => p.selected);
-    this.setData({ manualRelated: selectedItems, showRelatedModal: false });
+    this.setData({ manualRelated: this.data.relatedSelection.slice() });
+    this.closeRelatedModal();
   },
 
   removeRelated(e) {
