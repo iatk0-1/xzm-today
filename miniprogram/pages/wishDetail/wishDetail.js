@@ -10,6 +10,7 @@ Page(pageSync.wrap({
     wish: { images: [] },
     wishId: null,
     canDelete: false,
+    canEdit: false,
     createdAtDisplay: '',
     shareImages: {
       single: '',
@@ -39,6 +40,7 @@ Page(pageSync.wrap({
 
   onShow: function() {
     this.refreshShareFloatVisibility();
+    this.checkDeletePermission(this.data.wish);
   },
 
   // 加载心愿详情
@@ -202,13 +204,24 @@ Page(pageSync.wrap({
   checkDeletePermission: function(wish) {
     var userInfo = auth.getUserInfo();
     if (!userInfo) {
-      this.setData({ canDelete: false });
+      this.setData({ canDelete: false, canEdit: false });
       return;
     }
     var isAdmin = userInfo.role === 'admin';
     // createdBy 存储的是 userId 的字符串形式
     var isCreator = wish.createdBy && String(userInfo.userId) === String(wish.createdBy);
-    this.setData({ canDelete: isAdmin || isCreator });
+    this.setData({ canDelete: !!(isAdmin || isCreator), canEdit: !!(isAdmin || isCreator) });
+  },
+
+  editWish: async function() {
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      this.checkDeletePermission(this.data.wish);
+      if (!this.data.canEdit) return wx.showToast({ title: '只有管理员或心愿创建者可以编辑', icon: 'none' });
+      wx.navigateTo({ url: '/pages/publishWish/publishWish?id=' + this.data.wishId });
+    } catch (err) {
+      wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
+    }
   },
 
   // 点赞/取消点赞

@@ -221,6 +221,8 @@ page { background-color: #ffffff; }
 
 /* 底部删除按钮 */
 .bottom-delete-bar {
+  display: flex;
+  gap: 24rpx;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -234,6 +236,7 @@ page { background-color: #ffffff; }
 }
 
 .btn-delete {
+  flex: 1;
   height: 90rpx;
   border: 2rpx solid #d32f2f;
   color: #d32f2f;
@@ -249,3 +252,5 @@ page { background-color: #ffffff; }
 .btn-delete:active {
   background: #fef0f0;
 }
+
+.btn-edit { flex: 1; height: 90rpx; background: #111; color: #fff; border: 2rpx solid #111; border-radius: 2px; display: flex; justify-content: center; align-items: center; font-size: 15px; font-weight: 500; letter-spacing: 1px; }

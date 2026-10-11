@@ -71,7 +71,8 @@
   <view class="share-template-cancel" bindtap="closeShareTemplateSelector">取消</view>
 </view>
 
-<!-- 底部删除按钮（仅创建者/管理员可见） -->
-<view class="bottom-delete-bar" wx:if="{{canDelete}}">
-  <view class="btn-delete" bindtap="deleteWish">删除此心愿</view>
+<!-- 底部操作（仅创建者/管理员可见） -->
+<view class="bottom-delete-bar" wx:if="{{canDelete || canEdit}}">
+  <view class="btn-delete" wx:if="{{canDelete}}" bindtap="deleteWish">删除此心愿</view>
+  <view class="btn-edit" wx:if="{{canEdit}}" bindtap="editWish">编辑心愿</view>
 </view>
