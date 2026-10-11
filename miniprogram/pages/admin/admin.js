@@ -865,6 +865,18 @@ const pageDefinition = {
   },
 
   // ================= 选填图上传 =================
+  syncProductImagesToLookbook() {
+    const images = this.data.mediaList.map(item => item.url).filter(Boolean);
+    if (images.length === 0) {
+      wx.showToast({ title: '请先添加商品图片', icon: 'none' });
+      return;
+    }
+
+    this.setData({ lookbookImgs: images });
+    this._markDirty();
+    wx.showToast({ title: '图片已同步', icon: 'success' });
+  },
+
   chooseExtraImage(e) {
     this._markDirty();
     const type = e.currentTarget.dataset.type;
