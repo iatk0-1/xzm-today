@@ -10,7 +10,6 @@
       <image class="wish-image" src="{{item}}" mode="aspectFill" catchtap="previewImage" data-index="{{index}}"></image>
     </swiper-item>
   </swiper>
-  <view class="image-count" wx:if="{{wish.images.length > 1}}">共 {{wish.images.length}} 张</view>
 
   <!-- 内容区 -->
   <view class="content-section">
