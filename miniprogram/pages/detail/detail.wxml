@@ -7,7 +7,7 @@
   </view>
 
   <view class="main-swiper-wrap">
-    <swiper class="main-swiper" indicator-dots="true" indicator-color="rgba(0,0,0,0.15)" indicator-active-color="#111" circular="true">
+    <swiper class="main-swiper" indicator-dots="true" indicator-color="rgba(0,0,0,0.15)" indicator-active-color="#111" circular="{{false}}">
       <swiper-item wx:if="{{product.videoUrl}}">
         <video class="swiper-video"
                src="{{product.videoUrl}}"
