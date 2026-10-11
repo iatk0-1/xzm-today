@@ -362,7 +362,7 @@ Page(pageSync.wrap({
 
   goToProduct(e) {
     const id = e.currentTarget.dataset.productId;
-    if (id) wx.navigateTo({ url: `/pages/detail/detail?id=${id}` });
+    if (id) wx.navigateTo({ url: `/pages/detail/detail?id=${encodeURIComponent(id)}` });
   },
 
   openRecipientEditor() {

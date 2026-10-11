@@ -372,6 +372,11 @@ Page(pageSync.wrap({
     finally { wx.hideLoading(); }
   },
 
+  goToProduct: function(e) {
+    const id = e.currentTarget.dataset.productId;
+    if (id) wx.navigateTo({ url: `/pages/detail/detail?id=${encodeURIComponent(id)}` });
+  },
+
   editItemRemark: function(e) {
     if (!this.canSubmitChangeRequest()) {
       wx.showToast({ title: '当前订单状态不允许申请修改', icon: 'none' });

@@ -29,7 +29,7 @@
 
   <view class="info-card goods-card">
     <view class="shop-title">Curation Market</view>
-    <view class="goods-item" wx:for="{{order.items}}" wx:key="id">
+    <view class="goods-item" wx:for="{{order.items}}" wx:key="id" bindtap="goToProduct" data-product-id="{{item.productId}}">
       <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
       <view class="goods-info">
         <view class="goods-title"><text class="copyable-text" user-select="{{true}}">{{item.productName}}</text></view>
@@ -52,7 +52,7 @@
         <view class="goods-remark">
           <text class="remark-tag">备注</text>
           <text class="remark-text copyable-text" user-select="{{true}}">{{item.remark || '暂无备注'}}</text>
-          <text class="remark-edit" wx:if="{{order.status === 'pending' || order.status === 'stocking' || order.status === 'paid'}}" bindtap="editItemRemark" data-index="{{index}}">修改备注</text>
+          <text class="remark-edit" wx:if="{{order.status === 'pending' || order.status === 'stocking' || order.status === 'paid'}}" catchtap="editItemRemark" data-index="{{index}}">修改备注</text>
         </view>
       </view>
     </view>

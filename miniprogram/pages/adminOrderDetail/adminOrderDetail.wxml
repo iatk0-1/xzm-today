@@ -32,7 +32,7 @@
 
   <view class="info-card goods-card">
     <view class="shop-title">订单商品</view>
-    <view class="goods-item" wx:for="{{order.items}}" wx:key="id" wx:for-index="itemIndex">
+    <view class="goods-item" wx:for="{{order.items}}" wx:key="id" wx:for-index="itemIndex" bindtap="goToProduct" data-product-id="{{item.productId}}">
       <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
       <view class="goods-info">
         <view class="goods-title"><text class="copyable-text" user-select="{{true}}">{{item.productName}}</text></view>
@@ -43,7 +43,7 @@
           </view>
         </view>
         <view class="goods-sku" wx:else>{{item.productSpec || '默认规格'}} / {{item.productSize || '均码'}}</view>
-        <view class="goods-product-link" wx:if="{{item.productId}}" bindtap="goToProduct" data-product-id="{{item.productId}}">查看商品详情 ›</view>
+        <view class="goods-product-link" wx:if="{{item.productId}}" catchtap="goToProduct" data-product-id="{{item.productId}}">查看商品详情 ›</view>
         <view class="after-sale-tag" wx:if="{{item.afterSaleSummary && item.afterSaleSummary.hasAfterSale}}">
           {{item.afterSaleSummary.statusText}} {{item.afterSaleSummary.totalQty}}/{{item.totalOrderQty}}
           <text wx:if="{{item.afterSaleSummary.shipmentBlockedQty > 0}}"> · 可发 {{item.afterSaleSummary.canShipQty}}</text>
@@ -56,7 +56,7 @@
           <text class="remark-tag">备注</text>
           <text class="remark-text copyable-text" user-select="{{true}}">{{item.remark}}</text>
         </view>
-        <view class="goods-remark admin-remark-row" bindtap="openAdminRemarkEditor" data-index="{{itemIndex}}">
+        <view class="goods-remark admin-remark-row" catchtap="openAdminRemarkEditor" data-index="{{itemIndex}}">
           <text class="remark-tag admin-remark-tag">管理员备注</text>
           <text class="remark-text admin-remark-text">{{item.adminRemark || '点击添加'}}</text>
         </view>
