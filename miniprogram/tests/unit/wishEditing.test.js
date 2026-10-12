@@ -301,7 +301,7 @@ test('编辑回填多商品保留顺序，部分商品失效也不会丢关联�
   assert.deepEqual(getLinkedProductIds({ linkedProductId: '99', linkedProductIds: [] }), []);
 });
 
-test('详情加载多商品首图和名称，点击各商品跳转对应详情，关联行在标题之前', async () => {
+test('详情加载多商品首图和名称，点击各商品打开对应详情弹窗，关联行在标题之前', async () => {
   const { page, calls, controls } = setup('user', 'wishDetail');
   page.prepareShareImages = () => {};
   page.setData({ wishId: '101' });
@@ -312,9 +312,12 @@ test('详情加载多商品首图和名称，点击各商品跳转对应详情�
   assert.deepEqual(plain(page.data.linkedProducts.map(p => p.id)), ['2', '1']);
   assert.equal(page.data.linkedProducts[0].name, '商品2');
   assert.equal(page.data.linkedProducts[0].coverUrl, 'first.jpg');
+  const opened = [];
+  page.selectComponent = () => ({ open: id => opened.push(id) });
   page.goToProduct(productTap('2'));
   page.goToProduct(productTap('1'));
-  assert.deepEqual(calls.navigation.map(call => call.url), ['/pages/detail/detail?id=2', '/pages/detail/detail?id=1']);
+  assert.deepEqual(opened, ['2', '1']);
+  assert.equal(calls.navigation.length, 0);
   const markup = fs.readFileSync(path.join(__dirname, '../../pages/wishDetail/wishDetail.wxml'), 'utf8');
   assert.ok(markup.indexOf('class="linked-section"') < markup.indexOf('class="wish-title"'));
   assert.match(markup, /class="linked-product-scroll" scroll-x="true"/);
@@ -343,4 +346,14 @@ test('详情刷新时旧商品请求晚返回不能盖住新关联，退出页�
   resolveWish({ title: '退出后返回的数据', linkedProductIds: ['2'] });
   await last;
   assert.equal(page.data.wish.title, '新标题');
+});
+
+
+test('弹窗打开时转发商品详情，关闭后恢复心愿分享链接', () => {
+  const { page } = setup('admin', 'wishDetail');
+  page.setData({ wishId: 'wish-1', wish: { title: '心愿', image: 'wish.jpg' }, productSheetVisible: true });
+  page.selectComponent = () => ({ getProductShare: () => ({ title: '商品', path: '/pages/detail/detail?id=product-1' }) });
+  assert.equal(page.onShareAppMessage({ from: 'menu' }).path, '/pages/detail/detail?id=product-1');
+  page.onProductSheetVisibility({ detail: { visible: false } });
+  assert.equal(page.onShareAppMessage({ from: 'menu' }).path, '/pages/wishDetail/wishDetail?id=wish-1');
 });

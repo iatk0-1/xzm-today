@@ -1,0 +1,12 @@
+:host { position: relative; z-index: 3000; }
+.sheet-stage { position: fixed; inset: 0; width: 100%; overflow: hidden; z-index: 3000; }
+.sheet-mask { position: absolute; inset: 0; background: rgba(0,0,0,.42); transition: opacity .28s; }
+.sheet-panel { position: absolute; top: 0; left: 0; width: 100%; background: #fff; border-radius: 18px 18px 0 0; overflow: hidden; will-change: transform; }
+.sheet-panel.sheet-animating { transition: transform .28s cubic-bezier(.22,.61,.36,1); }
+.sheet-panel.sheet-full { border-radius: 0; }
+.sheet-header { position: relative; background: #fff; flex-shrink: 0; box-sizing: border-box; }
+.sheet-handle { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 38px; height: 4px; border-radius: 3px; background: #d6d6d6; }
+.sheet-navigation { height: 44px; box-sizing: content-box; display: flex; align-items: center; padding-left: 12px; }
+.sheet-back { flex-shrink: 0; width: 38px; height: 40px; display: flex; align-items: center; justify-content: center; }
+.sheet-back-arrow { width: 10px; height: 10px; border-top: 2px solid #333; border-left: 2px solid #333; transform: rotate(-45deg); }
+.sheet-title { font-size: 16px; font-weight: 600; color: #111; padding-left: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

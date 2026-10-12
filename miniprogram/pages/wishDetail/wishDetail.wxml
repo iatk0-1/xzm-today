@@ -1,6 +1,10 @@
-<view class="page-wrapper">
+<view class="wish-nav" wx:if="{{!productSheetVisible}}" style="padding-top: {{statusBarHeight}}px;">
+  <view class="wish-nav-row"><view class="wish-nav-back" bindtap="goBack"><view class="wish-nav-arrow"></view></view><text>心愿详情</text></view>
+</view>
+<scroll-view class="wish-page-scroll" scroll-y="{{!productSheetVisible}}" style="height: 100vh;" enhanced="true" show-scrollbar="false">
+<view class="page-wrapper" style="padding-top: {{navHeight}}px;">
 
-  <view class="share-float" wx:if="{{canShowShareFloat}}" style="left: {{shareFloatLeft}}px; top: {{shareFloatTop}}px;" catchtouchstart="startShareFloatDrag" catchtouchmove="moveShareFloat" catchtouchend="endShareFloatDrag">
+  <view class="share-float" wx:if="{{canShowShareFloat && !productSheetVisible}}" style="left: {{shareFloatLeft}}px; top: {{shareFloatTop}}px;" catchtouchstart="startShareFloatDrag" catchtouchmove="moveShareFloat" catchtouchend="endShareFloatDrag">
     <text>分享</text>
   </view>
 
@@ -45,6 +49,8 @@
 
 </view>
 
+</scroll-view>
+
 <!-- 分享卡片专用画布：按图片数量生成单图、双图或三联图，不影响页面展示 -->
 <canvas canvas-id="wishDetailShareCanvasSingle" class="share-canvas" width="500" height="400"></canvas>
 <canvas canvas-id="wishDetailShareCanvasDouble" class="share-canvas" width="500" height="400"></canvas>
@@ -76,7 +82,9 @@
 </view>
 
 <!-- 底部操作（仅创建者/管理员可见） -->
-<view class="bottom-delete-bar" wx:if="{{canDelete || canEdit}}">
+<view class="bottom-delete-bar" wx:if="{{!productSheetVisible && (canDelete || canEdit)}}">
   <view class="btn-delete" wx:if="{{canDelete}}" bindtap="deleteWish">删除此心愿</view>
   <view class="btn-edit" wx:if="{{canEdit}}" bindtap="editWish">编辑心愿</view>
 </view>
+
+<product-detail-sheet id="productSheet" bindvisibilitychange="onProductSheetVisibility" />

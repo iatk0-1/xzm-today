@@ -1,0 +1,116 @@
+<view class="page-wrapper product-document" style="padding-top: {{embedded ? 0 : navHeight}}px;">
+  
+  <view wx:if="{{!embedded}}" class="custom-nav-bar" style="padding-top: {{statusBarHeight}}px; height: 44px;">
+    <view class="nav-back" bindtap="goBack">
+      <view class="back-arrow"></view>
+    </view>
+  </view>
+
+  <view class="product-load-state" wx:if="{{loading}}">正在加载商品...</view>
+  <view class="product-load-state product-load-error" wx:elif="{{loadError}}" bindtap="retryProduct">{{loadError}} · 点击重试</view>
+  <view class="main-swiper-wrap" wx:if="{{product.id}}" data-gesture="image" data-gallery="banner">
+    <swiper data-gesture="image" data-gallery="banner" current="{{bannerIndex}}" bindchange="onBannerChange" class="main-swiper" indicator-dots="true" indicator-color="rgba(0,0,0,0.15)" indicator-active-color="#111" circular="{{false}}">
+      <swiper-item catchtouchmove="{{embedded ? 'onImageTouchMove' : ''}}" data-gesture="image" data-gallery="banner" wx:if="{{product.videoUrl}}">
+        <video id="productBannerVideo" class="swiper-video" data-gesture="image" data-gallery="banner"
+               src="{{product.videoUrl}}"
+               poster="{{product.image}}"
+               object-fit="cover"
+               show-play-btn="{{true}}"
+               controls="{{false}}"
+               autoplay="{{false}}"
+               muted
+               loop>
+        </video>
+      </swiper-item>
+      <swiper-item catchtouchmove="{{embedded ? 'onImageTouchMove' : ''}}" data-gesture="image" data-gallery="banner" wx:for="{{bannerImgs}}" wx:key="*this">
+        <image class="swiper-img" data-gesture="image" data-gallery="banner" src="{{item}}" mode="aspectFill" catchtap="previewBannerImage" data-index="{{index}}"></image>
+      </swiper-item>
+    </swiper>
+    <view class="sold-out-overlay main-sold-out-overlay" data-gesture="image" data-gallery="banner" wx:if="{{product.offSale}}"><text data-gesture="image" data-gallery="banner">已下架</text></view>
+    <view class="sold-out-overlay main-sold-out-overlay" data-gesture="image" data-gallery="banner" wx:elif="{{product.soldOut}}"><text data-gesture="image" data-gallery="banner">售罄</text></view>
+  </view>
+
+  <view class="content-wrapper">
+    <!-- <view class="shipping-info" wx:if="{{product.shippingInfo}}">{{product.shippingInfo}}</view> 发货时间暂时不写 -->
+    <view class="detail-title">{{product.title}}</view>
+    <view class="detail-price">¥ {{product.displayPrice || product.price}}</view>
+
+    <view class="options-section" bindtap="openSkuPanel" data-action="cart">
+      <view class="size-selector">
+        <text class="size-text" style="color: #333;">{{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</text>
+        <text class="select-icon">›</text>
+      </view>
+    </view>
+
+    <view class="consult-section">
+      <view class="consult-left">
+        <image class="consult-icon" src="/images/icons/customer-service.svg" mode="aspectFit"></image>
+        <text class="consult-label">咨询客服</text>
+      </view>
+      <text class="consult-arrow">›</text>
+      <button class="consult-contact-button" open-type="contact" bindcontact="handleCustomerServiceContact" session-from="product:{{product.id}}" show-message-card="true" send-message-title="{{product.title}}" send-message-path="/pages/detail/detail?id={{product.id}}" send-message-img="{{product.image}}"></button>
+    </view>
+
+<!-- 四段提示信息 -->
+<view class="aura-tabs-container" wx:if="{{product.description || product.fabricCare || product.sizeChartTip || product.warmTips}}">
+      
+      <view class="aura-tabs-header">
+        <view class="aura-tab {{currentAuraTab === 'desc' ? 'active' : ''}}" wx:if="{{product.description}}" bindtap="switchAuraTab" data-tab="desc">详情</view>
+        <view class="aura-tab {{currentAuraTab === 'fabric' ? 'active' : ''}}" wx:if="{{product.fabricCare}}" bindtap="switchAuraTab" data-tab="fabric">材质</view>
+        <view class="aura-tab {{currentAuraTab === 'size' ? 'active' : ''}}" wx:if="{{product.sizeChartTip}}" bindtap="switchAuraTab" data-tab="size">尺码</view>
+        <view class="aura-tab {{currentAuraTab === 'tips' ? 'active' : ''}}" wx:if="{{product.warmTips}}" bindtap="switchAuraTab" data-tab="tips">提示</view>
+      </view>
+
+      <view class="aura-tabs-content">
+        <view class="aura-tab-panel" wx:if="{{product.description && currentAuraTab === 'desc'}}">
+          <text class="panel-text">{{product.description}}</text>
+        </view>
+        <view class="aura-tab-panel" wx:if="{{product.fabricCare && currentAuraTab === 'fabric'}}">
+          <text class="panel-text">{{product.fabricCare}}</text>
+        </view>
+        <view class="aura-tab-panel" wx:if="{{product.sizeChartTip && currentAuraTab === 'size'}}">
+          <text class="panel-text">{{product.sizeChartTip}}</text>
+        </view>
+        <view class="aura-tab-panel" wx:if="{{product.warmTips && currentAuraTab === 'tips'}}">
+          <text class="panel-text">{{product.warmTips}}</text>
+        </view>
+      </view>
+      
+    </view>
+  </view> 
+
+  <view class="lookbook-section" wx:if="{{lookbookImgs && lookbookImgs.length > 0}}">
+    <image class="lookbook-img" wx:for="{{lookbookImgs}}" wx:key="*this" src="{{item}}" mode="widthFix" bindload="onDocumentImageLoad" catchtap="previewLookbookImage" data-index="{{index}}"></image>
+  </view>
+
+  <view class="detail-views-section" wx:if="{{detailImgs && detailImgs.length > 0}}">
+    <view class="detail-views-header">
+      <text class="detail-title-eng">Detail Views</text>
+      <text class="detail-counter">{{currentDetailIndex}} / {{detailImgs.length}}</text>
+    </view>
+    <swiper data-gesture="image" data-gallery="detail" class="detail-swiper" current="{{currentDetailIndex - 1}}" bindchange="onDetailSwiperChange" next-margin="25px">
+      <swiper-item catchtouchmove="{{embedded ? 'onImageTouchMove' : ''}}" data-gesture="image" data-gallery="detail" class="detail-swiper-item" wx:for="{{detailImgs}}" wx:key="*this">
+        <image class="detail-swiper-img" data-gesture="image" data-gallery="detail" src="{{item}}" mode="aspectFill" catchtap="previewDetailImage" data-index="{{index}}"></image>
+      </swiper-item>
+    </swiper>
+  </view>
+
+  <view class="purchase-notice-section" wx:if="{{product.purchaseNotice}}">
+    <view class="purchase-notice-title">购买须知</view>
+    <text class="purchase-notice-content" user-select="true">{{product.purchaseNotice}}</text>
+  </view>
+
+  <view class="related-products-section" wx:if="{{relatedProducts.length > 0}}">
+    <view class="section-title-eng" style="text-align: left; padding-left: 20px;">关联商品</view>
+    <view class="related-grid">
+      <view class="related-item" wx:for="{{relatedProducts}}" wx:key="id" bindtap="goToRelatedDetail" data-id="{{item.id}}">
+        <image class="related-img" src="{{item.image}}" mode="aspectFill" catchtap="goToRelatedDetail" data-id="{{item.id}}"></image>
+        <view class="related-info">
+          <view class="related-title">{{item.title}}</view>
+          <view class="related-price">¥ {{item.displayPrice || item.price}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+

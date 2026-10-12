@@ -1,0 +1,17 @@
+<page-container show="{{visible}}" duration="280" overlay="{{false}}" position="bottom" custom-style="height: 100%; background: transparent; overflow: visible;" bindbeforeleave="onContainerLeave" bindafterleave="onContainerLeft">
+  <view class="sheet-stage" style="height: {{windowHeight}}px;">
+    <view class="sheet-mask" style="opacity: {{maskOpacity}};" catchtap="requestClose" catchtouchmove="blockTouch"></view>
+    <view id="sheetPanel" class="sheet-panel {{animating ? 'sheet-animating' : ''}} {{fullscreen ? 'sheet-full' : ''}}" style="height: {{windowHeight}}px; transform: translate3d(0, {{sheetTop}}px, 0);" bindtransitionend="onTransitionEnd">
+      <view class="sheet-header" style="height: {{headerHeight}}px;" bindtouchstart="onHeaderTouchStart" bindtouchmove="onHeaderTouchMove" bindtouchend="onGestureEnd" bindtouchcancel="onGestureCancel">
+        <view wx:if="{{!fullscreen}}" class="sheet-handle"></view>
+        <view wx:if="{{fullscreen}}" class="sheet-navigation" style="padding-top: {{statusBarHeight}}px; padding-right: {{menuRightPadding}}px;">
+          <view class="sheet-back" catchtap="requestClose" aria-role="button" aria-label="返回心愿详情"><view class="sheet-back-arrow"></view></view>
+          <text class="sheet-title">{{productTitle || '商品详情'}}</text>
+        </view>
+      </view>
+      <product-detail wx:if="{{mounted}}" id="productDetail" product-id="{{activeProductId}}" viewport-height="{{contentHeight}}" content-offset="{{contentOffset}}"
+        bindgesturestart="onGestureStart" bindgesturemove="onGestureMove" bindgestureend="onGestureEnd" bindgesturecancel="onGestureCancel"
+        bindtitlechange="onTitleChange" binddocumentheight="onDocumentHeight" bindoverlaychange="onOverlayChange" bindproductchange="onProductChange" bindclose="requestClose" />
+    </view>
+  </view>
+</page-container>

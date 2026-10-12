@@ -10,6 +10,9 @@ Page(pageSync.wrap({
   data: {
     wish: { images: [] },
     wishId: null,
+    productSheetVisible: false,
+    statusBarHeight: 20,
+    navHeight: 64,
     linkedProducts: [],
     canDelete: false,
     canEdit: false,
@@ -29,6 +32,7 @@ Page(pageSync.wrap({
 
   onLoad: function(options) {
     var sysInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    this.setData({ statusBarHeight: sysInfo.statusBarHeight || 20, navHeight: (sysInfo.statusBarHeight || 20) + 44 });
     this.initShareFloatPosition(sysInfo);
     this.refreshShareFloatVisibility();
     if (options.id) {
@@ -303,8 +307,23 @@ Page(pageSync.wrap({
   goToProduct: function(e) {
     var productId = e.currentTarget.dataset.id;
     if (productId) {
-      wx.navigateTo({ url: '/pages/detail/detail?id=' + productId });
+      const sheet = this.selectComponent('#productSheet');
+      if (sheet) sheet.open(String(productId));
     }
+  },
+
+  onProductSheetVisibility: function(e) {
+    this.setData({ productSheetVisible: !!e.detail.visible });
+  },
+
+  goBack: function() {
+    if (this.data.productSheetVisible) {
+      const sheet = this.selectComponent('#productSheet');
+      if (sheet) sheet.requestClose();
+      return;
+    }
+    if (getCurrentPages().length > 1) wx.navigateBack();
+    else wx.reLaunch({ url: '/pages/market/market' });
   },
 
   // 图片全屏预览
@@ -317,6 +336,11 @@ Page(pageSync.wrap({
   },
 
   onShareAppMessage: function(res) {
+    if (this.data.productSheetVisible) {
+      const sheet = this.selectComponent('#productSheet');
+      const share = sheet && sheet.getProductShare(res);
+      if (share) return share;
+    }
     var wish = this.data.wish || {};
     var id = this.data.wishId;
     var template = this.getShareTemplate(res);

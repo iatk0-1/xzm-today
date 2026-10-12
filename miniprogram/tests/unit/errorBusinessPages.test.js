@@ -7,8 +7,12 @@ const vm = require('node:vm');
 function harness(file, api = {}) {
   let definition;
   const modals = [], toasts = [], callbacks = [];
-  const pageFile = path.resolve(__dirname, '../../pages', file);
+  const pageFile = file === 'detail/detail.js'
+    ? path.resolve(__dirname, '../../components/productDetail/controller.js')
+    : path.resolve(__dirname, '../../pages', file);
+  const module = { exports: {} };
   vm.runInNewContext(fs.readFileSync(pageFile, 'utf8'), {
+    module, exports: module.exports,
     Page: value => { definition = value; }, console: { log() {}, warn() {}, error() {} }, setTimeout() {}, clearTimeout() {},
     require(name) {
       if (name.endsWith('/api')) return api;
@@ -24,6 +28,7 @@ function harness(file, api = {}) {
       navigateBack() {}, stopPullDownRefresh() {}
     }
   });
+  if (file === 'detail/detail.js') definition = module.exports.createProductDetailConfig();
   const page = { ...definition, data: structuredClone(definition.data), setData(patch, callback) { Object.assign(this.data, patch); if (callback) callback(); } };
   return { page, modals, toasts, callbacks };
 }

@@ -1,0 +1,8 @@
+<view class="product-detail-host {{embedded ? 'embedded-detail' : ''}}" style="height: {{viewportHeight}}px;" bindtouchstart="forwardTouchStart" bindtouchmove="forwardTouchMove" bindtouchend="forwardTouchEnd" bindtouchcancel="forwardTouchCancel">
+  <view class="product-viewport" style="height: {{viewportHeight}}px;">
+    <view class="product-scroll-content" style="transform: translate3d(0, -{{contentOffset}}px, 0);">
+      <include src="./document.wxml" />
+    </view>
+  </view>
+  <include src="./overlays.wxml" />
+</view>
