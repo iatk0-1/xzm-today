@@ -3,6 +3,7 @@ const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/market/market.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const { getLinkedProductIds } = require('../../utils/wishProducts');
 const managementNavigation = require('../../utils/managementNavigation');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const customerServiceUnread = require('../../utils/customerServiceUnread');
@@ -188,6 +189,7 @@ Page(pageSync.wrap({
       .filter(id => selectableIds.has(id));
     const selectedIds = new Set(selectedWishIds);
     wishes = wishes.map(wish => ({ ...wish,
+      hasLinkedProducts: getLinkedProductIds(wish).length > 0,
       canDelete: selectableIds.has(String(wish.id)),
       selected: selectedIds.has(String(wish.id))
     }));

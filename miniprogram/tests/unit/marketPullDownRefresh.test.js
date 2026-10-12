@@ -120,14 +120,17 @@ nodeTest('市集点赞：只更新当前卡片，不重新排列列表', async (
   assert.deepEqual(page.data.rightColumn.map((item) => item.id), ['second']);
 });
 
-nodeTest('市集卡片：爱心阻止事件冒泡，热度只展示数值', () => {
+nodeTest('市集卡片：点赞和商品入口阻止冒泡，保留爱心数字并移除热度及进度条', () => {
   const wxml = fs.readFileSync(
     path.join(__dirname, '../../pages/market/market.wxml'),
     'utf8'
   );
 
   assert.equal((wxml.match(/catchtap="handleLike"/g) || []).length, 2);
-  assert.equal((wxml.match(/热度[^\n]*\/ 50/g) || []).length, 0);
+  assert.equal((wxml.match(/class="like-count"/g) || []).length, 2);
+  assert.equal((wxml.match(/wx:if="{{item.hasLinkedProducts}}" catchtap="goToWishDetail"/g) || []).length, 2);
+  assert.equal((wxml.match(/src="\/images\/add-cart.png"/g) || []).length, 2);
+  assert.doesNotMatch(wxml, /热度|progress-bar|progress-fill/);
   assert.equal(wxml.includes('class="masonry-grid"'), true);
   assert.equal(wxml.includes('class="wish-card"'), true);
   assert.equal(wxml.includes('mode="widthFix"'), true);

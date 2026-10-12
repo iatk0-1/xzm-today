@@ -30,14 +30,13 @@
           <view class="card-content">
             <view class="card-desc">{{item.title || item.content}}</view>
 
-            <view class="progress-section">
-              <view class="progress-bar">
-                <view class="progress-fill" style="width: {{ (item.likes / 50) * 100 }}%; max-width: 100%;"></view>
+            <view class="card-actions">
+              <view class="linked-cart" wx:if="{{item.hasLinkedProducts}}" catchtap="goToWishDetail" data-id="{{item.id}}" aria-role="button" aria-label="查看关联商品">
+                <image class="linked-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
               </view>
-
-              <view class="progress-text">
-                <text class="heart-btn" catchtap="handleLike" data-index="{{index}}" data-id="{{item.id}}">{{item.isLiked ? '♥' : '♡'}}</text>
-                <text>热度 {{item.likes || 0}}</text>
+              <view class="like-action" catchtap="handleLike" data-id="{{item.id}}" aria-role="button" aria-label="{{item.isLiked ? '取消点赞' : '点赞'}}">
+                <text class="heart-icon">{{item.isLiked ? '♥' : '♡'}}</text>
+                <text class="like-count">{{item.likes || 0}}</text>
               </view>
             </view>
 
@@ -57,14 +56,13 @@
           <view class="card-content">
             <view class="card-desc">{{item.title || item.content}}</view>
 
-            <view class="progress-section">
-              <view class="progress-bar">
-                <view class="progress-fill" style="width: {{ (item.likes / 50) * 100 }}%; max-width: 100%;"></view>
+            <view class="card-actions">
+              <view class="linked-cart" wx:if="{{item.hasLinkedProducts}}" catchtap="goToWishDetail" data-id="{{item.id}}" aria-role="button" aria-label="查看关联商品">
+                <image class="linked-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
               </view>
-
-              <view class="progress-text">
-                <text class="heart-btn" catchtap="handleLike" data-index="{{index}}" data-id="{{item.id}}">{{item.isLiked ? '♥' : '♡'}}</text>
-                <text>热度 {{item.likes || 0}}</text>
+              <view class="like-action" catchtap="handleLike" data-id="{{item.id}}" aria-role="button" aria-label="{{item.isLiked ? '取消点赞' : '点赞'}}">
+                <text class="heart-icon">{{item.isLiked ? '♥' : '♡'}}</text>
+                <text class="like-count">{{item.likes || 0}}</text>
               </view>
             </view>
 

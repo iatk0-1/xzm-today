@@ -19,6 +19,7 @@ function setup(admin = true) {
       if (name.endsWith('/error')) return { getErrorMessage: (err, fallback) => err.message || fallback };
       if (name.endsWith('/pageSync')) return { wrap: value => value };
       if (name.endsWith('/auth')) return auth;
+      if (name.endsWith('/wishProducts')) return require('../../utils/wishProducts');
       if (name.endsWith('/api')) return { post: async (url, data) => {
         calls.posts.push({ url, data }); return controls.post(url, data);
       } };
@@ -165,4 +166,33 @@ test('管理员切换为普通身份后退出管理并清空勾选', async () =>
   assert.equal(page.data.managingWishes, false);
   assert.equal(page.data.selectedWishCount, 0);
   assert.equal(page.data.wishes.some(wish => wish.selected), false);
+});
+
+
+test('关联商品图标兼容多商品和旧单商品字段，清空或更新关联后两列同步显示', () => {
+  const { page } = setup(false);
+  page.updateWishColumns([
+    { id: '1', linkedProductIds: ['360435019602202624', '360435019602202625'] },
+    { id: '2', linkedProductId: '360435019602202626' },
+    { id: '3' },
+    { id: '4', linkedProductId: '360435019602202627', linkedProductIds: [] }
+  ]);
+  assert.deepEqual(plain(page.data.wishes.map(wish => wish.hasLinkedProducts)), [true, true, false, false]);
+  const changed = page.data.wishes.map(wish => wish.id === '1' ? { ...wish, linkedProductIds: [] }
+    : wish.id === '4' ? { ...wish, linkedProductIds: ['360435019602202628'] } : wish);
+  page.updateWishColumns(changed, {}, true);
+  assert.equal(page.data.leftColumn[0].hasLinkedProducts, false);
+  assert.equal(page.data.rightColumn[1].hasLinkedProducts, true);
+});
+
+test('关联商品入口进入对应心愿详情，管理时只切换勾选不跳转', async () => {
+  const { page, calls } = setup(true);
+  const id = page.data.wishes[0].id;
+  page.goToWishDetail(tap(id));
+  assert.equal(calls.navigation[0].url, '/pages/wishDetail/wishDetail?id=' + id);
+  assert.equal(page._skipNextMarketRefresh, true);
+  await page.toggleWishManagement();
+  page.goToWishDetail(tap(id));
+  assert.equal(calls.navigation.length, 1);
+  assert.equal(page.data.selectedWishCount, 1);
 });
