@@ -241,7 +241,7 @@ function createProductDetailConfig() {
       this.prepareShareImages(banners.length > 0 ? banners : [product.image]);
 
       this.checkSkuMatch();
-      
+
       // 定位第一个有内容的标签
       let firstTab = '';
       if (product.description) firstTab = 'desc';

@@ -1,5 +1,5 @@
 <view class="page-wrapper product-document" style="padding-top: {{embedded ? 0 : navHeight}}px;">
-  
+
   <view wx:if="{{!embedded}}" class="custom-nav-bar" style="padding-top: {{statusBarHeight}}px; height: 44px;">
     <view class="nav-back" bindtap="goBack">
       <view class="back-arrow"></view>
@@ -53,7 +53,7 @@
 
 <!-- 四段提示信息 -->
 <view class="aura-tabs-container" wx:if="{{product.description || product.fabricCare || product.sizeChartTip || product.warmTips}}">
-      
+
       <view class="aura-tabs-header">
         <view class="aura-tab {{currentAuraTab === 'desc' ? 'active' : ''}}" wx:if="{{product.description}}" bindtap="switchAuraTab" data-tab="desc">详情</view>
         <view class="aura-tab {{currentAuraTab === 'fabric' ? 'active' : ''}}" wx:if="{{product.fabricCare}}" bindtap="switchAuraTab" data-tab="fabric">材质</view>
@@ -75,9 +75,9 @@
           <text class="panel-text">{{product.warmTips}}</text>
         </view>
       </view>
-      
+
     </view>
-  </view> 
+  </view>
 
   <view class="lookbook-section" wx:if="{{lookbookImgs && lookbookImgs.length > 0}}">
     <image class="lookbook-img" wx:for="{{lookbookImgs}}" wx:key="*this" src="{{item}}" mode="widthFix" bindload="onDocumentImageLoad" catchtap="previewLookbookImage" data-index="{{index}}"></image>
@@ -113,4 +113,3 @@
     </view>
   </view>
 </view>
-

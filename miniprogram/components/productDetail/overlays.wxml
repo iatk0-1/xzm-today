@@ -76,12 +76,12 @@
   <!-- 套装商品颜色/尺码选择 -->
   <scroll-view scroll-y style="max-height: 55vh; padding: 0 16rpx; padding-bottom: 40rpx;" wx:if="{{bundleSelections.length > 0}}">
     <view class="bundle-group-card {{sel.isChecked === false ? 'disabled-card' : ''}}" wx:for="{{bundleSelections}}" wx:key="index" wx:for-item="sel" wx:for-index="bgIdx">
-      
+
       <view class="bundle-card-img-wrap">
         <image class="bundle-card-img" src="{{sel.displayImage || product.coverUrl}}" mode="aspectFill"></image>
         <view class="sold-out-overlay" wx:if="{{sel.imageSoldOut}}"><text>售罄</text></view>
       </view>
-      
+
       <view class="bundle-card-right">
         <view class="bundle-card-header">
           <view class="bundle-card-title">
@@ -90,14 +90,14 @@
           </view>
           <view class="bundle-checkbox {{sel.isChecked !== false ? 'checked' : ''}}" bindtap="toggleBundleCheck" data-index="{{bgIdx}}"></view>
         </view>
-        
+
         <view class="bundle-card-specs" wx:if="{{sel.uniqueColors.length > 0}}">
           <text class="spec-label">颜色</text>
           <view class="sku-options minimal">
             <view class="sku-tag minimal {{sel.selectedColor === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{sel.colorOptions}}" wx:key="value" wx:for-item="item" bindtap="selectBundleColor" data-index="{{bgIdx}}" data-color="{{item.value}}">{{item.value}}</view>
           </view>
         </view>
-        
+
         <view class="bundle-card-specs" wx:if="{{sel.uniqueSizes.length > 0}}">
           <text class="spec-label">尺码</text>
           <view class="sku-options minimal">
