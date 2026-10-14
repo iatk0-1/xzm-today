@@ -57,6 +57,27 @@
   margin-bottom: 24rpx;
 }
 
+.return-logistics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.return-logistics-title {
+  margin-bottom: 0;
+}
+
+.return-logistics-action {
+  flex-shrink: 0;
+  min-width: 64rpx;
+  margin-left: 24rpx;
+  color: #ff4444;
+  font-size: 26rpx;
+  line-height: 44rpx;
+  text-align: right;
+}
+
 .info-row {
   display: flex;
   justify-content: space-between;
@@ -359,4 +380,153 @@
 .loading-text {
   font-size: 28rpx;
   color: #666;
+}
+
+/* 退货物流自定义弹窗 */
+.return-shipping-mask {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1100;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 18vh 32rpx 0;
+  box-sizing: border-box;
+}
+
+.return-shipping-dialog {
+  width: 100%;
+  max-width: 640rpx;
+  background: #fff;
+  border-radius: 24rpx;
+}
+
+.return-shipping-title {
+  padding: 32rpx 24rpx 24rpx;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111;
+}
+
+.return-shipping-form {
+  padding: 0 28rpx 28rpx;
+}
+
+.return-shipping-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.return-shipping-label {
+  flex-shrink: 0;
+  width: 112rpx;
+  font-size: 26rpx;
+  color: #333;
+}
+
+.return-shipping-field {
+  flex: 1;
+  min-width: 0;
+  height: 80rpx;
+  padding: 0 20rpx;
+  box-sizing: border-box;
+  border-radius: 12rpx;
+  background: #f5f5f5;
+  font-size: 26rpx;
+  color: #111;
+}
+
+.return-express-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.return-express-select.placeholder,
+.return-input-placeholder {
+  color: #999;
+}
+
+.return-express-arrow {
+  margin-left: 12rpx;
+  color: #999;
+}
+
+.return-express-row {
+  position: relative;
+  z-index: 2;
+}
+
+.return-express-options {
+  position: absolute;
+  left: 128rpx;
+  right: 0;
+  top: 88rpx;
+  width: auto;
+  height: 360rpx;
+  border-radius: 12rpx;
+  background: #fff;
+  box-shadow: 0 8rpx 28rpx rgba(0, 0, 0, 0.15);
+}
+
+.return-express-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72rpx;
+  padding: 0 20rpx;
+  font-size: 26rpx;
+  color: #333;
+}
+
+.return-express-option.selected {
+  background: #fff1f1;
+  color: #ff4444;
+}
+
+.return-shipping-error {
+  margin-top: 20rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #e53935;
+}
+
+.return-shipping-actions {
+  display: flex;
+  gap: 20rpx;
+  padding: 0 28rpx 28rpx;
+}
+
+.return-shipping-button {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  line-height: 84rpx;
+}
+
+.return-shipping-button::after {
+  border: none;
+}
+
+.return-shipping-button.cancel {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.return-shipping-button.submit {
+  background: #ff4444;
+  color: #fff;
+}
+
+.return-shipping-button[disabled] {
+  opacity: 0.6;
 }

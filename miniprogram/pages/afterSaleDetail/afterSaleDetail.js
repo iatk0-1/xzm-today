@@ -4,13 +4,31 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 
+const RETURN_EXPRESS_OPTIONS = [
+  { code: 'ZTO', name: '中通' },
+  { code: 'YTO', name: '圆通' },
+  { code: 'STO', name: '申通' },
+  { code: 'YD', name: '韵达' },
+  { code: 'SF', name: '顺丰' },
+  { code: 'EMS', name: '邮政 EMS' },
+  { code: 'OTHER', name: '其他' }
+];
+
 Page({
   data: {
     afterSaleId: null,
     afterSale: null,
     isLoading: true,
     // 售后进度
-    timeline: []
+    timeline: [],
+    showReturnShippingModal: false,
+    returnExpressOptions: RETURN_EXPRESS_OPTIONS,
+    showReturnExpressOptions: false,
+    returnExpressCode: '',
+    returnExpressName: '',
+    returnExpressNo: '',
+    returnShippingError: '',
+    isSubmittingReturnShipping: false
   },
 
   onLoad: function(options) {
@@ -57,6 +75,8 @@ Page({
       createdAtDisplay: this.formatDateTime(res.createdAt),
       updatedAtDisplay: this.formatDateTime(res.updatedAt),
       returnShippedAtDisplay: this.formatDateTime(res.returnShippedAt),
+      returnExpressName: this.getReturnExpressName(res.returnExpressCode),
+      canModifyReturnShipping: this.canModifyReturnShipping(res),
       orderDetail
     };
   },
@@ -117,7 +137,7 @@ Page({
         timeline.push({
           status: '用户已寄回',
           time: afterSale.returnShippedAt ? this.formatTime(afterSale.returnShippedAt) : '-',
-          description: `${afterSale.returnExpressCode}：${afterSale.returnExpressNo}`
+          description: `${this.getReturnExpressName(afterSale.returnExpressCode)}：${afterSale.returnExpressNo}`
         });
       } else if (afterSale.status === 'approved') {
         timeline.push({
@@ -223,40 +243,106 @@ Page({
   },
 
   // 填写退货物流
-  shipReturnGoods: function() {
-    wx.showModal({
-      title: '填写退货物流',
-      editable: true,
-      placeholderText: '请输入快递单号',
-      success: (res) => {
-        if (res.confirm && res.content) {
-          // 选择快递公司
-          wx.showActionSheet({
-            itemList: ['中通', '圆通', '申通', '韵达', '顺丰', '邮政 EMS', '其他'],
-            success: (sheetRes) => {
-              const expressCodes = ['ZTO', 'YTO', 'STO', 'YD', 'SF', 'EMS', 'OTHER'];
-              const expressNames = ['中通', '圆通', '申通', '韵达', '顺丰', '邮政 EMS', '其他'];
-              
-              wx.showLoading({ title: '提交中...' });
+  getReturnExpressName: function(code) {
+    const legacyNames = { YUNDA: '韵达', BEST: '百世快递', PJ: '品骏物流' };
+    if (legacyNames[code]) return legacyNames[code];
+    const normalizedCode = code;
+    const option = RETURN_EXPRESS_OPTIONS.find(item => item.code === normalizedCode);
+    return option ? option.name : (code ? '其他' : '-');
+  },
 
-              auth.ensureAuthenticated({ silent: true }).then(() => api.post(`/after-sales/${this.data.afterSaleId}/return-ship`, {
-                expressCode: expressCodes[sheetRes.tapIndex],
-                expressNo: res.content
-              })).then(() => {
-                wx.hideLoading();
-                wx.showToast({ title: '提交成功', icon: 'success' });
-                this.loadAfterSaleDetail();
-              }).catch(err => {
-                wx.hideLoading();
-                wx.showToast({ title: getErrorMessage(err, '提交失败'), icon: 'none' });
-              });
-            }
-          });
-        } else if (!res.content) {
-          wx.showToast({ title: '请输入快递单号', icon: 'none' });
-        }
-      }
+  canModifyReturnShipping: function(afterSale) {
+    if (!afterSale || afterSale.type !== 'return_refund' || afterSale.status !== 'approved') return false;
+    if (afterSale.warehouseCheck === 'pass' || afterSale.warehouseCheck === 'fail') return false;
+    return !(afterSale.items || []).some(item => item.afterSaleType === 'return_refund'
+      && (item.status === 'received' || item.status === 'refunded'));
+  },
+
+  shipReturnGoods: function() {
+    if (this.data.isSubmittingReturnShipping) return;
+    const afterSale = this.data.afterSale;
+    if (!this.canModifyReturnShipping(afterSale)) {
+      wx.showToast({ title: '当前售后状态不允许修改退货物流', icon: 'none' });
+      return;
+    }
+    const code = afterSale.returnExpressCode === 'YUNDA' ? 'YD' : afterSale.returnExpressCode;
+    const option = RETURN_EXPRESS_OPTIONS.find(item => item.code === code);
+    this.setData({
+      showReturnShippingModal: true,
+      showReturnExpressOptions: false,
+      returnExpressCode: option ? option.code : '',
+      returnExpressName: option ? option.name : '',
+      returnExpressNo: afterSale.returnExpressNo || '',
+      returnShippingError: ''
     });
+  },
+
+  closeReturnShippingModal: function() {
+    if (this.data.isSubmittingReturnShipping) return;
+    this.setData({ showReturnShippingModal: false, showReturnExpressOptions: false });
+  },
+
+  stopReturnShippingEvent: function() {},
+
+  toggleReturnExpressOptions: function() {
+    if (this.data.isSubmittingReturnShipping) return;
+    this.setData({ showReturnExpressOptions: !this.data.showReturnExpressOptions });
+  },
+
+  selectReturnExpress: function(e) {
+    if (this.data.isSubmittingReturnShipping) return;
+    const option = RETURN_EXPRESS_OPTIONS.find(item => item.code === e.currentTarget.dataset.code);
+    if (!option) return;
+    this.setData({
+      returnExpressCode: option.code,
+      returnExpressName: option.name,
+      showReturnExpressOptions: false,
+      returnShippingError: ''
+    });
+  },
+
+  onReturnExpressNoInput: function(e) {
+    if (this.data.isSubmittingReturnShipping) return;
+    this.setData({ returnExpressNo: e.detail.value, returnShippingError: '' });
+  },
+
+  onReturnExpressNoFocus: function() {
+    this.setData({ showReturnExpressOptions: false });
+  },
+
+  submitReturnShipping: async function() {
+    if (this.data.isSubmittingReturnShipping || !this.data.showReturnShippingModal) return;
+    if (!this.canModifyReturnShipping(this.data.afterSale)) {
+      this.setData({ returnShippingError: '当前售后状态不允许修改退货物流' });
+      return;
+    }
+    const expressCode = this.data.returnExpressCode;
+    const expressNo = (this.data.returnExpressNo || '').trim();
+    if (!RETURN_EXPRESS_OPTIONS.some(item => item.code === expressCode)) {
+      this.setData({ returnShippingError: '请选择快递公司' });
+      return;
+    }
+    if (!expressNo) {
+      this.setData({ returnShippingError: '请输入快递单号' });
+      return;
+    }
+    this.setData({ isSubmittingReturnShipping: true, showReturnExpressOptions: false, returnShippingError: '' });
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      const result = await api.post(`/after-sales/${this.data.afterSaleId}/return-ship`, { expressCode, expressNo });
+      const afterSale = this.formatAfterSaleDetail(result);
+      this.setData({
+        afterSale,
+        timeline: this.buildTimeline(afterSale),
+        showReturnShippingModal: false,
+        returnExpressNo: ''
+      });
+      wx.showToast({ title: '提交成功', icon: 'success' });
+    } catch (err) {
+      this.setData({ returnShippingError: getErrorMessage(err, '提交失败，请重试') });
+    } finally {
+      this.setData({ isSubmittingReturnShipping: false });
+    }
   },
 
   // 查看物流轨迹

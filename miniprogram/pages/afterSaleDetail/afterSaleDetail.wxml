@@ -95,11 +95,16 @@
 
   <!-- 退货物流信息（仅退货退款显示） -->
   <view class="section" wx:if="{{afterSale.type === 'return_refund'}}">
-    <view class="section-title">退货物流</view>
+    <view class="return-logistics-header">
+      <view class="section-title return-logistics-title">退货物流</view>
+      <view class="return-logistics-action" wx:if="{{afterSale.canModifyReturnShipping}}" bindtap="shipReturnGoods">
+        {{afterSale.returnExpressNo ? '修改' : '新增'}}
+      </view>
+    </view>
     <view class="logistics-info" wx:if="{{afterSale.returnExpressNo}}">
       <view class="logistics-row">
         <text class="logistics-label">快递公司</text>
-        <text class="logistics-value">{{afterSale.returnExpressCode}}</text>
+        <text class="logistics-value">{{afterSale.returnExpressName}}</text>
       </view>
       <view class="logistics-row">
         <text class="logistics-label">快递单号</text>
@@ -113,10 +118,6 @@
     </view>
     <view class="no-logistics" wx:if="{{!afterSale.returnExpressNo}}">
       <text>还未填写退货物流信息</text>
-    </view>
-    <!-- 填写退货物流按钮 -->
-    <view class="action-btn" wx:if="{{afterSale.status === 'approved' && !afterSale.returnExpressNo}}" bindtap="shipReturnGoods">
-      填写退货物流
     </view>
   </view>
 
@@ -172,4 +173,34 @@
     <text class="loading-text">加载中...</text>
   </view>
 
+  <!-- 退货物流表单：先选快递公司，再填单号，一次提交 -->
+  <view class="return-shipping-mask" wx:if="{{showReturnShippingModal}}" bindtap="closeReturnShippingModal" catchtouchmove="stopReturnShippingEvent">
+    <view class="return-shipping-dialog" catchtap="stopReturnShippingEvent">
+      <view class="return-shipping-title">{{afterSale.returnExpressNo ? '修改退货物流' : '填写退货物流'}}</view>
+      <view class="return-shipping-form">
+        <view class="return-shipping-row return-express-row">
+          <text class="return-shipping-label">快递公司</text>
+          <view id="return-express-select" class="return-shipping-field return-express-select {{!returnExpressCode ? 'placeholder' : ''}}" bindtap="toggleReturnExpressOptions">
+            <text>{{returnExpressName || '请选择快递公司'}}</text>
+            <text class="return-express-arrow">{{showReturnExpressOptions ? '⌃' : '⌄'}}</text>
+          </view>
+          <scroll-view class="return-express-options" wx:if="{{showReturnExpressOptions}}" scroll-y="true">
+            <view class="return-express-option {{returnExpressCode === item.code ? 'selected' : ''}}" wx:for="{{returnExpressOptions}}" wx:key="code" data-code="{{item.code}}" bindtap="selectReturnExpress">
+              <text>{{item.name}}</text>
+              <text wx:if="{{returnExpressCode === item.code}}">✓</text>
+            </view>
+          </scroll-view>
+        </view>
+        <view class="return-shipping-row">
+          <text class="return-shipping-label">快递单号</text>
+          <input id="return-express-no" class="return-shipping-field return-express-input" placeholder="请输入快递单号" placeholder-class="return-input-placeholder" value="{{returnExpressNo}}" maxlength="100" disabled="{{isSubmittingReturnShipping}}" bindinput="onReturnExpressNoInput" bindfocus="onReturnExpressNoFocus" />
+        </view>
+        <view class="return-shipping-error" wx:if="{{returnShippingError}}">{{returnShippingError}}</view>
+      </view>
+      <view class="return-shipping-actions">
+        <button class="return-shipping-button cancel" bindtap="closeReturnShippingModal" disabled="{{isSubmittingReturnShipping}}">取消</button>
+        <button id="return-shipping-submit" class="return-shipping-button submit" bindtap="submitReturnShipping" loading="{{isSubmittingReturnShipping}}" disabled="{{isSubmittingReturnShipping}}">{{isSubmittingReturnShipping ? '提交中' : '提交'}}</button>
+      </view>
+    </view>
+  </view>
 </view>

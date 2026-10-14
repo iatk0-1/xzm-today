@@ -323,20 +323,30 @@ async function submitReturnViaUi(miniProgram, accessToken, afterSaleId) {
     15000,
     'approved return after-sale'
   );
-  const action = await page.$('.action-btn');
+  const action = await page.$('.return-logistics-action');
   assert.ok(action, 'return shipment button must exist');
   await action.tap();
-  await delay(2000);
-  if (!(await getAfterSale(accessToken, afterSaleId)).returnExpressNo) {
-    await apiOk(accessToken, 'POST', `/after-sales/${afterSaleId}/return-ship`, {
-      expressCode: 'ZTO',
-      expressNo: 'E2ERETURN202607210001'
-    });
-  }
+  await waitForPageData(page, data => data.showReturnShippingModal, 5000, 'return shipping form');
+  const select = await page.$('#return-express-select');
+  assert.ok(select, 'return express selector must exist');
+  await select.tap();
+  const courier = await page.$('.return-express-option[data-code="ZTO"]');
+  assert.ok(courier, 'ZTO option must exist');
+  await courier.tap();
+  const input = await page.$('#return-express-no');
+  assert.ok(input, 'return express number input must exist');
+  await input.input('E2ERETURN202607210001');
+  const submit = await page.$('#return-shipping-submit');
+  assert.ok(submit, 'return shipping submit button must exist');
+  await submit.tap();
   const deadline = Date.now() + 15000;
   while (Date.now() < deadline) {
     const afterSale = await getAfterSale(accessToken, afterSaleId);
-    if (afterSale.returnExpressNo) return afterSale;
+    if (afterSale.returnExpressNo) {
+      assert.equal(afterSale.returnExpressCode, 'ZTO');
+      assert.equal(afterSale.returnExpressNo, 'E2ERETURN202607210001');
+      return afterSale;
+    }
     await delay(500);
   }
   throw new Error(`return shipping for after-sale ${afterSaleId} was not saved`);
@@ -424,12 +434,6 @@ async function run() {
         errMsg: 'showModal:ok',
         content: options && options.editable ? 'E2ERETURN202607210001' : ''
       };
-      if (options && options.success) options.success(result);
-      if (options && options.complete) options.complete(result);
-      return result;
-    });
-    await miniProgram.mockWxMethod('showActionSheet', function showActionSheet(options) {
-      const result = { tapIndex: 0, errMsg: 'showActionSheet:ok' };
       if (options && options.success) options.success(result);
       if (options && options.complete) options.complete(result);
       return result;
@@ -630,7 +634,6 @@ async function run() {
   } finally {
     if (miniProgram) {
       try { await miniProgram.restoreWxMethod('showModal'); } catch (error) {}
-      try { await miniProgram.restoreWxMethod('showActionSheet'); } catch (error) {}
       disconnectDeveloperTools(miniProgram, cli);
     }
   }
