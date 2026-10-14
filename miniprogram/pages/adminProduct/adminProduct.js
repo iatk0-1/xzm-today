@@ -279,13 +279,12 @@ Page(autoSearch.wrap({
       item.scheduleTimeStr = '';
       item.scheduleAction = '';
     }
-    if (item.createdAt) {
-      const date = new Date(item.createdAt);
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hour = String(date.getHours()).padStart(2, '0');
-      const minute = String(date.getMinutes()).padStart(2, '0');
-      item.createTimeStr = `${month}-${day} ${hour}:${minute}`;
+    // 兼容尚未返回 listedAt 的旧接口；明确为 null 表示新商品尚未上架。
+    const listedAt = item.listedAt === undefined ? item.createdAt : item.listedAt;
+    item.listedTimeStr = '';
+    if (listedAt && Number.isFinite(Date.parse(listedAt))) {
+      const parts = beijingParts(Date.parse(listedAt));
+      item.listedTimeStr = `${parts.date.slice(5)} ${parts.time}`;
     }
     item.selected = false;
     return this.enrichProductLabels(item);
@@ -764,29 +763,17 @@ Page(autoSearch.wrap({
             status
           });
 
-          const selectedMap = {};
-          productIds.forEach(id => {
-            selectedMap[this.normalizeId(id)] = true;
-          });
-          this._productQueryVersion = (this._productQueryVersion || 0) + 1;
-          const products = this.data.products
-            .map(item => ({
-              ...item,
-              status: selectedMap[this.normalizeId(item.id)] ? status : item.status,
-              selected: false
-            }))
-            .filter(item => this.productMatchesFilters(item));
+          // 重新读取服务端状态及准确上架时间，包含审核未通过而跳过的商品。
 
           wx.hideLoading();
           this.setData({
-            products,
             selectMode: false,
             selectedProductIds: [],
             selectedCount: 0,
             allSelected: false,
             batchOperating: false
           });
-          this.planScheduleRefresh();
+          await this.loadProducts();
 
           const updatedCount = result && result.updatedCount !== undefined ? result.updatedCount : selectedCount;
           const skippedCount = result && result.skippedCount ? result.skippedCount : 0;

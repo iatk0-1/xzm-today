@@ -82,6 +82,28 @@ test('列表售罄标记沿用规格库存口径，有库存或无限库存都�
   }
 });
 
+test('商品上架时间优先使用服务端最近上架时间，旧接口兼容创建时间，新商品空值不回退', () => {
+  const page = createPage();
+  const createdAt = '2025-01-01T10:00:00+08:00';
+  assert.equal(page.normalizeProduct({ ...product(1), createdAt, listedAt: '2026-10-13T16:30:00Z' }).listedTimeStr, '10-14 00:30');
+  assert.equal(page.normalizeProduct({ ...product(1), createdAt }).listedTimeStr, '01-01 10:00');
+  assert.equal(page.normalizeProduct({ ...product(1), createdAt, listedAt: null, listedTimeStr: '旧值' }).listedTimeStr, '');
+});
+
+test('批量上下架后重新获取准确上架时间及跳过商品的实际状态', async () => {
+  const page = createPage();
+  page.setData({ selectedCount: 2, selectedProductIds: [1, 2], products: [product(1, 'off'), product(2, 'off')] });
+  statusResponse = { updatedCount: 1, skippedCount: 1 };
+  pages = [{ content: [{ ...product(1), listedAt: '2026-10-14T11:20:00+08:00' }, product(2, 'off')], hasNext: false }];
+  requests = [];
+  page.batchSetStatus({ currentTarget: { dataset: { status: 'on' } } });
+  await modalOptions.success({ confirm: true });
+  assert.equal(requests.length, 1);
+  assert.deepEqual(page.data.products.map(item => item.status), ['on', 'off']);
+  assert.equal(page.data.products[0].listedTimeStr, '10-14 11:20');
+  assert.equal(page.data.selectedCount, 0);
+});
+
 test('商品加载期间输入关键词，加载完成后自动查询最新词并重置分页', { concurrency: false }, async () => {
   let resolveFirst;
   pages = [new Promise(resolve => { resolveFirst = resolve; }),

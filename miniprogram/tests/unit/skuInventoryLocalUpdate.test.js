@@ -111,3 +111,70 @@ test('仓库库存始终使用实际数量，不受可售库存无限标记影�
   }
   assert.equal(page.data.productList[0].skus[0].availableQty, 6);
 });
+
+test('上架日期弹窗取消不生效，确认和清空重置分页，翻页保留全部筛选', async () => {
+  queryRequests.length = 0;
+  const page = { ...config, data: JSON.parse(JSON.stringify(config.data)) };
+  let pending;
+  page.setData = (patch, callback) => {
+    for (const [key, value] of Object.entries(patch)) {
+      const [field, child] = key.split('.');
+      if (child) page.data[field][child] = value;
+      else page.data[field] = value;
+    }
+    if (callback) callback();
+  };
+  page.loadProducts = function(...args) {
+    pending = config.loadProducts.apply(this, args);
+    return pending;
+  };
+  page.setData({ keyword: ' 棉袄 ', selectedStall: '12', selectedTag: '13', inventoryTab: 'stock', page: 5 });
+  page.showDateRangeSelector();
+  page.onStartDateChange({ detail: { value: '2026-10-01' } });
+  page.closeDateModal();
+  assert.equal(page.data.dateRange.startDate, '');
+  assert.equal(queryRequests.length, 0);
+  page.showDateRangeSelector();
+  assert.equal(page.data.editingDateRange.startDate, '');
+  page.onStartDateChange({ detail: { value: '2026-10-01' } });
+  page.onEndDateChange({ detail: { value: '2026-10-14' } });
+  responses.push({ content: [], hasNext: true });
+  page.confirmDateRange();
+  await pending;
+  const filters = { size: 20, tab: 'stock', keyword: '棉袄', stallId: '12', tagId: '13',
+    startDate: '2026-10-01', endDate: '2026-10-14' };
+  assert.deepEqual(queryRequests[0].data, { page: 1, ...filters });
+  assert.equal(page.data.showDateModal, false);
+  responses.push({ content: [], hasNext: false });
+  await page.loadProducts(false);
+  assert.deepEqual(queryRequests[1].data, { page: 2, ...filters });
+  responses.push({ content: [], hasNext: false });
+  page.clearDateRange();
+  await pending;
+  const { startDate, endDate, ...withoutDates } = filters;
+  assert.deepEqual(queryRequests[2].data, { page: 1, ...withoutDates });
+});
+
+test('日期快捷选项按北京时间跨年计算，反向区间不请求，单边日期可以应用', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2025-12-31T16:30:00Z') });
+  const page = { ...config, data: JSON.parse(JSON.stringify(config.data)) };
+  page.setData = (patch, callback) => { Object.assign(page.data, patch); if (callback) callback(); };
+  let loads = 0;
+  page.loadProducts = () => { loads++; };
+  for (const [type, start] of [['1day', '2026-01-01'], ['7days', '2025-12-26'],
+    ['30days', '2025-12-03'], ['month', '2026-01-01']]) {
+    page.showDateRangeSelector();
+    assert.equal(page.data.today, '2026-01-01');
+    page.selectDateRange({ currentTarget: { dataset: { type } } });
+    assert.deepEqual(page.data.editingDateRange, { startDate: start, endDate: '2026-01-01', quickSelect: type });
+    assert.equal(loads, 0);
+  }
+  page.data.editingDateRange = { startDate: '2026-01-02', endDate: '2026-01-01', quickSelect: '' };
+  page.confirmDateRange();
+  assert.equal(loads, 0);
+  assert.equal(page.data.showDateModal, true);
+  page.data.editingDateRange = { startDate: '', endDate: '2026-01-01', quickSelect: '' };
+  page.confirmDateRange();
+  assert.equal(loads, 1);
+  assert.equal(page.data.dateRange.endDate, '2026-01-01');
+});

@@ -219,11 +219,8 @@ Page(pageSync.wrap({
       this.toggleWishSelection(e);
       return;
     }
-    console.log('=== handleLike 开始 ===');
-    console.log('event dataset:', e.currentTarget.dataset);
 
     const wishId = e.currentTarget.dataset.id;
-    console.log('wishId:', wishId);
 
     if (!wishId) {
       console.error('wishId 为空');
@@ -239,11 +236,9 @@ Page(pageSync.wrap({
     }
 
     let currentWishes = this.data.wishes;
-    console.log('当前 wishes 数量:', currentWishes.length);
 
     // 根据 wishId 查找目标心愿（使用 id 字段而非 _id）
     const targetIndex = currentWishes.findIndex(wish => String(wish.id) === String(wishId));
-    console.log('找到的索引:', targetIndex);
 
     if (targetIndex === -1) {
       console.error('未找到对应的心愿');
@@ -254,7 +249,6 @@ Page(pageSync.wrap({
     let targetWish = currentWishes[targetIndex];
     const originalLiked = targetWish.isLiked;
     const originalLikes = targetWish.likes || 0;
-    console.log('原始状态 - isLiked:', originalLiked, 'likes:', originalLikes);
 
     // 先更新本地状态
     targetWish.isLiked = !targetWish.isLiked;
@@ -263,7 +257,6 @@ Page(pageSync.wrap({
     } else {
       targetWish.likes = Math.max(0, originalLikes - 1);
     }
-    console.log('新状态 - isLiked:', targetWish.isLiked, 'likes:', targetWish.likes);
 
     // 点赞只更新当前卡片，列表位置保持用户正在浏览时的稳定顺序。
     this.updateWishColumns(currentWishes);
@@ -271,7 +264,6 @@ Page(pageSync.wrap({
     // 调用后端 API
     try {
       const apiUrl = `/wishes/${wishId}/${targetWish.isLiked ? 'like' : 'unlike'}`;
-      console.log('准备调用 API:', apiUrl);
 
       if (targetWish.isLiked) {
         await api.post(`/wishes/${wishId}/like`);
@@ -279,7 +271,6 @@ Page(pageSync.wrap({
         await api.post(`/wishes/${wishId}/unlike`);
       }
 
-      console.log('API 调用成功');
     } catch (err) {
       console.error('API 调用失败:', err);
       console.error('错误详情:', JSON.stringify(err));

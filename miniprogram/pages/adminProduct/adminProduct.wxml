@@ -99,7 +99,7 @@
 
       <view class="card-footer {{item.hasSchedule ? 'with-schedule' : ''}}">
         <view class="card-time-row">
-          <view class="time">上架时间：{{item.createTimeStr || '早期数据'}}</view>
+          <view class="time">上架时间：{{item.listedTimeStr || '未上架'}}</view>
           <view class="schedule-info" wx:if="{{item.hasSchedule}}">
             <text>定时时间：{{item.scheduleTimeStr}} {{item.scheduleAction}}</text>
             <view class="schedule-cancel {{batchOperating ? 'disabled' : ''}}" catchtap="cancelProductSchedule" data-id="{{item.id}}">取消</view>

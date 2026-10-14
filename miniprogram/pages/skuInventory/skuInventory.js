@@ -2,6 +2,7 @@ const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const { beijingParts } = require('../../utils/productSchedule');
 
 function normalizeSku(row) {
   return {
@@ -32,6 +33,9 @@ Page(autoSearch.wrap({
       { id: 'stock', name: '现货' }, { id: 'abnormal', name: '异常' }
     ],
     page: 1, pageSize: 20, hasMore: true,
+    dateRange: { startDate: '', endDate: '', quickSelect: '' },
+    editingDateRange: { startDate: '', endDate: '', quickSelect: '' },
+    showDateModal: false, today: '',
     stallList: [], tagList: [], selectedStall: '', selectedTag: '',
     showSkuModal: false, selectedProduct: null, selectedSku: null, currentQty: 0,
     detailLoading: false, reportList: [], receiptList: [], ledgerList: [],
@@ -40,11 +44,12 @@ Page(autoSearch.wrap({
     saving: false, showShippingModal: false, shippingLoading: false,
     shippingProducts: [], matching: false,
     selectedCount: 0, allSelected: false,
+    pendingReceiveItems: [], pendingReceiveTotal: 0, pendingReceiveProductCount: 0,
     showBatchReceiveModal: false, batchReceiveItems: [], batchReceiveSource: 'normal',
     batchReceiveTotal: 0, batchReceiveSkuCount: 0, batchReceiveSaving: false, batchRetryPending: false
   },
 
-  onLoad() { this.loadProducts(); this.loadFilterOptions(); this.restoreBatchReceive(); },
+  onLoad() { this.setData({ today: beijingParts().date }); this.loadProducts(); this.loadFilterOptions(); this.restoreBatchReceive(); },
   onShow() {
     if (this._refreshAfterShipping) {
       this._refreshAfterShipping = false;
@@ -75,7 +80,8 @@ Page(autoSearch.wrap({
     if (!reset && (!this.data.hasMore || this.data.loading)) return;
     const version = (this._listVersion || 0) + 1;
     this._listVersion = version;
-    if (reset) this.setData({ page: 1, productList: [], hasMore: true, selectedCount: 0, allSelected: false });
+    this.rememberReceiveProducts();
+    if (reset) this.setData({ page: 1, productList: [], hasMore: true, allSelected: false });
     this.setData({ loading: true });
     try {
       await auth.ensureAuthenticated({ silent: true });
@@ -84,6 +90,8 @@ Page(autoSearch.wrap({
       if (keyword) query.keyword = keyword;
       if (this.data.selectedStall !== '') query.stallId = this.data.selectedStall;
       if (this.data.selectedTag !== '') query.tagId = this.data.selectedTag;
+      if (this.data.dateRange.startDate) query.startDate = this.data.dateRange.startDate;
+      if (this.data.dateRange.endDate) query.endDate = this.data.dateRange.endDate;
       const result = await api.get('/sku-inventory/query', query);
       if (this._listVersion !== version) return;
       const existing = reset ? [] : this.data.productList;
@@ -97,7 +105,7 @@ Page(autoSearch.wrap({
         grouped.set(key, product);
       });
       this.setData({
-        productList: [...grouped.values()], page: query.page + 1,
+        productList: this.restoreReceiveProducts([...grouped.values()]), page: query.page + 1,
         hasMore: Boolean(result.hasNext), loading: false
       });
       this.updateProductSelection();
@@ -108,6 +116,75 @@ Page(autoSearch.wrap({
       this.setData({ loading: false });
     }
   },
+  formatCalendarDate: function(date) {
+    const year = date.getUTCFullYear();
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+    const day = date.getUTCDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+
+  showDateRangeSelector: function() {
+    this.setData({
+      today: beijingParts().date,
+      editingDateRange: { ...this.data.dateRange },
+      showDateModal: true
+    });
+  },
+
+  closeDateModal: function() {
+    this.setData({ showDateModal: false });
+  },
+
+  selectDateRange: function(e) {
+    const type = e.currentTarget.dataset.type;
+    const today = new Date(`${beijingParts().date}T00:00:00Z`);
+    let startDate = today;
+    if (type === '7days') {
+      startDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - 6));
+    } else if (type === '30days') {
+      startDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - 29));
+    } else if (type === 'month') {
+      startDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+    }
+    this.setData({
+      editingDateRange: {
+        startDate: this.formatCalendarDate(startDate),
+        endDate: this.formatCalendarDate(today),
+        quickSelect: type
+      }
+    });
+  },
+
+  onStartDateChange: function(e) {
+    this.setData({
+      'editingDateRange.startDate': e.detail.value,
+      'editingDateRange.quickSelect': ''
+    });
+  },
+
+  onEndDateChange: function(e) {
+    this.setData({
+      'editingDateRange.endDate': e.detail.value,
+      'editingDateRange.quickSelect': ''
+    });
+  },
+
+  clearDateRange: function() {
+    this.setData({
+      dateRange: { startDate: '', endDate: '', quickSelect: '' }
+    }, () => this.loadProducts());
+  },
+
+  confirmDateRange: function() {
+    const range = this.data.editingDateRange;
+    if (range.startDate && range.endDate && range.startDate > range.endDate) {
+      wx.showToast({ title: '开始日期不能晚于结束日期', icon: 'none' });
+      return;
+    }
+    this.setData({ dateRange: { ...range }, showDateModal: false },
+      () => this.loadProducts());
+  },
+
   changeInventoryTab(e) {
     const inventoryTab = e.currentTarget.dataset.tab;
     if (inventoryTab === this.data.inventoryTab) return;
@@ -130,20 +207,129 @@ Page(autoSearch.wrap({
   },
   onKeywordInput(e) { this.setData({ keyword: e.detail.value }); },
   search() { return this.loadProducts(); },
+  receiveDrafts() {
+    if (!this._receiveDrafts) this._receiveDrafts = new Map();
+    return this._receiveDrafts;
+  },
+  rememberReceiveProducts() {
+    const drafts = this.receiveDrafts();
+    this.data.productList.forEach(product => drafts.set(String(product.id), {
+      ...product, skus: product.skus.map(sku => ({ ...sku, receiveQty: sku.receiveQty == null ? 0 : sku.receiveQty }))
+    }));
+  },
+  restoreReceiveProducts(products) {
+    const drafts = this.receiveDrafts();
+    return products.map(product => {
+      const saved = drafts.get(String(product.id));
+      const quantities = new Map((saved ? saved.skus : []).map(sku => [String(sku.id), sku.receiveQty]));
+      return {
+        ...product, selected: saved ? Boolean(saved.selected) : Boolean(product.selected),
+        skus: product.skus.map(sku => ({ ...sku, receiveQty: quantities.has(String(sku.id))
+          ? quantities.get(String(sku.id)) : (sku.receiveQty == null ? 0 : sku.receiveQty) }))
+      };
+    });
+  },
+  receiveItem(product, sku) {
+    return {
+      skuId: sku.id, productId: product.id, productName: product.name,
+      imageUrl: sku.imageUrl || product.coverUrl || '/images/default-goods-image.png',
+      spec: sku.spec, size: sku.size, shortageQty: sku.shortageQty || 0,
+      qty: batchQuantity(sku.receiveQty)
+    };
+  },
   updateProductSelection() {
+    this.rememberReceiveProducts();
+    const selected = [...this.receiveDrafts().values()].filter(product => product.selected && product.skus.length);
     const selectable = this.data.productList.filter(product => product.skus && product.skus.length);
-    const selectedCount = selectable.filter(product => product.selected).length;
-    this.setData({ selectedCount, allSelected: selectable.length > 0 && selectedCount === selectable.length });
+    const pendingReceiveItems = selected.flatMap(product => product.skus
+      .filter(sku => batchQuantity(sku.receiveQty) > 0).map(sku => this.receiveItem(product, sku)));
+    this.setData({
+      selectedCount: selected.length,
+      allSelected: selectable.length > 0 && selectable.every(product => product.selected),
+      pendingReceiveItems,
+      pendingReceiveTotal: pendingReceiveItems.reduce((sum, item) => sum + item.qty, 0),
+      pendingReceiveProductCount: new Set(pendingReceiveItems.map(item => String(item.productId))).size
+    });
   },
   toggleProductSelection(e) {
+    if (this.data.batchReceiveSaving || this.data.batchRetryPending) return;
     const id = e.currentTarget.dataset.id;
     this.setData({ productList: this.data.productList.map(product => String(product.id) === String(id)
       && product.skus.length ? { ...product, selected: !product.selected } : product) });
     this.updateProductSelection();
   },
   toggleSelectAll() {
+    if (this.data.batchReceiveSaving || this.data.batchRetryPending) return;
     const selected = !this.data.allSelected;
     this.setData({ productList: this.data.productList.map(product => ({ ...product, selected: selected && product.skus.length > 0 })) });
+    this.updateProductSelection();
+  },
+  setCardReceiveQty(productId, skuId, qty) {
+    if (this.data.batchReceiveSaving || this.data.batchRetryPending) return;
+    this.setData({ productList: this.data.productList.map(product => {
+      if (String(product.id) !== String(productId)) return product;
+      if (skuId != null && !product.skus.some(sku => String(sku.id) === String(skuId))) return product;
+      const skus = product.skus.map(sku => skuId == null || String(sku.id) === String(skuId)
+        ? { ...sku, receiveQty: qty } : sku);
+      return { ...product, skus, selected: skus.length > 0 };
+    }) });
+    this.updateProductSelection();
+  },
+  adjustCardReceiveQty(e) {
+    if (this.data.batchReceiveSaving || this.data.batchRetryPending) return;
+    const { productId, skuId, delta } = e.currentTarget.dataset;
+    if (![1, -1].includes(Number(delta))) return;
+    const product = this.data.productList.find(item => String(item.id) === String(productId));
+    if (!product) return;
+    const targets = product.skus.filter(sku => skuId == null || String(sku.id) === String(skuId));
+    if (!targets.length) return;
+    if (targets.some(sku => batchQuantity(sku.receiveQty) === null)) {
+      wx.showToast({ title: '请先把入库数量改为非负整数', icon: 'none' }); return;
+    }
+    if (targets.some(sku => batchQuantity(Math.max(0, batchQuantity(sku.receiveQty) + Number(delta))) === null)) {
+      wx.showToast({ title: '入库数量不能超过2147483647', icon: 'none' }); return;
+    }
+    this.setData({ productList: this.data.productList.map(item => {
+      if (String(item.id) !== String(productId)) return item;
+      const skus = item.skus.map(sku => skuId == null || String(sku.id) === String(skuId)
+        ? { ...sku, receiveQty: Math.max(0, batchQuantity(sku.receiveQty) + Number(delta)) } : sku);
+      return { ...item, skus, selected: true };
+    }) });
+    this.updateProductSelection();
+  },
+  onCardReceiveQtyInput(e) {
+    const { productId, skuId } = e.currentTarget.dataset;
+    this.setCardReceiveQty(productId, skuId, e.detail.value);
+  },
+  normalizeCardReceiveQty(e) {
+    const { productId, skuId } = e.currentTarget.dataset;
+    const product = this.data.productList.find(item => String(item.id) === String(productId));
+    const sku = product && product.skus.find(item => String(item.id) === String(skuId));
+    if (!sku) return;
+    const qty = batchQuantity(sku.receiveQty);
+    if (qty === null) { wx.showToast({ title: '入库数量请输入非负整数', icon: 'none' }); return; }
+    this.setCardReceiveQty(productId, skuId, qty);
+  },
+  syncBatchReceiveDraft(item, qty) {
+    this.rememberReceiveProducts();
+    const drafts = this.receiveDrafts();
+    const product = drafts.get(String(item.productId));
+    if (!product) return;
+    drafts.set(String(item.productId), { ...product, skus: product.skus.map(sku => String(sku.id) === String(item.skuId)
+      ? { ...sku, receiveQty: qty } : sku) });
+    this.setData({ productList: this.restoreReceiveProducts(this.data.productList) });
+    this.updateProductSelection();
+  },
+  clearReceivedDraft(payload) {
+    const skuIds = new Set([...payload.items, ...this.data.batchReceiveItems].map(item => String(item.skuId)));
+    const drafts = this.receiveDrafts();
+    drafts.forEach((product, key) => {
+      if (!product.skus.some(sku => skuIds.has(String(sku.id)))) return;
+      drafts.set(key, { ...product, selected: false,
+        skus: product.skus.map(sku => skuIds.has(String(sku.id)) ? { ...sku, receiveQty: 0 } : sku) });
+    });
+    this.setData({ productList: this.restoreReceiveProducts(this.data.productList), batchReceiveItems: [],
+      batchReceiveTotal: 0, batchReceiveSkuCount: 0 });
     this.updateProductSelection();
   },
   batchReceiveStorageKey() {
@@ -155,6 +341,18 @@ Page(autoSearch.wrap({
       const saved = wx.getStorageSync(this.batchReceiveStorageKey());
       if (!saved || !saved.payload || !saved.payload.requestId || !Array.isArray(saved.preview)) return;
       this._pendingBatchReceive = saved.payload;
+      const drafts = this.receiveDrafts();
+      saved.preview.forEach(item => {
+        const key = String(item.productId);
+        const product = drafts.get(key) || { id: item.productId, name: item.productName, selected: true, skus: [] };
+        const sku = { id: item.skuId, spec: item.spec, size: item.size, imageUrl: item.imageUrl,
+          shortageQty: item.shortageQty, receiveQty: item.qty };
+        const index = product.skus.findIndex(value => String(value.id) === String(item.skuId));
+        if (index < 0) product.skus.push(sku); else product.skus[index] = sku;
+        drafts.set(key, { ...product, selected: true });
+      });
+      this.setData({ productList: this.restoreReceiveProducts(this.data.productList) });
+      this.updateProductSelection();
       this.setData({ batchReceiveItems: saved.preview, batchReceiveSource: saved.payload.source,
         batchRetryPending: true, showBatchReceiveModal: true });
       this.updateBatchReceiveSummary();
@@ -166,15 +364,17 @@ Page(autoSearch.wrap({
       this.setData({ showBatchReceiveModal: true });
       return;
     }
-    const selected = this.data.productList.filter(product => product.selected && product.skus.length);
-    if (!selected.length) { wx.showToast({ title: '请先选择要入库的商品', icon: 'none' }); return; }
-    const items = selected.flatMap(product => product.skus.map(sku => ({
-      skuId: sku.id, productId: product.id, productName: product.name,
-      imageUrl: sku.imageUrl || product.coverUrl || '/images/default-goods-image.png',
-      spec: sku.spec, size: sku.size, shortageQty: sku.shortageQty || 0, qty: 0
-    })));
-    this.setData({ batchReceiveItems: items, batchReceiveSource: 'normal', showBatchReceiveModal: true,
-      batchReceiveTotal: 0, batchReceiveSkuCount: 0, batchRetryPending: false });
+    this.updateProductSelection();
+    if ([...this.receiveDrafts().values()].some(product => product.selected
+      && product.skus.some(sku => batchQuantity(sku.receiveQty) === null))) {
+      wx.showToast({ title: '已选商品的入库数量请输入非负整数', icon: 'none' }); return;
+    }
+    if (!this.data.pendingReceiveItems.length) {
+      wx.showToast({ title: '请填写大于0的数量并选择要入库的商品', icon: 'none' }); return;
+    }
+    this.setData({ batchReceiveItems: this.data.pendingReceiveItems.map(item => ({ ...item })),
+      showBatchReceiveModal: true, batchRetryPending: false });
+    this.updateBatchReceiveSummary();
   },
   closeBatchReceiveModal() {
     if (!this.data.batchReceiveSaving) this.setData({ showBatchReceiveModal: false });
@@ -186,7 +386,9 @@ Page(autoSearch.wrap({
   },
   setBatchReceiveQty(index, qty) {
     if (this.data.batchReceiveSaving || this.data.batchRetryPending || !this.data.batchReceiveItems[index]) return;
+    const item = this.data.batchReceiveItems[index];
     this.setData({ batchReceiveItems: this.data.batchReceiveItems.map((item, i) => i === index ? { ...item, qty } : item) });
+    this.syncBatchReceiveDraft(item, qty);
     this.updateBatchReceiveSummary();
   },
   adjustBatchReceiveQty(e) {
@@ -242,6 +444,7 @@ Page(autoSearch.wrap({
       await auth.ensureAuthenticated({ silent: true });
       await api.post('/sku-inventory/batch-receive', payload);
       this.clearPendingBatchReceive();
+      this.clearReceivedDraft(payload);
       this.setData({ showBatchReceiveModal: false });
       payload.items.forEach(item => require('../../utils/pageSync').publish('picking-skus', item.skuId));
       wx.showToast({ title: '批量入库成功', icon: 'success' });
@@ -252,10 +455,7 @@ Page(autoSearch.wrap({
       wx.showToast({ title: getErrorMessage(err, '入库结果待确认，请重试原批次'), icon: 'none' });
     } finally { this.setData({ batchReceiveSaving: false }); }
   },
-  selectProduct(e) {
-    const product = e.currentTarget.dataset.item;
-    if (product.skus && product.skus.length) this.openSkuModal(product, product.skus[0]);
-  },
+  stopCardTap() {},
   operateSku(e) {
     const { product, sku } = e.currentTarget.dataset;
     if (sku) this.openSkuModal(product, sku);
