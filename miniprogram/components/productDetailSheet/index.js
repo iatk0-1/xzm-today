@@ -5,7 +5,7 @@ Component({
   properties: { productId: { type: String, value: '' } },
   data: {
     visible: false, mounted: false, activeProductId: '', state: 'closed',
-    sheetTop: 0, contentOffset: 0, documentHeight: 0, windowHeight: 667,
+    expansionProgress: 0, sheetTop: 0, contentOffset: 0, documentHeight: 0, windowHeight: 667,
     statusBarHeight: 20, menuRightPadding: 96, headerHeight: 0, contentHeight: 0,
     fullscreen: false, animating: false, maskOpacity: 0, productTitle: '', overlayBlocked: false
   },
@@ -36,7 +36,7 @@ Component({
       this._closeReported = false;
       this._gesture = null;
       this.setData({ visible: true, mounted: true, activeProductId: String(id || this.data.productId),
-        state: 'half', sheetTop: this.data.windowHeight, contentOffset: 0, documentHeight: 0,
+        state: 'half', expansionProgress: 0, sheetTop: this.data.windowHeight, contentOffset: 0, documentHeight: 0,
         productTitle: '', overlayBlocked: false, fullscreen: false, animating: false,
         contentHeight: this.data.windowHeight * 2 / 3, headerHeight: 0, maskOpacity: 1 });
       this.triggerEvent('visibilitychange', { visible: true });
@@ -94,7 +94,7 @@ Component({
       // 回到全屏也等松手动画结束后才显示导航，拖动过程中始终保持隐藏。
       const full = g.origin === 'full' && top === 0;
       const header = full ? fullHeader : 0;
-      this.setData({ sheetTop: top, contentOffset: moved.offset, fullscreen: full,
+      this.setData({ expansionProgress: Math.max(0, Math.min(1, 1 - top / (this.data.windowHeight / 3))), sheetTop: top, contentOffset: moved.offset, fullscreen: full,
         headerHeight: header, contentHeight: Math.max(0, this.data.windowHeight - top - header),
         maskOpacity: Math.max(0, 1 - top / this.data.windowHeight) });
     },
@@ -123,7 +123,7 @@ Component({
         this.setData({ state, animating: false });
         return;
       }
-      this.setData({ state, sheetTop: top, fullscreen: false, animating: true,
+      this.setData({ state, expansionProgress: state === 'full' ? 1 : 0, sheetTop: top, fullscreen: false, animating: true,
         headerHeight: 0, contentHeight: this.data.windowHeight - top,
         maskOpacity: 1 });
       this._animationTimer = setTimeout(() => this.completeSnap(), ANIMATION_MS);
@@ -158,7 +158,7 @@ Component({
       clearTimeout(this._openTimer); clearTimeout(this._animationTimer);
       this.stopInertia(); this._gesture = null; this._closing = true;
       if (child) child.pauseProductVideos();
-      this.setData({ fullscreen: false, animating: true, sheetTop: this.data.windowHeight, maskOpacity: 0 });
+      this.setData({ expansionProgress: 0, fullscreen: false, animating: true, sheetTop: this.data.windowHeight, maskOpacity: 0 });
       this._animationTimer = setTimeout(() => this.finishClose(), ANIMATION_MS);
     },
     finishClose() {

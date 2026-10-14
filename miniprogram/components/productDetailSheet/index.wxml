@@ -8,7 +8,7 @@
           <text class="sheet-title">{{productTitle || '商品详情'}}</text>
         </view>
       </view>
-      <product-detail wx:if="{{mounted}}" id="productDetail" product-id="{{activeProductId}}" viewport-height="{{contentHeight}}" content-offset="{{contentOffset}}"
+      <product-detail wx:if="{{mounted}}" id="productDetail" product-id="{{activeProductId}}" viewport-height="{{contentHeight}}" content-offset="{{contentOffset}}" expansion-progress="{{expansionProgress}}" gallery-animating="{{animating}}"
         bindgesturestart="onGestureStart" bindgesturemove="onGestureMove" bindgestureend="onGestureEnd" bindgesturecancel="onGestureCancel"
         bindtitlechange="onTitleChange" binddocumentheight="onDocumentHeight" bindoverlaychange="onOverlayChange" bindproductchange="onProductChange" bindclose="requestClose" />
     </view>

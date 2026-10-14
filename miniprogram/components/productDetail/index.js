@@ -1,5 +1,6 @@
 const { createProductDetailConfig } = require('./controller');
 const { resolveDirection } = require('../../utils/productSheetGesture');
+const { getGalleryLayout } = require('../../utils/productGallery');
 const config = createProductDetailConfig();
 const { data, onLoad, onShow, onHide, onUnload, ...methods } = config;
 
@@ -7,12 +8,16 @@ Component({
   properties: {
     productId: { type: String, value: '' },
     viewportHeight: { type: Number, value: 0 },
-    contentOffset: { type: Number, value: 0 }
+    contentOffset: { type: Number, value: 0 },
+    expansionProgress: { type: Number, value: 0 },
+    galleryAnimating: { type: Boolean, value: false }
   },
-  data: { ...data, embedded: true },
+  data: { ...data, embedded: true, galleryItemWidth: 250, galleryHeight: 312.5, galleryOffset: 0, galleryTranslateX: 0 },
   observers: {
+    'expansionProgress, bannerImgs, bannerIndex, product.videoUrl'() { if (this._ready) this.updateGallery(); },
     productId(id) { if (this._ready && id && String(id) !== this._productId) this.initializeProduct(id); },
-    viewportHeight() { if (this._ready) this.measureDocument(); },
+    viewportHeight() { if (this._ready) this.updateGallery(); },
+    galleryAnimating(value) { if (this._ready && !value) this.measureDocument(); },
     'product, relatedProducts, currentAuraTab'(product) {
       if (!this._ready) return;
       this.notifySheet('titlechange', { title: this.data.product.name || this.data.product.title || '' });
@@ -39,6 +44,12 @@ Component({
   },
   methods: {
     ...methods,
+    updateGallery(drag = 0) {
+      const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+      const count = this.data.bannerImgs.length + (this.data.product.videoUrl ? 1 : 0);
+      this.setData(getGalleryLayout(info.windowWidth || 375, this.data.expansionProgress, count, this.data.bannerIndex, drag));
+      this.measureDocument();
+    },
     notifySheet(name, detail) {
       // 等本轮组件数据更新结束再通知父弹窗，避免父子递归 setData。
       const notify = () => { if (this._ready) this.triggerEvent(name, detail); };
@@ -51,6 +62,7 @@ Component({
       this.setData({ ...createProductDetailConfig().data, embedded: true });
       const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
       this.setData({ statusBarHeight: 0, navHeight: 0 });
+      this.updateGallery();
       this.initShareFloatPosition({ ...info, windowHeight: this.data.viewportHeight });
       this.setData({ shareFloatTop: 16, editFloatTop: 66 });
       return this.loadProductSafe(this._productId);
@@ -86,6 +98,7 @@ Component({
         swipe.dx = touch.clientX - swipe.x;
         if (!swipe.direction) swipe.direction = resolveDirection(swipe.dx, touch.clientY - swipe.y, true);
       }
+      if (swipe && swipe.gallery === 'banner' && swipe.direction === 'horizontal') this.updateGallery(swipe.dx);
       this.triggerEvent('gesturemove', { x: touch.clientX, y: touch.clientY });
     },
     onImageTouchMove(e) {
@@ -104,6 +117,7 @@ Component({
         this.setData(banner ? { bannerIndex: next } : { currentDetailIndex: next + 1 });
         this.suppressGestureTap();
       }
+      if (swipe && swipe.gallery === 'banner') this.updateGallery();
       this.triggerEvent('gestureend');
       this.setData({ gestureLockedVertical: false });
     },
@@ -111,6 +125,7 @@ Component({
       if (!this._forwardingGesture) return;
       this._forwardingGesture = false;
       this._imageSwipe = null;
+      this.updateGallery();
       this.triggerEvent('gesturecancel');
       this.setData({ gestureLockedVertical: false });
     },

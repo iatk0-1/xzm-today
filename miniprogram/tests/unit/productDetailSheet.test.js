@@ -101,6 +101,7 @@ test('松手按距离和方向吸附全屏半屏或关闭，轻拖不会误关�
 test('打开三分之二窗口只创建一次商品，全屏完成后才显示导航，下拉立即隐藏', () => {
   const { instance: sheet, flush, move } = opened();
   assert.equal(sheet.data.sheetTop, 250);
+  assert.equal(sheet.data.expansionProgress, 0);
   assert.equal(sheet.data.headerHeight, 0);
   assert.equal(sheet.data.contentHeight, 500);
   assert.equal(sheet.data.fullscreen, false);
@@ -108,6 +109,7 @@ test('打开三分之二窗口只创建一次商品，全屏完成后才显示�
   assert.equal(sheet.data.sheetTop, 0); assert.equal(sheet.data.fullscreen, false);
   sheet.onGestureEnd(); assert.equal(sheet.data.fullscreen, false);
   flush(280); assert.equal(sheet.data.fullscreen, true); assert.equal(sheet.data.headerHeight, 68);
+  assert.equal(sheet.data.expansionProgress, 1);
   assert.equal(sheet.data.activeProductId, '360435019602202624'); assert.equal(sheet.data.mounted, true);
   sheet.setData({ contentOffset: 0 });
   sheet.onGestureStart({ detail: { x: 10, y: 100, image: false } }); move(10, 140);
@@ -291,4 +293,38 @@ test('全屏正文下拉惯性只回滚到顶部，不带动弹窗；下一次�
   sheet.setData({ contentOffset: 300 }); sheet.startInertia(1);
   sheet.onGestureStart({ detail: { x: 20, y: 300 } }); flush(16);
   assert.equal(sheet.data.contentOffset, 300);
+});
+
+
+test('图片带最小露出1.5张，跟随展开进度放大，最后一张靠右，单图居中', () => {
+  const { getGalleryLayout } = require('../../utils/productGallery');
+  const half = getGalleryLayout(375, 0, 3, 0);
+  assert.equal(half.galleryItemWidth, 250); assert.equal(half.galleryHeight, 312.5);
+  assert.equal(half.galleryOffset, 0); assert.equal(375 / half.galleryItemWidth, 1.5);
+  const middle = getGalleryLayout(375, .5, 3, 1);
+  assert.equal(middle.galleryItemWidth, 312.5); assert.equal(middle.galleryOffset, 312.5);
+  const full = getGalleryLayout(375, 1, 3, 1);
+  assert.equal(full.galleryItemWidth, 375); assert.equal(full.galleryHeight, 468.75);
+  assert.equal(full.galleryOffset, 375);
+  const last = getGalleryLayout(375, 0, 3, 2);
+  assert.equal(last.galleryOffset, 375); assert.equal(3 * last.galleryItemWidth - last.galleryOffset, 375);
+  assert.equal(getGalleryLayout(375, 1, 3, 2).galleryOffset, 750);
+  const single = getGalleryLayout(375, 0, 1, 0);
+  assert.equal(single.galleryTranslateX, 62.5); assert.equal(single.galleryItemWidth, 250);
+  assert.equal(getGalleryLayout(375, 1, 1, 0).galleryOffset, 0);
+});
+
+test('展开时图片带保留当前图，横滑跟手，取消复位，切商品重建布局', async () => {
+  const { instance: detail } = setup('productDetail');
+  detail.data.bannerImgs = ['a', 'b', 'c']; detail.data.bannerIndex = 2;
+  detail.data.expansionProgress = 0; detail.updateGallery();
+  assert.equal(detail.data.galleryOffset, 375);
+  detail.data.expansionProgress = 1; detail.updateGallery();
+  assert.equal(detail.data.bannerIndex, 2); assert.equal(detail.data.galleryOffset, 750);
+  detail.forwardTouchStart({ touches: [{ clientX: 100, clientY: 100 }], target: { dataset: { gesture: 'image', gallery: 'banner' } } });
+  detail.onImageTouchMove({ touches: [{ clientX: 180, clientY: 110 }] });
+  assert.equal(detail.data.galleryOffset, 670);
+  detail.forwardTouchCancel(); assert.equal(detail.data.galleryOffset, 750);
+  await detail.initializeProduct('new-product');
+  assert.equal(detail.data.bannerIndex, 0);
 });
