@@ -2,8 +2,7 @@
   <view class="sheet-stage" style="height: {{windowHeight}}px;">
     <view class="sheet-mask" style="opacity: {{maskOpacity}};" catchtap="requestClose" catchtouchmove="blockTouch"></view>
     <view id="sheetPanel" class="sheet-panel {{animating ? 'sheet-animating' : ''}} {{fullscreen ? 'sheet-full' : ''}}" style="height: {{windowHeight}}px; transform: translate3d(0, {{sheetTop}}px, 0);" bindtransitionend="onTransitionEnd">
-      <view class="sheet-header" style="height: {{headerHeight}}px;" bindtouchstart="onHeaderTouchStart" bindtouchmove="onHeaderTouchMove" bindtouchend="onGestureEnd" bindtouchcancel="onGestureCancel">
-        <view wx:if="{{!fullscreen}}" class="sheet-handle"></view>
+      <view wx:if="{{fullscreen}}" class="sheet-header" style="height: {{headerHeight}}px;" bindtouchstart="onHeaderTouchStart" bindtouchmove="onHeaderTouchMove" bindtouchend="onGestureEnd" bindtouchcancel="onGestureCancel">
         <view wx:if="{{fullscreen}}" class="sheet-navigation" style="padding-top: {{statusBarHeight}}px; padding-right: {{menuRightPadding}}px;">
           <view class="sheet-back" catchtap="requestClose" aria-role="button" aria-label="返回心愿详情"><view class="sheet-back-arrow"></view></view>
           <text class="sheet-title">{{productTitle || '商品详情'}}</text>

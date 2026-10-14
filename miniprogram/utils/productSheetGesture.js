@@ -22,15 +22,13 @@ function moveSheet(start, dy, viewportHeight, documentHeight) {
   return { top, offset: Math.min(maxOffset, start.offset + overflow) };
 }
 
-function settleSheet(top, origin, height, velocity) {
+function settleSheet(top, origin, height) {
   const halfTop = height / 3;
-  if (origin === 'full') {
-    const closeDistance = Math.min(180, Math.max(100, height * 0.2));
-    // 全屏下拉只回弹全屏或关闭，快速轻划也不能跳过距离门槛。
-    return top >= closeDistance ? 'closed' : 'full';
-  }
-  if (top > halfTop + height * 0.16 || (velocity > 0.65 && top > halfTop + 30)) return 'closed';
-  if (top < halfTop - Math.min(70, halfTop * 0.4) || (velocity < -0.5 && top < halfTop - 24)) return 'full';
+  // 展开和关闭共用距离门槛，速度不绕过门槛，轻拖松手回原状态。
+  const distance = Math.min(70, halfTop * 0.4);
+  if (origin === 'full') return top >= distance ? 'closed' : 'full';
+  if (top - halfTop >= distance) return 'closed';
+  if (halfTop - top >= distance) return 'full';
   return 'half';
 }
 

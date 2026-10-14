@@ -6,7 +6,7 @@ Component({
   data: {
     visible: false, mounted: false, activeProductId: '', state: 'closed',
     sheetTop: 0, contentOffset: 0, documentHeight: 0, windowHeight: 667,
-    statusBarHeight: 20, menuRightPadding: 96, headerHeight: 28, contentHeight: 0,
+    statusBarHeight: 20, menuRightPadding: 96, headerHeight: 0, contentHeight: 0,
     fullscreen: false, animating: false, maskOpacity: 0, productTitle: '', overlayBlocked: false
   },
   lifetimes: {
@@ -38,7 +38,7 @@ Component({
       this.setData({ visible: true, mounted: true, activeProductId: String(id || this.data.productId),
         state: 'half', sheetTop: this.data.windowHeight, contentOffset: 0, documentHeight: 0,
         productTitle: '', overlayBlocked: false, fullscreen: false, animating: false,
-        contentHeight: this.data.windowHeight * 2 / 3 - 28, headerHeight: 28, maskOpacity: 1 });
+        contentHeight: this.data.windowHeight * 2 / 3, headerHeight: 0, maskOpacity: 1 });
       this.triggerEvent('visibilitychange', { visible: true });
       this._openTimer = setTimeout(() => { if (this._attached && !this._closing) this.snapTo('half'); }, 30);
     },
@@ -93,7 +93,7 @@ Component({
       const top = moved.top;
       // 回到全屏也等松手动画结束后才显示导航，拖动过程中始终保持隐藏。
       const full = g.origin === 'full' && top === 0;
-      const header = full ? fullHeader : 28;
+      const header = full ? fullHeader : 0;
       this.setData({ sheetTop: top, contentOffset: moved.offset, fullscreen: full,
         headerHeight: header, contentHeight: Math.max(0, this.data.windowHeight - top - header),
         maskOpacity: Math.max(0, 1 - top / this.data.windowHeight) });
@@ -124,7 +124,7 @@ Component({
         return;
       }
       this.setData({ state, sheetTop: top, fullscreen: false, animating: true,
-        headerHeight: 28, contentHeight: this.data.windowHeight - top - 28,
+        headerHeight: 0, contentHeight: this.data.windowHeight - top,
         maskOpacity: 1 });
       this._animationTimer = setTimeout(() => this.completeSnap(), ANIMATION_MS);
     },
@@ -132,7 +132,7 @@ Component({
       if (!this._attached || this._closing || !this.data.visible) return;
       clearTimeout(this._animationTimer);
       const full = this.data.state === 'full';
-      const header = full ? this.data.statusBarHeight + 44 : 28;
+      const header = full ? this.data.statusBarHeight + 44 : 0;
       this.setData({ animating: false, fullscreen: full, headerHeight: header,
         contentHeight: this.data.windowHeight - this.data.sheetTop - header });
     },

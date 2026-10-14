@@ -82,16 +82,27 @@ test('松手按距离和方向吸附全屏半屏或关闭，轻拖不会误关�
   assert.equal(settleSheet(140, 'half', 750, 0), 'full');
   assert.equal(settleSheet(400, 'half', 750, 0), 'closed');
   assert.equal(settleSheet(30, 'full', 750, 0), 'full');
-  assert.equal(settleSheet(100, 'full', 750, 0), 'full');
+  assert.equal(settleSheet(100, 'full', 750, 0), 'closed');
   assert.equal(settleSheet(30, 'full', 750, 3), 'full');
-  assert.equal(settleSheet(149, 'full', 750, 3), 'full');
-  assert.equal(settleSheet(150, 'full', 750, 0), 'closed');
+  assert.equal(settleSheet(69, 'full', 750, 3), 'full');
+  assert.equal(settleSheet(70, 'full', 750, 0), 'closed');
   assert.equal(settleSheet(430, 'full', 750, 0), 'closed');
+  for (const height of [480, 750, 932]) {
+    const half = height / 3, distance = Math.min(70, half * 0.4);
+    assert.equal(settleSheet(half - distance + 1, 'half', height, -3), 'half');
+    assert.equal(settleSheet(half - distance, 'half', height, 0), 'full');
+    assert.equal(settleSheet(distance - 1, 'full', height, 3), 'full');
+    assert.equal(settleSheet(distance, 'full', height, 0), 'closed');
+    assert.equal(settleSheet(half + distance - 1, 'half', height, 3), 'half');
+    assert.equal(settleSheet(half + distance, 'half', height, 0), 'closed');
+  }
 });
 
 test('打开三分之二窗口只创建一次商品，全屏完成后才显示导航，下拉立即隐藏', () => {
   const { instance: sheet, flush, move } = opened();
   assert.equal(sheet.data.sheetTop, 250);
+  assert.equal(sheet.data.headerHeight, 0);
+  assert.equal(sheet.data.contentHeight, 500);
   assert.equal(sheet.data.fullscreen, false);
   sheet.onGestureStart({ detail: { x: 10, y: 400, image: false } }); move(10, 100);
   assert.equal(sheet.data.sheetTop, 0); assert.equal(sheet.data.fullscreen, false);
@@ -99,8 +110,8 @@ test('打开三分之二窗口只创建一次商品，全屏完成后才显示�
   flush(280); assert.equal(sheet.data.fullscreen, true); assert.equal(sheet.data.headerHeight, 68);
   assert.equal(sheet.data.activeProductId, '360435019602202624'); assert.equal(sheet.data.mounted, true);
   sheet.setData({ contentOffset: 0 });
-  sheet.onGestureStart({ detail: { x: 10, y: 100, image: false } }); move(10, 210);
-  assert.equal(sheet.data.fullscreen, false); assert.equal(sheet.data.sheetTop, 110);
+  sheet.onGestureStart({ detail: { x: 10, y: 100, image: false } }); move(10, 140);
+  assert.equal(sheet.data.fullscreen, false); assert.equal(sheet.data.sheetTop, 40);
   sheet.onGestureEnd(); flush(280); assert.equal(sheet.data.state, 'full');
   assert.equal(sheet.data.fullscreen, true); assert.equal(sheet.data.sheetTop, 0);
 });
@@ -128,8 +139,8 @@ test('全屏下拉先回滚正文，到顶重新下拉，不够距离回弹，�
   sheet.onGestureStart({ detail: { x: 20, y: 100 } }); move(20, 700);
   assert.equal(sheet.data.sheetTop, 0); assert.equal(sheet.data.contentOffset, 0);
   sheet.onGestureEnd(); assert.equal(sheet.data.state, 'full');
-  sheet.onGestureStart({ detail: { x: 20, y: 100 } }); move(20, 180);
-  assert.equal(sheet.data.sheetTop, 80); assert.equal(sheet.data.fullscreen, false);
+  sheet.onGestureStart({ detail: { x: 20, y: 100 } }); move(20, 140);
+  assert.equal(sheet.data.sheetTop, 40); assert.equal(sheet.data.fullscreen, false);
   sheet.onGestureEnd(); flush(280);
   assert.equal(sheet.data.state, 'full'); assert.equal(sheet.data.sheetTop, 0);
   assert.equal(sheet.data.fullscreen, true); assert.equal(sheet.data.mounted, true);
