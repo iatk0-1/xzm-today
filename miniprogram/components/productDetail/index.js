@@ -12,7 +12,7 @@ Component({
     expansionProgress: { type: Number, value: 0 },
     galleryAnimating: { type: Boolean, value: false }
   },
-  data: { ...data, embedded: true, galleryItemWidth: 250, galleryHeight: 312.5, galleryOffset: 0, galleryTranslateX: 0 },
+  data: { ...data, embedded: true, galleryItemWidth: 250, galleryHeight: 312.5, galleryOffset: 0, galleryTranslateX: 0, gallerySettling: false },
   observers: {
     'expansionProgress, bannerImgs, bannerIndex, product.videoUrl'() { if (this._ready) this.updateGallery(); },
     productId(id) { if (this._ready && id && String(id) !== this._productId) this.initializeProduct(id); },
@@ -34,6 +34,7 @@ Component({
     },
     detached() {
       this._ready = false;
+      clearTimeout(this._gallerySettleTimer);
       clearTimeout(this._measureTimer);
       onUnload.call(this);
     }
@@ -44,6 +45,14 @@ Component({
   },
   methods: {
     ...methods,
+    settleGallery() {
+      clearTimeout(this._gallerySettleTimer);
+      this.setData({ gallerySettling: true });
+      this.updateGallery();
+      this._gallerySettleTimer = setTimeout(() => {
+        if (this._ready) this.setData({ gallerySettling: false });
+      }, 280);
+    },
     updateGallery(drag = 0) {
       const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
       const count = this.data.bannerImgs.length + (this.data.product.videoUrl ? 1 : 0);
@@ -56,6 +65,8 @@ Component({
       if (wx.nextTick) wx.nextTick(notify); else setTimeout(notify, 0);
     },
     initializeProduct(id) {
+      clearTimeout(this._gallerySettleTimer);
+      this.setData({ gallerySettling: false });
       this.pauseProductVideos();
       this._productId = String(id);
       // 每次切商品使用独立状态，异步旧响应由版本号丢弃。
@@ -82,6 +93,8 @@ Component({
     forwardTouchStart(e) {
       if (this.gestureBlocked() || e.touches.length !== 1) return;
       const touch = e.touches[0];
+      clearTimeout(this._gallerySettleTimer);
+      this.setData({ gallerySettling: false });
       this._forwardingGesture = true;
       const dataset = e.target.dataset || {};
       this._imageSwipe = dataset.gallery ? { gallery: dataset.gallery, x: touch.clientX, y: touch.clientY, dx: 0, direction: '' } : null;
@@ -109,6 +122,7 @@ Component({
       if (!this._forwardingGesture) return;
       this._forwardingGesture = false;
       const swipe = this._imageSwipe; this._imageSwipe = null;
+      if (swipe && swipe.gallery === 'banner' && swipe.direction === 'horizontal') this.setData({ gallerySettling: true });
       if (swipe && swipe.direction === 'horizontal' && Math.abs(swipe.dx) >= 40) {
         const banner = swipe.gallery === 'banner';
         const count = banner ? this.data.bannerImgs.length + (this.data.product.videoUrl ? 1 : 0) : this.data.detailImgs.length;
@@ -117,15 +131,16 @@ Component({
         this.setData(banner ? { bannerIndex: next } : { currentDetailIndex: next + 1 });
         this.suppressGestureTap();
       }
-      if (swipe && swipe.gallery === 'banner') this.updateGallery();
+      if (swipe && swipe.gallery === 'banner' && swipe.direction === 'horizontal') this.settleGallery();
       this.triggerEvent('gestureend');
       this.setData({ gestureLockedVertical: false });
     },
     forwardTouchCancel() {
       if (!this._forwardingGesture) return;
       this._forwardingGesture = false;
+      const swipe = this._imageSwipe;
       this._imageSwipe = null;
-      this.updateGallery();
+      if (swipe && swipe.gallery === 'banner' && swipe.direction === 'horizontal') this.settleGallery();
       this.triggerEvent('gesturecancel');
       this.setData({ gestureLockedVertical: false });
     },

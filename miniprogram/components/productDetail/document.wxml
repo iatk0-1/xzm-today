@@ -27,7 +27,7 @@
       </swiper-item>
     </swiper>
     <view wx:else class="banner-strip {{galleryAnimating ? 'gallery-animating' : ''}}" style="height: {{galleryHeight}}px;" data-gesture="image" data-gallery="banner" catchtouchmove="onImageTouchMove">
-      <view class="banner-track {{galleryAnimating ? 'gallery-animating' : ''}}" style="transform: translate3d({{galleryTranslateX}}px, 0, 0);" data-gesture="image" data-gallery="banner">
+      <view class="banner-track {{gallerySettling ? 'gallery-settling' : ''}} {{galleryAnimating ? 'gallery-animating' : ''}}" style="transform: translate3d({{galleryTranslateX}}px, 0, 0);" data-gesture="image" data-gallery="banner">
         <view wx:if="{{product.videoUrl}}" class="banner-cell {{galleryAnimating ? 'gallery-animating' : ''}}" style="width: {{galleryItemWidth}}px;" data-gesture="image" data-gallery="banner">
           <video id="productBannerVideo" class="swiper-video" data-gesture="image" data-gallery="banner" src="{{product.videoUrl}}" poster="{{product.image}}" object-fit="cover" controls="{{false}}" autoplay="{{false}}" muted loop />
         </view>

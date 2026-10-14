@@ -328,3 +328,27 @@ test('展开时图片带保留当前图，横滑跟手，取消复位，切商�
   await detail.initializeProduct('new-product');
   assert.equal(detail.data.bannerIndex, 0);
 });
+
+
+test('图片首尾带阻力，最后一张反向拖动从真实停靠位置开始，不跳半张', () => {
+  const { getGalleryLayout: layout } = require('../../utils/productGallery');
+  assert.equal(layout(375, 0, 3, 2, 20).galleryOffset, 355);
+  const first = layout(375, 0, 3, 0, 100).galleryOffset;
+  assert.ok(first < 0 && first > -100);
+  const last = layout(375, 1, 3, 2, -100).galleryOffset;
+  assert.ok(last > 750 && last < 850);
+  assert.equal(layout(375, 1, 3, 2).galleryOffset, 750);
+});
+
+test('越界拖动松手平滑回弹，不循环，新手势和换商品清理回弹状态', async () => {
+  const { instance: detail, flush } = setup('productDetail');
+  detail.data.bannerImgs = ['a', 'b']; detail.data.bannerIndex = 1; detail.data.expansionProgress = 1;
+  const start = () => detail.forwardTouchStart({ touches: [{ clientX: 200, clientY: 100 }], target: { dataset: { gesture: 'image', gallery: 'banner' } } });
+  start(); detail.onImageTouchMove({ touches: [{ clientX: 100, clientY: 110 }] });
+  assert.ok(detail.data.galleryOffset > 375); detail.forwardTouchEnd();
+  assert.equal(detail.data.bannerIndex, 1); assert.equal(detail.data.galleryOffset, 375);
+  assert.equal(detail.data.gallerySettling, true); flush(280); assert.equal(detail.data.gallerySettling, false);
+  start(); detail.onImageTouchMove({ touches: [{ clientX: 170, clientY: 105 }] }); detail.forwardTouchCancel();
+  assert.equal(detail.data.gallerySettling, true); start(); assert.equal(detail.data.gallerySettling, false);
+  await detail.initializeProduct('another'); flush(280); assert.equal(detail.data.gallerySettling, false);
+});

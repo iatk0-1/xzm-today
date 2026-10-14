@@ -22,3 +22,5 @@
 .banner-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(0,0,0,.15); }
 .banner-dot.active { background: #111; }
 .gallery-animating { transition: width .28s cubic-bezier(.22,.61,.36,1), height .28s cubic-bezier(.22,.61,.36,1), transform .28s cubic-bezier(.22,.61,.36,1); }
+
+.gallery-settling { transition: transform .28s cubic-bezier(.22,.61,.36,1); }
