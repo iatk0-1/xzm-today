@@ -1,4 +1,4 @@
-<view class="profile {{compact ? 'compact' : ''}}">
+<view class="profile {{compact ? 'compact' : ''}}" bindtap="onSelect">
   <image class="avatar" src="{{user.avatarUrl && !avatarFailed ? user.avatarUrl : '/images/avatar.png'}}" mode="aspectFill" binderror="onAvatarError" />
   <view class="info">
     <view class="nickname">{{user.nickname || '微信用户'}}</view>

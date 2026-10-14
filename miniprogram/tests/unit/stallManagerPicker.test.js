@@ -37,6 +37,57 @@ function open(config, picker, stallId) {
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const event = id => ({ currentTarget: { dataset: { id } } });
 
+test('负责人组件主动传出用户编号，两个管理页面用组件事件跳转且保留长编号', () => {
+  const profileConfig = loadConfig('components/managerProfile/index.js', {});
+  const longId = '9007199254740993';
+  for (const name of ['adminCatalogManage', 'adminCatalogProducts']) {
+    const navigations = [];
+    const page = createInstance(loadConfig(`pages/${name}/${name}.js`, {}, {
+      navigateTo: options => navigations.push(options.url)
+    }));
+    for (const user of [{ id: longId }, { userId: longId, productId: '5' }]) {
+      const profile = createInstance(profileConfig);
+      profile.properties = { user, selectable: true };
+      profile.onSelect();
+      assert.equal(profile.events.length, 1);
+      assert.equal(profile.events[0].name, 'select');
+      page.openManagerDetail({ detail: profile.events[0].detail });
+      assert.equal(navigations.at(-1), '/pages/stallManagerDetail/stallManagerDetail?id=' + longId);
+    }
+    const count = navigations.length;
+    page.openManagerDetail({ detail: {} });
+    assert.equal(navigations.length, count);
+    if (name === 'adminCatalogManage') {
+      page.data.dragIndex = 0;
+      page.openManagerDetail({ detail: { userId: longId } });
+      assert.equal(navigations.length, count);
+    }
+    const template = fs.readFileSync(path.join(__dirname, `../../pages/${name}/${name}.wxml`), 'utf8');
+    const profiles = [...template.matchAll(/<manager-profile\b[^>]*\/>/g)];
+    assert.equal(profiles.length, name === 'adminCatalogManage' ? 1 : 2);
+    profiles.forEach(([tag]) => assert.match(tag, /selectable bindselect="openManagerDetail"/));
+    assert.equal((template.match(/class="manager-(?:card|label)" catchtap="noop"/g) || []).length, profiles.length);
+    if (name === 'adminCatalogManage') {
+      const managerScroll = template.match(/<scroll-view\b[^>]*class="manager-profiles"[^>]*>/)[0];
+      assert.doesNotMatch(managerScroll, /catchtouchstart=/, '负责人滚动区不能拦截触摸开始事件，否则内部点击无法正常触发');
+      assert.match(managerScroll, /catchtouchmove="noop"/, '横向浏览负责人时仍要拦住档口卡片的左滑手势');
+    }
+  }
+  const template = fs.readFileSync(path.join(__dirname, '../../components/managerProfile/index.wxml'), 'utf8');
+  assert.match(template.split('\n')[0], /bindtap="onSelect"/);
+});
+
+test('负责人选择器中的资料默认不触发跳转，缺少用户编号也不传出选择事件', () => {
+  const config = loadConfig('components/managerProfile/index.js', {});
+  assert.equal(config.properties.selectable.value, false);
+  const profile = createInstance(config);
+  profile.properties = { user: { id: '42' }, selectable: false };
+  profile.onSelect();
+  profile.properties = { user: {}, selectable: true };
+  profile.onSelect();
+  assert.equal(profile.events.length, 0);
+});
+
 test('档口列表保留负责人资料，分配操作迁出，计价入口正确关联档口', async () => {
   const navigations = [];
   const user = { userId: 8, stallId: 1, nickname: '负责人', phone: '13800000000', avatarUrl: 'https://example.com/avatar.jpg' };

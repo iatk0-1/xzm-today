@@ -14,8 +14,8 @@
       <text>负责人：{{managers.length ? managers.length + ' 人' : '未分配'}}</text>
     </view>
     <scroll-view wx:if="{{type === 'stall' && !managerId && managers.length}}" scroll-x class="manager-profiles">
-      <view wx:for="{{managers}}" wx:key="id" class="manager-card">
-        <manager-profile user="{{item}}" compact />
+      <view wx:for="{{managers}}" wx:key="id" class="manager-card" catchtap="noop">
+        <manager-profile user="{{item}}" compact selectable bindselect="openManagerDetail" />
       </view>
     </scroll-view>
   </view>
@@ -47,9 +47,9 @@
       <image class="product-image" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill"></image>
       <view class="product-info">
         <view class="product-name">{{item.name}}</view>
-        <view wx:if="{{item.managerOwner}}" class="manager-label">
+        <view wx:if="{{item.managerOwner}}" class="manager-label" catchtap="noop">
           <text class="owner-caption">负责人</text>
-          <manager-profile class="owner-profile" user="{{item.managerOwner}}" compact />
+          <manager-profile class="owner-profile" user="{{item.managerOwner}}" compact selectable bindselect="openManagerDetail" />
         </view>
         <view class="product-meta">
           <text>¥ {{item.displayPrice || item.retailPrice}}</text>

@@ -76,9 +76,10 @@
               <text wx:elif="{{item.hiddenReason === 'MANUAL'}}" class="manual-hidden">已手动隐藏</text>
             </view>
             <view wx:if="{{currentType === 'stall'}}" class="manager-summary">
-              <scroll-view wx:if="{{item.managers.length}}" scroll-x class="manager-profiles" catchtouchstart="noop" catchtouchmove="noop">
-                <view wx:for="{{item.managers}}" wx:for-item="manager" wx:key="id" class="manager-card">
-                  <manager-profile user="{{manager}}" compact />
+              <!-- 保留触摸开始事件，避免滚动容器吞掉负责人点击；横滑时仅拦住外层卡片手势。 -->
+              <scroll-view wx:if="{{item.managers.length}}" scroll-x class="manager-profiles" catchtouchmove="noop">
+                <view wx:for="{{item.managers}}" wx:for-item="manager" wx:key="id" class="manager-card" catchtap="noop">
+                  <manager-profile class="manager-profile-entry" user="{{manager}}" compact selectable bindselect="openManagerDetail" />
                 </view>
               </scroll-view>
               <text wx:else class="manager-empty">负责人：未分配</text>

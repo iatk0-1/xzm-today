@@ -95,6 +95,14 @@ Page(autoSearch.wrap({
     }
   },
 
+  openManagerDetail(e) {
+    const userId = e.detail.userId;
+    if (userId === undefined || userId === null || userId === '') return;
+    wx.navigateTo({
+      url: '/pages/stallManagerDetail/stallManagerDetail?id=' + encodeURIComponent(String(userId))
+    });
+  },
+
   openPricingRule() {
     if (this.data.managerId || this.data.type !== 'stall') return;
     this._openedPricingRule = true;

@@ -603,6 +603,17 @@ Page(pageSync.wrap({
     });
   },
 
+  openManagerDetail(e) {
+    if (this.data.dragIndex >= 0) return;
+    const userId = e.detail.userId;
+    if (userId === undefined || userId === null || userId === '') return;
+    this.closeAllSwipe();
+    this._openedProducts = true;
+    wx.navigateTo({
+      url: '/pages/stallManagerDetail/stallManagerDetail?id=' + encodeURIComponent(String(userId))
+    });
+  },
+
   openPricingRule(e) {
     const item = this.data.groups[Number(e.currentTarget.dataset.index)];
     if (!item || this.data.currentType !== 'stall') return;

@@ -15,10 +15,17 @@
 <view wx:if="{{!users.length}}" class="muted">没有匹配用户</view>
 </view>
 <view class="card" wx:for="{{managers}}" wx:key="userId" data-id="{{item.userId}}" bindtap="open">
-<view class="title">{{item.nickname || item.userId}} <text class="badge">{{item.active ? '激活' : '下线'}}</text>
+<view class="manager-heading">
+<view class="manager-summary">档口 {{item.stallNames}} · 商品 {{item.productCount || 0}} 件</view>
+<text class="badge">{{item.active ? '激活' : '下线'}}</text>
 </view>
-<view>{{item.phone}}</view>
-<view class="muted">档口 {{item.stallNames}} · 商品 {{item.productCount || 0}} 件</view>
+<view class="manager-profile">
+<image class="manager-avatar" src="{{item.avatarUrl || '/images/avatar.png'}}" mode="aspectFill"/>
+<view class="manager-info">
+<view class="manager-name">{{item.nickname || ('用户未设置昵称(' + item.userId + ')')}}</view>
+<view class="muted manager-phone">{{item.phone || '用户未绑定手机号'}}</view>
+</view>
+</view>
 </view>
 <view class="muted">{{loading ? '加载中…' : (hasNext ? '上拉加载更多' : '已加载全部')}}</view>
 </view>
