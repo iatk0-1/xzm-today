@@ -43,6 +43,8 @@
     "pages/liveRoomDetail/detail",
     "pages/liveRoomPublish/publish",
     "pages/skuInventory/skuInventory",
+    "pages/inventoryDetail/inventoryDetail",
+    "pages/inventoryProductSelect/inventoryProductSelect",
     "pages/pickingList/pickingList",
     "pages/purchaseOrders/purchaseOrders",
     "pages/adminOrderManage/adminOrderManage",

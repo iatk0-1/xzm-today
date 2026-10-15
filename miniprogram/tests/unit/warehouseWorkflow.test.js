@@ -169,25 +169,17 @@ test('库存修改后同步数量并移出已不符合欠货筛选的商品', as
   inventory.data.inventoryTab = 'shortage';
   const product = { id: '1', skus: [{ id: '11', availableQty: 0, shortageQty: 5 }] };
   inventory.data.productList = [product];
-  inventory.data.selectedProduct = product;
-  inventory.data.selectedSku = product.skus[0];
   await inventory.refreshSku('11');
   assert.equal(inventory.data.productList.length, 0);
-  assert.equal(inventory.data.selectedSku.shippableQty, 4);
-  assert.equal(inventory.data.currentQty, 5);
+  assert.equal(requests.at(-1).url, '/sku-inventory/11');
 });
 
-test('历史入库明确传来源，盘点未填原因阻止提交', async () => {
-  handler = url => url.includes('/detail') ? { inventory: { skuId: '11', qty: 2 }, reports: [], receipts: [], ledger: [] } : { skuId: '11', qty: 2 };
+test('铅笔进入商品库存详情，详情变更通过事件通知返回列表同步', async () => {
   const inventory = page(inventoryConfig);
-  inventory.data.selectedSku = { id: '11' };
-  inventory.data.operateType = 'stocktake';
-  inventory.data.inputQty = '2';
-  await inventory.confirmOperate();
-  assert.equal(requests.length, 0);
-  inventory.data.operateType = 'history';
-  await inventory.confirmOperate();
-  const { requestId, ...payload } = requests[0].data;
-  assert.ok(requestId, '数量操作必须带原请求号以防超时重试重复入库');
-  assert.deepEqual({ ...requests[0], data: payload }, { method: 'POST', url: '/sku-inventory', data: { skuId: '11', qty: 2, source: 'history', note: '' } });
+  let navigation;
+  wx.navigateTo = options => { navigation = options; };
+  inventory.operateSku({ currentTarget: { dataset: { product: { id: '9007199254740993', name: '外套 & 毛衣' }, sku: { id: '11' } } } });
+  assert.equal(navigation.url, '/pages/inventoryDetail/inventoryDetail?id=9007199254740993&name=' + encodeURIComponent('外套 & 毛衣'));
+  navigation.events.inventoryChanged({ skuIds: ['11', '12', '11'] });
+  assert.deepEqual([...inventory._inventoryChangedIds], ['11', '12']);
 });

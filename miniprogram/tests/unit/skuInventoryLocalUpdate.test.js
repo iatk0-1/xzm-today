@@ -21,14 +21,11 @@ test('库存变更仅查询当前 SKU，分页追加不会复制旧商品或丢�
   page.setData = patch => Object.assign(page.data, patch);
   page.data.productList = [{ id: '1', skus: [{ id: '11', availableQty: 2 }] }];
   page.data.page = 3;
-  page.data.selectedProduct = page.data.productList[0];
-  page.data.selectedSku = page.data.productList[0].skus[0];
   responses.push({ qty: 7 });
   await page.refreshSku('11');
   assert.deepEqual(requests, ['/sku-inventory/11']);
   assert.equal(page.data.page, 3);
   assert.equal(page.data.productList[0].skus[0].availableQty, 7);
-  assert.equal(page.data.selectedSku.availableQty, 7);
   responses.push({ content: [{ productId: '1', skuId: '12', qty: 4 }, { productId: '2', skuId: '21', qty: 5 }], hasNext: false });
   await page.loadProducts(false);
   assert.deepEqual(page.data.productList.map(item => item.id), ['1', '2']);
@@ -77,8 +74,6 @@ test('首次进入和空白搜索不传关键词，有效关键词去除首尾�
 test('仓库库存始终使用实际数量，不受可售库存无限标记影响', async () => {
   const page = { ...config, data: JSON.parse(JSON.stringify(config.data)) };
   page.setData = patch => Object.assign(page.data, patch);
-  const ledgerSkuIds = [];
-  page.loadLedger = skuId => ledgerSkuIds.push(skuId);
   responses.push({
     content: [
       { productId: '1', skuId: '11', qty: 6, unlimitedStock: true },
@@ -92,22 +87,18 @@ test('仓库库存始终使用实际数量，不受可售库存无限标记影�
   assert.deepEqual(page.data.productList.flatMap(product => product.skus.map(sku => sku.availableQty)), [6, 0, 0, 3]);
 
   const product = page.data.productList[0];
+  let navigation;
+  global.wx.navigateTo = options => { navigation = options; };
   page.operateSku({ currentTarget: { dataset: { product, sku: product.skus[0] } } });
-  assert.equal(page.data.showSkuModal, true);
-  assert.equal(page.data.currentQty, 6);
-  page.selectSku({ currentTarget: { dataset: { index: 1 } } });
-  assert.equal(page.data.currentQty, 0);
-  assert.deepEqual(ledgerSkuIds, ['11', '12']);
+  assert.match(navigation.url, /^\/pages\/inventoryDetail\/inventoryDetail\?id=1&name=/);
+  assert.equal(page.data.showSkuModal, undefined);
 
   // 即使刷新前的 SKU 带有可售库存标记，也按接口返回的仓库数量更新。
-  page.data.selectedSku.unlimitedStock = true;
+  page.data.productList[0].skus[1].unlimitedStock = true;
   for (const qty of [9, 0]) {
     responses.push({ qty, unlimitedStock: true });
     await page.refreshSku('12');
     assert.equal(page.data.productList[0].skus[1].availableQty, qty);
-    assert.equal(page.data.selectedProduct.skus[1].availableQty, qty);
-    assert.equal(page.data.selectedSku.availableQty, qty);
-    assert.equal(page.data.currentQty, qty);
   }
   assert.equal(page.data.productList[0].skus[0].availableQty, 6);
 });

@@ -51,26 +51,8 @@ page { background: #f6f7f9; }
 .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 700rpx; max-height: 86vh; background: #fff; border-radius: 16rpx; overflow: hidden; display: flex; flex-direction: column; }
 .modal-title { padding: 26rpx; font-size: 30rpx; font-weight: bold; text-align: center; border-bottom: 1rpx solid #eee; }
 .warehouse-body { height: 65vh; padding: 24rpx; box-sizing: border-box; }
-.sku-options { display: flex; flex-wrap: wrap; gap: 12rpx; margin: 20rpx 0; }
-.sku-option { padding: 12rpx 18rpx; border: 2rpx solid #eee; border-radius: 24rpx; font-size: 24rpx; color: #555; }
-.sku-option.active { border-color: #111; color: #111; background: #f5f5f5; }
-.inventory-summary { display: flex; flex-wrap: wrap; gap: 16rpx; font-size: 26rpx; padding: 18rpx 0; }
-.tabs { display: flex; border-bottom: 1rpx solid #eee; margin: 18rpx 0; }
-.tab-item { flex: 1; text-align: center; padding: 20rpx 4rpx; font-size: 25rpx; color: #666; border-bottom: 4rpx solid transparent; }
-.tab-item.active { color: #000; border-bottom-color: #000; font-weight: bold; }
-.operate-form { display: flex; flex-direction: column; gap: 20rpx; padding-bottom: 24rpx; }
-.radio-group { display: flex; gap: 12rpx; }
-.radio-item { flex: 1; padding: 18rpx 4rpx; background: #f5f5f5; color: #555; text-align: center; border-radius: 28rpx; font-size: 24rpx; }
-.radio-item.active { background: #111; color: #fff; }
 .operation-tip { font-size: 23rpx; color: #666; line-height: 1.7; background: #f7f7f7; padding: 16rpx; border-radius: 10rpx; }
-.form-item { display: flex; flex-direction: column; gap: 12rpx; }
-.form-label { font-size: 26rpx; color: #333; }
-.form-input { height: 72rpx; background: #f5f5f5; border-radius: 20rpx; padding: 0 24rpx; font-size: 26rpx; }
 .record-card { padding: 20rpx 0; font-size: 25rpx; border-bottom: 1rpx solid #eee; }
-.record-card.revoked { opacity: .5; }
-.record-section-title { font-size: 26rpx; font-weight: bold; margin: 22rpx 0 8rpx; }
-.allocation-line { font-size: 22rpx; color: #555; padding: 8rpx 0; overflow-wrap: anywhere; }
-.receipt-revoke { margin: 12rpx 0 0; font-size: 22rpx; color: #bb352b; background: #fff4f2; }
 .shipping-sku { display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap; padding: 16rpx 0; }
 .shipping-choice { display: flex; align-items: center; flex: 1; min-width: 200rpx; }
 .shipping-qty { width: 96rpx; height: 60rpx; background: #f5f5f5; border-radius: 8rpx; text-align: center; }

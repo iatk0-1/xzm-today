@@ -1,0 +1,18 @@
+<view class="product-selector">
+  <view class="selector-toolbar">
+    <view class="search-row"><input value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="search" confirm-type="search" placeholder="搜索商品名称" disabled="{{confirming}}" /><view wx:if="{{keyword}}" class="clear-search" bindtap="clearSearch">×</view><button bindtap="search" disabled="{{confirming}}">搜索</button></view>
+    <scroll-view class="filter-scroll status-scroll" scroll-x="true" enhanced="true" show-scrollbar="false"><view class="filter-track"><view wx:for="{{statuses}}" wx:key="id" class="status-tab {{activeStatus === item.id ? 'active' : ''}}" data-field="activeStatus" data-value="{{item.id}}" bindtap="setFilter">{{item.name}}</view></view></scroll-view>
+    <view class="relation-row"><view class="relation-label">档口</view><view class="filter-chip fixed-chip {{!selectedStall ? 'active' : ''}}" data-field="selectedStall" data-value="all" bindtap="setFilter">全部</view><scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false"><view class="filter-track"><view wx:for="{{stallList}}" wx:key="id" class="filter-chip {{selectedStall === item.id ? 'active' : ''}}" data-field="selectedStall" data-value="{{item.id}}" bindtap="setFilter">{{item.name}}</view></view></scroll-view></view>
+    <view class="relation-row"><view class="relation-label">标签</view><view class="filter-chip fixed-chip {{!selectedTag ? 'active' : ''}}" data-field="selectedTag" data-value="all" bindtap="setFilter">全部</view><scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false"><view class="filter-track"><view wx:for="{{tagList}}" wx:key="id" class="filter-chip {{selectedTag === item.id ? 'active' : ''}}" data-field="selectedTag" data-value="{{item.id}}" bindtap="setFilter">{{item.name}}</view></view></scroll-view></view>
+    <view class="selection-actions"><button class="select-all" bindtap="toggleAll" disabled="{{confirming || !products.length}}">{{allSelected ? '取消全选' : '全选'}}</button><button class="confirm-selection" bindtap="confirmSelection" loading="{{confirming}}" disabled="{{confirming}}">确认{{selectedCount ? '（' + selectedCount + '）' : ''}}</button></view>
+    <view class="selection-tip">已选 {{selectedCount}} 个商品，切换筛选保留；全选作用于当前已加载商品。</view>
+  </view>
+  <view class="product-list">
+    <view class="product-card {{item.selected ? 'selected' : ''}} {{!item.selectable ? 'unavailable' : ''}}" wx:for="{{products}}" wx:key="id" data-id="{{item.id}}" bindtap="toggleProduct">
+      <view class="card-checkbox"><view class="checkbox {{item.selected ? 'checked' : ''}}">{{item.selected ? '✓' : ''}}</view></view>
+      <image class="product-image" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
+      <view class="card-info"><view class="product-title">{{item.name}}</view><view class="product-labels"><text class="status-label {{item.status === 'off' ? 'off' : ''}}">{{item.status === 'off' ? '已下架' : (item.soldOut ? '已售罄' : '已上架')}}</text><text wx:if="{{item.scheduled}}" class="schedule-label">已定时</text></view><view class="product-specs">{{item.selectable ? item.skuText : '暂无有效规格，不可选择'}}</view><view class="product-specs" wx:if="{{item.selectable}}">共 {{item.skuMatrix.length}} 个规格，确认后全部带回</view></view>
+    </view>
+    <view wx:if="{{loading}}" class="state">加载商品中...</view><view wx:if="{{error}}" class="state error"><view>{{error}}</view><button bindtap="search">重新查询</button></view><view wx:if="{{!products.length && !loading && !error}}" class="state">暂无符合条件的商品</view><button class="load-more" wx:if="{{products.length && hasMore && !loading && !error}}" bindtap="onReachBottom">加载更多</button>
+  </view>
+</view>
