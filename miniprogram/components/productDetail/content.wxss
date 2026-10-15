@@ -1,3 +1,4 @@
+@import "../../styles/detailBack.wxss";
 .product-detail-host, page {
   background-color: #ffffff; /* 页面最底层背景色设置为纯白 */
 }
@@ -133,26 +134,7 @@
   padding-left: 15px; /* 左侧留出15像素的内边距 */
 }
 
-.nav-back {
-  width: 32px; /* 返回按钮的宽度 */
-  height: 32px; /* 返回按钮的高度 */
-  background: rgba(255,255,255,0.8); /* 半透明白色背景 */
-  border-radius: 50%; /* 圆形按钮 */
-  display: flex; /* 开启弹性布局 */
-  justify-content: center; /* 内容水平居中 */
-  align-items: center; /* 内容垂直居中 */
-  backdrop-filter: blur(5px); /* 背景产生毛玻璃模糊高级效果 */
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05); /* 添加微弱的阴影让按钮有立体感 */
-}
 
-.back-arrow {
-  width: 10px; /* 箭头线条长度 */
-  height: 10px; /* 箭头线条高度 */
-  border-top: 2px solid #333; /* 箭头上半部分线条颜色和粗细 */
-  border-left: 2px solid #333; /* 箭头左半部分线条颜色和粗细 */
-  transform: rotate(-45deg); /* 将方形线条旋转45度形成指向左侧的箭头 */
-  margin-left: 4px; /* 稍微往右微调一下位置，让视觉上居中 */
-}
 
 /* ================= 🚀 极简韩系悬浮双排栏 (真·绝对居中版) ================= */
 .floating-action-bar {
@@ -215,13 +197,14 @@
 .main-swiper {
   width: 100%; /* 轮播图宽度占满屏幕 */
   height: 125vw; /* 高度根据宽度按比例自适应 */
-  background-color: #f9f9f9; /* 图片未加载出时的浅灰底色 */
+  background-color: #ffffff; /* 完整显示的图片使用白色留白 */
 }
 
 .swiper-img {
   width: 100%; /* 图片宽度撑满轮播图 */
   height: 100%; /* 图片高度撑满轮播图 */
   display: block; /* 清除图片默认的底部留白 */
+  background-color: #ffffff;
 }
 
 .swiper-video {
@@ -404,6 +387,65 @@
   letter-spacing: 1px; /* 角标字母间距 */
 }
 
+.detail-gallery {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.detail-gallery-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.detail-gallery-arrow-left {
+  left: -64px; /* 圆的直径仅露出三分之一 */
+}
+
+.detail-gallery-arrow-right {
+  right: -64px;
+}
+
+.detail-gallery-chevron {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+.detail-gallery-arrow-left .detail-gallery-chevron { right: 9px; }
+.detail-gallery-arrow-right .detail-gallery-chevron { left: 9px; }
+
+.detail-gallery-chevron::before,
+.detail-gallery-chevron::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-top: 2px solid #fff;
+  border-right: 2px solid #fff;
+  box-sizing: border-box;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.detail-gallery-chevron::before { left: 1px; }
+.detail-gallery-chevron::after { left: 7px; }
+
+.detail-gallery-arrow-left .detail-gallery-chevron::before,
+.detail-gallery-arrow-left .detail-gallery-chevron::after {
+  transform: translateY(-50%) rotate(-135deg);
+}
+
 .detail-swiper {
   width: 100%; /* 细节轮播图占满全宽 */
   height: 130vw; /* 细节轮播高度按比例调整 */
@@ -411,6 +453,7 @@
 }
 
 .detail-swiper-img {
+  background-color: #ffffff;
   width: 100%; /* 图片占满全宽 */
   height: 100%; /* 图片占满全高 */
   display: block; /* 清除底部留白 */

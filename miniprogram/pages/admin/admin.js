@@ -5,6 +5,7 @@ const auth = require('../../utils/auth');
 const config = require('../../utils/config');
 const stockUtils = require('../../utils/stock');
 const { compressImage, compressVideo } = require('../../utils/media');
+const { normalizeProductImages, productImageUrl } = require('../../utils/productImage');
 const draft = require('../../utils/draft');
 const { integrateProductPricing } = require('../../utils/productPricing');
 const finance = require('../../utils/managerFinance');
@@ -217,7 +218,7 @@ const pageDefinition = {
       console.log('商品详情响应:', res);
 
       // 后端返回格式：{ product: {...}, skus: [{id, spec, size, ...}] }
-      const product = res.product || res;
+      const product = normalizeProductImages(res.product || res);
       const skusFromApi = res.skus || [];
 
       // 商品编辑使用全部库存；售出、锁定和可用库存只作数据库统计展示。
@@ -235,7 +236,7 @@ const pageDefinition = {
           : Number(sku.availableMain != null
             ? sku.availableMain
             : Math.max(0, Number(sku.stockMain || 0) - Number(sku.soldMain || 0) - Number(sku.lockedMain || 0))),
-        image: sku.imageUrl || '',
+        image: productImageUrl(sku.imageUrl) || '',
         sizeId: sku.sizeId || null
       }));
 
@@ -449,7 +450,7 @@ const pageDefinition = {
                   : Number(sku.availableMain != null
                     ? sku.availableMain
                     : Math.max(0, Number(sku.stockMain || 0) - Number(sku.soldMain || 0) - Number(sku.lockedMain || 0))),
-                image: sku.imageUrl || ''
+                image: productImageUrl(sku.imageUrl) || ''
               };
             })
           };
@@ -480,7 +481,7 @@ const pageDefinition = {
       const res = await api.get(`/products/${liveProductId}?manage=true`);
       console.log('直播商品详情:', res);
 
-      const product = res.product || res;
+      const product = normalizeProductImages(res.product || res);
       const skusFromApi = res.skus || [];
 
       // 从 skus 数组中提取 SKU 数据，注意：不清除 skuId 和 sizeId，因为需要保留规格信息
@@ -491,7 +492,7 @@ const pageDefinition = {
         price: sku.retailPrice,
         costPrice: sku.costPrice == null ? '' : String(sku.costPrice),
         stock: sku.unlimitedStock ? '' : sku.stockMain,
-        image: sku.imageUrl || '',
+        image: productImageUrl(sku.imageUrl) || '',
         sizeId: sku.sizeId || null // 保留 sizeId，使用相同的规格
       }));
 
@@ -664,7 +665,7 @@ const pageDefinition = {
             color: sku.spec || '图片色', size: sku.size || '均码',
             costPrice: sku.costPrice == null ? '' : String(sku.costPrice), price: String(sku.retailPrice || ''),
             stock: sku.unlimitedStock ? '' : String(sku.stockMain == null ? '' : sku.stockMain),
-            image: sku.imageUrl || ''
+            image: productImageUrl(sku.imageUrl) || ''
           }))
         }));
         this.setData({ isBundleMode: true, bundleGroups: groups, activeGroupIndex: 0 });

@@ -1,8 +1,8 @@
 <view class="product-detail-host {{embedded ? 'embedded-detail' : ''}}" style="height: {{viewportHeight}}px;" bindtouchstart="forwardTouchStart" bindtouchmove="forwardTouchMove" bindtouchend="forwardTouchEnd" bindtouchcancel="forwardTouchCancel">
-  <view class="product-viewport" style="height: {{viewportHeight}}px;">
-    <view class="product-scroll-content" style="transform: translate3d(0, -{{contentOffset}}px, 0);">
+  <scroll-view class="product-viewport" style="height: {{viewportHeight}}px;" scroll-y="{{nativeScroll && !sheetDragging && !showSku && !showVideo && !showShareTemplates && !purchasePending}}" scroll-top="{{requestedScrollTop}}" enhanced="{{true}}" bounces="{{false}}" show-scrollbar="{{false}}" upper-threshold="{{1}}" bindscroll="onNativeScroll" bindscrolltoupper="onNativeScrollUpper" binddragstart="onNativeDragStart">
+    <view class="product-scroll-content">
       <include src="./document.wxml" />
     </view>
-  </view>
+  </scroll-view>
   <include src="./overlays.wxml" />
 </view>

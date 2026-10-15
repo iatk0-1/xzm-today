@@ -45,6 +45,7 @@ function harness(file, { save, record, manager = false } = {}) {
       setTimeout: () => 0, clearTimeout() {},
       require(name) {
         if (name.endsWith('/error')) return require('../../utils/error');
+        if (name.endsWith('/productImage')) return require('../../utils/productImage');
         if (name.endsWith('/api') || name === './api') return api;
         if (name.endsWith('/draft') || name === './draft') return draft;
         if (name.endsWith('/auth') || name === './auth') return {

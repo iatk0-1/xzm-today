@@ -4,6 +4,7 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const config = require('../../utils/config');
 const { compressImage, compressVideo } = require('../../utils/media');
+const { normalizeProductImages, productImageUrl } = require('../../utils/productImage');
 const draft = require('../../utils/draft');
 const finance = require('../../utils/managerFinance');
 const { integrateProductPricing } = require('../../utils/productPricing');
@@ -111,7 +112,7 @@ const pageDefinition = {
     wx.showLoading({ title: '加载商品...' });
     try {
       const res = await api.get(`/products/${productId}?manage=true`);
-      const product = res.product || res;
+      const product = normalizeProductImages(res.product || res);
       const skus = res.skus || [];
 
       // 解析颜色
@@ -150,7 +151,7 @@ const pageDefinition = {
         price: String(sku.retailPrice || ''),
         costPrice: sku.costPrice == null ? '' : String(sku.costPrice),
         stock: sku.unlimitedStock ? '' : String(sku.stockMain == null ? '' : sku.stockMain),
-        image: sku.imageUrl || ''
+        image: productImageUrl(sku.imageUrl) || ''
       }));
 
       // 构建媒体列表（封面 + banner 图片）
@@ -200,7 +201,7 @@ const pageDefinition = {
             costPrice: sku.costPrice == null ? '' : String(sku.costPrice),
             price: String(sku.retailPrice || ''),
             stock: sku.unlimitedStock ? '' : String(sku.stockMain == null ? '' : sku.stockMain),
-            image: sku.imageUrl || ''
+            image: productImageUrl(sku.imageUrl) || ''
           }));
           return { name: group.name, skuList: rows,
             colors: [...new Set(rows.map(row => row.color))],

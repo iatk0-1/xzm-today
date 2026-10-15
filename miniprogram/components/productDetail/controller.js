@@ -1,5 +1,7 @@
 const { getErrorMessage, isUnauthorized } = require('../../utils/error');
 const api = require('../../utils/api');
+const { normalizeProductImages } = require('../../utils/productImage');
+const { getBannerImageMode, getDetailImageMode } = require('../../utils/productGallery');
 const { getPurchaseNotice } = require('../../utils/purchaseNotice');
 const auth = require('../../utils/auth');
 const { formatStock, hasStock, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
@@ -21,8 +23,10 @@ function createProductDetailConfig() {
     product: {},
     currentTab: 0,
     bannerImgs: [],
+    bannerImageModes: [],
     lookbookImgs: [],
     detailImgs: [],
+    detailImageModes: [],
     currentDetailIndex: 1,
     relatedProducts: [],
     isAdmin: false,
@@ -122,6 +126,45 @@ function createProductDetailConfig() {
     this.setData({ bannerIndex: e.detail.current });
   },
 
+  onBannerImageLoad: function(e) {
+    const { index, src } = e.currentTarget.dataset;
+    // 切换商品后的旧加载回调不能修改新商品同一位置的图片模式。
+    if (this.data.bannerImgs[index] !== src) return;
+    const { width, height } = e.detail;
+    if (!(width > 0 && height > 0)) return;
+    const mode = getBannerImageMode(width, height);
+    if (!this._bannerModeCache) this._bannerModeCache = new Map();
+    this._bannerModeCache.set(src, mode);
+    if (this.data.bannerImageModes[index] === mode) return;
+    const modes = this.data.bannerImageModes.slice();
+    modes[index] = mode;
+    this.setData({ bannerImageModes: modes });
+  },
+
+  onDetailImageLoad: function(e) {
+    const { index, src } = e.currentTarget.dataset;
+    if (this.data.detailImgs[index] !== src) return;
+    const { width, height } = e.detail;
+    if (!(width > 0 && height > 0)) return;
+    if (!this._detailImageSizes) this._detailImageSizes = new Map();
+    this._detailImageSizes.set(src, { width, height });
+    this.refreshDetailImageModes();
+  },
+
+  refreshDetailImageModes: function() {
+    const modes = this.data.detailImgs.map(src => {
+      const size = this._detailImageSizes && this._detailImageSizes.get(src);
+      if (!size) return 'aspectFit';
+      return getDetailImageMode(size.width, size.height);
+    });
+    if (modes.some((mode, index) => mode !== this.data.detailImageModes[index]) ||
+        modes.length !== this.data.detailImageModes.length) this.setData({ detailImageModes: modes });
+  },
+
+  onResize: function() {
+    this.refreshDetailImageModes();
+  },
+
   // 安全加载：等待认证就绪 + 带重试（解决分享链接冷启动 401 问题）
   loadProductSafe: async function(productId) {
     const version = this._productVersion = (this._productVersion || 0) + 1;
@@ -186,7 +229,7 @@ function createProductDetailConfig() {
 
       // 后端返回格式：{ product: {...}, skus: [...] }
       // product.skuMatrix: { skuId, color, size, price, stock }
-      const product = res.product || {};
+      const product = normalizeProductImages(res.product || {});
       const skuMatrix = product.skuMatrix || [];
 
       // 处理轮播图（封面 + 轮播图）
@@ -229,8 +272,10 @@ function createProductDetailConfig() {
           bundleGroups: res.bundleGroups || null  // 套装子项（ProductDetailResponse顶层字段）
         },
         bannerImgs: banners,
+        bannerImageModes: banners.map(url => this._bannerModeCache && this._bannerModeCache.get(url) || 'aspectFit'),
         lookbookImgs: product.lookbookImages || [],
         detailImgs: product.detailImages || [],
+        detailImageModes: (product.detailImages || []).map(() => 'aspectFit'),
         uniqueColors: colors,
         uniqueSizes: sizes,
         ...getDefaultSkuSelection(skuMatrix),
@@ -238,6 +283,7 @@ function createProductDetailConfig() {
         bundleAllSelected: false
       });
 
+      this.refreshDetailImageModes();
       this.prepareShareImages(banners.length > 0 ? banners : [product.image]);
 
       this.checkSkuMatch();
@@ -300,7 +346,7 @@ function createProductDetailConfig() {
     var windowWidth = sysInfo.windowWidth || 375;
     var windowHeight = sysInfo.windowHeight || 667;
     var menuRect = wx.getMenuButtonBoundingClientRect ? wx.getMenuButtonBoundingClientRect() : null;
-    var floatSize = 58;
+    var floatSize = this.data.embedded ? 42 : 58;
     var top = menuRect ? menuRect.bottom + 12 : (sysInfo.statusBarHeight || 20) + 44 + 12;
     var left = Math.max(0, windowWidth - floatSize - 18);
     var shareTop = Math.max(0, Math.min(windowHeight - floatSize, top));
@@ -316,11 +362,9 @@ function createProductDetailConfig() {
   cancelFloatTouch: function() {
     this._editFloatDrag = null;
     this._shareFloatDrag = null;
-    if (this.data.embedded) this.forwardTouchCancel();
   },
 
   startShareFloatDrag: function(e) {
-    if (this.data.embedded) { this.forwardTouchStart(e); return; }
     var touch = e.touches && e.touches[0];
     if (!touch) return;
     this._shareFloatDrag = {
@@ -333,7 +377,6 @@ function createProductDetailConfig() {
   },
 
   moveShareFloat: function(e) {
-    if (this.data.embedded) { this.forwardTouchMove(e); return; }
     var drag = this._shareFloatDrag;
     var touch = e.touches && e.touches[0];
     if (!drag || !touch) return;
@@ -343,14 +386,13 @@ function createProductDetailConfig() {
     if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) drag.moved = true;
 
     var windowInfo = this._shareWindow || { width: 375, height: 667 };
-    var size = 58;
+    var size = this.data.embedded ? 42 : 58;
     var left = Math.max(0, Math.min(windowInfo.width - size, drag.left + deltaX));
-    var top = Math.max(0, Math.min(windowInfo.height - size, drag.top + deltaY));
+    var top = Math.max(windowInfo.minTop || 0, Math.min(windowInfo.height - size, drag.top + deltaY));
     this.setData({ shareFloatLeft: left, shareFloatTop: top });
   },
 
   endShareFloatDrag: function() {
-    if (this.data.embedded) { this.forwardTouchEnd(); this.openShareTemplateSelector(); return; }
     var drag = this._shareFloatDrag;
     this._shareFloatDrag = null;
     if (drag && !drag.moved) {
@@ -359,7 +401,6 @@ function createProductDetailConfig() {
   },
 
   startEditFloatDrag: function(e) {
-    if (this.data.embedded) { this._editFloatDrag = { moved: false }; this.forwardTouchStart(e); return; }
     var touch = e.touches && e.touches[0];
     if (!touch) return;
     this._editFloatDrag = {
@@ -372,7 +413,6 @@ function createProductDetailConfig() {
   },
 
   moveEditFloat: function(e) {
-    if (this.data.embedded) { this.forwardTouchMove(e); return; }
     var drag = this._editFloatDrag;
     var touch = e.touches && e.touches[0];
     if (!drag || !touch) return;
@@ -380,15 +420,14 @@ function createProductDetailConfig() {
     var deltaY = touch.clientY - drag.startY;
     if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) drag.moved = true;
     var windowInfo = this._shareWindow || { width: 375, height: 667 };
-    var size = 58;
+    var size = this.data.embedded ? 42 : 58;
     this.setData({
       editFloatLeft: Math.max(0, Math.min(windowInfo.width - size, drag.left + deltaX)),
-      editFloatTop: Math.max(0, Math.min(windowInfo.height - size, drag.top + deltaY))
+      editFloatTop: Math.max(windowInfo.minTop || 0, Math.min(windowInfo.height - size, drag.top + deltaY))
     });
   },
 
   endEditFloatDrag: function() {
-    if (this.data.embedded) this.forwardTouchEnd();
     if (Date.now() < (this._suppressTapUntil || 0)) return;
     var drag = this._editFloatDrag;
     this._editFloatDrag = null;
@@ -475,6 +514,14 @@ function createProductDetailConfig() {
 
   onDetailSwiperChange: function(e) {
     this.setData({ currentDetailIndex: e.detail.current + 1 });
+  },
+
+  changeDetailImage: function(e) {
+    if (Date.now() < (this._suppressTapUntil || 0)) return;
+    const step = Number(e.currentTarget.dataset.step);
+    if ((step !== -1 && step !== 1) || !this.data.detailImgs.length) return;
+    const next = Math.max(1, Math.min(this.data.detailImgs.length, this.data.currentDetailIndex + step));
+    if (next !== this.data.currentDetailIndex) this.setData({ currentDetailIndex: next });
   },
 
   goToRelatedDetail: function(e) {

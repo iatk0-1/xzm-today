@@ -1,4 +1,5 @@
 const { normalizeApiError } = require('./error');
+const { stripJpegIcc } = require('./productImage');
 /**
  * 腾讯云 COS 直传工具（STS PUT Object 方案）
  *
@@ -88,6 +89,7 @@ function uploadFile(filePath, dir, onProgress, format) {
 
       // 3. 读取文件为 ArrayBuffer
       var fileData = await readFile(filePath);
+      if (dir === 'products') fileData = stripJpegIcc(fileData);
 
       // 4. 用 COS SDK 直传（PUT Object）
       var cos = new COS({

@@ -17,6 +17,8 @@ function moveSheet(start, dy, viewportHeight, documentHeight) {
   }
   const rawTop = start.top + dy;
   const top = Math.max(0, Math.min(viewportHeight, rawTop));
+  // 从半屏开始的手势只展开弹窗，超出的距离不转成正文滚动。
+  if (start.origin === 'half') return { top, offset: start.offset };
   const overflow = Math.max(0, -rawTop);
   const maxOffset = Math.max(0, documentHeight - viewportHeight);
   return { top, offset: Math.min(maxOffset, start.offset + overflow) };

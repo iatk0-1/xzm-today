@@ -1,8 +1,8 @@
 <view class="wish-nav" wx:if="{{!productSheetVisible}}" style="padding-top: {{statusBarHeight}}px;">
-  <view class="wish-nav-row"><view class="wish-nav-back" bindtap="goBack"><view class="wish-nav-arrow"></view></view><text>心愿详情</text></view>
+  <view class="wish-nav-row"><view class="nav-back" bindtap="goBack" aria-role="button" aria-label="返回"><view class="back-arrow"></view></view></view>
 </view>
 <scroll-view class="wish-page-scroll" scroll-y="{{!productSheetVisible}}" style="height: 100vh;" enhanced="true" show-scrollbar="false">
-<view class="page-wrapper" style="padding-top: {{navHeight}}px;">
+<view class="page-wrapper">
 
   <view class="share-float" wx:if="{{canShowShareFloat && !productSheetVisible}}" style="left: {{shareFloatLeft}}px; top: {{shareFloatTop}}px;" catchtouchstart="startShareFloatDrag" catchtouchmove="moveShareFloat" catchtouchend="endShareFloatDrag">
     <text>分享</text>

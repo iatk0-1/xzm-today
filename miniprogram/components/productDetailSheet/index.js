@@ -15,14 +15,21 @@ Component({
       this._attached = false;
       clearTimeout(this._animationTimer);
       clearTimeout(this._openTimer);
-      clearTimeout(this._inertiaTimer);
     }
   },
   pageLifetimes: {
-    hide() { this.stopInertia(); this._gesture = null; if (this.data.state !== 'closed' && !this._closing) this.snapTo(this.data.state); },
+    hide() { this._gesture = null; if (this.data.state !== 'closed' && !this._closing) this.snapTo(this.data.state); },
     resize() { this.measureWindow(); if (this.data.visible && !this._closing) this.snapTo(this.data.state); }
   },
   methods: {
+    setChangedData(values) {
+      const patch = {};
+      Object.keys(values).forEach(key => {
+        if (values[key] === this.data[key]) return;
+        patch[key] = values[key];
+      });
+      if (Object.keys(patch).length) this.setData(patch);
+    },
     measureWindow() {
       const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
       const menu = wx.getMenuButtonBoundingClientRect ? wx.getMenuButtonBoundingClientRect() : null;
@@ -43,18 +50,16 @@ Component({
       this._openTimer = setTimeout(() => { if (this._attached && !this._closing) this.snapTo('half'); }, 30);
     },
     getProductDetail() { return this.selectComponent('#productDetail'); },
-    stopInertia() { clearTimeout(this._inertiaTimer); this._inertiaTimer = null; },
     blockTouch() {},
     onTitleChange(e) { this.setData({ productTitle: e.detail.title }); },
     onDocumentHeight(e) {
       const height = e.detail.height || 0;
-      const max = Math.max(0, height - this.data.contentHeight);
-      this.setData({ documentHeight: height, contentOffset: Math.min(this.data.contentOffset, max) });
+      this.setChangedData({ documentHeight: height });
     },
-    onOverlayChange(e) { this.setData({ overlayBlocked: !!e.detail.blocked }); this.stopInertia(); },
+    onContentScroll(e) { this.data.contentOffset = Math.max(0, Number(e.detail.offset) || 0); },
+    onOverlayChange(e) { this.setData({ overlayBlocked: !!e.detail.blocked }); },
     onProductChange(e) {
       if (this._closing) return;
-      this.stopInertia();
       this.setData({ activeProductId: String(e.detail.id), contentOffset: 0, documentHeight: 0, productTitle: '' });
     },
     onHeaderTouchStart(e) {
@@ -67,14 +72,14 @@ Component({
     },
     onGestureStart(e) {
       if (!this.data.visible || this._closing || this.data.animating || this.data.overlayBlocked) return;
-      this.stopInertia();
       const d = e.detail;
-      this._gesture = { x: d.x, y: d.y, top: this.data.sheetTop, offset: this.data.contentOffset,
-        origin: this.data.state, image: d.image, direction: '', lastY: d.y, lastTime: Date.now(), velocity: 0 };
+      this._gesture = { x: d.x, y: d.y, top: this.data.sheetTop, offset: d.nativeContent ? (Number(d.offset) || 0) : this.data.contentOffset,
+        origin: this.data.state, image: d.image, nativeContent: !!d.nativeContent, direction: '' };
     },
     onGestureMove(e) {
       const g = this._gesture;
       if (!g) return;
+      if (g.nativeContent && !g.direction && Number.isFinite(e.detail.offset)) g.offset = Math.max(0, e.detail.offset);
       const dx = e.detail.x - g.x, dy = e.detail.y - g.y;
       if (!g.direction) g.direction = resolveDirection(dx, dy, g.image);
       if (!g.direction) return;
@@ -84,43 +89,43 @@ Component({
         }
         return;
       }
-      const child = this.getProductDetail(); if (child) child.lockVerticalGesture();
-      const now = Date.now(), elapsed = now - g.lastTime;
-      if (elapsed > 0) g.velocity = Math.max(-3, Math.min(3, (e.detail.y - g.lastY) / elapsed));
-      g.lastY = e.detail.y; g.lastTime = now;
+      if (g.origin === 'full') {
+        if (g.nativeOwned || (g.nativeContent && g.offset > 1) || dy <= 0 && !g.verticalLocked) {
+          g.nativeOwned = true;
+          return;
+        }
+      }
+      if (!g.verticalLocked) {
+        const child = this.getProductDetail(); if (child) child.lockVerticalGesture();
+        g.verticalLocked = true;
+      }
       const fullHeader = this.data.statusBarHeight + 44;
-      const moved = moveSheet(g, dy, this.data.windowHeight, this.data.documentHeight + fullHeader);
+      const moved = moveSheet({ ...g, offset: g.origin === 'full' ? 0 : g.offset }, dy, this.data.windowHeight, this.data.documentHeight);
       const top = moved.top;
       // 回到全屏也等松手动画结束后才显示导航，拖动过程中始终保持隐藏。
       const full = g.origin === 'full' && top === 0;
       const header = full ? fullHeader : 0;
-      this.setData({ expansionProgress: Math.max(0, Math.min(1, 1 - top / (this.data.windowHeight / 3))), sheetTop: top, contentOffset: moved.offset, fullscreen: full,
-        headerHeight: header, contentHeight: Math.max(0, this.data.windowHeight - top - header),
+      this.setChangedData({ expansionProgress: Math.max(0, Math.min(1, 1 - top / (this.data.windowHeight / 3))), sheetTop: top, fullscreen: full,
+        headerHeight: header, contentHeight: Math.max(0, this.data.windowHeight - top),
         maskOpacity: Math.max(0, 1 - top / this.data.windowHeight) });
     },
     onGestureEnd() {
       const g = this._gesture; this._gesture = null;
-      if (!g || g.direction !== 'vertical') return;
+      if (!g || g.direction !== 'vertical' || g.nativeOwned) return;
       const child = this.getProductDetail(); if (child) child.suppressGestureTap();
-      const target = settleSheet(this.data.sheetTop, g.origin, this.data.windowHeight, g.velocity);
+      const target = settleSheet(this.data.sheetTop, g.origin, this.data.windowHeight);
       if (target === 'closed') this.requestClose();
-      else {
-        this.snapTo(target);
-        if (target === 'full' && this.data.sheetTop === 0) {
-          if (g.velocity < -0.05) this.startInertia(-g.velocity);
-          else if (g.origin === 'full' && g.offset > 0 && this.data.contentOffset > 0 && g.velocity > 0.05) this.startInertia(-g.velocity);
-        }
-      }
+      else this.snapTo(target);
     },
     onGestureCancel() {
       const g = this._gesture; this._gesture = null;
-      if (g) this.snapTo(g.origin);
+      if (g && !g.nativeOwned) this.snapTo(g.origin);
     },
     snapTo(state) {
       clearTimeout(this._animationTimer);
       const top = state === 'full' ? 0 : this.data.windowHeight / 3;
       if (state === 'full' && this.data.fullscreen && this.data.sheetTop === 0) {
-        this.setData({ state, animating: false });
+        this.setChangedData({ state, animating: false });
         return;
       }
       this.setData({ state, expansionProgress: state === 'full' ? 1 : 0, sheetTop: top, fullscreen: false, animating: true,
@@ -134,29 +139,17 @@ Component({
       const full = this.data.state === 'full';
       const header = full ? this.data.statusBarHeight + 44 : 0;
       this.setData({ animating: false, fullscreen: full, headerHeight: header,
-        contentHeight: this.data.windowHeight - this.data.sheetTop - header });
+        contentHeight: this.data.windowHeight - this.data.sheetTop });
     },
     onTransitionEnd(e) {
       if (e.target && e.target.id !== 'sheetPanel') return;
       if (this._closing) this.finishClose(); else this.completeSnap();
     },
-    startInertia(speed) {
-      this.stopInertia();
-      const tick = () => {
-        if (!this._attached || this._closing || this._gesture || this.data.overlayBlocked) return;
-        const max = Math.max(0, this.data.documentHeight - this.data.contentHeight);
-        const offset = Math.max(0, Math.min(max, this.data.contentOffset + speed * 16));
-        this.setData({ contentOffset: offset });
-        speed *= 0.92;
-        if (Math.abs(speed) > 0.04 && (speed > 0 ? offset < max : offset > 0)) this._inertiaTimer = setTimeout(tick, 16);
-      };
-      this._inertiaTimer = setTimeout(tick, this.data.animating ? ANIMATION_MS : 16);
-    },
     requestClose() {
       if (!this.data.visible || this._closing) return;
       const child = this.getProductDetail();
       clearTimeout(this._openTimer); clearTimeout(this._animationTimer);
-      this.stopInertia(); this._gesture = null; this._closing = true;
+      this._gesture = null; this._closing = true;
       if (child) child.pauseProductVideos();
       this.setData({ expansionProgress: 0, fullscreen: false, animating: true, sheetTop: this.data.windowHeight, maskOpacity: 0 });
       this._animationTimer = setTimeout(() => this.finishClose(), ANIMATION_MS);

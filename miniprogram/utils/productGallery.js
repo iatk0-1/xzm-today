@@ -12,4 +12,22 @@ function getGalleryLayout(width, progress, count, index, drag = 0) {
     : raw < 0 ? -resistance(-raw) : raw > max ? max + resistance(raw - max) : raw;
   return { galleryItemWidth: itemWidth, galleryHeight: itemWidth * 1.25, galleryOffset: offset, galleryTranslateX: -offset };
 }
-module.exports = { getGalleryLayout };
+// 顶部画廊始终为 4:5；铺满时至少保留 80% 面积，否则完整显示。
+function getBannerImageMode(width, height) {
+  return getImageMode(width, height, 4 / 5);
+}
+
+function getImageMode(width, height, containerRatio) {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return 'aspectFit';
+  if (!Number.isFinite(containerRatio) || containerRatio <= 0) return 'aspectFit';
+  const ratio = width / height;
+  const retainedArea = Math.min(ratio / containerRatio, containerRatio / ratio);
+  return retainedArea + 1e-9 >= 0.8 ? 'aspectFill' : 'aspectFit';
+}
+
+function getDetailImageMode(width, height) {
+  // 细节轮播占满整页，固定高度 130vw。
+  return getImageMode(width, height, 1 / 1.3);
+}
+
+module.exports = { getGalleryLayout, getBannerImageMode, getDetailImageMode };

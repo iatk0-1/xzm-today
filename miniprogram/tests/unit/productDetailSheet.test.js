@@ -39,7 +39,7 @@ function setup(component = 'productDetailSheet', handlers = {}) {
   };
   vm.runInNewContext(fs.readFileSync(filename, 'utf8'), ctx);
   const instance = { ...definition.methods, data: plain(definition.data), _attached: true,
-    setData(patch) { Object.assign(this.data, patch); },
+    setData(patch, callback) { Object.assign(this.data, patch); if (callback) callback(); },
     triggerEvent(name, detail) { events.push({ name, detail }); },
     selectComponent() { return child; },
     createSelectorQuery() { return { select() { return this; }, boundingClientRect(cb) { this.cb = cb; return this; }, exec() { this.cb({ height: 2100 }); } }; }
@@ -58,7 +58,98 @@ function setup(component = 'productDetailSheet', handlers = {}) {
 function opened() {
   const env = setup(); env.instance.open('360435019602202624'); env.flush(30); env.flush(280); return env;
 }
+test('详情主图、正文和横滑图使用兼容地址，SKU 预览同步使用同一地址', async () => {
+  const url = require('../../utils/config').CDN_BASE_URL + '/xzm/products/gray.jpg';
+  const safe = url + '?imageMogr2/strip';
+  const { instance } = setup('productDetail', { get: async () => ({ product: {
+    id: '1', name: '灰度尺码图', coverUrl: url, bannerImages: [url], lookbookImages: [url],
+    detailImages: [url], skuMatrix: [{ skuId: '2', imageUrl: url }]
+  } }) });
+  await instance.getProductDetail('1');
+  assert.deepEqual(plain(instance.data.bannerImgs), [safe, safe]);
+  assert.deepEqual(plain(instance.data.lookbookImgs), [safe]);
+  assert.deepEqual(plain(instance.data.detailImgs), [safe]);
+  assert.equal(instance.data.product.skuMatrix[0].imageUrl, safe);
+});
 const tap = (dataset = {}) => ({ currentTarget: { dataset } });
+
+test('顶部每张图片独立适配，切换商品重置模式并忽略旧图片加载回调', async () => {
+  let product = { id: '1', coverUrl: 'portrait.jpg', bannerImages: ['wide.jpg'], skuMatrix: [] };
+  const { instance } = setup('productDetail', { get: async () => ({ product }) });
+  await instance.getProductDetail('1');
+  assert.deepEqual(plain(instance.data.bannerImageModes), ['aspectFit', 'aspectFit']);
+  const load = (index, src, width, height) => instance.onBannerImageLoad({
+    currentTarget: { dataset: { index, src } }, detail: { width, height }
+  });
+  load(0, 'portrait.jpg', 750, 1000);
+  load(1, 'wide.jpg', 714, 102);
+  assert.deepEqual(plain(instance.data.bannerImageModes), ['aspectFill', 'aspectFit']);
+  const previousHeight = instance.data.galleryHeight;
+  instance.onBannerChange({ detail: { current: 1 } });
+  assert.equal(instance.data.galleryHeight, previousHeight);
+  await instance.getProductDetail('1');
+  assert.deepEqual(plain(instance.data.bannerImageModes), ['aspectFill', 'aspectFit'], '已加载地址使用页面内缓存');
+  product = { id: '2', coverUrl: 'new.jpg', skuMatrix: [] };
+  await instance.getProductDetail('2');
+  load(0, 'portrait.jpg', 750, 1000);
+  assert.deepEqual(plain(instance.data.bannerImageModes), ['aspectFit'], '旧回调不影响新商品');
+  load(0, 'new.jpg', 0, 0);
+  assert.deepEqual(plain(instance.data.bannerImageModes), ['aspectFit']);
+});
+
+test('细节图片独立判断、复用缓存，切商品后不接收旧图回调', async () => {
+  let product = { id: '1', detailImages: ['detail-portrait', 'detail-wide'], skuMatrix: [] };
+  const { instance } = setup('productDetail', { get: async () => ({ product }) });
+  await instance.getProductDetail('1');
+  assert.deepEqual(plain(instance.data.detailImageModes), ['aspectFit', 'aspectFit']);
+  const load = (index, src, width, height) => instance.onDetailImageLoad({
+    currentTarget: { dataset: { index, src } }, detail: { width, height }
+  });
+  load(0, 'detail-portrait', 750, 1000);
+  load(1, 'detail-wide', 714, 102);
+  assert.deepEqual(plain(instance.data.detailImageModes), ['aspectFill', 'aspectFit']);
+  instance.onResize();
+  assert.deepEqual(plain(instance.data.detailImageModes), ['aspectFill', 'aspectFit']);
+  await instance.getProductDetail('1');
+  assert.deepEqual(plain(instance.data.detailImageModes), ['aspectFill', 'aspectFit']);
+  product = { id: '2', detailImages: ['new-detail'], skuMatrix: [] };
+  await instance.getProductDetail('2');
+  load(0, 'detail-portrait', 750, 1000);
+  load(0, 'new-detail', 0, 0);
+  assert.deepEqual(plain(instance.data.detailImageModes), ['aspectFit']);
+});
+
+test('细节图箭头逐张切换并限制首尾，横滑后继续从当前页翻图', () => {
+  const { instance } = setup('productDetail');
+  instance.data.detailImgs = ['first', 'second', 'third'];
+  const change = step => instance.changeDetailImage(tap({ step }));
+  change(-1);
+  assert.equal(instance.data.currentDetailIndex, 1);
+  change(1);
+  assert.equal(instance.data.currentDetailIndex, 2);
+  change(1);
+  change(1);
+  assert.equal(instance.data.currentDetailIndex, 3);
+  instance.onDetailSwiperChange({ detail: { current: 1 } });
+  change(-1);
+  assert.equal(instance.data.currentDetailIndex, 1);
+  instance._suppressTapUntil = 2000;
+  change(1);
+  assert.equal(instance.data.currentDetailIndex, 1, '刚滑动后不会误触箭头再翻一张');
+  instance._suppressTapUntil = 0;
+  instance.data.detailImgs = ['only'];
+  change(1);
+  assert.equal(instance.data.currentDetailIndex, 1);
+  change('invalid');
+  assert.equal(instance.data.currentDetailIndex, 1);
+});
+
+test('细节轮播首尾按需显示方向按钮，去掉下一张预览且按钮不触发大图', () => {
+  const template = fs.readFileSync(path.resolve(__dirname, '../../components/productDetail/document.wxml'), 'utf8');
+  assert.doesNotMatch(template, /next-margin=/);
+  assert.match(template, /wx:if="\{\{currentDetailIndex > 1\}\}"[^\n]+catchtap="changeDetailImage"[^\n]+data-step="-1"/);
+  assert.match(template, /wx:if="\{\{currentDetailIndex < detailImgs.length\}\}"[^\n]+catchtap="changeDetailImage"[^\n]+data-step="1"/);
+});
 
 test('只有图片准确横向滑动才翻图，斜滑按纵向，微小移动不锁定', () => {
   assert.equal(resolveDirection(5, 3, true), '');
@@ -109,6 +200,7 @@ test('打开三分之二窗口只创建一次商品，全屏完成后才显示�
   assert.equal(sheet.data.sheetTop, 0); assert.equal(sheet.data.fullscreen, false);
   sheet.onGestureEnd(); assert.equal(sheet.data.fullscreen, false);
   flush(280); assert.equal(sheet.data.fullscreen, true); assert.equal(sheet.data.headerHeight, 68);
+  assert.equal(sheet.data.contentHeight, 750, '全屏导航覆盖图片，不扣除导航占位高度');
   assert.equal(sheet.data.expansionProgress, 1);
   assert.equal(sheet.data.activeProductId, '360435019602202624'); assert.equal(sheet.data.mounted, true);
   sheet.setData({ contentOffset: 0 });
@@ -116,6 +208,27 @@ test('打开三分之二窗口只创建一次商品，全屏完成后才显示�
   assert.equal(sheet.data.fullscreen, false); assert.equal(sheet.data.sheetTop, 40);
   sheet.onGestureEnd(); flush(280); assert.equal(sheet.data.state, 'full');
   assert.equal(sheet.data.fullscreen, true); assert.equal(sheet.data.sheetTop, 0);
+});
+
+test('半屏上滑只展开到全屏，超出距离和松手速度都不会继续滚动正文', () => {
+  const { instance: sheet, flush, move } = opened();
+  sheet.onDocumentHeight({ detail: { height: 2400 } });
+  sheet.onGestureStart({ detail: { x: 20, y: 600, image: false } });
+  move(20, 50, 100);
+  assert.equal(sheet.data.sheetTop, 0);
+  assert.equal(sheet.data.contentOffset, 0, '超出展开距离不滚正文');
+  sheet.onGestureEnd();
+  flush(280);
+  flush(16);
+  assert.equal(sheet.data.fullscreen, true);
+  assert.equal(sheet.data.contentOffset, 0, '展开完成后不启动惯性');
+  sheet.onGestureStart({ detail: { x: 20, y: 500, image: false } });
+  move(20, 400, 100);
+  assert.equal(sheet.data.contentOffset, 0, '触摸事件不模拟正文滚动');
+  sheet.onContentScroll({ detail: { offset: 100 } });
+  sheet.onGestureEnd();
+  flush(16);
+  assert.equal(sheet.data.contentOffset, 100, 'JS 不接管原生惯性');
 });
 
 test('图片横滑不移动弹窗，方向锁定后不混入纵向，正文不抢轮播', () => {
@@ -132,13 +245,17 @@ test('全屏下拉先回滚正文，到顶重新下拉，不够距离回弹，�
   const { instance: sheet, flush, move } = opened();
   sheet.onDocumentHeight({ detail: { height: 2400 } }); sheet.snapTo('full'); flush(280);
   sheet.setData({ contentOffset: 500 });
-  sheet.onGestureStart({ detail: { x: 20, y: 300 } }); move(20, 200);
+  sheet.onGestureStart({ detail: { x: 20, y: 300, nativeContent: true, offset: 500 } }); move(20, 200);
+  sheet.onContentScroll({ detail: { offset: 600 } });
   assert.equal(sheet.data.fullscreen, true); assert.equal(sheet.data.contentOffset, 600);
   sheet.onGestureEnd(); assert.equal(sheet.data.fullscreen, true);
-  sheet.onGestureStart({ detail: { x: 20, y: 200 } }); move(20, 310);
+  sheet.onGestureStart({ detail: { x: 20, y: 200, nativeContent: true, offset: 600 } }); move(20, 310);
+  sheet.onContentScroll({ detail: { offset: 490 } });
   assert.equal(sheet.data.sheetTop, 0); assert.equal(sheet.data.contentOffset, 490);
   assert.equal(sheet.data.fullscreen, true); sheet.onGestureEnd();
-  sheet.onGestureStart({ detail: { x: 20, y: 100 } }); move(20, 700);
+  sheet.onGestureStart({ detail: { x: 20, y: 100, nativeContent: true, offset: 490 } }); move(20, 700);
+  sheet.onContentScroll({ detail: { offset: 0 } });
+  move(20, 740);
   assert.equal(sheet.data.sheetTop, 0); assert.equal(sheet.data.contentOffset, 0);
   sheet.onGestureEnd(); assert.equal(sheet.data.state, 'full');
   sheet.onGestureStart({ detail: { x: 20, y: 100 } }); move(20, 140);
@@ -189,8 +306,8 @@ test('嵌入详情向外发送图片手势，浮层打开时不让弹窗抢手�
   const { instance: detail, events } = setup('productDetail');
   const start = { touches: [{ clientX: 20, clientY: 30 }], target: { dataset: { gesture: 'image' } } };
   detail.forwardTouchStart(start); detail.forwardTouchMove({ touches: [{ clientX: 50, clientY: 60 }] });
-  assert.deepEqual(plain(events.slice(0, 2)), [{ name: 'gesturestart', detail: { x: 20, y: 30, image: true } },
-    { name: 'gesturemove', detail: { x: 50, y: 60 } }]);
+  assert.deepEqual(plain(events.slice(0, 2)), [{ name: 'gesturestart', detail: { x: 20, y: 30, image: true, nativeContent: false, offset: 0 } },
+    { name: 'gesturemove', detail: { x: 50, y: 60, offset: 0 } }]);
   detail.forwardTouchMove({ touches: [{}, {}] }); assert.equal(events.at(-1).name, 'gesturecancel');
   detail.setData({ showSku: true }); const count = events.length; detail.forwardTouchStart(start);
   assert.equal(events.length, count);
@@ -268,7 +385,7 @@ test('图片区方向锁定：横滑只翻一张，斜滑和取消不翻图，�
   assert.ok(events.some(e => e.name === 'gesturecancel'));
 });
 
-test('组件通知等数据更新结束再发送，退出后丢弃，浮钮上下滑动交给整窗', () => {
+test('组件通知等数据更新结束再发送，退出后丢弃，浮钮独立拖动不带动整窗', () => {
   const { instance: detail, events, flush } = setup('productDetail');
   detail.notifySheet('titlechange', { title: '测试商品' });
   assert.equal(events.length, 0); flush(0); assert.equal(events[0].name, 'titlechange');
@@ -277,24 +394,188 @@ test('组件通知等数据更新结束再发送，退出后丢弃，浮钮上�
   detail.data.canShowShareFloat = true; detail.data.shareImageCount = 1; detail.data.shareTemplatesReady = true;
   detail.startShareFloatDrag({ touches: [{ clientX: 200, clientY: 160 }], target: { dataset: {} } });
   detail.moveShareFloat({ touches: [{ clientX: 200, clientY: 240 }] });
-  detail.lockVerticalGesture();
   detail.endShareFloatDrag();
   assert.equal(detail.data.showShareTemplates, false);
-  assert.deepEqual(events.slice(-3).map(e => e.name), ['gesturestart', 'gesturemove', 'gestureend']);
+  assert.equal(detail.data.shareFloatTop, 80);
+  assert.equal(events.some(e => e.name.startsWith('gesture')), false);
+});
+
+test('弹窗浮钮避开胶囊，拖动限制在可视范围且尺寸变化保留位置', () => {
+  const { instance: detail } = setup('productDetail');
+  detail.initShareFloatPosition({ windowWidth: 375, windowHeight: 472 });
+  detail.updateFloatBounds();
+  assert.equal(detail.data.shareFloatTop, 82);
+  assert.equal(detail.data.editFloatTop, 132);
+  detail.startEditFloatDrag({ touches: [{ clientX: 300, clientY: 150 }] });
+  detail.moveEditFloat({ touches: [{ clientX: 1000, clientY: -1000 }] });
+  assert.equal(detail.data.editFloatLeft, 333);
+  assert.equal(detail.data.editFloatTop, 82);
+  detail.cancelFloatTouch();
+  detail.data.viewportHeight = 750;
+  detail.updateFloatBounds();
+  assert.equal(detail.data.editFloatLeft, 333);
+  assert.equal(detail.data.editFloatTop, 82);
+  detail.startShareFloatDrag({ touches: [{ clientX: 300, clientY: 100 }] });
+  detail.moveShareFloat({ touches: [{ clientX: -1000, clientY: 2000 }] });
+  detail.endShareFloatDrag();
+  assert.equal(detail.data.shareFloatLeft, 0);
+  assert.equal(detail.data.shareFloatTop, 708);
+  assert.equal(detail.data.showShareTemplates, false);
 });
 
 
-test('全屏正文下拉惯性只回滚到顶部，不带动弹窗；下一次触摸终止惯性', () => {
-  const { instance: sheet, flush } = opened();
-  sheet.onDocumentHeight({ detail: { height: 2400 } }); sheet.snapTo('full'); flush(280);
-  sheet.setData({ contentOffset: 20 }); sheet.startInertia(-3); flush(16);
-  assert.equal(sheet.data.contentOffset, 0); assert.equal(sheet.data.sheetTop, 0);
-  assert.equal(sheet.data.visible, true); assert.equal(sheet.data.state, 'full');
-  sheet.setData({ contentOffset: 300 }); sheet.startInertia(1);
-  sheet.onGestureStart({ detail: { x: 20, y: 300 } }); flush(16);
-  assert.equal(sheet.data.contentOffset, 300);
+test('全屏原生滚动及惯性通知不刷新父弹窗，不创建 JS 惯性定时器', () => {
+  const { instance: sheet, flush, move, calls, timers } = opened();
+  sheet.snapTo('full'); flush(280);
+  const patches = [];
+  sheet.setData = patch => { patches.push(patch); Object.assign(sheet.data, patch); };
+  sheet.onGestureStart({ detail: { x: 20, y: 500, nativeContent: true, offset: 300 } });
+  for (const y of [480, 460, 440, 420]) move(20, y);
+  sheet.onGestureEnd();
+  for (const offset of [320, 340, 380, 400]) sheet.onContentScroll({ detail: { offset } });
+  assert.equal(sheet.data.contentOffset, 400);
+  assert.equal(patches.length, 0);
+  assert.equal(calls.locks, 0);
+  assert.equal(timers.size, 0);
 });
 
+test('横滑画廊不重复测量正文，同高度回调不重复通知父组件', () => {
+  const { instance: detail, flush, events } = setup('productDetail');
+  detail.data.bannerImgs = ['a', 'b', 'c'];
+  detail.updateGallery(); detail.measureDocument(); flush(30);
+  const heights = () => events.filter(event => event.name === 'documentheight');
+  assert.equal(heights().length, 1);
+  let measurements = 0;
+  const original = detail.measureDocument;
+  detail.measureDocument = () => { measurements++; original.call(detail); };
+  detail.updateGallery(40);
+  detail.updateGallery(80);
+  assert.equal(measurements, 0);
+  detail.measureDocument(); flush(30);
+  assert.equal(heights().length, 1);
+});
+
+test('全屏连续纵滑不刷新子组件，正文到顶后同一划不接管弹窗', () => {
+  const { instance: detail, events } = setup('productDetail');
+  detail.data.nativeScroll = true;
+  detail.onNativeScroll({ detail: { scrollTop: 120 } });
+  const patches = [];
+  detail.setData = patch => { patches.push(patch); Object.assign(detail.data, patch); };
+  detail.forwardTouchStart({ touches: [{ clientX: 20, clientY: 200 }], target: { dataset: {} } });
+  detail.forwardTouchMove({ touches: [{ clientX: 20, clientY: 260 }] });
+  detail.onNativeScroll({ detail: { scrollTop: 0 } });
+  detail.forwardTouchMove({ touches: [{ clientX: 20, clientY: 400 }] });
+  detail.forwardTouchEnd();
+  assert.equal(patches.length, 0);
+  assert.equal(events.filter(e => e.name === 'gesturemove').length, 0);
+  assert.equal(detail._nativeScrollTop, 0);
+  detail.forwardTouchStart({ touches: [{ clientX: 20, clientY: 200 }], target: { dataset: {} } });
+  detail.forwardTouchMove({ touches: [{ clientX: 20, clientY: 260 }] });
+  assert.equal(events.at(-1).name, 'gesturemove', '到顶重新下拉才交给弹窗');
+  detail.lockVerticalGesture();
+  assert.equal(detail.data.sheetDragging, true);
+  detail.forwardTouchCancel();
+  assert.equal(detail.data.sheetDragging, false);
+});
+
+test('全屏从顶部上滑后反向仍是原生滚动，图片横滑仍只翻图', () => {
+  const { instance: detail, events } = setup('productDetail');
+  detail.data.nativeScroll = true;
+  detail.data.bannerImgs = ['a', 'b'];
+  const begin = () => detail.forwardTouchStart({ touches: [{ clientX: 200, clientY: 200 }], target: { dataset: { gesture: 'image', gallery: 'banner' } } });
+  begin();
+  detail.forwardTouchMove({ touches: [{ clientX: 200, clientY: 150 }] });
+  detail.forwardTouchMove({ touches: [{ clientX: 200, clientY: 250 }] });
+  detail.forwardTouchEnd();
+  assert.equal(events.filter(e => e.name === 'gesturemove').length, 0);
+  assert.equal(detail.data.bannerIndex, 0);
+  begin();
+  detail.forwardTouchMove({ touches: [{ clientX: 100, clientY: 205 }] });
+  assert.equal(detail.data.sheetDragging, true);
+  detail.forwardTouchEnd();
+  assert.equal(detail.data.bannerIndex, 1);
+  assert.equal(detail.data.sheetDragging, false);
+});
+
+function connectedFullSheet() {
+  const env = opened();
+  const sheet = env.instance;
+  sheet.snapTo('full'); env.flush(280);
+  const { instance: detail } = setup('productDetail');
+  detail.data.nativeScroll = true;
+  sheet.getProductDetail = () => detail;
+  const routes = { gesturestart: 'onGestureStart', gesturemove: 'onGestureMove', gestureend: 'onGestureEnd',
+    gesturecancel: 'onGestureCancel', contentscroll: 'onContentScroll' };
+  detail.triggerEvent = (name, value) => { if (routes[name]) sheet[routes[name]]({ detail: value }); };
+  const start = () => detail.forwardTouchStart({ touches: [{ clientX: 20, clientY: 200 }], target: { dataset: {} } });
+  const move = y => detail.forwardTouchMove({ touches: [{ clientX: 20, clientY: y }] });
+  return { ...env, sheet, detail, start, move };
+}
+
+test('到顶通知晚于触摸开始时，第一划下拉仍能交给父弹窗关闭', () => {
+  for (const notification of ['scroll', 'upper', 'dragstart']) {
+    const { sheet, detail, start, move, flush } = connectedFullSheet();
+    detail.onNativeScroll({ detail: { scrollTop: 48 } });
+    start();
+    if (notification === 'scroll') detail.onNativeScroll({ detail: { scrollTop: 0 } });
+    if (notification === 'upper') detail.onNativeScrollUpper();
+    if (notification === 'dragstart') detail.onNativeDragStart({ detail: { scrollTop: 0 } });
+    move(320);
+    assert.equal(sheet.data.sheetTop, 120, notification);
+    detail.forwardTouchEnd(); flush(280);
+    assert.equal(sheet.data.visible, false, notification);
+  }
+});
+
+test('原生滑动起点通知晚于首次移动时，也能纠正过时缓存并关闭', () => {
+  const { sheet, detail, start, move, flush } = connectedFullSheet();
+  detail.onNativeScroll({ detail: { scrollTop: 20 } });
+  start(); move(230);
+  assert.equal(sheet.data.sheetTop, 0);
+  detail.onNativeDragStart({ detail: { scrollTop: 0 } });
+  assert.equal(sheet.data.sheetTop, 30, '补接首次下拉的距离');
+  move(320); detail.forwardTouchEnd(); flush(280);
+  assert.equal(sheet.data.visible, false);
+});
+
+test('本次从正文中间滚到顶仍不关窗，松手后下次下拉可以关闭', () => {
+  const { sheet, detail, start, move, flush } = connectedFullSheet();
+  detail.onNativeScroll({ detail: { scrollTop: 80 } });
+  start(); move(230);
+  detail.onNativeDragStart({ detail: { scrollTop: 80 } });
+  detail.onNativeScrollUpper(); move(380); detail.forwardTouchEnd();
+  assert.equal(sheet.data.sheetTop, 0);
+  assert.equal(sheet.data.visible, true);
+  start(); move(320); detail.forwardTouchEnd(); flush(280);
+  assert.equal(sheet.data.visible, false);
+});
+
+test('顶部先上滑再反向时，迟到的原生起点通知不会误转成关窗', () => {
+  const { sheet, detail, start, move } = connectedFullSheet();
+  start(); move(170); move(320);
+  detail.onNativeDragStart({ detail: { scrollTop: 0 } });
+  detail.forwardTouchEnd();
+  assert.equal(sheet.data.sheetTop, 0);
+  assert.equal(sheet.data.visible, true);
+});
+
+test('正文使用固定高度原生滚动，图片区不拦截纵向事件，切商品回顶部', async () => {
+  const root = path.resolve(__dirname, '../../components/productDetail');
+  const template = fs.readFileSync(path.join(root, 'index.wxml'), 'utf8');
+  const document = fs.readFileSync(path.join(root, 'document.wxml'), 'utf8');
+  assert.match(template, /<scroll-view[^>]+scroll-y=/);
+  assert.doesNotMatch(template, /translate3d/);
+  assert.doesNotMatch(document, /catchtouchmove/);
+  assert.match(document, /wx:else class="detail-swiper detail-strip"/);
+  const { instance: detail } = setup('productDetail');
+  detail.onNativeScroll({ detail: { scrollTop: 600 } });
+  const positions = [];
+  const original = detail.setData;
+  detail.setData = (patch, callback) => { if ('requestedScrollTop' in patch) positions.push(patch.requestedScrollTop); original.call(detail, patch, callback); };
+  await detail.initializeProduct('new');
+  assert.deepEqual(positions, [600, 0]);
+  assert.equal(detail._nativeScrollTop, 0);
+});
 
 test('图片带最小露出1.5张，跟随展开进度放大，最后一张靠右，单图居中', () => {
   const { getGalleryLayout } = require('../../utils/productGallery');
