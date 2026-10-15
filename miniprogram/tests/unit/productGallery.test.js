@@ -22,6 +22,10 @@ test('半屏到全屏画廊始终保持 4:5，不根据当前图片调整高度'
   for (const progress of [0, 0.5, 1]) {
     const layout = getGalleryLayout(375, progress, 3, 0);
     assert.equal(layout.galleryHeight / layout.galleryItemWidth, 1.25);
+    assert.equal(layout.galleryBaseWidth, 375);
+    assert.equal(layout.galleryBaseHeight, 468.75);
+    assert.ok(Math.abs(layout.galleryBaseWidth * layout.galleryScale - layout.galleryItemWidth) < 1e-9);
+    assert.ok(Math.abs(layout.galleryBaseHeight * layout.galleryScale - layout.galleryHeight) < 1e-9);
   }
 });
 

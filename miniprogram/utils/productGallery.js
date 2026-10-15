@@ -10,7 +10,9 @@ function getGalleryLayout(width, progress, count, index, drag = 0) {
   const resistance = value => width * 0.18 * value / (width + value);
   const offset = count <= 1 ? (itemWidth - width) / 2
     : raw < 0 ? -resistance(-raw) : raw > max ? max + resistance(raw - max) : raw;
-  return { galleryItemWidth: itemWidth, galleryHeight: itemWidth * 1.25, galleryOffset: offset, galleryTranslateX: -offset };
+  // 图片以全屏尺寸绘制，升降时只缩放合成层，避免每张图片反复重新布局。
+  return { galleryItemWidth: itemWidth, galleryHeight: itemWidth * 1.25, galleryOffset: offset, galleryTranslateX: -offset,
+    galleryBaseWidth: width, galleryBaseHeight: width * 1.25, galleryScale: itemWidth / width };
 }
 // 顶部画廊始终为 4:5；铺满时至少保留 80% 面积，否则完整显示。
 function getBannerImageMode(width, height) {

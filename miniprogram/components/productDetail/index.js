@@ -12,12 +12,17 @@ Component({
     galleryAnimating: { type: Boolean, value: false },
     nativeScroll: { type: Boolean, value: false }
   },
-  data: { ...data, embedded: true, requestedScrollTop: 0, sheetDragging: false, galleryItemWidth: 250, galleryHeight: 312.5, galleryOffset: 0, galleryTranslateX: 0, gallerySettling: false },
+  data: { ...data, embedded: true, requestedScrollTop: 0, sheetDragging: false, galleryItemWidth: 250, galleryHeight: 312.5, galleryOffset: 0, galleryTranslateX: 0,
+    galleryBaseWidth: 375, galleryBaseHeight: 468.75, galleryScale: 2 / 3, gallerySettling: false },
   observers: {
     'expansionProgress, bannerImgs, bannerIndex, product.videoUrl'() { if (this._ready) this.updateGallery(); },
     productId(id) { if (this._ready && id && String(id) !== this._productId) this.initializeProduct(id); },
-    viewportHeight() { if (this._ready) { this.updateGallery(); this.updateFloatBounds(); } },
-    galleryAnimating(value) { if (this._ready && !value) this.measureDocument(); },
+    'viewportHeight, sheetDragging, galleryAnimating'() {
+      if (!this._ready) return;
+      if (this.data.sheetDragging || this.data.galleryAnimating) { clearTimeout(this._measureTimer); return; }
+      this.updateFloatBounds();
+      this.measureDocument();
+    },
     'product, relatedProducts, currentAuraTab'(product) {
       if (!this._ready) return;
       this.notifySheet('titlechange', { title: this.data.product.name || this.data.product.title || '' });
@@ -40,7 +45,11 @@ Component({
     }
   },
   pageLifetimes: {
-    resize() { if (this._ready) this.onResize(); },
+    resize() {
+      if (!this._ready) return;
+      this._galleryWidth = null;
+      this.onResize(); this.updateGallery(); this.updateFloatBounds();
+    },
     hide() { onHide.call(this); },
     show() { if (this._ready) onShow.call(this); }
   },
@@ -80,12 +89,15 @@ Component({
       const height = this.data.viewportHeight || info.windowHeight || 667;
       this._shareWindow = { width, height, minTop };
       const clampTop = top => Math.max(minTop, Math.min(height - 42, top));
-      this.setData({
+      const values = {
         shareFloatTop: clampTop(this.data.shareFloatTop),
         editFloatTop: clampTop(this.data.editFloatTop),
         shareFloatLeft: Math.max(0, Math.min(width - 42, this.data.shareFloatLeft)),
         editFloatLeft: Math.max(0, Math.min(width - 42, this.data.editFloatLeft))
-      });
+      };
+      const patch = {};
+      Object.keys(values).forEach(key => { if (values[key] !== this.data[key]) patch[key] = values[key]; });
+      if (Object.keys(patch).length) this.setData(patch);
     },
     settleGallery() {
       clearTimeout(this._gallerySettleTimer);
@@ -96,9 +108,12 @@ Component({
       }, 280);
     },
     updateGallery(drag = 0) {
-      const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+      if (!this._galleryWidth) {
+        const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+        this._galleryWidth = info.windowWidth || 375;
+      }
       const count = this.data.bannerImgs.length + (this.data.product.videoUrl ? 1 : 0);
-      const layout = getGalleryLayout(info.windowWidth || 375, this.data.expansionProgress, count, this.data.bannerIndex, drag);
+      const layout = getGalleryLayout(this._galleryWidth, this.data.expansionProgress, count, this.data.bannerIndex, drag);
       const heightChanged = layout.galleryHeight !== this.data.galleryHeight;
       const patch = {};
       Object.keys(layout).forEach(key => { if (layout[key] !== this.data[key]) patch[key] = layout[key]; });
@@ -135,8 +150,10 @@ Component({
     },
     measureDocument() {
       clearTimeout(this._measureTimer);
+      // 拖动和吸附期间尺寸仍在变化，结束后再统一测量，避免连续触发布局查询。
+      if (this.data.sheetDragging || this.data.galleryAnimating) return;
       this._measureTimer = setTimeout(() => {
-        if (!this._ready) return;
+        if (!this._ready || this.data.sheetDragging || this.data.galleryAnimating) return;
         this.createSelectorQuery().select('.product-document').boundingClientRect(rect => {
           if (this._ready && rect && rect.height !== this._lastDocumentHeight) {
             this._lastDocumentHeight = rect.height;

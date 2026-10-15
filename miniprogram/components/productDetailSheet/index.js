@@ -105,7 +105,7 @@ Component({
       // 回到全屏也等松手动画结束后才显示导航，拖动过程中始终保持隐藏。
       const full = g.origin === 'full' && top === 0;
       const header = full ? fullHeader : 0;
-      this.setChangedData({ expansionProgress: Math.max(0, Math.min(1, 1 - top / (this.data.windowHeight / 3))), sheetTop: top, fullscreen: full,
+      this.setChangedData({ expansionProgress: g.origin === 'full' ? 1 : Math.max(0, Math.min(1, 1 - top / (this.data.windowHeight / 3))), sheetTop: top, fullscreen: full,
         headerHeight: header, contentHeight: Math.max(0, this.data.windowHeight - top),
         maskOpacity: Math.max(0, 1 - top / this.data.windowHeight) });
     },
@@ -151,7 +151,7 @@ Component({
       clearTimeout(this._openTimer); clearTimeout(this._animationTimer);
       this._gesture = null; this._closing = true;
       if (child) child.pauseProductVideos();
-      this.setData({ expansionProgress: 0, fullscreen: false, animating: true, sheetTop: this.data.windowHeight, maskOpacity: 0 });
+      this.setData({ fullscreen: false, animating: true, sheetTop: this.data.windowHeight, maskOpacity: 0 });
       this._animationTimer = setTimeout(() => this.finishClose(), ANIMATION_MS);
     },
     finishClose() {

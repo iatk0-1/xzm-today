@@ -455,6 +455,43 @@ test('横滑画廊不重复测量正文，同高度回调不重复通知父组�
   assert.equal(heights().length, 1);
 });
 
+test('拖动缩放保持图片绘制尺寸，不在拖动和吸附期间查询正文布局', () => {
+  const { instance: detail, flush, events } = setup('productDetail');
+  detail.data.bannerImgs = ['a', 'b', 'c'];
+  detail.data.sheetDragging = true;
+  for (const progress of [0, .2, .4, .8, 1]) {
+    detail.data.expansionProgress = progress;
+    detail.updateGallery(); flush(30);
+    assert.equal(detail.data.galleryBaseWidth, 375);
+    assert.equal(detail.data.galleryBaseHeight, 468.75);
+  }
+  assert.equal(events.filter(e => e.name === 'documentheight').length, 0);
+  detail.data.sheetDragging = false;
+  detail.data.galleryAnimating = true;
+  detail.measureDocument(); flush(30);
+  assert.equal(events.filter(e => e.name === 'documentheight').length, 0);
+  detail.data.galleryAnimating = false;
+  detail.measureDocument(); flush(30);
+  assert.equal(events.filter(e => e.name === 'documentheight').length, 1);
+});
+
+test('全屏下拉和关闭保持图片全屏尺寸，轻拖取消不触发缩小再放大', () => {
+  const { instance: sheet, move, flush } = opened();
+  sheet.snapTo('full'); flush(280);
+  sheet.onGestureStart({ detail: { x: 20, y: 200 } }); move(20, 240);
+  assert.equal(sheet.data.expansionProgress, 1);
+  sheet.onGestureEnd(); flush(280);
+  assert.equal(sheet.data.expansionProgress, 1);
+  sheet.onGestureStart({ detail: { x: 20, y: 200 } }); move(20, 340);
+  assert.equal(sheet.data.expansionProgress, 1);
+  sheet.onGestureEnd();
+  assert.equal(sheet.data.sheetTop, 750);
+  assert.equal(sheet.data.expansionProgress, 1, '关闭动画保持图片尺寸');
+  flush(280);
+  sheet.open('next'); flush(30); flush(280);
+  assert.equal(sheet.data.expansionProgress, 0, '再次半屏打开仍恢复半屏尺寸');
+});
+
 test('全屏连续纵滑不刷新子组件，正文到顶后同一划不接管弹窗', () => {
   const { instance: detail, events } = setup('productDetail');
   detail.data.nativeScroll = true;

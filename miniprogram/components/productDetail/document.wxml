@@ -26,12 +26,12 @@
         <image class="swiper-img" data-gesture="image" data-gallery="banner" src="{{item}}" mode="{{bannerImageModes[index] || 'aspectFit'}}" bindload="onBannerImageLoad" data-src="{{item}}" catchtap="previewBannerImage" data-index="{{index}}"></image>
       </swiper-item>
     </swiper>
-    <view wx:else class="banner-strip {{galleryAnimating ? 'gallery-animating' : ''}}" style="height: {{galleryHeight}}px;" data-gesture="image" data-gallery="banner">
-      <view class="banner-track {{gallerySettling ? 'gallery-settling' : ''}} {{galleryAnimating ? 'gallery-animating' : ''}}" style="transform: translate3d({{galleryTranslateX}}px, 0, 0);" data-gesture="image" data-gallery="banner">
-        <view wx:if="{{product.videoUrl}}" class="banner-cell {{galleryAnimating ? 'gallery-animating' : ''}}" style="width: {{galleryItemWidth}}px;" data-gesture="image" data-gallery="banner">
+    <view wx:else class="banner-strip" data-gesture="image" data-gallery="banner">
+      <view class="banner-track {{gallerySettling ? 'gallery-settling' : ''}} {{galleryAnimating ? 'gallery-transform-animating' : ''}}" style="height: {{galleryBaseHeight}}px; transform: translate3d({{galleryTranslateX}}px, 0, 0) scale({{galleryScale}});" data-gesture="image" data-gallery="banner">
+        <view wx:if="{{product.videoUrl}}" class="banner-cell" style="width: {{galleryBaseWidth}}px;" data-gesture="image" data-gallery="banner">
           <video id="productBannerVideo" class="swiper-video" data-gesture="image" data-gallery="banner" src="{{product.videoUrl}}" poster="{{product.image}}" object-fit="cover" controls="{{false}}" autoplay="{{false}}" muted loop />
         </view>
-        <view wx:for="{{bannerImgs}}" wx:key="*this" class="banner-cell {{galleryAnimating ? 'gallery-animating' : ''}}" style="width: {{galleryItemWidth}}px;" data-gesture="image" data-gallery="banner">
+        <view wx:for="{{bannerImgs}}" wx:key="*this" class="banner-cell" style="width: {{galleryBaseWidth}}px;" data-gesture="image" data-gallery="banner">
           <image class="swiper-img" data-gesture="image" data-gallery="banner" src="{{item}}" mode="{{bannerImageModes[index] || 'aspectFit'}}" bindload="onBannerImageLoad" data-src="{{item}}" catchtap="previewBannerImage" data-index="{{index}}" />
         </view>
       </view>
