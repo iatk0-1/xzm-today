@@ -114,3 +114,5 @@ page { background: #f6f7f9; }
 .card-qty-adjust::after { border: none; }
 .card-qty-adjust[disabled] { color: #a1a8b3; background: #f2f4f7; }
 .card-qty-input { flex: 0 0 64rpx; width: 64rpx; min-width: 64rpx; max-width: 64rpx; height: 44rpx; padding: 0 4rpx; border: 1rpx solid #b8c4d3; border-radius: 6rpx; color: #1677c8; font-size: 24rpx; text-align: center; box-sizing: border-box; }
+
+.operation-pending { padding: 20rpx; margin: 16rpx; background: #fff2d6; color: #875d16; border-radius: 12rpx; font-size: 24rpx; line-height: 1.6; }

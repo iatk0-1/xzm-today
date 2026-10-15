@@ -403,6 +403,8 @@ page {
 }
 .item-refund-btn { position: absolute; top: 16rpx; right: 16rpx; z-index: 1; display: flex; align-items: center; justify-content: center; width: 84rpx; height: 46rpx; border: 1rpx solid #d93026; border-radius: 8rpx; background: #fff; color: #d93026; font-size: 21rpx; box-sizing: border-box; }
 
+.stock-purchase-btn { display: inline-flex; margin-top: 8rpx; padding: 7rpx 14rpx; border: 1rpx solid #1677c8; border-radius: 8rpx; color: #1677c8; font-size: 22rpx; }
+
 /* 空状态和加载状态 */
 .empty-state, .loading-state {
   padding: 80rpx 0;

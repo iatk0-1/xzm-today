@@ -2,6 +2,7 @@ const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const quantityOperation = require('../../utils/quantityOperation');
 const { beijingParts } = require('../../utils/productSchedule');
 
 function normalizeSku(row) {
@@ -11,7 +12,10 @@ function normalizeSku(row) {
     abnormalQty: row.abnormalQty || 0,
     shippableQty: row.shippableQty == null ? (row.qty || 0) : row.shippableQty,
     reservedQty: row.reservedQty || 0, reportedQty: row.reportedQty || 0,
-    receivedQty: row.receivedQty || 0
+    receivedQty: row.receivedQty || 0, freeStockQty: row.freeStockQty || 0,
+    orderAllocatedQty: row.orderAllocatedQty || 0, customerMissingQty: row.customerMissingQty || 0,
+    readyToShipQty: row.readyToShipQty || 0, frozenStockQty: row.frozenStockQty || 0,
+    surplusTransitQty: row.surplusTransitQty || 0, frozenDemandQty: row.frozenDemandQty || 0
   };
 }
 function positiveInteger(value) {
@@ -29,7 +33,7 @@ Page(autoSearch.wrap({
   data: {
     productList: [], loading: false, keyword: '', inventoryTab: 'all',
     inventoryTabs: [
-      { id: 'all', name: '全部' }, { id: 'shortage', name: '欠货' },
+      { id: 'all', name: '全部' }, { id: 'shortage', name: '待到货' },
       { id: 'stock', name: '现货' }, { id: 'abnormal', name: '异常' }
     ],
     page: 1, pageSize: 20, hasMore: true,
@@ -41,6 +45,7 @@ Page(autoSearch.wrap({
     detailLoading: false, reportList: [], receiptList: [], ledgerList: [],
     activeTab: 'operate', operateType: 'normal', inputQty: '', note: '',
     stocktakeDirection: 'gain', stocktakeCategory: 'normal', abnormalAction: 'keep',
+    quantityRetryPending: false, unbindReviewAvailable: false, exchangeList: [], returnInspectionList: [], targetSkuId: '', targetPurchaseOrderId: '', receiptId: '',
     saving: false, showShippingModal: false, shippingLoading: false,
     shippingProducts: [], matching: false,
     selectedCount: 0, allSelected: false,
@@ -49,8 +54,9 @@ Page(autoSearch.wrap({
     batchReceiveTotal: 0, batchReceiveSkuCount: 0, batchReceiveSaving: false, batchRetryPending: false
   },
 
-  onLoad() { this.setData({ today: beijingParts().date }); this.loadProducts(); this.loadFilterOptions(); this.restoreBatchReceive(); },
+  onLoad() { this.setData({ today: beijingParts().date, quantityRetryPending: !!quantityOperation.pending() }); this.loadProducts(); this.loadFilterOptions(); this.restoreBatchReceive(); },
   onShow() {
+    this.syncQuantityPending();
     if (this._refreshAfterShipping) {
       this._refreshAfterShipping = false;
       this.loadProducts();
@@ -466,7 +472,7 @@ Page(autoSearch.wrap({
       selectedProduct: product, selectedSku: sku, currentQty: sku.availableQty || 0,
       showSkuModal: true, activeTab: 'operate', operateType: 'normal',
       inputQty: '', note: '', stocktakeDirection: 'gain', stocktakeCategory: 'normal',
-      abnormalAction: 'keep', reportList: [], receiptList: [], ledgerList: []
+      abnormalAction: 'keep', reportList: [], receiptList: [], ledgerList: [], exchangeList: [], returnInspectionList: [], targetSkuId: '', targetPurchaseOrderId: '', receiptId: ''
     });
     this.loadLedger(sku.id);
   },
@@ -487,9 +493,11 @@ Page(autoSearch.wrap({
     this.setData({ detailLoading: true });
     try {
       const result = await api.get('/sku-inventory/' + skuId + '/detail');
+      const extra = await Promise.all([api.get('/sku-inventory/' + skuId + '/exchanges'), api.get('/sku-inventory/' + skuId + '/return-inspections')]);
       if (this._detailVersion !== version || !this.data.showSkuModal) return;
       const selectedSku = normalizeSku(result.inventory);
       this.setData({
+        exchangeList: Array.isArray(extra[0]) ? extra[0] : [], returnInspectionList: Array.isArray(extra[1]) ? extra[1] : [],
         selectedSku, currentQty: selectedSku.availableQty, reportList: result.reports || [],
         receiptList: (result.receipts || []).map(item => ({
           ...item, sourceText: this.getSourceText(item.source), timeText: this.formatTime(item.createdAt)
@@ -510,6 +518,40 @@ Page(autoSearch.wrap({
   setStocktakeDirection(e) { this.setData({ stocktakeDirection: e.currentTarget.dataset.value }); },
   setStocktakeCategory(e) { this.setData({ stocktakeCategory: e.currentTarget.dataset.value }); },
   setAbnormalAction(e) { this.setData({ abnormalAction: e.currentTarget.dataset.value }); },
+  onTargetSkuInput(e) { this.setData({ targetSkuId: e.detail.value.trim() }); },
+  onTargetPurchaseInput(e) { this.setData({ targetPurchaseOrderId: e.detail.value.trim() }); },
+  onReceiptIdInput(e) { this.setData({ receiptId: e.detail.value.trim() }); },
+  syncQuantityPending() {
+    const pending = quantityOperation.pending();
+    this.setData({ quantityRetryPending: !!pending, unbindReviewAvailable: !!(pending && /^\/admin\/orders-manage\/orders\/shipments\/[^/]+\/(partial-)?unbind$/.test(pending.path)) });
+  },
+  async confirmPendingUnbindWaybill() {
+    const pending = quantityOperation.pending();
+    const match = pending && pending.path.match(/^\/admin\/orders-manage\/orders\/shipments\/([^/]+)\/(partial-)?unbind$/);
+    if (!match || this.data.saving) return;
+    const note = await new Promise(resolve => wx.showModal({ title: '核实面单取消', editable: true,
+      placeholderText: '填写物流平台取消记录等核查依据', content: '仅在物流平台已经确认面单取消，且所选实物未出库或已回仓时办理。', success: r => resolve(r.confirm ? (r.content || '').trim() : ''), fail: () => resolve('') }));
+    if (!note) return;
+    this.setData({ saving: true });
+    try {
+      await api.post('/admin/orders-manage/orders/shipments/' + match[1] + '/unbind/' + encodeURIComponent(pending.payload.requestId) + '/confirm-waybill-cancelled', { note });
+      await quantityOperation.retry(api);
+      await this.loadProducts();
+      wx.showToast({ title: '原解绑操作已完成', icon: 'success' });
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '核查或解绑未完成'), icon: 'none' }); }
+    finally { this.setData({ saving: false }); this.syncQuantityPending(); }
+  },
+  async retryQuantityOperation() {
+    if (this.data.saving) return;
+    this.setData({ saving: true });
+    try { await quantityOperation.retry(api); await this.loadProducts(); if (this.data.showSkuModal) await this.loadLedger(this.data.selectedSku.id); wx.showToast({ title: '原操作已确认', icon: 'success' }); }
+    catch (err) { wx.showToast({ title: getErrorMessage(err, '原操作结果待确认'), icon: 'none' }); }
+    finally { this.setData({ saving: false }); this.syncQuantityPending(); }
+  },
+  async postQuantity(path, payload) {
+    try { return await quantityOperation.run(api, path, payload); }
+    finally { this.syncQuantityPending(); }
+  },
   onQtyInput(e) { this.setData({ inputQty: e.detail.value }); },
   onNoteInput(e) { this.setData({ note: e.detail.value }); },
   async confirmOperate() {
@@ -518,7 +560,7 @@ Page(autoSearch.wrap({
       wx.showToast({ title: '请输入正整数数量', icon: 'none' }); return;
     }
     const { selectedSku, operateType, inputQty, note } = this.data;
-    if (operateType === 'stocktake' && !note.trim()) {
+    if ((operateType === 'stocktake' || operateType === 'backfill' || (operateType === 'abnormal' && this.data.abnormalAction === 'confirm_history')) && !note.trim()) {
       wx.showToast({ title: '盘点调整必须填写原因', icon: 'none' }); return;
     }
     if (operateType === 'abnormal' && Number(inputQty) > selectedSku.abnormalQty) {
@@ -528,15 +570,17 @@ Page(autoSearch.wrap({
     try {
       const qty = Number(inputQty);
       if (operateType === 'stocktake') {
-        await api.post('/sku-inventory/' + selectedSku.id + '/stocktake', {
+        await this.postQuantity('/sku-inventory/' + selectedSku.id + '/stocktake', {
           qty, direction: this.data.stocktakeDirection, category: this.data.stocktakeCategory, note: note.trim()
         });
       } else if (operateType === 'abnormal') {
-        await api.post('/sku-inventory/' + selectedSku.id + '/abnormal/resolve', {
-          qty, action: this.data.abnormalAction, note: note.trim()
+        await this.postQuantity('/sku-inventory/' + selectedSku.id + '/abnormal/resolve', {
+          qty, action: this.data.abnormalAction, note: note.trim(), targetSkuId: this.data.targetSkuId || null, purchaseOrderId: this.data.targetPurchaseOrderId || null
         });
+      } else if (operateType === 'backfill') {
+        await this.postQuantity('/sku-inventory/' + selectedSku.id + '/backfill', { qty, receiptId: this.data.receiptId || null, note: note.trim() });
       } else {
-        await api.post('/sku-inventory', { skuId: selectedSku.id, qty, source: operateType, note: note.trim() });
+        await this.postQuantity('/sku-inventory', { skuId: selectedSku.id, qty, source: operateType, note: note.trim() });
       }
       await this.refreshSku(selectedSku.id);
       await this.loadLedger(selectedSku.id);
@@ -547,17 +591,68 @@ Page(autoSearch.wrap({
       wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
     } finally { this.setData({ saving: false }); }
   },
+  async adjustSupply(e) {
+    if (this.data.saving) return;
+    const report = e.currentTarget.dataset.item;
+    try {
+      const preview = await api.get('/sku-inventory/supply/' + report.purchaseOrderId + '/preview');
+      const quantity = await this.promptQuantity('取消未到供货', '已到货 ' + preview.receivedQty + ' 件，待到货 ' + preview.pendingQty + ' 件。只填写供应商已确认取消/短交的数量。');
+      if (!quantity) return;
+      const note = await this.promptText('确认原因', '请记录供应商取消或短交的确认依据');
+      if (!note) return;
+      this.setData({ saving: true });
+      await this.postQuantity('/sku-inventory/supply/' + report.purchaseOrderId + '/adjust', { qty: quantity, note });
+      await this.refreshSku(this.data.selectedSku.id); await this.loadLedger(this.data.selectedSku.id);
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '供货调整失败'), icon: 'none' }); }
+    finally { this.setData({ saving: false }); }
+  },
+  promptText(title, content) {
+    return new Promise(resolve => wx.showModal({ title, content, editable: true, placeholderText: '请输入', success: r => resolve(r.confirm ? (r.content || '').trim() : ''), fail: () => resolve('') }));
+  },
+  async promptQuantity(title, content) {
+    const value = await this.promptText(title, content);
+    if (!value) return 0;
+    if (!positiveInteger(value)) throw new Error('数量须为正整数');
+    return Number(value);
+  },
+  async receiveExchange(e) {
+    if (this.data.saving) return;
+    const exchange = e.currentTarget.dataset.item;
+    try {
+      const qty = await this.promptQuantity('换回验收入库', '应回规格 ID：' + exchange.targetSkuId + '，待回 ' + (exchange.qty - exchange.receivedQty) + ' 件；确认实际收到正确规格。');
+      if (!qty) return;
+      this.setData({ saving: true });
+      await this.postQuantity('/sku-inventory/exchanges/' + exchange.id + '/receive', { qty, note: '管理员确认正确规格换回' });
+      await this.loadProducts(); await this.loadLedger(this.data.selectedSku.id);
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '换回验收失败'), icon: 'none' }); }
+    finally { this.setData({ saving: false }); }
+  },
+  async disposeReturn(e) {
+    if (this.data.saving) return;
+    const item = e.currentTarget.dataset.item;
+    try {
+      const qty = await this.promptQuantity('处理不合格退件', '尚有 ' + item.rejectedQty + ' 件；填写实际退回客户或报损数量。');
+      if (!qty) return;
+      const note = await this.promptText('处理依据', '记录去向、物流单号或报损原因'); if (!note) return;
+      const choice = await new Promise(resolve => wx.showActionSheet({ itemList: ['实际退回客户', '实际报损'], success: r => resolve(r.tapIndex), fail: () => resolve(-1) }));
+      if (choice < 0) return;
+      this.setData({ saving: true });
+      await this.postQuantity('/sku-inventory/return-inspections/' + item.afterSaleItemId + '/dispose', { qty, action: choice === 0 ? 'return_customer' : 'scrap', note });
+      await this.loadLedger(this.data.selectedSku.id);
+    } catch (err) { wx.showToast({ title: getErrorMessage(err, '退件处理失败'), icon: 'none' }); }
+    finally { this.setData({ saving: false }); }
+  },
   revokeLedger(e) {
     const item = e.currentTarget.dataset.item;
     if (!item.canRevoke || this.data.saving) return;
     const skuId = this.data.selectedSku.id;
     wx.showModal({
-      title: '撤销入库', content: '撤销这笔入库 ' + item.qty + ' 件？对应的报单欠货会恢复。',
+      title: '撤销入库', content: '撤销这笔入库 ' + item.qty + ' 件？对应的报单待到货会恢复。',
       success: async result => {
         if (!result.confirm) return;
         this.setData({ saving: true });
         try {
-          await api.post('/sku-inventory/' + skuId + '/receipts/' + item.id + '/revoke', { note: '管理员撤销入库' });
+          await this.postQuantity('/sku-inventory/' + skuId + '/receipts/' + item.id + '/revoke', { note: '管理员撤销入库' });
           await this.refreshSku(skuId);
           await this.loadLedger(skuId);
           wx.showToast({ title: '已撤销', icon: 'success' });
@@ -643,13 +738,13 @@ Page(autoSearch.wrap({
     finally { this.setData({ matching: false }); }
   },
   getSourceText(source) {
-    return { normal: '报单到货', history: '历史库存', stocktake_gain: '盘点盈余', abnormal_keep: '异常保留补报', return_inspection: '退货验收入库' }[source] || source;
+    return { normal: '报单到货', history: '历史库存', stocktake_gain: '盘点盈余', abnormal_keep: '异常保留补报', return_inspection: '退货验收入库', history_confirm: '历史/盘盈来源确认', existing_receipt_confirm: '既有收货补录确认', exchange_in: '换回入库' }[source] || source;
   },
   getChangeTypeText(type) {
     return { arrival: '报单到货入库', history_in: '历史库存入库', shipment: '发货出库',
       return_inspection: '退货退款验收通过入库', stocktake_gain: '盘盈（待处理异常）',
       stocktake_loss: '盘亏出库', abnormal_keep: '异常保留并补报', abnormal_exchange_out: '异常换货出库',
-      abnormal_return_out: '异常退货出库', receipt_revoke: '撤销入库', shipment_cancel: '发货解绑返还'
+      history_confirm: '历史/盘盈转正常', receipt_backfill: '既有收货来源补录', exchange_in: '换回验收入库', abnormal_return_out: '异常退货出库', receipt_revoke: '撤销入库', shipment_cancel: '发货解绑返还'
     }[type] || type;
   },
   formatTime(value) {

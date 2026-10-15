@@ -1,3 +1,4 @@
+const quantityOperation = require('../../utils/quantityOperation');
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 // miniprogram/pages/adminAfterSaleDetail/adminAfterSaleDetail.js
 const api = require('../../utils/api');
@@ -18,7 +19,7 @@ Page({
     // 仓库收货
     showReceiveModal: false,
     isReinspection: false,
-    warehouseCheck: 'pass',
+    warehouseCheck: 'pass', inspectionItems: [], inspectionSaving: false,
     // 协商退款
     showNegotiatedRefundModal: false,
     negotiatedItems: [],
@@ -248,6 +249,7 @@ Page({
       'review_approve': '审核通过',
       'review_reject': '审核拒绝',
       'ship_return': '用户已寄回',
+      'receive': '逐项退货验收', 'reinspect': '逐项重新验收',
       'receive_pass': '仓库验收通过',
       'receive_fail': '仓库验收不通过',
       'reinspect_pass': '重新验收通过',
@@ -296,7 +298,7 @@ Page({
       return '当前发货信息缺失，请刷新售后详情后重试';
     }
     if (type === 'return_refund' && item.currentShippedQty === 0) {
-      return '商品尚未发货，请选择仅退款；返回报单请勾选下方选项';
+      return '商品尚未发货，请选择仅退款；退款成功后自动释放客户占用，供应商供货另行处理';
     }
     return type === 'return_refund' ? '退货退款数量不能超过已发货数量' : '仅退款数量不能超过未发货数量';
   },
@@ -479,6 +481,7 @@ Page({
 
   // 显示仓库收货弹窗
   showReceiveModal: function() {
+    this.prepareInspection(false);
     this.setData({
       showReceiveModal: true,
       isReinspection: false,
@@ -487,6 +490,7 @@ Page({
   },
 
   showReinspectModal: function() {
+    this.prepareInspection(true);
     this.setData({
       showReceiveModal: true,
       isReinspection: true,
@@ -501,18 +505,37 @@ Page({
 
   // 选择验收结果
   selectWarehouseCheck: function(e) {
-    this.setData({ warehouseCheck: e.currentTarget.dataset.check });
+    const check = e.currentTarget.dataset.check;
+    this.setData({ warehouseCheck: check, inspectionItems: this.data.inspectionItems.map(item => ({ ...item, acceptedQty: check === 'pass' ? item.receivedQty : (item.minimumAcceptedQty || 0) })) });
   },
 
+  prepareInspection(reinspect) {
+    const items = (this.data.afterSale.items || []).filter(i => i.afterSaleType === 'return_refund').map(item => ({
+      id: item.id, name: item.productName, qty: item.qty,
+      receivedQty: item.inspection ? item.inspection.receivedQty : item.qty,
+      acceptedQty: item.inspection ? item.inspection.acceptedQty : item.qty,
+      minimumAcceptedQty: item.inspection ? item.inspection.acceptedQty : 0,
+      disposedQty: item.inspection ? item.inspection.disposedQty : 0
+    }));
+    this.setData({ inspectionItems: items });
+  },
+  onInspectionQtyInput(e) {
+    const { index, field } = e.currentTarget.dataset;
+    this.setData({ ['inspectionItems[' + Number(index) + '].' + field]: e.detail.value });
+  },
   // 提交仓库收货
   submitReceive: async function() {
+    if (this.data.inspectionSaving) return;
+    const items = this.data.inspectionItems.map(i => ({ afterSaleItemId: i.id, receivedQty: Number(i.receivedQty), acceptedQty: Number(i.acceptedQty) }));
+    if (items.some((i, n) => !Number.isSafeInteger(i.receivedQty) || !Number.isSafeInteger(i.acceptedQty) || i.receivedQty < 0 || i.receivedQty > this.data.inspectionItems[n].qty || i.acceptedQty < this.data.inspectionItems[n].minimumAcceptedQty || i.acceptedQty + this.data.inspectionItems[n].disposedQty > i.receivedQty)) {
+      wx.showToast({ title: '验收数量不符，请核对实收和合格件数', icon: 'none' }); return;
+    }
+    this.setData({ inspectionSaving: true });
     wx.showLoading({ title: '处理中...' });
 
     try {
       const action = this.data.isReinspection ? 'reinspect' : 'receive';
-      await api.post(`/after-sales/${this.data.afterSaleId}/${action}`, {
-        warehouseCheck: this.data.warehouseCheck
-      });
+      await quantityOperation.run(api, `/after-sales/${this.data.afterSaleId}/${action}`, { warehouseCheck: this.data.warehouseCheck, items });
 
       wx.hideLoading();
       wx.showToast({ title: '操作成功', icon: 'success' });
@@ -521,7 +544,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
-    }
+    } finally { this.setData({ inspectionSaving: false }); }
   },
 
   showNegotiatedRefundModal: function() {

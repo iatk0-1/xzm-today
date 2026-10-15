@@ -51,6 +51,9 @@
           <text class="price">¥ {{item.salePrice}}</text>
           <text class="count">x {{item.qty}}</text>
         </view>
+        <view class="goods-sku" wx:if="{{order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped'}}">
+          已配现货 {{item.stockQty || 0}} · 在途覆盖 {{item.transitQty || 0}} · 待报 {{item.pendingQty || 0}} · 售后冻结 {{item.frozenQty || 0}}
+        </view>
         <view class="goods-remark" wx:if="{{item.remark}}">
           <text class="remark-tag">备注</text>
           <text class="remark-text copyable-text" user-select="{{true}}">{{item.remark}}</text>
@@ -211,10 +214,8 @@
       <text class="panel-label">备注</text>
       <input class="panel-text-input" placeholder="可选" value="{{refundNote}}" bindinput="onRefundNoteInput" />
     </view>
-    <checkbox-group bindchange="changeReturnPurchaseOrder" class="purchase-return-choice">
-      <label><checkbox value="return" checked="{{returnPurchaseOrder}}" />是否返回报单（默认不返回）</label>
-    </checkbox-group>
-    <view class="purchase-return-choice">勾选后退款成功会重新分配；不勾选则作废对应已报件数。</view>
+
+    <view class="purchase-return-choice">退款成功释放客户现货/在途占用，实物不增加。供应商供货继续保留；确认取消未到货部分请到库存报单记录单独办理。</view>
   </scroll-view>
   <view class="panel-actions">
     <button class="panel-btn secondary" bindtap="closeRefundPanel">取消</button>

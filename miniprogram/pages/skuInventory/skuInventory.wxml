@@ -1,4 +1,6 @@
 <view class="container">
+  <view wx:if="{{quantityRetryPending}}" class="operation-pending" bindtap="retryQuantityOperation">上次数量操作结果待确认，点此沿用原请求重试</view>
+  <view wx:if="{{unbindReviewAvailable}}" class="operation-pending" bindtap="confirmPendingUnbindWaybill">面单取消响应丢失？在物流平台核实取消后，点此登记依据并续办原解绑</view>
   <view class="filter-bar">
     <view class="filter-tabs">
       <view wx:for="{{inventoryTabs}}" wx:key="id" class="inventory-tab {{inventoryTab === item.id ? 'active' : ''}}" data-tab="{{item.id}}" bindtap="changeInventoryTab">{{item.name}}</view>
@@ -68,10 +70,12 @@
             </view>
           </view>
           <view class="quantity-line">
-            <text>实存 {{sku.availableQty}}</text><text>可发 {{sku.shippableQty}}</text>
-            <text class="{{sku.shortageQty > 0 ? 'shortage-text' : ''}}">欠货 {{sku.shortageQty}}</text>
+            <text>实存 {{sku.availableQty}}</text><text>订单可发 {{sku.readyToShipQty}}</text>
+            <text class="{{sku.shortageQty > 0 ? 'shortage-text' : ''}}">报单待到货 {{sku.shortageQty}}</text>
             <text class="{{sku.abnormalQty > 0 ? 'abnormal-text' : ''}}">异常 {{sku.abnormalQty}}</text>
           </view>
+          <view class="muted">空闲现货 {{sku.freeStockQty}} · 订单已配 {{sku.orderAllocatedQty}} · 待报 {{sku.customerMissingQty}} · 富余在途 {{sku.surplusTransitQty}}</view>
+          <view class="muted" wx:if="{{sku.frozenDemandQty}}">未发售后冻结 {{sku.frozenDemandQty}} · 冻结现货 {{sku.frozenStockQty}}</view>
           <view class="muted">报单 {{sku.reportedQty}} · 已到货 {{sku.receivedQty}}<text wx:if="{{sku.reservedQty}}"> · 发货占用 {{sku.reservedQty}}</text></view>
         </view>
         <text class="no-sku" wx:if="{{!item.skus.length}}">暂无 SKU 信息</text>
@@ -92,7 +96,7 @@
         <view class="inventory-tab {{batchReceiveSource === 'normal' ? 'active' : ''}}" data-source="normal" bindtap="changeBatchReceiveSource">报单入库</view>
         <view class="inventory-tab {{batchReceiveSource === 'history' ? 'active' : ''}}" data-source="history" bindtap="changeBatchReceiveSource">历史入库</view>
       </view>
-      <view class="batch-receive-tip">{{batchReceiveSource === 'normal' ? '自动抵扣报单欠货，超出报单的数量计入异常库存。' : '录入历史遗留库存，不抵扣报单欠货，不产生超收异常。'}} 数量为0的规格不入库。</view>
+      <view class="batch-receive-tip">{{batchReceiveSource === 'normal' ? '自动核销报单待到货，超出报单的数量计入异常库存。' : '录入历史遗留库存，不核销报单待到货，不产生超收异常。'}} 数量为0的规格不入库。</view>
       <view class="batch-pending-tip" wx:if="{{batchRetryPending && !batchReceiveSaving}}">上次入库结果待确认，请重试原批次，确认期间不能修改数量和来源。</view>
       <scroll-view class="batch-receive-list" scroll-y="true">
         <view class="batch-receive-row" wx:for="{{batchReceiveItems}}" wx:key="skuId">
@@ -100,7 +104,7 @@
           <view class="batch-item-info">
             <view class="batch-item-name">{{item.productName}}</view>
             <view class="batch-item-sku">{{item.spec || '默认规格'}} {{item.size}}</view>
-            <view class="batch-item-sku" wx:if="{{batchReceiveSource === 'normal'}}">欠货 {{item.shortageQty}} 件</view>
+            <view class="batch-item-sku" wx:if="{{batchReceiveSource === 'normal'}}">报单待到货 {{item.shortageQty}} 件</view>
           </view>
           <view class="batch-qty-editor">
             <button class="batch-qty-adjust" bindtap="adjustBatchReceiveQty" data-index="{{index}}" data-delta="-1" disabled="{{batchReceiveSaving || batchRetryPending || item.qty <= 0}}">−</button>
@@ -153,28 +157,36 @@
           <view wx:for="{{selectedProduct.skus}}" wx:key="id" class="sku-option {{selectedSku.id === item.id ? 'active' : ''}}" data-index="{{index}}" bindtap="selectSku">{{item.spec}} {{item.size}}</view>
         </view>
         <view class="inventory-summary">
-          <text>实际库存 {{currentQty}}</text><text>可发 {{selectedSku.shippableQty}}</text>
-          <text class="shortage-text">欠货 {{selectedSku.shortageQty}}</text>
+          <text>实际库存 {{currentQty}}</text><text>订单可发 {{selectedSku.readyToShipQty}}</text>
+          <text class="shortage-text">报单待到货 {{selectedSku.shortageQty}}</text>
           <text class="abnormal-text">异常 {{selectedSku.abnormalQty}}</text>
         </view>
-        <view class="muted">欠货按报单待到货数量统计；现货可发货，不自动抵扣欠货。</view>
+        <view class="muted">先给订单配合格现货，再用在途覆盖缺口；历史现货发走不核销供应商待到货。</view>
+        <view class="muted">空闲现货 {{selectedSku.freeStockQty}} · 订单已配 {{selectedSku.orderAllocatedQty}} · 待报 {{selectedSku.customerMissingQty}} · 富余在途 {{selectedSku.surplusTransitQty}}</view>
+        <view class="muted" wx:if="{{selectedSku.frozenDemandQty}}">未发售后冻结 {{selectedSku.frozenDemandQty}} · 冻结现货 {{selectedSku.frozenStockQty}}</view>
         <view class="tabs">
           <view class="tab-item {{activeTab === 'operate' ? 'active' : ''}}" data-tab="operate" bindtap="switchTab">操作</view>
           <view class="tab-item {{activeTab === 'reports' ? 'active' : ''}}" data-tab="reports" bindtap="switchTab">报单记录</view>
           <view class="tab-item {{activeTab === 'ledger' ? 'active' : ''}}" data-tab="ledger" bindtap="switchTab">入库与流水</view>
+          <view class="tab-item {{activeTab === 'returns' ? 'active' : ''}}" data-tab="returns" bindtap="switchTab">换回/退件</view>
         </view>
         <view wx:if="{{detailLoading}}" class="muted">加载明细中...</view>
         <view class="operate-form" wx:if="{{activeTab === 'operate'}}">
           <view class="radio-group">
             <view class="radio-item {{operateType === 'normal' ? 'active' : ''}}" data-type="normal" bindtap="setOperateType">正常到货</view>
             <view class="radio-item {{operateType === 'history' ? 'active' : ''}}" data-type="history" bindtap="setOperateType">历史入库</view>
+            <view class="radio-item {{operateType === 'backfill' ? 'active' : ''}}" data-type="backfill" bindtap="setOperateType">收货补录</view>
           </view>
           <view class="radio-group">
             <view class="radio-item {{operateType === 'stocktake' ? 'active' : ''}}" data-type="stocktake" bindtap="setOperateType">盘点调整</view>
             <view class="radio-item {{operateType === 'abnormal' ? 'active' : ''}}" data-type="abnormal" bindtap="setOperateType">异常处理</view>
           </view>
-          <view wx:if="{{operateType === 'normal'}}" class="operation-tip">按报单时间自动抵扣欠货，超出报单的部分记为异常库存。</view>
-          <view wx:if="{{operateType === 'history'}}" class="operation-tip">历史遗留实物入库，可用于发货，不抵欠货、不产生超收异常。</view>
+          <view wx:if="{{operateType === 'normal'}}" class="operation-tip">按报单时间自动抵扣报单待到货，超出报单的部分记为异常库存。</view>
+          <view wx:if="{{operateType === 'history'}}" class="operation-tip">历史遗留实物入库，可用于发货，不抵报单待到货、不产生超收异常。</view>
+          <block wx:if="{{operateType === 'backfill'}}">
+            <view class="operation-tip">货已入过库：填写既有入库记录 ID，只补来源不重复入库。未入过库：留空，补报并首次入库。</view>
+            <input class="form-input" value="{{receiptId}}" bindinput="onReceiptIdInput" placeholder="既有入库记录 ID（未入库留空）" disabled="{{saving}}" />
+          </block>
           <block wx:if="{{operateType === 'stocktake'}}">
             <view class="radio-group">
               <view class="radio-item {{stocktakeDirection === 'gain' ? 'active' : ''}}" data-value="gain" bindtap="setStocktakeDirection">盘盈</view>
@@ -191,11 +203,16 @@
           </block>
           <block wx:if="{{operateType === 'abnormal'}}">
             <view class="radio-group">
-              <view class="radio-item {{abnormalAction === 'keep' ? 'active' : ''}}" data-value="keep" bindtap="setAbnormalAction">保留补报</view>
+              <view class="radio-item {{abnormalAction === 'keep' ? 'active' : ''}}" data-value="keep" bindtap="setAbnormalAction">供应商多发保留</view>
+              <view class="radio-item {{abnormalAction === 'confirm_history' ? 'active' : ''}}" data-value="confirm_history" bindtap="setAbnormalAction">历史/盘盈确认</view>
               <view class="radio-item {{abnormalAction === 'exchange' ? 'active' : ''}}" data-value="exchange" bindtap="setAbnormalAction">换货出库</view>
               <view class="radio-item {{abnormalAction === 'return' ? 'active' : ''}}" data-value="return" bindtap="setAbnormalAction">退货出库</view>
             </view>
-            <view class="operation-tip">待处理 {{selectedSku.abnormalQty}} 件。保留自动补报并转为可发库存；退换货只记录出库用途。</view>
+            <view class="operation-tip">待处理 {{selectedSku.abnormalQty}} 件。供应商多发保留会补报且确认已收；历史/盘盈确认只转正常。换货出库后记待回数量。</view>
+            <view wx:if="{{abnormalAction === 'exchange'}}">
+              <input class="form-input" value="{{targetSkuId}}" bindinput="onTargetSkuInput" placeholder="应换回规格 ID（同规格留空）" disabled="{{saving}}" />
+              <input class="form-input" value="{{targetPurchaseOrderId}}" bindinput="onTargetPurchaseInput" placeholder="原报单 ID（独立换货留空）" disabled="{{saving}}" />
+            </view>
           </block>
           <view class="form-item"><text class="form-label">本次数量</text><input class="form-input" type="number" value="{{inputQty}}" bindinput="onQtyInput" placeholder="请输入正整数数量" disabled="{{saving}}" /></view>
           <view class="form-item"><text class="form-label">{{operateType === 'stocktake' ? '调整原因（必填）' : '备注'}}</text><input class="form-input" value="{{note}}" bindinput="onNoteInput" placeholder="{{operateType === 'stocktake' ? '填写盘点差异原因' : '可选'}}" disabled="{{saving}}" /></view>
@@ -203,10 +220,25 @@
         <view wx:if="{{activeTab === 'reports'}}">
           <view wx:for="{{reportList}}" wx:key="purchaseOrderId" class="record-card">
             <view>报单 {{item.batchNo || item.purchaseOrderId}}</view>
-            <view class="quantity-line"><text>报单 {{item.reportedQty}}</text><text>到货 {{item.receivedQty}}</text><text class="shortage-text">欠货 {{item.shortageQty}}</text></view>
+            <view class="quantity-line"><text>报单 {{item.reportedQty}}</text><text>到货 {{item.receivedQty}}</text><text class="shortage-text">报单待到货 {{item.shortageQty}}</text></view>
             <view class="muted" wx:if="{{item.note}}">{{item.note}}</view>
+            <button wx:if="{{item.shortageQty > 0}}" class="receipt-revoke" bindtap="adjustSupply" data-item="{{item}}" disabled="{{saving}}">确认取消未到供货/短交</button>
           </view>
           <view class="muted" wx:if="{{!reportList.length && !detailLoading}}">暂无报单记录</view>
+        </view>
+        <view wx:if="{{activeTab === 'returns'}}">
+          <view class="record-section-title">换货待回</view>
+          <view wx:for="{{exchangeList}}" wx:key="id" class="record-card">
+            <view>换货 {{item.id}}</view><view class="muted">发出规格 {{item.sourceSkuId}} → 应回规格 {{item.targetSkuId}}</view>
+            <view>应回 {{item.qty}} · 已回 {{item.receivedQty}}</view>
+            <button wx:if="{{item.qty > item.receivedQty}}" class="receipt-revoke" data-item="{{item}}" bindtap="receiveExchange" disabled="{{saving}}">正确规格换回验收</button>
+          </view>
+          <view class="record-section-title">不合格退件台账</view>
+          <view wx:for="{{returnInspectionList}}" wx:key="afterSaleItemId" class="record-card">
+            <view>售后商品 {{item.afterSaleItemId}}</view>
+            <view>实收 {{item.receivedQty}} · 合格 {{item.acceptedQty}} · 不合格 {{item.rejectedQty}} · 已处置 {{item.disposedQty}}</view>
+            <button wx:if="{{item.rejectedQty > 0}}" class="receipt-revoke" data-item="{{item}}" bindtap="disposeReturn" disabled="{{saving}}">退回客户/报损</button>
+          </view>
         </view>
         <view wx:if="{{activeTab === 'ledger'}}">
           <view class="record-section-title">入库记录及报单抵扣</view>
@@ -245,7 +277,7 @@
             <view class="shipping-choice" data-product-index="{{productIndex}}" data-sku-index="{{skuIndex}}" bindtap="toggleShippingSku">
               <checkbox checked="{{sku.selected}}" disabled="{{matching}}" /><text>{{sku.spec}} {{sku.size}}</text>
             </view>
-            <view class="muted">可发 {{sku.shippableQty}} 件</view>
+            <view class="muted">订单可发 {{sku.readyToShipQty}} 件</view>
             <input class="shipping-qty" type="number" value="{{sku.shipQty}}" data-product-index="{{productIndex}}" data-sku-index="{{skuIndex}}" bindinput="onShippingQtyInput" disabled="{{matching}}" />
           </view>
         </view>

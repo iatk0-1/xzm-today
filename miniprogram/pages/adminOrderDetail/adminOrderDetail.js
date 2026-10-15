@@ -1,5 +1,6 @@
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 const api = require('../../utils/api');
+const quantityOperation = require('../../utils/quantityOperation');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const orderNavigation = require('../../utils/orderNavigation');
@@ -225,14 +226,14 @@ Page(pageSync.wrap({
     const orderNo = e.currentTarget.dataset.orderNo || '';
     wx.showModal({
       title: '完全解绑快递单号',
-      content: `确定要解绑 ${orderNo} 的快递单号吗？\n\n解绑后该包裹会失效，已发数量会回退，订单状态会重新计算。`,
+      content: `请确认 ${orderNo} 的实物尚未出库，或已经实际回仓。\n\n仅取消电子面单不能返库存；确认后解绑包裹、返还实际扣过的库存并重算订单。`,
       confirmText: '确认解绑',
       confirmColor: '#d93026',
       success: async res => {
         if (!res.confirm) return;
         wx.showLoading({ title: '解绑中...' });
         try {
-          await api.post(`/admin/orders-manage/orders/shipments/${shipmentId}/unbind`);
+          await quantityOperation.run(api, `/admin/orders-manage/orders/shipments/${shipmentId}/unbind`, { stockReturned: true, note: '管理员确认未出库或已回仓' });
           pageSync.publish('orders', this.data.orderId);
           wx.showToast({ title: '已解绑', icon: 'success' });
           this.loadOrderDetail();
@@ -279,10 +280,13 @@ Page(pageSync.wrap({
 
   async submitPartialUnbind() {
     const shipment = this.data.partialUnbindShipment;
+    if (this.data.partialUnbindItems.some(item => item.unbindQty !== '' && (!Number.isSafeInteger(Number(item.unbindQty)) || Number(item.unbindQty) < 0))) {
+      wx.showToast({ title: '解绑数量必须是非负整数', icon: 'none' }); return;
+    }
     const items = this.data.partialUnbindItems
       .map(item => ({
         orderItemId: item.orderItemId,
-        qty: parseInt(item.unbindQty, 10) || 0,
+        qty: Number(item.unbindQty) || 0,
         shipQty: item.shipQty
       }))
       .filter(item => item.qty > 0);
@@ -295,10 +299,12 @@ Page(pageSync.wrap({
       wx.showToast({ title: '解绑数量不能超过包裹数量', icon: 'none' });
       return;
     }
+    const confirmed = await new Promise(resolve => wx.showModal({ title: '确认实物状态', content: '所选数量必须尚未实际出库或已经回仓；电子面单取消本身不能返库存。确认所选实物状态符合？', success: r => resolve(r.confirm), fail: () => resolve(false) }));
+    if (!confirmed) return;
     wx.showLoading({ title: '解绑中...' });
     try {
-      await api.post(`/admin/orders-manage/orders/shipments/${shipment.id}/partial-unbind`, {
-        items: items.map(item => ({ orderItemId: item.orderItemId, qty: item.qty }))
+      await quantityOperation.run(api, `/admin/orders-manage/orders/shipments/${shipment.id}/partial-unbind`, {
+        items: items.map(item => ({ orderItemId: item.orderItemId, qty: item.qty })), stockReturned: true, note: '管理员确认所选实物未出库或已回仓'
       });
       pageSync.publish('orders', this.data.orderId);
       wx.showToast({ title: '已部分解绑', icon: 'success' });

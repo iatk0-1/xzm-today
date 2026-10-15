@@ -17,6 +17,9 @@ function recordMutation(url, method, data = {}, result) {
   if (path === '/products/status/batch') (data.productIds || []).forEach(id => publish('products', id));
   const adminOrder = path.match(/^\/admin\/orders-manage\/orders\/(\d+)/);
   if (adminOrder) publish('orders', adminOrder[1]);
+  if (/^\/admin\/orders-manage\/orders\/shipments\/\d+\/(partial-)?unbind$/.test(path) && result) {
+    (result.affectedOrderIds || []).forEach(id => publish('orders', id));
+  }
   const changeRequest = path.match(/^\/admin\/orders-manage\/change-requests\/\d+\//);
   if (changeRequest && result) publish('orders', result.orderId);
   const afterSale = path.match(/^\/after-sales\/(\d+)\//);

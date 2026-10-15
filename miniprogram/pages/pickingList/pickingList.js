@@ -1,3 +1,4 @@
+const quantityOperation = require('../../utils/quantityOperation');
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 const pageSync = require('../../utils/pageSync');
@@ -356,7 +357,7 @@ Page(autoSearch.wrap(pageSync.wrap({
         selected: false,
         imageUrl: item.imageUrl || '',
         defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
-        // totalQty 是该 SKU 的全部数量，unshippedQty 只统计 paid/partial_shipped 的未发数量。
+        // unshippedQty 是已配现货且未被任务占用的当次可发上限。
         allQty: Number(item.totalQty ?? item.unshippedQty) || 0,
         shippedQty: Number(item.shippedQty) || 0,
         pendingShipQty: Number(item.unshippedQty) || 0
@@ -512,6 +513,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       spec: i.spec,
       size: i.size,
       qty: Math.max(1, Number(i.recommendQty) || 1),
+      recommendQty: Math.max(0, Number(i.recommendQty) || 0),
       imageUrl: i.imageUrl,
       defaultImageUrl: i.defaultImageUrl
     }));
@@ -524,6 +526,12 @@ Page(autoSearch.wrap(pageSync.wrap({
   },
 
   // 调整弹窗中的报单数量，不限制上限，最低保留 1 件。
+  openStockPurchase(e) {
+    const item = this.data.recommendList[Number(e.currentTarget.dataset.index)];
+    if (!item) return;
+    this.setData({ orderPreviewList: [{ ...item, qty: 1, recommendQty: Math.max(0, Number(item.recommendQty) || 0), stockPurchase: true }], totalQty: 1, showOrderModal: true });
+  },
+
   adjustOrderQty: function(e) {
     const index = Number(e.currentTarget.dataset.index);
     const delta = Number(e.currentTarget.dataset.delta);
@@ -597,7 +605,7 @@ Page(autoSearch.wrap(pageSync.wrap({
         note: `拣货单推荐，${i.spec} ${i.size}`
       }));
 
-      await api.post('/picking-list/order', { items: requestItems });
+      await quantityOperation.run(api, '/picking-list/order', { items: requestItems, purpose: selectedItems.some(i => i.stockPurchase || i.qty > Math.max(0, Number(i.recommendQty) || 0)) ? 'stock' : 'demand' });
 
       wx.hideLoading();
       wx.showToast({ title: '报单成功', icon: 'success' });

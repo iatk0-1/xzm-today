@@ -319,10 +319,8 @@
           bindinput="onRejectReasonInput"
           maxlength="200"/>
       </view>
-      <checkbox-group wx:if="{{reviewDecision === 'approve'}}" bindchange="changeReturnPurchaseOrder" class="purchase-return-choice">
-        <label><checkbox value="return" checked="{{returnPurchaseOrder}}" />退款成功后返回报单</label>
-      </checkbox-group>
-      <view wx:if="{{reviewDecision === 'approve'}}" class="purchase-return-choice">返回报单用于重新分配备货，不代表用户退货。已入库但未发货仍选“仅退款”，退款成功后系统强制返回对应报单；未入库部分按勾选结果处理。</view>
+
+      <view wx:if="{{reviewDecision === 'approve'}}" class="purchase-return-choice">未发货选择仅退款；退款成功只释放客户占用，不增加实物、不自动取消供应商报单。取消供货请在库存报单记录另行确认。</view>
       <view class="modal-actions">
         <view class="modal-btn cancel" bindtap="hideReviewModal">取消</view>
         <view class="modal-btn confirm {{reviewDecision === 'reject' ? 'danger' : ''}}" bindtap="submitReview">确认</view>
@@ -334,25 +332,36 @@
   <view class="modal-mask" wx:if="{{showReceiveModal}}" bindtap="hideReceiveModal">
     <view class="modal-content" catchtap="noop">
       <view class="modal-title">{{isReinspection ? '重新验收' : '退货验收'}}</view>
+      <view class="purchase-return-choice">按实际数量验收，只有合格件入正常库存；复检只增加新合格件，退款回调不再入库。</view>
+      <scroll-view class="inspection-list" scroll-y="true">
+        <view wx:for="{{inspectionItems}}" wx:key="id" class="inspection-row">
+          <view>{{item.name}} · 申请 {{item.qty}} 件</view>
+          <view class="inspection-inputs">
+            <text>实收</text><input type="number" value="{{item.receivedQty}}" data-index="{{index}}" data-field="receivedQty" bindinput="onInspectionQtyInput" disabled="{{inspectionSaving}}" />
+            <text>合格</text><input type="number" value="{{item.acceptedQty}}" data-index="{{index}}" data-field="acceptedQty" bindinput="onInspectionQtyInput" disabled="{{inspectionSaving}}" />
+          </view>
+          <view wx:if="{{item.disposedQty}}" class="purchase-return-choice">已退回/报损 {{item.disposedQty}} 件，不能再次入库。</view>
+        </view>
+      </scroll-view>
       <view class="modal-options">
         <view
           class="option-item {{warehouseCheck === 'pass' ? 'selected' : ''}}"
           bindtap="selectWarehouseCheck"
           data-check="pass">
           <view class="option-icon">✓</view>
-          <view class="option-text">验收通过</view>
+          <view class="option-text">按实收全部合格</view>
         </view>
         <view
           class="option-item {{warehouseCheck === 'fail' ? 'selected' : ''}}"
           bindtap="selectWarehouseCheck"
           data-check="fail">
           <view class="option-icon">✕</view>
-          <view class="option-text">验收不通过</view>
+          <view class="option-text">本次无新增合格</view>
         </view>
       </view>
       <view class="modal-actions">
         <view class="modal-btn cancel" bindtap="hideReceiveModal">取消</view>
-        <view class="modal-btn confirm" bindtap="submitReceive">确认</view>
+        <view class="modal-btn confirm" bindtap="submitReceive">{{inspectionSaving ? '处理中...' : '确认验收数量'}}</view>
       </view>
     </view>
   </view>

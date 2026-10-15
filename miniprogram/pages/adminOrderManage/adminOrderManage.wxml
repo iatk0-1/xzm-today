@@ -110,7 +110,9 @@
               <view class="shipment-tags">
                 <text class="shipment-tag tag-total">全部 {{goods.qty}}</text>
                 <text class="shipment-tag tag-pending">待报 {{goods.pendingQty || 0}}</text>
-                <text class="shipment-tag tag-ordered">已报 {{goods.orderedQty || 0}}</text>
+                <text class="shipment-tag tag-ordered">在途 {{goods.transitQty || 0}}</text>
+                <text class="shipment-tag tag-ordered">现货已配 {{goods.stockQty || 0}}</text>
+                <text class="shipment-tag tag-pending">售后冻结 {{goods.frozenQty || 0}}</text>
               </view>
             </view>
 
@@ -144,13 +146,13 @@
           </view>
           <text class="recipient-address" user-select="{{true}}">{{item.recipientAddress}}</text>
         </view>
-        
+
         <!-- 物流信息 -->
         <view class="logistics-info" wx:if="{{item.expressCode && item.expressNo}}">
           <text class="express-text">{{item.expressCompany}}：{{item.expressNo}}</text>
           <text class="copy-link express-copy" catchtap="copyExpressNo" data-express-no="{{item.expressNo}}">复制</text>
         </view>
-        
+
         <view class="total-row">
           <text class="total-label">实付款</text>
           <text class="total-price">¥ {{item.payAmount}}</text>
@@ -201,7 +203,7 @@
     <view class="modal-mask" bindtap="closeDateModal"></view>
     <view class="modal-content">
       <view class="modal-title">选择时间范围</view>
-      
+
       <!-- 快捷选项 -->
       <view class="quick-options">
         <view class="quick-option {{dateRange.quickSelect === '1day' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="1day">最近 1 天</view>
@@ -209,7 +211,7 @@
         <view class="quick-option {{dateRange.quickSelect === '30days' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="30days">最近 30 天</view>
         <view class="quick-option {{dateRange.quickSelect === 'month' ? 'selected' : ''}}" bindtap="selectDateRange" data-type="month">本月</view>
       </view>
-      
+
       <!-- 自定义时间 -->
       <view class="custom-section">
         <view class="custom-title">自定义时间</view>
@@ -220,7 +222,7 @@
           <view class="date-picker-input">结束日期：{{dateRange.endDate || '选择'}}</view>
         </picker>
       </view>
-      
+
       <view class="modal-footer">
         <button class="modal-cancel" bindtap="closeDateModal">取消</button>
         <button class="modal-confirm" bindtap="confirmDateRange">确定</button>
@@ -234,10 +236,8 @@
   <view class="modal-content">
     <view class="modal-title">关闭订单</view>
     <view class="purchase-return-tip">{{cancelOrderPaid ? '已付款订单将发起退款，退款成功后再处理报单占用。' : '待付款订单关闭后会释放预占库存。'}}</view>
-    <checkbox-group wx:if="{{cancelOrderPaid}}" bindchange="changeCancelReturnPurchaseOrder" class="purchase-return-choice">
-      <label><checkbox value="return" checked="{{returnPurchaseOrder}}" />是否返回报单（默认不返回）</label>
-    </checkbox-group>
-    <view class="purchase-return-tip" wx:if="{{cancelOrderPaid}}">勾选后退款成功会将原占用重新分配；不勾选则作废对应已报件数。</view>
+
+    <view class="purchase-return-tip" wx:if="{{cancelOrderPaid}}">退款成功释放客户占用，供应商待到货仍保留。取消供货请在库存报单记录另行确认。</view>
     <view class="modal-footer">
       <button class="modal-cancel" bindtap="closeCancelOrderPanel">取消</button>
       <button class="modal-confirm" bindtap="confirmCancelOrder">确认关闭</button>

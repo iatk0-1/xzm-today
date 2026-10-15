@@ -187,5 +187,7 @@ test('历史入库明确传来源，盘点未填原因阻止提交', async () =>
   assert.equal(requests.length, 0);
   inventory.data.operateType = 'history';
   await inventory.confirmOperate();
-  assert.deepEqual(requests[0], { method: 'POST', url: '/sku-inventory', data: { skuId: '11', qty: 2, source: 'history', note: '' } });
+  const { requestId, ...payload } = requests[0].data;
+  assert.ok(requestId, '数量操作必须带原请求号以防超时重试重复入库');
+  assert.deepEqual({ ...requests[0], data: payload }, { method: 'POST', url: '/sku-inventory', data: { skuId: '11', qty: 2, source: 'history', note: '' } });
 });

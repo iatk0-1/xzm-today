@@ -44,7 +44,7 @@
         </scroll-view>
       </view>
     </view>
-    
+
     <!-- SKU 筛选 -->
     <view class="sku-filter">
       <input class="sku-input" placeholder="搜索 SKU/商品" value="{{skuKeyword}}" bindinput="onSkuKeywordInput" />
@@ -76,10 +76,10 @@
         </view>
       </view>
       <view class="item-content">
-        <image 
-          class="item-image" 
-          src="{{item.imageUrl ? item.imageUrl : (item.defaultImageUrl || '/images/default-goods-image.png')}}" 
-          mode="aspectFill" 
+        <image
+          class="item-image"
+          src="{{item.imageUrl ? item.imageUrl : (item.defaultImageUrl || '/images/default-goods-image.png')}}"
+          mode="aspectFill"
           lazy-load="true"
           binderror="onImageError"
           catchtap="previewProductImage"
@@ -87,7 +87,9 @@
         />
         <view class="item-info">
           <view class="item-name">{{item.productName}}</view>
+          <view class="item-sku">现货已配 {{item.stockQty || 0}} · 在途覆盖 {{item.transitQty || 0}} · 富余在途 {{item.surplusTransitQty || 0}} · 空闲现货 {{item.freeStockQty || 0}}</view>
           <view class="item-sku">{{item.spec || '默认规格'}} · {{item.size || '均码'}}</view>
+          <view class="stock-purchase-btn" catchtap="openStockPurchase" data-index="{{index}}">追加备货报单</view>
           <scroll-view class="item-stats" scroll-x="true" show-scrollbar="{{false}}">
             <view class="item-stats-row">
               <view class="stat recommend">
@@ -165,10 +167,8 @@
       </scroll-view>
       <view class="refund-modal-footer">
         <view class="refund-return-choice">仅退当前商品的待报数量，订单内其他商品不受影响。</view>
-        <checkbox-group bindchange="changeRefundReturnPurchaseOrder" class="refund-return-choice">
-          <label><checkbox value="return" checked="{{refundReturnPurchaseOrder}}" />是否返回报单（默认不返回）</label>
-        </checkbox-group>
-        <view class="refund-return-choice">勾选后退款成功会重新分配；不勾选则作废对应已报件数。</view>
+
+        <view class="refund-return-choice">退款成功释放客户现货/在途占用，实物不增加。供应商供货继续保留；确认取消未到货部分请到库存报单记录单独办理。</view>
         <button class="btn-cancel" bindtap="closeRefundModal" disabled="{{refundBusy}}">关闭</button>
         <button class="btn-all-refund" bindtap="refundAllPending" disabled="{{refundBusy || refundLoading || refundOrders.length === 0}}">全部退款</button>
       </view>
@@ -187,7 +187,7 @@
             <view class="order-item-name">{{item.productName}}</view>
             <view class="order-item-sku">{{item.spec}} {{item.size}}</view>
             <view class="order-item-qty">
-              <text class="qty-label">报单数量</text>
+              <text class="qty-label">报单数量（待报 {{item.recommendQty}}，超出部分记备货）</text>
               <view class="qty-editor">
                 <button class="qty-adjust" bindtap="adjustOrderQty" data-index="{{index}}" data-delta="-1">−</button>
                 <input
