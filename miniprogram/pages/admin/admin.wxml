@@ -1,7 +1,5 @@
 <product-editor-shell title="{{editId ? '编辑商品' : '新增商品'}}" show-exit-confirm="{{showExitConfirm}}" saving="{{draftSaving}}" bind:back="requestEditorExit" bind:cancel="cancelEditorExit" bind:saveexit="saveDraftAndExit" bind:discardexit="discardDraftAndExit" />
 <view class="admin-container">
-  <view class="header-title">{{convertFromLiveProductId ? '从直播商品创建新商品' : '发布新商品'}}</view>
-  <button wx:if="{{editId}}" bindtap="copyCurrentProduct">复制为新商品</button>
   <view class="header-hint" wx:if="{{convertFromLiveProductId}}">
     请检查并编辑商品信息，确认后创建新商品并自动关联
   </view>
@@ -18,7 +16,7 @@
     </view>
     <view class="video-cover-checkbox" wx:if="{{videoUrl}}">
       <view class="checkbox-row" bindtap="toggleVideoCover">
-        <view class="checkbox-icon {{useVideoCover ? 'checked' : ''}}"></view>
+        <view class="checkbox-icon {{useVideoCover ? 'checked' : ''}}"><text wx:if="{{useVideoCover}}" class="checkbox-tick">✓</text></view>
         <text class="checkbox-label">使用视频封面作为商品封面</text>
       </view>
       <text class="checkbox-hint">勾选后，视频首帧将作为商品在列表中的封面图</text>
@@ -60,7 +58,10 @@
   <view class="form-group">
     <view class="product-name-header">
       <view class="label"><text class="required">*</text>商品名称</view>
-      <button class="product-schedule-trigger" size="mini" bindtap="openProductSchedule">定时上架/下架</button>
+      <view class="product-name-actions">
+        <button wx:if="{{editId}}" class="product-copy-trigger" size="mini" bindtap="copyCurrentProduct">复制为新商品</button>
+        <button class="product-schedule-trigger" size="mini" bindtap="openProductSchedule">定时上架/下架</button>
+      </view>
     </view>
     <textarea class="input-box product-name-input" style="height: calc({{titleContentHeight}}px + 40rpx); max-height: {{titleMaxHeight}}px;" placeholder="例如：经典藏青百褶裙" value="{{title}}" bindinput="onInput" bindlinechange="onTitleLineChange" data-field="title" maxlength="140" adjust-position="{{true}}" adjust-keyboard-to="cursor" cursor-spacing="140"></textarea>
     <view class="product-schedule-summary" wx:if="{{productScheduleSummary}}">{{productScheduleSummary}}{{productScheduleDirty ? '（保存商品后生效）' : ''}}</view>

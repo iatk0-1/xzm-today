@@ -284,8 +284,8 @@ const pageDefinition = {
         productScheduleSummary: scheduleSummary(res.schedule),
         publishOnSale: product.status !== 'off',
         videoUrl: product.videoUrl || '',
-        videoThumbPath: '',
-        useVideoCover: false,
+        videoThumbPath: res.useVideoCover ? (product.coverUrl || '') : '',
+        useVideoCover: !!res.useVideoCover,
         shippingInfo: product.shippingInfo || '',
         description: product.description || '',
         fabricCare: product.fabricCare || '',
@@ -337,7 +337,7 @@ const pageDefinition = {
 
       // 处理封面图和轮播图
       let mediaList = [];
-      if (product.coverUrl) {
+      if (product.coverUrl && !formData.useVideoCover) {
         mediaList.push({
           id: 'cover_' + Date.now(),
           url: product.coverUrl,
@@ -519,8 +519,8 @@ const pageDefinition = {
       const formData = {
         title: product.name || '',
         videoUrl: product.videoUrl || '',
-        videoThumbPath: '',
-        useVideoCover: false,
+        videoThumbPath: res.useVideoCover ? (product.coverUrl || '') : '',
+        useVideoCover: !!res.useVideoCover,
         shippingInfo: product.shippingInfo || '',
         description: product.description || '',
         fabricCare: product.fabricCare || '',
@@ -572,7 +572,7 @@ const pageDefinition = {
 
       // 处理封面图和轮播图
       let mediaList = [];
-      if (product.coverUrl) {
+      if (product.coverUrl && !formData.useVideoCover) {
         mediaList.push({
           id: 'cover_' + Date.now(),
           url: product.coverUrl,
@@ -1822,7 +1822,8 @@ const pageDefinition = {
       let uploadedVideoThumbUrl = null;
       if (useVideoCover && videoThumbPath) {
         wx.showLoading({ title: '上传视频封面...', mask: true });
-        uploadedVideoThumbUrl = await this.uploadFile(videoThumbPath, 'image/jpeg');
+        uploadedVideoThumbUrl = this.isTemporaryPath(videoThumbPath)
+          ? await this.uploadFile(videoThumbPath, 'image/jpeg') : videoThumbPath;
       }
 
       // 3. 构造封面图和轮播图（视频封面逻辑）
@@ -1892,6 +1893,7 @@ const pageDefinition = {
         // relatedProductIds 可能是 ID 列表或对象列表，需要正确处理
         relatedProductIds: manualRelated.map(item => typeof item === 'object' ? item.id : item),
         videoUrl: uploadedVideoUrl,
+        useVideoCover: !!(useVideoCover && uploadedVideoThumbUrl),
         shippingInfo: shippingInfo || null,
         description: description || null,
         fabricCare: fabricCare || null,
@@ -2678,7 +2680,7 @@ const pageDefinition = {
     var restored = {
       title: safeGet(draftData, 'title', ''),
       videoUrl: safeGet(draftData, 'videoUrl', ''),
-      videoThumbPath: '',  // 临时路径草稿恢复后已失效，置空
+      videoThumbPath: draft.isRemoteUrl(draftData.videoThumbPath) ? draftData.videoThumbPath : '',
       useVideoCover: safeGet(draftData, 'useVideoCover', false),
       shippingInfo: safeGet(draftData, 'shippingInfo', '付款后按排单顺序发货'),
       publishOnSale: safeGet(draftData, 'publishOnSale', false),

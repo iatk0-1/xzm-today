@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function harness(file, { save, record, manager = false } = {}) {
+function harness(file, { save, record, manager = false, product, useVideoCover } = {}) {
   let definition;
   const events = [];
   const wx = {
@@ -24,13 +24,14 @@ function harness(file, { save, record, manager = false } = {}) {
       if (url.endsWith('/preference/mine')) return {};
       if (url === '/sizes/categories') return [{ id: '7', name: '默认尺码', sizes: [{ id: '8', name: '均码' }] }];
       if (url === '/stall-managers/mine') return { active: true };
-      if (url.startsWith('/products/')) return { product: { name: '原商品', stallIds: [] },
+      if (url.startsWith('/products/')) return { useVideoCover, product: product || { name: '原商品', stallIds: [] },
         skus: [{ id: '20', spec: '白', size: '均码', retailPrice: '20', costPrice: '10', stockMain: 5 }] };
       return [];
     },
     post: async url => url.endsWith('/preview') ? { price: '20' } : {}
   };
   const draft = {
+    isRemoteUrl: require('../../utils/draft').isRemoteUrl,
     loadDraft: async () => record || null,
     removeDraft: async () => events.push(['delete']),
     saveDraft: async (data, upload, opts) => { events.push(['save', structuredClone(data), opts]); if (save) await save(data, upload, opts); }
@@ -279,3 +280,21 @@ test('购买须知改动参与草稿保存与退出保护，旧草稿恢复默�
   await page.restoreDraft({ title: '旧草稿' });
   assert.equal(page.data.purchaseNotice, DEFAULT_PURCHASE_NOTICE);
 });
+
+for (const selected of [true, false]) {
+  test(`视频封面选择${selected}在编辑和草稿恢复时保留，封面不重复混入图片池`, async () => {
+    const product = { name: '视频商品', videoUrl: 'https://example.com/video.mp4',
+      coverUrl: 'https://example.com/cover.jpg', bannerImages: ['https://example.com/banner.jpg'] };
+    const { page } = harness('../../pages/admin/admin.js', { product, useVideoCover: selected });
+    await page.onLoad({ editId: '10' });
+    assert.equal(page.data.useVideoCover, selected);
+    assert.equal(page.data.videoThumbPath, selected ? product.coverUrl : '');
+    assert.deepEqual(Array.from(page.data.mediaList, row => row.url),
+      selected ? product.bannerImages : [product.coverUrl, ...product.bannerImages]);
+    assert.equal(page.hasUnsavedDraftChanges(), false);
+    const saved = page.collectDraftData();
+    page.restoreDraft(saved);
+    assert.equal(page.data.useVideoCover, selected);
+    assert.equal(page.data.videoThumbPath, selected ? product.coverUrl : '');
+  });
+}

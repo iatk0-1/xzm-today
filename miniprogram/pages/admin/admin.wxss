@@ -3,7 +3,6 @@
 page { background-color: #f2f2f2; padding-bottom: 160rpx; /* 将原本的60rpx加大到160rpx，留足悬浮按钮的空间 */ }
 .admin-container { padding: 24rpx; }
 
-.header-title { font-size: 34rpx; font-weight: 600; margin-bottom: 8rpx; color: #1a1a1a; }
 .header-hint { font-size: 24rpx; color: #999; margin-bottom: 24rpx; }
 .form-group { background: #fff; padding: 28rpx 24rpx; border-radius: 16rpx; margin-bottom: 16rpx; }
 .label { font-size: 28rpx; font-weight: 600; margin-bottom: 16rpx; color: #1a1a1a; }
@@ -333,6 +332,9 @@ line-height: 88rpx; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; }
   gap: 12rpx;
 }
 .checkbox-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 36rpx;
   height: 36rpx;
   border: 2rpx solid #ccc;
@@ -344,6 +346,7 @@ line-height: 88rpx; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; }
   background: #07c160;
   border-color: #07c160;
 }
+.checkbox-tick { color: #fff; font-size: 28rpx; line-height: 1; font-weight: bold; }
 .checkbox-label {
   font-size: 26rpx;
   color: #333;
@@ -943,7 +946,9 @@ line-height: 88rpx; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; }
 .pricing-error { color:#b53a30; padding:16rpx 0; }
 
 .product-name-header { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: 16rpx; }
-.product-name-header .label { margin-bottom: 0; }
-.product-schedule-trigger { margin: 0; flex-shrink: 0; font-size: 24rpx; background: #f4f6f8; color: #1f2933; }
+.product-name-header .label { margin-bottom: 0; flex-shrink: 0; }
+.product-name-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12rpx; flex-wrap: wrap; }
+.product-copy-trigger { margin: 0; padding: 0 16rpx; flex-shrink: 0; font-size: 24rpx; background: #f4f6f8; color: #1f2933; }
+.product-schedule-trigger { margin: 0; padding: 0 16rpx; flex-shrink: 0; font-size: 24rpx; background: #f4f6f8; color: #1f2933; }
 .product-schedule-summary { margin-top: 12rpx; color: #64748b; font-size: 24rpx; line-height: 1.6; }
 .purchase-notice-input { width: 100%; height: 420rpx; box-sizing: border-box; background: #f5f5f5; padding: 20rpx 24rpx; border-radius: 8rpx; font-size: 26rpx; line-height: 1.8; }

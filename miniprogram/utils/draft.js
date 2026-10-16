@@ -12,7 +12,7 @@
 var api = require('./api');
 
 // 已知的图片字段名（值为路径/URL 的字符串，需要上传判断）
-var IMAGE_FIELDS = ['url', 'image', 'imageUrl', 'coverUrl', 'videoUrl'];
+var IMAGE_FIELDS = ['url', 'image', 'imageUrl', 'coverUrl', 'videoUrl', 'videoThumbPath'];
 
 // 判断是否为有效的远程 URL（CDN 地址，无需上传）
 function isRemoteUrl(url) {
