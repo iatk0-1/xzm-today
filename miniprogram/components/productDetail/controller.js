@@ -66,6 +66,7 @@ function createProductDetailConfig() {
     shareFloatTop: 0,
     editFloatLeft: 0,
     editFloatTop: 0,
+    videoFloatStyle: '',
     // 套装子项选择
     bundleSelections: [],    // [{bundleGroupName, selectedColor, selectedSize, selectedSkuId, selectedPrice, selectedStock, selectedImage}]
     bundleAllSelected: false,
@@ -102,10 +103,12 @@ function createProductDetailConfig() {
   },
 
   onHide: function() {
+    this._videoFloatDrag = null;
     this.pauseProductVideos();
   },
 
   onUnload: function() {
+    this._videoFloatDrag = null;
     this._productVersion = (this._productVersion || 0) + 1;
     clearTimeout(this._videoTimer);
     this.pauseProductVideos();
@@ -113,7 +116,7 @@ function createProductDetailConfig() {
 
   pauseProductVideos: function() {
     if (!wx.createVideoContext) return;
-    ['productBannerVideo', 'productFloatingVideo', 'mainFullscreenVideo'].forEach(id => {
+    ['productBannerVideo', 'mainFullscreenVideo'].forEach(id => {
       const video = wx.createVideoContext(id, this);
       if (video) video.pause();
     });
@@ -434,32 +437,36 @@ function createProductDetailConfig() {
     this._shareFloatDrag = null;
   },
 
+  startFloatDrag: function(e, key, left, top) {
+    const touch = e.touches && e.touches[0];
+    if (!touch || e.touches.length !== 1) return;
+    this[key] = { startX: touch.clientX, startY: touch.clientY, left, top, moved: false };
+  },
+
+  moveFloatDrag: function(e, key, size, apply) {
+    const drag = this[key];
+    const touch = e.touches && e.touches[0];
+    if (!drag || !touch) return;
+    if (e.touches.length !== 1) { this[key] = null; return; }
+    const dx = touch.clientX - drag.startX;
+    const dy = touch.clientY - drag.startY;
+    if (Math.abs(dx) > 6 || Math.abs(dy) > 6) drag.moved = true;
+    // 轻点时的细小抖动不移动按钮，避免视图位置改变打断点击。
+    if (!drag.moved) return;
+    const info = this._shareWindow || { width: 375, height: 667 };
+    apply({
+      left: Math.max(0, Math.min(info.width - size, drag.left + dx)),
+      top: Math.max(info.minTop || 0, Math.min(info.height - size, drag.top + dy))
+    });
+  },
+
   startShareFloatDrag: function(e) {
-    var touch = e.touches && e.touches[0];
-    if (!touch) return;
-    this._shareFloatDrag = {
-      startX: touch.clientX,
-      startY: touch.clientY,
-      left: this.data.shareFloatLeft,
-      top: this.data.shareFloatTop,
-      moved: false
-    };
+    this.startFloatDrag(e, '_shareFloatDrag', this.data.shareFloatLeft, this.data.shareFloatTop);
   },
 
   moveShareFloat: function(e) {
-    var drag = this._shareFloatDrag;
-    var touch = e.touches && e.touches[0];
-    if (!drag || !touch) return;
-
-    var deltaX = touch.clientX - drag.startX;
-    var deltaY = touch.clientY - drag.startY;
-    if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) drag.moved = true;
-
-    var windowInfo = this._shareWindow || { width: 375, height: 667 };
-    var size = this.data.embedded ? 42 : 58;
-    var left = Math.max(0, Math.min(windowInfo.width - size, drag.left + deltaX));
-    var top = Math.max(windowInfo.minTop || 0, Math.min(windowInfo.height - size, drag.top + deltaY));
-    this.setData({ shareFloatLeft: left, shareFloatTop: top });
+    this.moveFloatDrag(e, '_shareFloatDrag', this.data.embedded ? 42 : 58,
+      ({ left, top }) => this.setData({ shareFloatLeft: left, shareFloatTop: top }));
   },
 
   endShareFloatDrag: function() {
@@ -471,41 +478,26 @@ function createProductDetailConfig() {
   },
 
   startEditFloatDrag: function(e) {
-    var touch = e.touches && e.touches[0];
-    if (!touch) return;
-    this._editFloatDrag = {
-      startX: touch.clientX,
-      startY: touch.clientY,
-      left: this.data.editFloatLeft,
-      top: this.data.editFloatTop,
-      moved: false
-    };
+    this.startFloatDrag(e, '_editFloatDrag', this.data.editFloatLeft, this.data.editFloatTop);
   },
 
   moveEditFloat: function(e) {
-    var drag = this._editFloatDrag;
-    var touch = e.touches && e.touches[0];
-    if (!drag || !touch) return;
-    var deltaX = touch.clientX - drag.startX;
-    var deltaY = touch.clientY - drag.startY;
-    if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) drag.moved = true;
-    var windowInfo = this._shareWindow || { width: 375, height: 667 };
-    var size = this.data.embedded ? 42 : 58;
-    this.setData({
-      editFloatLeft: Math.max(0, Math.min(windowInfo.width - size, drag.left + deltaX)),
-      editFloatTop: Math.max(windowInfo.minTop || 0, Math.min(windowInfo.height - size, drag.top + deltaY))
-    });
+    this.moveFloatDrag(e, '_editFloatDrag', this.data.embedded ? 42 : 58,
+      ({ left, top }) => this.setData({ editFloatLeft: left, editFloatTop: top }));
   },
 
   endEditFloatDrag: function() {
-    if (Date.now() < (this._suppressTapUntil || 0)) return;
     var drag = this._editFloatDrag;
     this._editFloatDrag = null;
     if (!drag || drag.moved || !auth.isAdmin()) return;
     var id = this.data.product.id;
     if (id) {
       this._refreshAfterEdit = true;
-      wx.navigateTo({ url: '/pages/admin/admin?editId=' + encodeURIComponent(id), fail: () => { this._refreshAfterEdit = false; } });
+      wx.navigateTo({ url: '/pages/admin/admin?editId=' + encodeURIComponent(id), fail: error => {
+        this._refreshAfterEdit = false;
+        console.error('打开商品编辑页失败，微信路由错误：', error && error.errMsg);
+        wx.showToast({ title: getErrorMessage(error, '打开商品编辑页失败，请重试'), icon: 'none' });
+      } });
     }
   },
 
@@ -970,6 +962,36 @@ function createProductDetailConfig() {
   },
 
   // 视频悬浮窗控制系统
+  startVideoFloatTouch: function(e) {
+    const info = this._shareWindow || { width: 375, height: 667 };
+    const position = this._videoFloatPosition || { left: Math.max(0, info.width - 80), top: Math.max(0, info.height - 145) };
+    this.startFloatDrag(e, '_videoFloatDrag', position.left, position.top);
+    const drag = this._videoFloatDrag;
+    this.createSelectorQuery().select('.floating-video-btn').boundingClientRect(rect => {
+      if (rect && Number.isFinite(rect.left) && Number.isFinite(rect.top) && this._videoFloatDrag === drag && !drag.moved) {
+        drag.left = rect.left;
+        drag.top = rect.top;
+      }
+    }).exec();
+  },
+
+  moveVideoFloat: function(e) {
+    this.moveFloatDrag(e, '_videoFloatDrag', 60, ({ left, top }) => {
+      this._videoFloatPosition = { left, top };
+      this.setData({ videoFloatStyle: `left: ${left}px; top: ${top}px; right: auto; bottom: auto;` });
+    });
+  },
+
+  endVideoFloatTouch: function() {
+    const drag = this._videoFloatDrag;
+    this._videoFloatDrag = null;
+    if (drag && !drag.moved) this.openVideoOverlay();
+  },
+
+  cancelVideoFloatTouch: function() {
+    this._videoFloatDrag = null;
+  },
+
   openVideoOverlay: function() {
     if (Date.now() < (this._suppressTapUntil || 0)) return;
     this.setData({ showVideo: true });

@@ -1,7 +1,7 @@
 <view class="wish-nav" wx:if="{{!productSheetVisible}}" style="padding-top: {{statusBarHeight}}px;">
   <view class="wish-nav-row"><view class="nav-back" bindtap="goBack" aria-role="button" aria-label="返回"><view class="back-arrow"></view></view></view>
 </view>
-<scroll-view class="wish-page-scroll" scroll-y="{{!productSheetVisible}}" style="height: 100vh;" enhanced="true" show-scrollbar="false">
+<scroll-view class="wish-page-scroll" scroll-y="{{!productSheetVisible && !showVideo}}" style="height: 100vh;" enhanced="true" show-scrollbar="false">
 <view class="page-wrapper">
 
   <view class="share-float" wx:if="{{canShowShareFloat && !productSheetVisible}}" style="left: {{shareFloatLeft}}px; top: {{shareFloatTop}}px;" catchtouchstart="startShareFloatDrag" catchtouchmove="moveShareFloat" catchtouchend="endShareFloatDrag">
@@ -9,7 +9,10 @@
   </view>
 
   <!-- 心愿图片 -->
-  <swiper class="wish-swiper" indicator-dots="{{wish.images.length > 1}}" circular="{{false}}" wx:if="{{wish.images.length}}">
+  <swiper class="wish-swiper" indicator-dots="{{wish.images.length + (wish.videoUrl ? 1 : 0) > 1}}" circular="{{false}}" wx:if="{{wish.images.length || wish.videoUrl}}" bindchange="onWishMediaChange">
+    <swiper-item wx:if="{{wish.videoUrl}}">
+      <video id="wishBannerVideo" class="wish-video" src="{{wish.videoUrl}}" poster="{{wish.image}}" controls object-fit="contain" binderror="onWishVideoError" />
+    </swiper-item>
     <swiper-item wx:for="{{wish.images}}" wx:key="*this">
       <image class="wish-image" src="{{item}}" mode="aspectFill" catchtap="previewImage" data-index="{{index}}"></image>
     </swiper-item>
@@ -88,3 +91,14 @@
 </view>
 
 <product-detail-sheet id="productSheet" bindvisibilitychange="onProductSheetVisibility" />
+
+
+<!-- 与商品详情一致的视频悬浮入口和全屏播放层 -->
+<view class="wish-floating-video" wx:if="{{wish.videoUrl && !productSheetVisible && !showVideo}}" bindtap="openVideoOverlay">
+  <video class="wish-floating-video-thumb" src="{{wish.videoUrl}}" poster="{{wish.image}}" muted controls="{{false}}" show-play-btn="{{false}}" object-fit="cover" />
+  <view class="wish-floating-video-icon">▶</view>
+</view>
+<view class="wish-video-overlay" wx:if="{{showVideo && !productSheetVisible}}" catchtap="closeVideoOverlay" catchtouchmove="stopVideoTap">
+  <video id="wishFullscreenVideo" class="wish-fullscreen-video" src="{{wish.videoUrl}}" autoplay loop controls object-fit="contain" show-fullscreen-btn="{{false}}" catchtap="stopVideoTap" binderror="onWishVideoError" />
+  <view class="wish-close-video" catchtap="closeVideoOverlay" style="top: {{statusBarHeight + 10}}px;">×</view>
+</view>

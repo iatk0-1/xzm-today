@@ -152,10 +152,11 @@
   </block>
 </view>
 
-<view class="floating-video-btn" wx:if="{{product.videoUrl}}" bindtap="openVideoOverlay">
-  <video id="productFloatingVideo" class="floating-video-thumb" src="{{product.videoUrl}}" autoplay="{{!embedded}}" loop muted show-play-btn="{{false}}" controls="{{false}}" object-fit="cover"></video>
-  <!-- 这个播放三角不显示 暂时留着位置 -->
-  <view class="play-icon-overlay"></view>
+<view class="floating-video-btn" wx:if="{{product.videoUrl}}" style="{{videoFloatStyle}}"
+      catchtouchstart="startVideoFloatTouch" catchtouchmove="moveVideoFloat"
+      catchtouchend="endVideoFloatTouch" catchtouchcancel="cancelVideoFloatTouch">
+  <image class="floating-video-thumb" src="{{product.image || product.coverUrl}}" mode="aspectFill" />
+  <view class="play-icon-overlay"><view class="video-float-play-icon" /></view>
 </view>
 
 <view class="video-overlay-mask" wx:if="{{showVideo}}" catchtap="closeVideoOverlay">

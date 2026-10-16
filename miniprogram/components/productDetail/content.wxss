@@ -976,6 +976,14 @@
   pointer-events: none; /* 让缩略图里的视频无视所有点击事件 */
 }
 
+.video-float-play-icon {
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 12px solid #fff;
+}
+
 .play-icon-overlay {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;

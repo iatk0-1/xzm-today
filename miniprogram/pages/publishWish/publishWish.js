@@ -2,6 +2,7 @@ const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/publishWish/publishWish.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const { extractVideoCover } = require('../../utils/videoCover');
 const { getLinkedProductIds, productPlaceholder, loadLinkedProducts } = require('../../utils/wishProducts');
 
 const MAX_WISH_IMAGES = 99;
@@ -12,6 +13,10 @@ const IMAGE_COLUMNS = 3;
 Page({
   data: {
     wishId: '',
+    videoUrl: '',
+    videoThumbPath: '',
+    useVideoCover: false,
+    videoCoverLoading: false,
     loading: false,
     loadFailed: false,
     canLinkProduct: false,
@@ -56,6 +61,11 @@ Page({
         var wish = await api.get('/wishes/' + options.id + '/edit');
         var images = wish.images && wish.images.length ? wish.images : (wish.image ? [wish.image] : []);
         this._existingImages = new Set(images);
+        this._existingVideoUrl = wish.videoUrl || '';
+        var useVideoCover = !!(wish.videoUrl && wish.useVideoCover);
+        this.setData({ videoUrl: wish.videoUrl || '', useVideoCover: useVideoCover,
+          videoThumbPath: useVideoCover ? images[0] || '' : '' });
+        if (useVideoCover) images = images.slice(1);
         this.setData({ imageList: images, title: wish.title || wish.content || '', content: wish.content || '',
           expectedPrice: wish.expectedPrice == null ? null : wish.expectedPrice,
           linkedProducts: getLinkedProductIds(wish).map(productPlaceholder) });
@@ -71,6 +81,7 @@ Page({
   },
 
   onUnload: function() {
+    this._videoCoverDisposed = true;
     this._imageDrag = null;
     this.closeProductPicker();
   },
@@ -111,14 +122,17 @@ Page({
       return { id: 'wish_image_' + this._imageItemId, url: url };
     });
     var step = this.data.imageStep;
+    var offset = this.data.useVideoCover ? 1 : 0;
     var positioned = items.map((item, index) => ({ ...item,
-      x: (index % IMAGE_COLUMNS) * step, y: Math.floor(index / IMAGE_COLUMNS) * step }));
-    var count = images.length + (images.length < MAX_WISH_IMAGES ? 1 : 0);
+      x: ((index + offset) % IMAGE_COLUMNS) * step,
+      y: Math.floor((index + offset) / IMAGE_COLUMNS) * step }));
+    var mediaCount = images.length + offset;
+    var count = mediaCount + (mediaCount < MAX_WISH_IMAGES ? 1 : 0);
     var rows = Math.max(1, Math.ceil(count / IMAGE_COLUMNS));
     this.setData({ imageList: images.slice(), imageItems: positioned, dragIndex: -1,
       imageAreaHeight: (rows - 1) * step + this.data.imageItemSize,
-      uploadImageX: (images.length % IMAGE_COLUMNS) * step,
-      uploadImageY: Math.floor(images.length / IMAGE_COLUMNS) * step });
+      uploadImageX: (mediaCount % IMAGE_COLUMNS) * step,
+      uploadImageY: Math.floor(mediaCount / IMAGE_COLUMNS) * step });
     this._imageDrag = null;
   },
 
@@ -153,7 +167,7 @@ Page({
     var step = this.data.imageStep;
     var column = Math.max(0, Math.min(IMAGE_COLUMNS - 1, Math.round(drag.x / step)));
     var row = Math.max(0, Math.round(drag.y / step));
-    var target = Math.min(items.length - 1, row * IMAGE_COLUMNS + column);
+    var target = Math.max(0, Math.min(items.length - 1, row * IMAGE_COLUMNS + column - (this.data.useVideoCover ? 1 : 0)));
     if (target !== drag.index) {
       var moving = items.splice(drag.index, 1)[0];
       items.splice(target, 0, moving);
@@ -280,9 +294,89 @@ Page({
     this.setData({ linkedProducts: this.data.linkedProducts.filter(item => String(item.id) !== id) });
   },
 
+  previewEditorVideo: function() {
+    if (!this.data.videoUrl) return;
+    wx.previewMedia({
+      sources: [{ url: this.data.videoUrl, type: 'video', poster: this.data.videoThumbPath || '' }],
+      current: 0,
+      fail: () => wx.showToast({ title: '视频预览失败，请稍后重试', icon: 'none' })
+    });
+  },
+
+  uploadVideo: function() {
+    if (this.data.submitting || this.data.loading || this.data.videoCoverLoading) return;
+    if (this.data.useVideoCover) return wx.showToast({ title: '请先取消视频封面勾选，再更换视频', icon: 'none' });
+    wx.chooseMedia({ count: 1, mediaType: ['video'], sourceType: ['camera', 'album'], compressed: true,
+      success: res => {
+        if (this._videoCoverDisposed) return;
+        var file = (res.tempFiles || [])[0];
+        if (!file || !file.tempFilePath) return;
+        if (file.duration > 60) return wx.showToast({ title: '视频最长1分钟，请重新选择', icon: 'none' });
+        this._videoChanged = true;
+        this.setData({ videoUrl: file.tempFilePath, videoThumbPath: '', useVideoCover: false, splitByImage: false });
+      },
+      fail: err => {
+        if (!/cancel/.test(err.errMsg || '')) wx.showToast({ title: '选择视频失败，请重试', icon: 'none' });
+      }
+    });
+  },
+
+  removeVideo: function() {
+    if (this.data.submitting || this.data.loading) return;
+    this._videoChanged = true;
+    this._videoCoverTask = null;
+    this._videoCoverSource = null;
+    this.setData({ videoUrl: '', videoThumbPath: '', useVideoCover: false, videoCoverLoading: false });
+    this.refreshImageGrid();
+  },
+
+  toggleVideoCover: function() {
+    if (this.data.submitting || this.data.loading || !this.data.videoUrl) return;
+    if (!this.data.useVideoCover && this.data.imageList.length >= MAX_WISH_IMAGES) {
+      return wx.showToast({ title: '请先移除一张图片，为视频封面留出位置', icon: 'none' });
+    }
+    var selected = !this.data.useVideoCover;
+    this.setData({ useVideoCover: selected });
+    this.refreshImageGrid();
+    if (selected) this.ensureVideoCover().catch(() => {});
+  },
+
+  previewVideoCover: function() {
+    if (this.data.videoThumbPath) wx.previewImage({ current: this.data.videoThumbPath, urls: [this.data.videoThumbPath] });
+  },
+
+  retryVideoCover: function() {
+    if (!this.data.submitting && this.data.useVideoCover) this.ensureVideoCover().catch(() => {});
+  },
+
+  ensureVideoCover: function() {
+    if (this.data.videoThumbPath) return Promise.resolve(this.data.videoThumbPath);
+    const source = this.data.videoUrl;
+    if (!source) return Promise.reject(new Error('请先选择心愿视频'));
+    if (this._videoCoverTask && this._videoCoverSource === source) return this._videoCoverTask;
+    this._videoCoverSource = source;
+    this.setData({ videoCoverLoading: true });
+    const task = extractVideoCover(source).then(path => {
+      if (!this._videoCoverDisposed && this._videoCoverTask === task && this.data.videoUrl === source) this.setData({ videoThumbPath: path });
+      return path;
+    }).catch(error => {
+      if (!this._videoCoverDisposed && this._videoCoverTask === task && this.data.useVideoCover && this.data.videoUrl === source) {
+        wx.showToast({ title: getErrorMessage(error, '视频封面生成失败，请重试'), icon: 'none' });
+      }
+      throw error;
+    }).finally(() => {
+      if (this._videoCoverTask === task) {
+        this._videoCoverTask = null;
+        if (!this._videoCoverDisposed) this.setData({ videoCoverLoading: false });
+      }
+    });
+    this._videoCoverTask = task;
+    return task;
+  },
+
   chooseImage: function() {
     if (this.data.submitting || this.data.loading || this._imageDrag) return;
-    var remaining = MAX_WISH_IMAGES - this.data.imageList.length;
+    var remaining = MAX_WISH_IMAGES - this.data.imageList.length - (this.data.useVideoCover ? 1 : 0);
     if (remaining <= 0) {
       return wx.showToast({ title: '最多上传99张图片', icon: 'none' });
     }
@@ -296,7 +390,7 @@ Page({
         var selected = (res.tempFiles || [])
           .map(function(file) { return file.tempFilePath; })
           .filter(Boolean);
-        var imageList = this.data.imageList.concat(selected).slice(0, MAX_WISH_IMAGES);
+        var imageList = this.data.imageList.concat(selected).slice(0, MAX_WISH_IMAGES - (this.data.useVideoCover ? 1 : 0));
         this.refreshImageGrid(imageList);
       }
     });
@@ -321,7 +415,7 @@ Page({
   },
 
   toggleSplitByImage: function(e) {
-    if (this.data.linkedProducts.length || this.data.wishId) {
+    if (this.data.linkedProducts.length || this.data.wishId || this.data.videoUrl) {
       this.setData({ splitByImage: false });
       return;
     }
@@ -334,13 +428,13 @@ Page({
   submitWish: async function() {
     if (this.data.submitting || this.data.loading || this.data.loadFailed) return;
     if (this._imageDrag) this.onImageDragEnd();
-    if (this.data.linkedProducts.length || this.data.wishId) this.setData({ splitByImage: false });
+    if (this.data.linkedProducts.length || this.data.wishId || this.data.videoUrl) this.setData({ splitByImage: false });
 
     var imageList = this.data.imageList;
     var title = (this.data.title || '').trim();
     var content = (this.data.content || '').trim();
 
-    if (imageList.length === 0) {
+    if (imageList.length === 0 && !(this.data.videoUrl && this.data.useVideoCover)) {
       return wx.showToast({ title: '请上传商品图片', icon: 'none' });
     }
     if (!title) {
@@ -359,13 +453,32 @@ Page({
 
     try {
       await auth.ensureAuthenticated({ silent: true });
-      var imageUrls = await this.uploadImages(imageList);
+      var coverPath = this.data.useVideoCover ? await this.ensureVideoCover() : '';
+      if (this.data.useVideoCover && imageList.length >= MAX_WISH_IMAGES) {
+        throw new Error('使用视频封面时最多上传98张其他图片');
+      }
+      var imageUrls = await this.uploadImages(coverPath ? [coverPath].concat(imageList) : imageList);
+      var videoUrl = this.data.videoUrl;
+      if (videoUrl && videoUrl !== this._existingVideoUrl) {
+        wx.showLoading({ title: '上传视频...', mask: true });
+        const { compressVideo } = require('../../utils/media');
+        const cosUpload = require('../../utils/cos-upload');
+        var compressed = await compressVideo(videoUrl);
+        videoUrl = await cosUpload.uploadFile(compressed.path, 'wishes');
+        if (!videoUrl) throw new Error('视频上传失败，请重试');
+        this._existingVideoUrl = videoUrl;
+        this.setData({ videoUrl: videoUrl });
+      }
       var payload = {
         images: imageUrls,
         title: title,
         content: content,
         expectedPrice: this.data.expectedPrice
       };
+      if (videoUrl || this._existingVideoUrl || this._videoChanged) {
+        payload.videoUrl = videoUrl || '';
+        payload.useVideoCover = !!this.data.useVideoCover;
+      }
       if (this.data.canLinkProduct) {
         payload.linkedProductIds = this.data.linkedProducts.map(item => item.id);
         if (this.data.wishId) payload.updateLinkedProduct = true;

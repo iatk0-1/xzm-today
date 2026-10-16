@@ -11,6 +11,7 @@ Page(pageSync.wrap({
     wish: { images: [] },
     wishId: null,
     productSheetVisible: false,
+    showVideo: false,
     statusBarHeight: 20,
     navHeight: 64,
     linkedProducts: [],
@@ -49,7 +50,38 @@ Page(pageSync.wrap({
     this.checkDeletePermission(this.data.wish);
   },
 
+  onHide: function() {
+    this.closeVideoOverlay();
+    this.pauseWishVideo();
+  },
+
+  openVideoOverlay: function() {
+    if (!this.data.wish.videoUrl || this.data.productSheetVisible) return;
+    this.pauseWishVideo();
+    this.setData({ showVideo: true });
+  },
+
+  closeVideoOverlay: function() {
+    if (this.data.showVideo && wx.createVideoContext) wx.createVideoContext('wishFullscreenVideo', this).pause();
+    this.setData({ showVideo: false });
+  },
+
+  stopVideoTap: function() {},
+
+  pauseWishVideo: function() {
+    if (this.data.wish.videoUrl && wx.createVideoContext) wx.createVideoContext('wishBannerVideo', this).pause();
+  },
+
+  onWishMediaChange: function(e) {
+    if (e.detail.current !== 0) this.pauseWishVideo();
+  },
+
+  onWishVideoError: function() {
+    wx.showToast({ title: '视频加载失败，请稍后重试', icon: 'none' });
+  },
+
   onUnload: function() {
+    this.pauseWishVideo();
     this._wishRequestVersion = (this._wishRequestVersion || 0) + 1;
   },
 
@@ -313,10 +345,12 @@ Page(pageSync.wrap({
   },
 
   onProductSheetVisibility: function(e) {
+    if (e.detail.visible) this.pauseWishVideo();
     this.setData({ productSheetVisible: !!e.detail.visible });
   },
 
   goBack: function() {
+    if (this.data.showVideo) { this.closeVideoOverlay(); return; }
     if (this.data.productSheetVisible) {
       const sheet = this.selectComponent('#productSheet');
       if (sheet) sheet.requestClose();

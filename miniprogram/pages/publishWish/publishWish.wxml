@@ -3,16 +3,44 @@
   <view class="section-tip" wx:if="{{loading}}">正在加载心愿...</view>
   <view class="section-tip" wx:if="{{loadFailed}}">心愿加载失败，请返回后重试</view>
 
+  <view class="wish-video-section">
+    <view class="section-title">心愿视频（选填）</view>
+    <view class="section-tip">最多上传一个视频，最长1分钟，展示在详情轮播第一位</view>
+    <view class="add-video-btn" wx:if="{{!videoUrl}}" bindtap="uploadVideo">+ 添加视频</view>
+    <view wx:else>
+      <view class="video-preview-box">
+        <video class="preview-video" src="{{videoUrl}}" object-fit="cover" show-play-btn="{{false}}" controls="{{false}}" autoplay loop muted></video>
+        <cover-view class="editor-video-tap" catchtap="previewEditorVideo"></cover-view>
+        <cover-view class="delete-btn editor-video-delete" catchtap="removeVideo">×</cover-view>
+      </view>
+      <view class="video-cover-panel">
+        <view class="video-cover-option" bindtap="toggleVideoCover">
+          <checkbox checked="{{useVideoCover}}" disabled="{{submitting || loading}}" color="#111111" />
+          <text>使用视频首帧作为心愿封面</text>
+        </view>
+        <view class="section-tip">勾选后，首帧将用于心愿列表和分享封面</view>
+      </view>
+    </view>
+  </view>
+
   <view class="image-header">
     <view>
       <view class="section-title">心愿图片</view>
-      <view class="section-tip">首图作为封面，长按图片可拖动排序</view>
+      <view class="section-tip">{{useVideoCover ? '视频封面固定在首位，其余图片可长按排序' : '首图作为封面，长按图片可拖动排序'}}</view>
       <view class="section-tip">单次最多选择20张，最多上传99张</view>
     </view>
-    <text class="image-count">{{imageList.length}} / {{maxImages}}</text>
+    <text class="image-count">{{imageList.length + (useVideoCover ? 1 : 0)}} / {{maxImages}}</text>
   </view>
 
   <movable-area class="image-drag-area" style="height: {{imageAreaHeight}}px;">
+    <view wx:if="{{useVideoCover}}" class="image-drag-item video-cover-fixed" style="width: {{imageItemSize}}px; height: {{imageItemSize}}px;">
+      <view class="image-item" bindtap="previewVideoCover">
+        <image wx:if="{{videoThumbPath}}" src="{{videoThumbPath}}" mode="aspectFill" class="preview-img" />
+        <view wx:else class="video-cover-status" catchtap="retryVideoCover">{{videoCoverLoading ? '封面生成中…' : '点击重试生成封面'}}</view>
+        <view class="cover-tag">视频封面</view>
+        <text class="image-index">1</text>
+      </view>
+    </view>
     <movable-view wx:for="{{imageItems}}" wx:key="id" class="image-drag-item {{dragIndex === index ? 'is-dragging' : ''}}"
       style="width: {{imageItemSize}}px; height: {{imageItemSize}}px;" x="{{item.x}}" y="{{item.y}}"
       direction="all" out-of-bounds="true" inertia="false" animation="{{dragIndex !== index}}"
@@ -20,13 +48,13 @@
       bindlongpress="onImageDragStart" bindchange="onImageDragMove" bindtouchend="onImageDragEnd" bindtouchcancel="cancelImageDrag">
       <view class="image-item">
         <image src="{{item.url}}" mode="aspectFill" class="preview-img" catchtap="previewImage" data-index="{{index}}"></image>
-        <view class="cover-tag" wx:if="{{index === 0}}">封面</view>
+        <view class="cover-tag" wx:if="{{index === 0 && !useVideoCover}}">封面</view>
         <view class="delete-btn" catchtap="removeImage" data-index="{{index}}">×</view>
-        <text class="image-index">{{index + 1}}</text>
+        <text class="image-index">{{index + 1 + (useVideoCover ? 1 : 0)}}</text>
       </view>
     </movable-view>
 
-    <view class="add-image-btn" style="width: {{imageItemSize}}px; height: {{imageItemSize}}px; transform: translate({{uploadImageX}}px, {{uploadImageY}}px);" wx:if="{{imageList.length < maxImages}}" bindtap="chooseImage">
+    <view class="add-image-btn" style="width: {{imageItemSize}}px; height: {{imageItemSize}}px; transform: translate({{uploadImageX}}px, {{uploadImageY}}px);" wx:if="{{imageList.length < maxImages - (useVideoCover ? 1 : 0)}}" bindtap="chooseImage">
       <view class="upload-icon">+</view>
       <text class="upload-text">添加图片</text>
     </view>
@@ -45,11 +73,12 @@
       <view class="split-copy">
         <view class="split-title">按图片分别创建心愿</view>
         <view class="split-desc" wx:if="{{wishId}}">编辑时，全部图片保留在当前心愿</view>
+        <view class="split-desc" wx:elif="{{videoUrl}}">已添加视频，全部内容保留在同一条心愿</view>
         <view class="split-desc" wx:elif="{{linkedProducts.length}}">已关联商品，不可按图片分别创建心愿</view>
         <view class="split-desc" wx:elif="{{!splitByImage}}">关闭时，全部图片归入同一条心愿</view>
         <view class="split-desc active" wx:else>开启后，将创建 {{imageList.length}} 条心愿</view>
       </view>
-      <switch checked="{{splitByImage}}" disabled="{{linkedProducts.length > 0 || !!wishId}}" bindchange="toggleSplitByImage" color="#111111" />
+      <switch checked="{{splitByImage}}" disabled="{{linkedProducts.length > 0 || !!wishId || !!videoUrl}}" bindchange="toggleSplitByImage" color="#111111" />
     </view>
 
     <view class="linked-products" wx:if="{{canLinkProduct}}">
@@ -68,7 +97,7 @@
   </view>
 
   <view class="bottom-action">
-    <view class="btn-publish {{imageList.length && title && content && !submitting && !loading && !loadFailed ? '' : 'disabled'}}" bindtap="submitWish">
+    <view class="btn-publish {{(imageList.length || (videoUrl && useVideoCover)) && title && content && !submitting && !loading && !loadFailed ? '' : 'disabled'}}" bindtap="submitWish">
       {{submitting ? '保 存 中...' : (wishId ? '保 存 修 改' : (splitByImage ? '分 别 发 布' : '发 布 求 购'))}}
     </view>
   </view>

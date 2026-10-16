@@ -823,6 +823,15 @@ const pageDefinition = {
   },
 
   // ================= 视频上传 =================
+  previewEditorVideo: function() {
+    if (!this.data.videoUrl) return;
+    wx.previewMedia({
+      sources: [{ url: this.data.videoUrl, type: 'video', poster: this.data.videoThumbPath || '' }],
+      current: 0,
+      fail: () => wx.showToast({ title: '视频预览失败，请稍后重试', icon: 'none' })
+    });
+  },
+
   uploadVideo() {
     if (this.data.useVideoCover) {
       return wx.showToast({ title: '请先取消视频封面勾选，再更换视频', icon: 'none' });
@@ -855,15 +864,16 @@ const pageDefinition = {
   },
 
   removeVideo() {
-    if (this.data.useVideoCover) {
-      return wx.showToast({ title: '请先取消视频封面勾选，再删除视频', icon: 'none' });
-    }
     this._markDirty();
+    this._videoCoverTask = null;
+    this._videoCoverSource = null;
     this.setData({
       videoUrl: '',
       videoThumbPath: '',
-      useVideoCover: false
+      useVideoCover: false,
+      videoCoverLoading: false
     });
+    this.refreshGrid();
   },
 
   toggleVideoCover() {
@@ -890,12 +900,12 @@ const pageDefinition = {
     this._videoCoverSource = source;
     this.setData({ videoCoverLoading: true });
     const task = extractVideoCover(source).then(path => {
-      if (!this._videoCoverDisposed && this.data.videoUrl === source) {
+      if (!this._videoCoverDisposed && this._videoCoverTask === task && this.data.videoUrl === source) {
         this.setData({ videoThumbPath: path });
       }
       return path;
     }).catch(error => {
-      if (!this._videoCoverDisposed && this.data.useVideoCover && this.data.videoUrl === source) {
+      if (!this._videoCoverDisposed && this._videoCoverTask === task && this.data.useVideoCover && this.data.videoUrl === source) {
         wx.showToast({ title: getErrorMessage(error, '视频封面生成失败，请重试'), icon: 'none' });
       }
       throw error;

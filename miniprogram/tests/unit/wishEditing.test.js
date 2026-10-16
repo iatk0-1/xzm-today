@@ -8,7 +8,8 @@ const plain = value => JSON.parse(JSON.stringify(value));
 function setup(role = 'admin', filename = 'publishWish') {
   let config;
   const calls = { gets: [], writes: [], uploads: [], toasts: [], navigation: [] };
-  const controls = { get: async () => ({ content: [], hasNext: false }) };
+  const controls = { get: async () => ({ content: [], hasNext: false }),
+    extract: async () => 'http://tmp/first-frame.jpg', selectedVideo: null };
   const auth = { isAdmin: () => role === 'admin', isStallManager: () => role === 'stall_manager',
     getUserInfo: () => ({ userId: '7', role }), ensureAuthenticated: async () => {} };
   const api = {
@@ -21,10 +22,15 @@ function setup(role = 'admin', filename = 'publishWish') {
     Page: value => { config = value; }, console, Set,
     setTimeout: () => 1, clearTimeout() {},
     wx: { showLoading() {}, hideLoading() {}, setNavigationBarTitle() {},
+      chooseMedia: options => options.success({ tempFiles: [controls.selectedVideo] }),
+      createVideoContext: () => ({ pause: () => { calls.pauses = (calls.pauses || 0) + 1; } }),
       showToast: value => calls.toasts.push(value), navigateBack() {},
       navigateTo: value => calls.navigation.push(value),
       showModal: value => value.success({ confirm: true }) },
     require(name) {
+      if (name.endsWith('/videoCover')) return { extractVideoCover: source => controls.extract(source) };
+      if (name.endsWith('/media')) return { compressVideo: async file => ({ path: file }) };
+      if (name.endsWith('/cos-upload')) return { uploadFile: async file => { calls.uploads.push(file); return 'https://uploaded/video.mp4'; } };
       if (name.endsWith('/wishProducts')) return require('../../utils/wishProducts');
       if (name.endsWith('/api')) return api;
       if (name.endsWith('/auth')) return auth;
@@ -356,4 +362,145 @@ test('弹窗打开时转发商品详情，关闭后恢复心愿分享链接', ()
   assert.equal(page.onShareAppMessage({ from: 'menu' }).path, '/pages/detail/detail?id=product-1');
   page.onProductSheetVisibility({ detail: { visible: false } });
   assert.equal(page.onShareAppMessage({ from: 'menu' }).path, '/pages/wishDetail/wishDetail?id=wish-1');
+});
+
+
+test('视频首帧回填不混入可拖动图片，保存不重复上传旧视频和封面', async () => {
+  const { page, controls, calls } = setup('user');
+  controls.get = async () => ({ images: ['https://old/cover.jpg', 'https://old/photo.jpg'],
+    videoUrl: 'https://old/video.mp4', useVideoCover: true, title: '标题', content: '正文' });
+  await page.onLoad({ id: '101' });
+  assert.deepEqual(plain(page.data.imageList), ['https://old/photo.jpg']);
+  assert.equal(page.data.videoThumbPath, 'https://old/cover.jpg');
+  await page.submitWish();
+  assert.equal(calls.uploads.length, 0);
+  assert.deepEqual(plain(calls.writes[0].data.images), ['https://old/cover.jpg', 'https://old/photo.jpg']);
+  assert.equal(calls.writes[0].data.videoUrl, 'https://old/video.mp4');
+  assert.equal(calls.writes[0].data.useVideoCover, true);
+});
+
+test('移除视频自动取消首帧封面并明确提交空地址', async () => {
+  const { page, controls, calls } = setup('user');
+  controls.get = async () => ({ images: ['cover.jpg', 'photo.jpg'], videoUrl: 'https://old/video.mp4',
+    useVideoCover: true, title: '标题', content: '正文' });
+  await page.onLoad({ id: '101' });
+  page.removeVideo();
+  assert.equal(page.data.videoUrl, '');
+  assert.equal(page.data.videoThumbPath, '');
+  assert.equal(page.data.useVideoCover, false);
+  assert.equal(page.data.imageItems[0].x, 0);
+  await page.submitWish();
+  assert.equal(calls.writes[0].data.videoUrl, '');
+  assert.equal(calls.writes[0].data.useVideoCover, false);
+  assert.deepEqual(plain(calls.writes[0].data.images), ['photo.jpg']);
+});
+
+test('只上传视频并使用首帧封面也能创建，视频上传后不能按图片拆分', async () => {
+  const { page, calls, controls } = setup('user');
+  controls.selectedVideo = { tempFilePath: 'http://tmp/video.mp4', duration: 60 };
+  page.setData({ title: '标题', content: '正文', splitByImage: true });
+  page.uploadVideo();
+  assert.equal(page.data.splitByImage, false);
+  page.toggleSplitByImage({ detail: { value: true } });
+  assert.equal(page.data.splitByImage, false);
+  page.toggleVideoCover();
+  await page.submitWish();
+  assert.deepEqual(plain(calls.uploads), ['http://tmp/first-frame.jpg', 'http://tmp/video.mp4']);
+  assert.equal(calls.writes[0].url, '/wishes');
+  assert.deepEqual(plain(calls.writes[0].data.images), ['https://uploaded/http://tmp/first-frame.jpg']);
+  assert.equal(calls.writes[0].data.useVideoCover, true);
+});
+
+test('视频超过一分钟拒绝选择，取帧失败阻止提交并允许重试', async () => {
+  const { page, calls, controls } = setup('user');
+  controls.selectedVideo = { tempFilePath: 'http://tmp/long.mp4', duration: 61 };
+  page.uploadVideo();
+  assert.equal(page.data.videoUrl, '');
+  page.setData({ videoUrl: 'http://tmp/video.mp4', useVideoCover: true, title: '标题', content: '正文' });
+  controls.extract = async () => { throw new Error('取帧失败'); };
+  await page.submitWish();
+  assert.equal(calls.writes.length, 0);
+  assert.equal(page.data.submitting, false);
+  assert.equal(page.data.videoCoverLoading, false);
+  controls.extract = async () => 'http://tmp/retry.jpg';
+  await page.submitWish();
+  assert.equal(calls.writes.length, 1);
+});
+
+test('视频封面占用一个图片名额，99张图片时禁止勾选首帧', () => {
+  const { page, calls } = setup();
+  page.setData({ imageList: Array(99).fill('photo.jpg'), videoUrl: 'video.mp4' });
+  page.toggleVideoCover();
+  assert.equal(page.data.useVideoCover, false);
+  assert.match(calls.toasts[0].title, /移除一张图片/);
+});
+
+test('详情视频滑走、页面隐藏和打开商品时暂停', () => {
+  const { page, calls } = setup('user', 'wishDetail');
+  page.setData({ wish: { images: [], videoUrl: 'https://old/video.mp4' } });
+  page.onWishMediaChange({ detail: { current: 0 } });
+  assert.equal(calls.pauses || 0, 0);
+  page.onWishMediaChange({ detail: { current: 1 } });
+  page.onHide();
+  page.onProductSheetVisibility({ detail: { visible: true } });
+  assert.equal(calls.pauses, 3);
+});
+
+
+test('详情悬浮视频打开全屏时暂停轮播，返回键优先关闭视频', () => {
+  const { page, calls } = setup('user', 'wishDetail');
+  page.setData({ wish: { videoUrl: 'video.mp4', images: ['cover.jpg'] } });
+  page.openVideoOverlay();
+  assert.equal(page.data.showVideo, true);
+  assert.equal(calls.pauses, 1);
+  page.goBack();
+  assert.equal(page.data.showVideo, false);
+  assert.equal(calls.pauses, 2);
+  page.setData({ productSheetVisible: true });
+  page.openVideoOverlay();
+  assert.equal(page.data.showVideo, false);
+});
+
+
+test('首帧封面占图片组第一格，普通图片和添加入口顺延，取消勾选后归位', async () => {
+  const { page } = setup();
+  page.setData({ videoUrl: 'video.mp4' });
+  page.refreshImageGrid(['a.jpg', 'b.jpg']);
+  page.toggleVideoCover();
+  await page.ensureVideoCover();
+  assert.equal(page.data.imageItems[0].x, page.data.imageStep);
+  assert.equal(page.data.imageItems[1].x, page.data.imageStep * 2);
+  assert.equal(page.data.uploadImageX, 0);
+  assert.equal(page.data.uploadImageY, page.data.imageStep);
+  assert.equal(page.data.imageAreaHeight, page.data.imageStep + page.data.imageItemSize);
+  page.toggleVideoCover();
+  assert.equal(page.data.imageItems[0].x, 0);
+  assert.equal(page.data.uploadImageX, page.data.imageStep * 2);
+  assert.equal(page.data.uploadImageY, 0);
+});
+
+test('图片拖到视频封面位置也只能排在封面后，跨行排序扣除固定封面格', () => {
+  const { page } = setup();
+  page.setData({ videoUrl: 'video.mp4', useVideoCover: true, videoThumbPath: 'cover.jpg' });
+  page.refreshImageGrid(['a.jpg', 'b.jpg', 'c.jpg', 'd.jpg']);
+  page.onImageDragStart({ currentTarget: { dataset: { index: 3 } } });
+  page.onImageDragMove({ currentTarget: { dataset: { id: page.data.imageItems[3].id } },
+    detail: { x: 0, y: 0, source: 'touch' } });
+  page.onImageDragEnd();
+  assert.deepEqual(plain(page.data.imageList), ['d.jpg', 'a.jpg', 'b.jpg', 'c.jpg']);
+  assert.equal(page.data.imageItems[0].x, page.data.imageStep);
+  assert.equal(page.data.videoThumbPath, 'cover.jpg');
+  page.onImageDragStart({ currentTarget: { dataset: { index: 0 } } });
+  page.onImageDragMove({ currentTarget: { dataset: { id: page.data.imageItems[0].id } },
+    detail: { x: 0, y: page.data.imageStep, source: 'touch' } });
+  page.onImageDragEnd();
+  assert.deepEqual(plain(page.data.imageList), ['a.jpg', 'b.jpg', 'd.jpg', 'c.jpg']);
+});
+
+test('视频封面在图片组内使用固定普通view，没有删除或拖动绑定', () => {
+  const wxml = fs.readFileSync(path.join(__dirname, '../../pages/publishWish/publishWish.wxml'), 'utf8');
+  const cover = wxml.slice(wxml.indexOf('class="image-drag-item video-cover-fixed"'), wxml.indexOf('<movable-view wx:for'));
+  assert.match(cover, /视频封面/);
+  assert.doesNotMatch(cover, /removeImage|onImageDragStart|movable-view/);
+  assert.doesNotMatch(wxml, /video-cover-preview/);
 });

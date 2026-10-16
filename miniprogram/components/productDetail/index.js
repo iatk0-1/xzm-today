@@ -132,6 +132,8 @@ Component({
       this.pauseProductVideos();
       this._productId = String(id);
       this._lastDocumentHeight = null;
+      this._videoFloatPosition = null;
+      this._videoFloatDrag = null;
       this._nativeScrollTop = 0;
       this._forwardingGesture = false;
       // 把当前原生位置同步为受控值，再回零，确保连续换商品都能回到顶部。

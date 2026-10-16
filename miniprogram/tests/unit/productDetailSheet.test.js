@@ -27,7 +27,7 @@ function setup(component = 'productDetailSheet', handlers = {}) {
         get: handlers.get || (async () => ({ product: { id: '1', name: '商品', skuMatrix: [] } })),
         post: async (url, data) => { calls.posts.push({ url, data }); return handlers.post ? handlers.post(url, data) : {}; }
       };
-      if (name.endsWith('/auth')) return { isAdmin: () => false, isStallManager: () => false, ensureAuthenticated: async () => {} };
+      if (name.endsWith('/auth')) return { isAdmin: () => !!handlers.admin, isStallManager: () => false, ensureAuthenticated: async () => {} };
       if (name.endsWith('/shareImage')) return { createShareImage: async () => '' };
       if (name === './controller') {
         const module = { exports: {} };
@@ -72,6 +72,48 @@ test('详情主图、正文和横滑图使用兼容地址，SKU 预览同步使�
   assert.equal(instance.data.product.skuMatrix[0].imageUrl, safe);
 });
 const tap = (dataset = {}) => ({ currentTarget: { dataset } });
+
+test('编辑悬浮按钮轻点及小抖动正常跳转，不受画廊防误触时间影响，拖动和取消不跳转', () => {
+  for (const embedded of [false, true]) {
+    const { instance, calls } = setup('productDetail', { admin: true });
+    instance.data.embedded = embedded;
+    instance.data.product = { id: '360435019602202624' };
+    instance.data.editFloatLeft = 200;
+    instance.data.editFloatTop = 100;
+    instance._suppressTapUntil = Date.now() + 100000;
+    const touch = (x,y) => ({ touches: [{ clientX: x, clientY: y }] });
+    instance.startEditFloatDrag(touch(210,110));
+    instance.moveEditFloat(touch(212,112));
+    assert.equal(instance.data.editFloatLeft,200);
+    instance.endEditFloatDrag();
+    assert.equal(calls.navigation.length,1);
+    assert.equal(calls.navigation[0].url,'/pages/admin/admin?editId=360435019602202624');
+    assert.equal(instance._editFloatDrag,null);
+    instance.startEditFloatDrag(touch(210,110));
+    instance.moveEditFloat(touch(100,200));
+    instance.endEditFloatDrag();
+    assert.equal(calls.navigation.length,1);
+    instance.startEditFloatDrag(touch(100,200));
+    instance.cancelFloatTouch();
+    instance.endEditFloatDrag();
+    assert.equal(calls.navigation.length,1);
+  }
+});
+
+test('视频浮动入口使用普通图片视图承接整次触摸，避免原生视频覆盖层中断拖动', () => {
+  const overlay = fs.readFileSync(path.resolve(__dirname, '../../components/productDetail/overlays.wxml'), 'utf8');
+  const start = overlay.indexOf('<view class="floating-video-btn"');
+  const end = overlay.indexOf('<view class="video-overlay-mask"', start);
+  const button = overlay.slice(start, end);
+  assert.match(button, /catchtouchstart="startVideoFloatTouch"/);
+  assert.match(button, /catchtouchmove="moveVideoFloat"/);
+  assert.match(button, /catchtouchend="endVideoFloatTouch"/);
+  assert.match(button, /catchtouchcancel="cancelVideoFloatTouch"/);
+  assert.match(button, /<image class="floating-video-thumb"/);
+  assert.doesNotMatch(button, /<video\b|<cover-view\b/);
+  assert.match(overlay.slice(end), /<video id="mainFullscreenVideo"/);
+});
+
 
 test('顶部每张图片独立适配，切换商品重置模式并忽略旧图片加载回调', async () => {
   let product = { id: '1', coverUrl: 'portrait.jpg', bannerImages: ['wide.jpg'], skuMatrix: [] };
@@ -730,4 +772,35 @@ test('普通详情与弹窗共用横向轨道样式，CSS函数不混入模板�
   assert.match(styles, /\.banner-strip\s*\{[^}]*height:\s*100%/);
   assert.doesNotMatch(document, /style="transform: translateX/);
   assert.match(document, /style="\{\{'transform: translateX/);
+});
+
+test('分享、编辑和视频使用同一拖动算法，视频轻点打开、拖动松手不播放', () => {
+  for (const embedded of [false, true]) {
+    const { instance } = setup('productDetail');
+    instance.data.embedded = embedded;
+    instance._shareWindow = { width: 375, height: 750, minTop: 80 };
+    instance.createSelectorQuery = () => ({ select() { return this; },
+      boundingClientRect(cb) { this.cb = cb; return this; },
+      exec() { this.cb({ left: 295, top: 580 }); } });
+    const touch = (x,y) => ({ touches: [{ clientX:x, clientY:y }] });
+    instance.startVideoFloatTouch(touch(310,600));
+    instance.endVideoFloatTouch();
+    assert.equal(instance.data.showVideo,true);
+    instance.data.showVideo = false;
+    instance.startVideoFloatTouch(touch(310,600));
+    instance.moveVideoFloat(touch(290,570));
+    assert.equal(instance.data.videoFloatStyle,'left: 275px; top: 550px; right: auto; bottom: auto;');
+    instance.moveVideoFloat(touch(-100,-100));
+    assert.equal(instance._videoFloatPosition.left,0);
+    assert.equal(instance._videoFloatPosition.top,80);
+    instance.moveVideoFloat(touch(999,999));
+    assert.equal(instance._videoFloatPosition.left,315);
+    assert.equal(instance._videoFloatPosition.top,690);
+    instance.endVideoFloatTouch();
+    assert.equal(instance.data.showVideo,false);
+    instance.startVideoFloatTouch(touch(320,700));
+    instance.cancelVideoFloatTouch();
+    instance.endVideoFloatTouch();
+    assert.equal(instance.data.showVideo,false);
+  }
 });
