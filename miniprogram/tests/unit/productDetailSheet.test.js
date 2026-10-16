@@ -804,3 +804,59 @@ test('分享、编辑和视频使用同一拖动算法，视频轻点打开、�
     assert.equal(instance.data.showVideo,false);
   }
 });
+
+test('视频完整显示时按画面比例缩小播放器，白色留边由外层提供并缓存尺寸', async () => {
+  const product = { id: '1', videoUrl: 'portrait.mp4', skuMatrix: [] };
+  const { instance } = setup('productDetail', { get: async () => ({ product }) });
+  await instance.getProductDetail('1');
+  const load = (width,height) => instance.onBannerVideoMetadata({
+    currentTarget: { dataset: { src: 'portrait.mp4' } }, detail: { width,height }
+  });
+  load(720,1280);
+  assert.equal(instance.data.bannerVideoStyle,'width: 70.3125%; height: 100%;');
+  await instance.getProductDetail('1');
+  assert.equal(instance.data.bannerVideoStyle,'width: 70.3125%; height: 100%;');
+  load(1600,900);
+  assert.match(instance.data.bannerVideoStyle, /^width: 100%; height: 45(?:\.0+1)?%;$/);
+  load(800,1000);
+  assert.equal(instance.data.bannerVideoStyle,'width: 100%; height: 100%;');
+  const styles = fs.readFileSync(path.resolve(__dirname, '../../components/productDetail/content.wxss'), 'utf8');
+  assert.match(styles, /\.banner-video-cell\s*\{[^}]*background-color:\s*#fff/);
+});
+
+test('普通详情横滑锁住页面滚动，纵滑不锁，松手取消与多指恢复滚动', () => {
+  const { instance } = setup('productDetail');
+  instance.data.embedded = false;
+  instance.data.bannerImgs = ['a','b'];
+  instance.data.product = {};
+  const touch = (x,y) => ({ touches: [{ clientX:x, clientY:y }] });
+  instance.onPageBannerTouchStart(touch(200,100));
+  assert.equal(instance.data.pageBannerScrollLocked,false,'按下时保留原生纵向滚动');
+  instance.onPageBannerTouchMove(touch(120,110));
+  assert.equal(instance.data.pageBannerScrollLocked,true);
+  instance.onPageBannerTouchMove(touch(100,200));
+  assert.equal(instance.data.pageBannerScrollLocked,true,'横滑方向一旦确认不因后续上下偏移改变');
+  instance.onPageBannerTouchEnd();
+  assert.equal(instance.data.pageBannerScrollLocked,false);
+  instance.onPageBannerTouchStart(touch(200,100));
+  assert.equal(instance.data.pageBannerScrollLocked,false);
+  instance.onPageBannerTouchMove(touch(198,103));
+  assert.equal(instance.data.pageBannerScrollLocked,false,'方向未确认时不抢原生滚动');
+  instance.onPageBannerTouchMove(touch(195,170));
+  assert.equal(instance.data.pageBannerScrollLocked,false);
+  instance.onPageBannerTouchMove(touch(80,175));
+  assert.equal(instance.data.pageBannerScrollLocked,false,'起手纵向后持续交给正文，不因横向偏移改成翻图');
+  instance.onPageBannerTouchEnd();
+  for (const cancel of [() => instance.onPageBannerTouchCancel(),
+    () => instance.onPageBannerTouchMove({ touches:[{},{}] })]) {
+    instance.onPageBannerTouchStart(touch(200,100));
+    instance.onPageBannerTouchMove(touch(120,102));
+    assert.equal(instance.data.pageBannerScrollLocked,true);
+    cancel();
+    assert.equal(instance.data.pageBannerScrollLocked,false);
+  }
+  const page = fs.readFileSync(path.resolve(__dirname,'../../pages/detail/detail.wxml'),'utf8');
+  assert.match(page, /<scroll-view[^>]*scroll-y="\{\{!pageBannerScrollLocked\}\}"/);
+  const config = JSON.parse(fs.readFileSync(path.resolve(__dirname,'../../pages/detail/detail.json'),'utf8'));
+  assert.equal(config.disableScroll, true);
+});

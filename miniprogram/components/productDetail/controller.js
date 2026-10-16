@@ -3,6 +3,7 @@ const api = require('../../utils/api');
 const { normalizeProductImages } = require('../../utils/productImage');
 const { getBannerImageMode, getDetailImageMode } = require('../../utils/productGallery');
 const { getPurchaseNotice } = require('../../utils/purchaseNotice');
+const { resolveDirection } = require('../../utils/productSheetGesture');
 const auth = require('../../utils/auth');
 const { formatStock, hasStock, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
 const { findSelectedSku, getSkuOptions, getDefaultSkuSelection, getSkuOptionSelection } = require('../../utils/skuSelection');
@@ -25,10 +26,12 @@ function createProductDetailConfig() {
     bannerImgs: [],
     bannerImageModes: [],
     bannerVideoFit: 'contain',
+    bannerVideoStyle: 'width: 100%; height: 100%;',
     bannerBaseWidth: 375,
     bannerBaseHeight: 468.75,
     bannerTranslateX: 0,
     bannerDragging: false,
+    pageBannerScrollLocked: false,
     lookbookImgs: [],
     detailImgs: [],
     detailImageModes: [],
@@ -103,6 +106,7 @@ function createProductDetailConfig() {
   },
 
   onHide: function() {
+    if (!this.data.embedded) this.onPageBannerTouchCancel();
     this._videoFloatDrag = null;
     this.pauseProductVideos();
   },
@@ -138,19 +142,25 @@ function createProductDetailConfig() {
     if (this.data.embedded || !e.touches || e.touches.length !== 1) return;
     const touch = e.touches[0];
     this._pageBannerTouch = { x: touch.clientX, y: touch.clientY, dx: 0, direction: '' };
-    this.setData({ bannerDragging: true });
+    // 与全屏弹窗一致：起手保持原生纵滚可用，只在确认横滑后锁定。
+    // 起手禁用 scroll-y 会使原生滚动容器错过整次纵向手势。
+    this.setData({ bannerDragging: true, pageBannerScrollLocked: false });
   },
 
   onPageBannerTouchMove: function(e) {
     const swipe = this._pageBannerTouch;
-    if (this.data.embedded || !swipe || !e.touches || e.touches.length !== 1) return;
+    if (this.data.embedded || !swipe) return;
+    if (!e.touches || e.touches.length !== 1) return this.onPageBannerTouchCancel();
     const touch = e.touches[0];
     swipe.dx = touch.clientX - swipe.x;
     const dy = touch.clientY - swipe.y;
-    if (!swipe.direction && (Math.abs(swipe.dx) > 6 || Math.abs(dy) > 6)) {
-      swipe.direction = Math.abs(swipe.dx) >= Math.abs(dy) ? 'horizontal' : 'vertical';
+    if (!swipe.direction) swipe.direction = resolveDirection(swipe.dx, dy, true);
+    if (swipe.direction === 'vertical' && this.data.pageBannerScrollLocked) {
+      this.setData({ pageBannerScrollLocked: false });
     }
     if (swipe.direction !== 'horizontal') return;
+    if (!this.data.pageBannerScrollLocked) this.setData({ pageBannerScrollLocked: true });
+    this._suppressTapUntil = Date.now() + 350;
     const count = this.data.bannerImgs.length + (this.data.product.videoUrl ? 1 : 0);
     const width = this.data.bannerBaseWidth || 375;
     const min = -Math.max(0, (count - 1) * width);
@@ -170,7 +180,7 @@ function createProductDetailConfig() {
     if (swipe.direction === 'horizontal' && Math.abs(swipe.dx) >= 40) {
       next = Math.max(0, Math.min(count - 1, next + (swipe.dx < 0 ? 1 : -1)));
     }
-    this.setData({ bannerIndex: next, bannerDragging: false, bannerTranslateX: -next * (this.data.bannerBaseWidth || 375) });
+    this.setData({ bannerIndex: next, bannerDragging: false, pageBannerScrollLocked: false, bannerTranslateX: -next * (this.data.bannerBaseWidth || 375) });
   },
 
   onPageBannerTouchCancel: function() {
@@ -178,7 +188,7 @@ function createProductDetailConfig() {
     if (this.data.embedded || !swipe) return;
     this._pageBannerTouch = null;
     const index = this.data.bannerIndex || 0;
-    this.setData({ bannerDragging: false, bannerTranslateX: -index * (this.data.bannerBaseWidth || 375) });
+    this.setData({ bannerDragging: false, pageBannerScrollLocked: false, bannerTranslateX: -index * (this.data.bannerBaseWidth || 375) });
   },
 
   onBannerVideoMetadata: function(e) {
@@ -188,7 +198,18 @@ function createProductDetailConfig() {
     const fit = getBannerImageMode(width, height) === 'aspectFill' ? 'cover' : 'contain';
     if (!this._bannerVideoFitCache) this._bannerVideoFitCache = new Map();
     this._bannerVideoFitCache.set(src, fit);
-    this.setData({ bannerVideoFit: fit });
+    // 缩小原生播放区域到实际画面比例，白边由外层容器提供。
+    let videoWidth = 100;
+    let videoHeight = 100;
+    if (fit === 'contain' && width > 0 && height > 0) {
+      const ratio = width / height;
+      if (ratio < 4 / 5) videoWidth = ratio / (4 / 5) * 100;
+      else videoHeight = (4 / 5) / ratio * 100;
+    }
+    const style = `width: ${videoWidth}%; height: ${videoHeight}%;`;
+    if (!this._bannerVideoStyleCache) this._bannerVideoStyleCache = new Map();
+    this._bannerVideoStyleCache.set(src, style);
+    this.setData({ bannerVideoFit: fit, bannerVideoStyle: style });
   },
 
   onBannerImageLoad: function(e) {
@@ -342,6 +363,7 @@ function createProductDetailConfig() {
         bannerImgs: banners,
         bannerImageModes: banners.map(url => this._bannerModeCache && this._bannerModeCache.get(url) || 'aspectFit'),
         bannerVideoFit: this._bannerVideoFitCache && this._bannerVideoFitCache.get(product.videoUrl) || 'contain',
+        bannerVideoStyle: this._bannerVideoStyleCache && this._bannerVideoStyleCache.get(product.videoUrl) || 'width: 100%; height: 100%;',
         bannerBaseWidth: bannerWidth,
         bannerBaseHeight: bannerHeight,
         bannerTranslateX: 0,

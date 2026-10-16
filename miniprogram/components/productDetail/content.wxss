@@ -239,9 +239,16 @@
   color: #999999; /* 浅灰色字体 */
 }
 
-.options-section {
-  margin-top: 40px; /* 规格选择区距离上方元素的顶部外边距 */
+.product-options-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 40px;
 }
+.options-section { flex: 1; min-width: 0; }
+.product-options-row .size-selector { height: 100%; gap: 8px; }
+.product-options-row .size-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.product-options-row .select-icon { flex-shrink: 0; }
 
 .option-row {
   display: flex; /* 开启弹性布局横向排列 */
@@ -1129,12 +1136,12 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* 咨询客服 — 内嵌行，与 size-selector 风格统一 */
+/* 客服入口按内容宽度展示，与右侧规格选择框同高。 */
 .consult-section {
   position: relative;
-  width: 100%;
+  flex: 0 0 auto;
   box-sizing: border-box;
-  margin: 36px 0 0;
+  margin: 0;
   border: 1px solid #eeeeee;
   border-radius: 0;
   padding: 12px 15px;
@@ -1162,6 +1169,7 @@
   width: 20px; height: 20px;
 }
 .consult-label {
+  white-space: nowrap;
   font-family: -apple-system, sans-serif;
   font-size: 13px;
   color: #888888;
@@ -1191,3 +1199,6 @@
 .detail-strip { overflow: hidden; }
 .detail-strip-track { display: flex; width: 100%; height: 100%; transition: transform .28s ease; }
 .detail-strip-cell { flex: 0 0 100%; height: 100%; }
+
+/* 原生视频仅占实际画面区域，剩余空间显示白色。 */
+.banner-video-cell { display: flex; align-items: center; justify-content: center; background-color: #fff; }

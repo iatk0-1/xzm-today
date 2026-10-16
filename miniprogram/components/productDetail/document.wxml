@@ -14,8 +14,8 @@
           bindtouchend="onPageBannerTouchEnd" bindtouchcancel="onPageBannerTouchCancel">
       <view class="banner-track {{bannerDragging ? '' : 'gallery-settling'}}"
             style="{{'height: ' + bannerBaseHeight + 'px; transform: translate3d(' + bannerTranslateX + 'px, 0, 0);'}}">
-        <view wx:if="{{product.videoUrl}}" class="banner-cell" style="width: {{bannerBaseWidth}}px;">
-          <video id="productBannerVideo" class="swiper-video" src="{{product.videoUrl}}" poster="{{product.image}}"
+        <view wx:if="{{product.videoUrl}}" class="banner-cell banner-video-cell" style="width: {{bannerBaseWidth}}px;">
+          <video id="productBannerVideo" class="swiper-video" style="{{bannerVideoStyle}}" src="{{product.videoUrl}}" poster="{{product.image}}"
                  object-fit="{{bannerVideoFit}}" data-src="{{product.videoUrl}}"
                  bindloadedmetadata="onBannerVideoMetadata" show-play-btn="{{true}}" controls="{{false}}" autoplay="{{false}}" muted loop />
         </view>
@@ -31,8 +31,8 @@
     </view>
     <view wx:else class="banner-strip" data-gesture="image" data-gallery="banner">
       <view class="banner-track {{gallerySettling ? 'gallery-settling' : ''}} {{galleryAnimating ? 'gallery-transform-animating' : ''}}" style="{{'height: ' + galleryBaseHeight + 'px; transform: translate3d(' + galleryTranslateX + 'px, 0, 0) scale(' + galleryScale + ');'}}" data-gesture="image" data-gallery="banner">
-        <view wx:if="{{product.videoUrl}}" class="banner-cell" style="width: {{galleryBaseWidth}}px;" data-gesture="image" data-gallery="banner">
-          <video id="productBannerVideo" class="swiper-video" data-gesture="image" data-gallery="banner" src="{{product.videoUrl}}" poster="{{product.image}}" object-fit="{{bannerVideoFit}}" data-src="{{product.videoUrl}}" bindloadedmetadata="onBannerVideoMetadata" controls="{{false}}" autoplay="{{false}}" muted loop />
+        <view wx:if="{{product.videoUrl}}" class="banner-cell banner-video-cell" style="width: {{galleryBaseWidth}}px;" data-gesture="image" data-gallery="banner">
+          <video id="productBannerVideo" class="swiper-video" style="{{bannerVideoStyle}}" data-gesture="image" data-gallery="banner" src="{{product.videoUrl}}" poster="{{product.image}}" object-fit="{{bannerVideoFit}}" data-src="{{product.videoUrl}}" bindloadedmetadata="onBannerVideoMetadata" controls="{{false}}" autoplay="{{false}}" muted loop />
         </view>
         <view wx:for="{{bannerImgs}}" wx:key="*this" class="banner-cell" style="width: {{galleryBaseWidth}}px;" data-gesture="image" data-gallery="banner">
           <image class="swiper-img" data-gesture="image" data-gallery="banner" src="{{item}}" mode="{{bannerImageModes[index] || 'aspectFit'}}" bindload="onBannerImageLoad" data-src="{{item}}" catchtap="previewBannerImage" data-index="{{index}}" />
@@ -52,20 +52,20 @@
     <view class="detail-title">{{product.title}}</view>
     <view class="detail-price">¥ {{product.displayPrice || product.price}}</view>
 
-    <view class="options-section" bindtap="openSkuPanel" data-action="cart">
-      <view class="size-selector">
-        <text class="size-text" style="color: #333;">{{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</text>
-        <text class="select-icon">›</text>
+    <view class="product-options-row">
+      <view class="consult-section">
+        <view class="consult-left">
+          <image class="consult-icon" src="/images/icons/customer-service.svg" mode="aspectFit"></image>
+          <text class="consult-label">咨询客服</text>
+        </view>
+        <button class="consult-contact-button" open-type="contact" bindcontact="handleCustomerServiceContact" session-from="product:{{product.id}}" show-message-card="true" send-message-title="{{product.title}}" send-message-path="/pages/detail/detail?id={{product.id}}" send-message-img="{{product.image}}"></button>
       </view>
-    </view>
-
-    <view class="consult-section">
-      <view class="consult-left">
-        <image class="consult-icon" src="/images/icons/customer-service.svg" mode="aspectFit"></image>
-        <text class="consult-label">咨询客服</text>
+      <view class="options-section" bindtap="openSkuPanel" data-action="cart">
+        <view class="size-selector">
+          <text class="size-text" style="color: #333;">{{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</text>
+          <text class="select-icon">›</text>
+        </view>
       </view>
-      <text class="consult-arrow">›</text>
-      <button class="consult-contact-button" open-type="contact" bindcontact="handleCustomerServiceContact" session-from="product:{{product.id}}" show-message-card="true" send-message-title="{{product.title}}" send-message-path="/pages/detail/detail?id={{product.id}}" send-message-img="{{product.image}}"></button>
     </view>
 
 <!-- 四段提示信息 -->

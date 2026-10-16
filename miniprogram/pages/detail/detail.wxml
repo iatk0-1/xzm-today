@@ -1,2 +1,4 @@
-<include src="../../components/productDetail/document.wxml" />
+<scroll-view class="detail-page-scroll" scroll-y="{{!pageBannerScrollLocked}}" enhanced="{{true}}" bounces="{{false}}" show-scrollbar="{{false}}">
+  <include src="../../components/productDetail/document.wxml" />
+</scroll-view>
 <include src="../../components/productDetail/overlays.wxml" />
