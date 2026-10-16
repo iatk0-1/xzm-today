@@ -4,7 +4,7 @@
 <scroll-view class="wish-page-scroll" scroll-y="{{!productSheetVisible && !showVideo}}" style="height: 100vh;" enhanced="true" show-scrollbar="false">
 <view class="page-wrapper">
 
-  <view class="share-float" wx:if="{{canShowShareFloat && !productSheetVisible}}" style="left: {{shareFloatLeft}}px; top: {{shareFloatTop}}px;" catchtouchstart="startShareFloatDrag" catchtouchmove="moveShareFloat" catchtouchend="endShareFloatDrag">
+  <view class="share-float" wx:if="{{canShowShareFloat && !productSheetVisible}}" style="left: {{shareFloatLeft}}px; top: {{shareFloatTop}}px;" catchtouchstart="startShareFloatDrag" catchtouchmove="moveShareFloat" catchtouchend="endShareFloatDrag" catchtouchcancel="cancelFloatTouch">
     <text>分享</text>
   </view>
 
@@ -94,9 +94,11 @@
 
 
 <!-- 与商品详情一致的视频悬浮入口和全屏播放层 -->
-<view class="wish-floating-video" wx:if="{{wish.videoUrl && !productSheetVisible && !showVideo}}" bindtap="openVideoOverlay">
-  <video class="wish-floating-video-thumb" src="{{wish.videoUrl}}" poster="{{wish.image}}" muted controls="{{false}}" show-play-btn="{{false}}" object-fit="cover" />
-  <view class="wish-floating-video-icon">▶</view>
+<view class="wish-floating-video" wx:if="{{wish.videoUrl && !productSheetVisible && !showVideo}}" style="{{videoFloatStyle}}"
+      catchtouchstart="startVideoFloatTouch" catchtouchmove="moveVideoFloat"
+      catchtouchend="endVideoFloatTouch" catchtouchcancel="cancelVideoFloatTouch">
+  <image class="wish-floating-video-thumb" src="{{wish.image}}" mode="aspectFill" />
+  <view class="wish-floating-video-icon"><view class="wish-video-play-icon" /></view>
 </view>
 <view class="wish-video-overlay" wx:if="{{showVideo && !productSheetVisible}}" catchtap="closeVideoOverlay" catchtouchmove="stopVideoTap">
   <video id="wishFullscreenVideo" class="wish-fullscreen-video" src="{{wish.videoUrl}}" autoplay loop controls object-fit="contain" show-fullscreen-btn="{{false}}" catchtap="stopVideoTap" binderror="onWishVideoError" />

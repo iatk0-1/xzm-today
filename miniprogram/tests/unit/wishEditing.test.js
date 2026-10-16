@@ -504,3 +504,41 @@ test('视频封面在图片组内使用固定普通view，没有删除或拖动�
   assert.doesNotMatch(cover, /removeImage|onImageDragStart|movable-view/);
   assert.doesNotMatch(wxml, /video-cover-preview/);
 });
+
+
+test('心愿分享和视频浮窗与商品一致：轻微抖动不挪位，拖动松手不打开，取消触摸不误触', () => {
+  const { page } = setup('admin', 'wishDetail');
+  page.setData({ wish: { videoUrl: 'video.mp4' }, shareFloatLeft: 200, shareFloatTop: 100 });
+  page._shareWindow = { width: 375, height: 750 };
+  let shares = 0;
+  page.openShareTemplateSelector = () => { shares++; };
+  const touch = (x, y) => ({ touches: [{ clientX: x, clientY: y }] });
+  page.startShareFloatDrag(touch(210, 110));
+  page.moveShareFloat(touch(212, 112));
+  assert.equal(page.data.shareFloatLeft, 200);
+  page.endShareFloatDrag();
+  assert.equal(shares, 1);
+  page.startShareFloatDrag(touch(210, 110));
+  page.moveShareFloat(touch(-100, 999));
+  page.endShareFloatDrag();
+  assert.equal(shares, 1);
+  assert.equal(page.data.shareFloatLeft, 0);
+  assert.equal(page.data.shareFloatTop, 692);
+  page.startShareFloatDrag(touch(10, 700));
+  page.cancelFloatTouch();
+  page.endShareFloatDrag();
+  assert.equal(shares, 1);
+  page.startVideoFloatTouch(touch(310, 600));
+  page.moveVideoFloat(touch(280, 570));
+  page.endVideoFloatTouch();
+  assert.equal(page.data.showVideo, false);
+  assert.match(page.data.videoFloatStyle, /left:/);
+  page.startVideoFloatTouch(touch(280, 570));
+  page.endVideoFloatTouch();
+  assert.equal(page.data.showVideo, true);
+  page.closeVideoOverlay();
+  page.startVideoFloatTouch(touch(280, 570));
+  page.cancelVideoFloatTouch();
+  page.endVideoFloatTouch();
+  assert.equal(page.data.showVideo, false);
+});
