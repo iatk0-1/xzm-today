@@ -288,3 +288,5 @@ page { background-color: #f7f8fa; }
   margin-top: -1rpx;     /* 双重保险 */
   padding-top: 1rpx;     /* 防止内容被裁切 */
 }
+
+.order-times { display: flex; flex-direction: column; gap: 6rpx; min-width: 0; }

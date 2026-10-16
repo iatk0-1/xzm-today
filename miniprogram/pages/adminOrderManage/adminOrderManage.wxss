@@ -429,3 +429,8 @@ page {
 .no-more text { font-size: 24rpx; color: #ccc; }
 .purchase-return-tip { padding: 20rpx 28rpx 8rpx; color: #666; font-size: 24rpx; line-height: 1.5; }
 .purchase-return-choice { padding: 18rpx 28rpx 28rpx; font-size: 26rpx; }
+
+.time-type-switch { display: flex; flex-shrink: 0; background: #f5f5f5; border-radius: 8rpx; padding: 4rpx; }
+.time-type-option { font-size: 22rpx; line-height: 56rpx; padding: 0 12rpx; color: #888; border-radius: 6rpx; }
+.time-type-option.selected { color: #fff; background: #1a1a1a; }
+.date-picker { min-width: 0; font-size: 22rpx; }

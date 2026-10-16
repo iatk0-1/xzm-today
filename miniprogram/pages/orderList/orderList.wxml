@@ -94,7 +94,8 @@
 
       <view class="card-footer">
         <view class="total-row">
-          <text class="order-time" wx:if="{{item.createdAtDisplay}}">下单时间：{{item.createdAtDisplay}}</text>
+          <view class="order-times"><text class="order-time" wx:if="{{item.createdAtDisplay}}">下单时间：{{item.createdAtDisplay}}</text>
+            <text class="order-time" wx:if="{{item.latestShippedAtDisplay}}">最新发货时间：{{item.latestShippedAtDisplay}}</text></view>
           <view class="payment-summary">
             <text class="total-label">实付款</text>
             <text class="total-price">¥ {{item.payAmount}}</text>

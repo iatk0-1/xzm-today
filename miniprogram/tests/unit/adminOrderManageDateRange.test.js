@@ -3,11 +3,13 @@ const assert = require('node:assert/strict');
 const Module = require('node:module');
 
 let pageConfig;
+const pendingRequests = [];
+const api = { get: (url, params) => new Promise(resolve => pendingRequests.push({ url, params, resolve })) };
 global.Page = config => { pageConfig = config; };
 const originalLoad = Module._load;
 Module._load = function(request, ...args) {
-  if (request.endsWith('utils/api')) return {};
-  if (request.endsWith('utils/auth')) return {};
+  if (request.endsWith('utils/api')) return api;
+  if (request.endsWith('utils/auth')) return { ensureAuthenticated: async () => {} };
   if (request.endsWith('utils/clipboard')) return {};
   return originalLoad.call(this, request, ...args);
 };
@@ -33,4 +35,44 @@ test('订单管理最近 1 天为当天，确认后按日期重查首屏', () =>
   page.confirmDateRange();
   assert.equal(loads.length, 1);
   assert.equal(loads[0].startDate, today);
+});
+
+test('切换发货时间保留日期范围并重新查询，重复点击不重查', () => {
+  const page = Object.assign({}, pageConfig);
+  page.data = JSON.parse(JSON.stringify(pageConfig.data));
+  page.data.dateRange = { startDate: '2026-10-01', endDate: '2026-10-10', quickSelect: '' };
+  page.setData = patch => Object.assign(page.data, patch);
+  const loads = [];
+  page.loadOrders = () => loads.push(page.data.timeType);
+  page.switchTimeType({ currentTarget: { dataset: { type: 'shipped' } } });
+  assert.equal(page.data.timeType, 'shipped');
+  assert.equal(page.data.dateRange.startDate, '2026-10-01');
+  page.switchTimeType({ currentTarget: { dataset: { type: 'shipped' } } });
+  page.switchTimeType({ currentTarget: { dataset: { type: 'created' } } });
+  assert.deepEqual(loads, ['shipped', 'created']);
+});
+
+test('切换时间类型发送对应筛选参数，旧请求后返回不会覆盖新排序', async () => {
+  global.wx = { showLoading() {}, hideLoading() {}, showToast() {} };
+  const page = Object.assign({}, pageConfig);
+  page.data = JSON.parse(JSON.stringify(pageConfig.data));
+  page.setData = patch => Object.assign(page.data, patch);
+  const first = page.loadOrders();
+  await new Promise(resolve => setImmediate(resolve));
+  const oldRequest = pendingRequests.shift();
+  assert.equal(oldRequest.params.timeType, 'created');
+  page.data.timeType = 'shipped';
+  page.data.dateRange.startDate = '2026-10-01';
+  const second = page.loadOrders();
+  await new Promise(resolve => setImmediate(resolve));
+  const newRequest = pendingRequests.shift();
+  assert.equal(newRequest.params.timeType, 'shipped');
+  assert.equal(newRequest.params.startDate, '2026-10-01');
+  assert.equal(newRequest.params.page, 1);
+  newRequest.resolve({ content: [{ id: 'new', latestShippedAt: '2026-10-15T10:00:00+08:00' }], totalElements: 1 });
+  await second;
+  oldRequest.resolve({ content: [{ id: 'old' }], totalElements: 1 });
+  await first;
+  assert.equal(page.data.orders[0].id, 'new');
+  assert.ok(page.data.orders[0].latestShippedAtDisplay);
 });

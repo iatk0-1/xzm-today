@@ -52,6 +52,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     
     // 搜索
     searchKeyword: '',
+    timeType: 'created',
     
     // 时间范围
     dateRange: {
@@ -138,6 +139,13 @@ Page(autoSearch.wrap(pageSync.wrap({
     this.loadOrders();
   },
 
+  switchTimeType: function(e) {
+    const timeType = e.currentTarget.dataset.type;
+    if (!['created', 'shipped'].includes(timeType) || timeType === this.data.timeType) return;
+    this.setData({ timeType });
+    this.loadOrders();
+  },
+
   // 时间范围选择
   showDateRangeSelector: function() {
     this.setData({ showDateModal: true });
@@ -206,10 +214,12 @@ Page(autoSearch.wrap(pageSync.wrap({
     if (isRefresh === undefined) isRefresh = true;
     if (!isRefresh && (this.data.isLoading || this.data.isLoadingMore || !this.data.hasMore)) return;
 
+    const requestId = (this._ordersRequestId || 0) + 1;
+    this._ordersRequestId = requestId;
     const targetPage = isRefresh ? 1 : this.data.page + 1;
 
     if (isRefresh) {
-      this.setData({ isLoading: true, orders: [], page: 1, total: 0, hasMore: true });
+      this.setData({ isLoading: true, isLoadingMore: false, orders: [], page: 1, total: 0, hasMore: true });
       wx.showLoading({ title: '加载订单中...' });
     } else {
       this.setData({ isLoadingMore: true });
@@ -217,10 +227,11 @@ Page(autoSearch.wrap(pageSync.wrap({
 
     try {
       await auth.ensureAuthenticated({ silent: true });
+      if (requestId !== this._ordersRequestId) return;
       const backendStatus = STATUS_MAP[this.data.currentTab];
       
       // 构建参数对象，过滤掉 undefined 值
-      const params = {};
+      const params = { timeType: this.data.timeType };
       if (backendStatus) params.status = backendStatus;
       if (this.data.searchKeyword) params.keyword = this.data.searchKeyword;
       if (this.data.dateRange.startDate) params.startDate = this.data.dateRange.startDate;
@@ -234,6 +245,7 @@ Page(autoSearch.wrap(pageSync.wrap({
         })
         : await api.get('/admin/orders-manage/orders/query', params);
 
+      if (requestId !== this._ordersRequestId) return;
       const items = ((res && (res.content || res.items)) || []).map(entry => {
         if (!this.data.pickingSkuId) return entry;
         return {
@@ -252,7 +264,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       const orders = list.map(order => ({
         ...order,
         outTradeNo: order.outTradeNo || order.id,
-        createdAtDisplay: this.formatTime(order.createdAt),
+        createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt),
         items: (order.items || []).map(item => ({
           ...item,
           skuImageUrl: item.productImage || ''
@@ -269,6 +281,7 @@ Page(autoSearch.wrap(pageSync.wrap({
         isLoadingMore: false
       });
     } catch (err) {
+      if (requestId !== this._ordersRequestId) return;
       wx.hideLoading();
       console.error('获取订单失败:', err);
       wx.showToast({ title: getErrorMessage(err, '获取订单失败'), icon: 'none' });
@@ -277,12 +290,16 @@ Page(autoSearch.wrap(pageSync.wrap({
   },
 
   refreshOrder: async function(id) {
+    if (!this.data.pickingSkuId && this.data.timeType === 'shipped') {
+      await this.loadOrders();
+      return;
+    }
     if (this.data.pickingSkuId) {
       if (!this.data.orders.some(item => String(item.id) === String(id))) return;
       const entry = await api.get(`/picking-list/skus/${this.data.pickingSkuId}/orders/${id}`, { status: this.data.pickingStatus });
       this.setData({ orders: this.data.orders.flatMap(item => String(item.id) !== String(id) ? [item] : (entry ? [{
         ...item, ...entry.order, pickingPendingQty: entry.pendingQty, pickingOrderedQty: entry.orderedQty,
-        createdAtDisplay: this.formatTime(entry.order.createdAt),
+        createdAtDisplay: this.formatTime(entry.order.createdAt), latestShippedAtDisplay: this.formatTime(entry.order.latestShippedAt),
         items: (entry.order.items || []).map(goods => ({ ...goods, skuImageUrl: goods.productImage || '' }))
       }] : [])) });
       return;
@@ -292,7 +309,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       normalize: order => ({
         ...order,
         outTradeNo: order.outTradeNo || order.id,
-        createdAtDisplay: this.formatTime(order.createdAt),
+        createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt),
         items: (order.items || []).map(item => ({ ...item, skuImageUrl: item.productImage || '' }))
       }),
       matches: order => (!STATUS_MAP[this.data.currentTab] || order.status === STATUS_MAP[this.data.currentTab])

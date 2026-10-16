@@ -48,7 +48,7 @@ Page(pageSync.wrap({
   refreshOrder: async function(id) {
     await pageSync.updateList(this, [{ entity: 'orders', id: String(id) }], {
       entity: 'orders', field: 'orders', url: id => '/orders/' + id,
-      normalize: order => ({ ...order, statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status, createdAtDisplay: this.formatTime(order.createdAt), customerServiceCard: customerServiceOrder.orderCard(order) }),
+      normalize: order => ({ ...order, statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status, createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt), customerServiceCard: customerServiceOrder.orderCard(order) }),
       matches: order => !STATUS_MAP[this.data.currentTab] || STATUS_MAP[this.data.currentTab] === 'after_sale'
         || order.status === STATUS_MAP[this.data.currentTab]
     });
@@ -133,7 +133,7 @@ Page(pageSync.wrap({
       const orders = (res.content || res.items || []).map(order => ({
         ...order,
         statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status,
-        createdAtDisplay: this.formatTime(order.createdAt),
+        createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt),
         customerServiceCard: customerServiceOrder.orderCard(order)
       }));
 
