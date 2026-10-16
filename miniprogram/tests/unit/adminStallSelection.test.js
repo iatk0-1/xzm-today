@@ -15,6 +15,8 @@ function setup({ manager = true, userId = 8, saved, assigned = [], failPublish =
   let writes = 0;
   const storage = new Map(saved ? [['last_stall_selection', saved]] : []);
   const requests = [];
+  const submissions = [];
+  const toasts = [];
   vm.runInNewContext(source, {
     Page(value) { config = value; }, Date, Set,
     console: { log() {}, error() {}, warn() {} },
@@ -35,7 +37,8 @@ function setup({ manager = true, userId = 8, saved, assigned = [], failPublish =
       };
       if (name.endsWith('/api')) return {
         get: async url => { requests.push(url); return assigned; },
-        post: async () => { if (failPublish) throw new Error('模拟发布失败'); return { product: { id: 9 } }; }
+        put: async (url, body) => { submissions.push({ url, body }); return { product: { id: 9 } }; },
+        post: async (url, body) => { submissions.push({ url, body }); if (failPublish) throw new Error('模拟发布失败'); return { product: { id: 9 } }; }
       };
       return {};
     },
@@ -43,7 +46,7 @@ function setup({ manager = true, userId = 8, saved, assigned = [], failPublish =
       getStorageSync: key => storage.get(key),
       setStorageSync: (key, value) => { writes += 1; storage.set(key, value); },
       removeStorageSync: key => storage.delete(key),
-      showToast() {}, showLoading() {}, hideLoading() {}, showModal() {}
+      showToast(value) { toasts.push(value.title); }, showLoading() {}, hideLoading() {}, showModal() {}
     }
   });
   const page = { ...config, data: structuredClone(config.data), setData(patch) { Object.assign(this.data, patch); } };
@@ -57,7 +60,7 @@ function setup({ manager = true, userId = 8, saved, assigned = [], failPublish =
   page.uploadMediaList = async () => ['https://example.com/product.jpg'];
   page.uploadImageList = async () => [];
   page.uploadSkuImages = async () => ({});
-  return { page, storage, requests, writeCount: () => writes };
+  return { page, storage, requests, submissions, toasts, writeCount: () => writes };
 }
 
 test('负责人再次发布自动恢复当天使用过且仍分配的档口，使用当前名称', async () => {
@@ -129,3 +132,30 @@ test('发布成功记录实际档口及账号，失败不覆盖上次记忆', as
     }
   }
 });
+
+for (const editId of ['', '9']) {
+  test(`视频封面${editId ? '编辑' : '新增'}保存参数跟随勾选，缺失封面不静默保存为false`, async () => {
+    for (const selected of [true, false]) {
+      const { page, submissions } = setup({ manager: false });
+      Object.assign(page.data, { editId, costPrice: '5', title: '视频商品',
+        mediaList: [{ url: 'https://example.com/product.jpg' }],
+        videoUrl: 'https://example.com/video.mp4', videoThumbPath: 'https://example.com/thumb.jpg',
+        useVideoCover: selected, skuList: [{ price: '10', stock: '5', color: '白', size: 'M' }] });
+      await page.submitProduct();
+      assert.equal(submissions.length, 1);
+      assert.equal(submissions[0].body.useVideoCover, selected);
+      assert.equal(submissions[0].body.coverUrl,
+        selected ? 'https://example.com/thumb.jpg' : 'https://example.com/product.jpg');
+    }
+    const { page, submissions, toasts } = setup({ manager: false });
+    Object.assign(page.data, { editId, costPrice: '5', title: '视频商品',
+      mediaList: [{ url: 'https://example.com/product.jpg' }],
+      videoUrl: 'https://example.com/video.mp4', videoThumbPath: '', useVideoCover: true,
+      skuList: [{ price: '10', stock: '5', color: '白', size: 'M' }] });
+    page.ensureVideoCover = async () => { toasts.push('生成失败'); throw new Error('生成失败'); };
+    await page.submitProduct();
+    assert.equal(submissions.length, 0);
+    assert.equal(page.data.useVideoCover, true);
+    assert.ok(toasts.includes('生成失败'));
+  });
+}

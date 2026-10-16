@@ -27,6 +27,13 @@
     <view class="label"><text class="required">*</text>商品图片（最多99张，首图自动设为封面，长按可拖拽排序）</view>
 
     <movable-area class="drag-area" style="height: {{dragAreaHeight}}px;">
+      <view wx:if="{{useVideoCover}}" class="drag-item video-cover-fixed">
+        <view class="img-box" bindtap="previewVideoCover">
+          <image wx:if="{{videoThumbPath}}" src="{{videoThumbPath}}" mode="aspectFill" class="media-img" />
+          <view wx:else class="video-cover-status" catchtap="retryVideoCover">{{videoCoverLoading ? '封面生成中…' : '点击重试生成封面'}}</view>
+          <view class="cover-tag">视频封面</view>
+        </view>
+      </view>
       <movable-view
         wx:for="{{mediaList}}"
         wx:key="id"
@@ -44,7 +51,7 @@
 
         <view class="img-box">
           <image src="{{item.url}}" mode="aspectFill" class="media-img" catchtap="previewMediaImage" data-index="{{index}}"></image>
-          <view class="cover-tag" wx:if="{{index === 0}}">封面</view>
+          <view class="cover-tag" wx:if="{{index === 0 && !useVideoCover}}">封面</view>
           <view class="delete-btn" catchtap="removeMedia" data-index="{{index}}">×</view>
         </view>
       </movable-view>
@@ -332,18 +339,12 @@
       <view class="label">Lookbook 详情长图 (选填，多张)</view>
       <button class="lookbook-sync-btn" size="mini" bindtap="syncProductImagesToLookbook">同步图片</button>
     </view>
-    <view class="multi-image-box">
-      <image wx:for="{{lookbookImgs}}" wx:key="*this" src="{{item}}" mode="aspectFill" class="multi-preview" catchtap="previewExtraImage" bindlongpress="removeExtraImage" data-type="lookbook" data-index="{{index}}"></image>
-      <view class="multi-upload-btn" bindtap="chooseExtraImage" data-type="lookbook">+</view>
-    </view>
+    <sortable-image-grid images="{{lookbookImgs}}" data-type="lookbook" bind:add="chooseExtraImage" bind:preview="previewExtraImage" bind:change="onExtraImagesChange" />
   </view>
 
   <view class="form-group">
     <view class="label">Detail 细节横滑图 (选填，多张)</view>
-    <view class="multi-image-box">
-      <image wx:for="{{detailImgs}}" wx:key="*this" src="{{item}}" mode="aspectFill" class="multi-preview" catchtap="previewExtraImage" bindlongpress="removeExtraImage" data-type="detail" data-index="{{index}}"></image>
-      <view class="multi-upload-btn" bindtap="chooseExtraImage" data-type="detail">+</view>
-    </view>
+    <sortable-image-grid images="{{detailImgs}}" data-type="detail" bind:add="chooseExtraImage" bind:preview="previewExtraImage" bind:change="onExtraImagesChange" />
   </view>
 
   <view class="form-group">

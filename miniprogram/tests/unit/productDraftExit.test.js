@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function harness(file, { save, record, manager = false, product, useVideoCover } = {}) {
+function harness(file, { save, record, manager = false, product, useVideoCover, extractVideoCover } = {}) {
   let definition;
   const events = [];
   const wx = {
@@ -16,7 +16,7 @@ function harness(file, { save, record, manager = false, product, useVideoCover }
     disableAlertBeforeUnload: () => events.push(['unguard']),
     navigateBack: options => events.push(['back', options]),
     reLaunch: options => events.push(['home', options]),
-    pageScrollTo() {}
+    pageScrollTo() {}, vibrateShort() {}
   };
   const api = {
     get: async url => {
@@ -45,6 +45,7 @@ function harness(file, { save, record, manager = false, product, useVideoCover }
       console: { log() {}, warn() {}, error() {} }, getCurrentPages: () => [{}, {}],
       setTimeout: () => 0, clearTimeout() {},
       require(name) {
+        if (name.endsWith('/videoCover')) return { extractVideoCover };
         if (name.endsWith('/error')) return require('../../utils/error');
         if (name.endsWith('/productImage')) return require('../../utils/productImage');
         if (name.endsWith('/api') || name === './api') return api;
@@ -298,3 +299,97 @@ for (const selected of [true, false]) {
     assert.equal(page.data.videoThumbPath, selected ? product.coverUrl : '');
   });
 }
+
+for (const type of ['lookbook', 'detail']) {
+  test(`${type}图片排序和删除进入草稿，另一组图片不受影响`, async () => {
+    const { page } = harness('../../pages/admin/admin.js');
+    await page.onLoad({});
+    page.setData({ lookbookImgs: ['l1', 'l2'], detailImgs: ['d1', 'd2'] });
+    const images = type === 'lookbook' ? ['l2', 'l1'] : ['d2', 'd1'];
+    const other = type === 'lookbook' ? 'detailImgs' : 'lookbookImgs';
+    const unchanged = page.data[other].slice();
+    page.onExtraImagesChange({ currentTarget: { dataset: { type } }, detail: { images } });
+    assert.deepEqual(page.collectDraftData()[`${type}Imgs`], images);
+    assert.deepEqual(page.data[other], unchanged);
+    assert.equal(page.hasUnsavedDraftChanges(), true);
+    page.onExtraImagesChange({ currentTarget: { dataset: { type } }, detail: { images: images.slice(1) } });
+    assert.deepEqual(page.collectDraftData()[`${type}Imgs`], images.slice(1));
+  });
+}
+
+test('视频封面固定首位，普通图片删除和排序不取消勾选，只有手动取消才释放首位', async () => {
+  const { page } = harness('../../pages/admin/admin.js');
+  await page.onLoad({});
+  page.setData({ useVideoCover: true, videoUrl: 'https://example.com/video.mp4',
+    videoThumbPath: 'https://example.com/cover.jpg' });
+  page.refreshGrid([{ id: 'a', url: 'a' }, { id: 'b', url: 'b' }]);
+  assert.equal(page.data.mediaList[0].x, 105);
+  page.onDragStart({ currentTarget: { dataset: { index: 1 } } });
+  page.onDragMove({ detail: { x: 0, y: 0 } });
+  page.onDragEnd();
+  assert.equal(page.data.mediaList[0].url, 'b');
+  assert.equal(page.data.mediaList[0].x, 105);
+  assert.equal(page.data.useVideoCover, true);
+  page.removeMedia({ currentTarget: { dataset: { index: 0 } } });
+  assert.equal(page.data.useVideoCover, true);
+  page.removeVideo();
+  assert.equal(page.data.videoUrl, 'https://example.com/video.mp4');
+  assert.equal(page.data.useVideoCover, true);
+  page.toggleVideoCover();
+  assert.equal(page.data.useVideoCover, false);
+  assert.equal(page.data.mediaList[0].x, 0);
+  page.toggleVideoCover();
+  assert.equal(page.data.mediaList[0].x, 105);
+});
+
+test('勾选已有视频自动取帧不上传，取消时隐藏封面，完成后重新勾选复用结果', async () => {
+  let complete;
+  let extracted = 0;
+  let uploads = 0;
+  const source = 'https://example.com/video.mp4';
+  const { page } = harness('../../pages/admin/admin.js', {
+    extractVideoCover: url => {
+      assert.equal(url, source);
+      extracted += 1;
+      return new Promise(resolve => { complete = resolve; });
+    }
+  });
+  await page.onLoad({});
+  page.uploadFile = async () => { uploads += 1; };
+  page.setData({ videoUrl: source });
+  page.toggleVideoCover();
+  assert.equal(page.data.useVideoCover, true);
+  assert.equal(page.data.videoCoverLoading, true);
+  const pending = page.ensureVideoCover();
+  assert.equal(extracted, 1);
+  page.toggleVideoCover();
+  complete('wx://frame.jpg');
+  await pending;
+  assert.equal(page.data.useVideoCover, false);
+  assert.equal(page.data.videoCoverLoading, false);
+  page.toggleVideoCover();
+  assert.equal(page.data.useVideoCover, true);
+  assert.equal(page.data.videoThumbPath, 'wx://frame.jpg');
+  assert.equal(extracted, 1);
+  assert.equal(uploads, 0);
+});
+
+test('取帧失败保留视频封面首位与勾选，原视频可以直接重试', async () => {
+  let calls = 0;
+  const { page } = harness('../../pages/admin/admin.js', {
+    extractVideoCover: async () => {
+      if (++calls === 1) throw new Error('视频读取失败');
+      return 'wx://retry-frame.jpg';
+    }
+  });
+  await page.onLoad({});
+  page.setData({ videoUrl: 'https://example.com/video.mp4' });
+  page.toggleVideoCover();
+  await assert.rejects(page.ensureVideoCover(), /视频读取失败/);
+  assert.equal(page.data.useVideoCover, true);
+  assert.equal(page.data.videoCoverLoading, false);
+  assert.equal(page.data.uploadBtnX, 105);
+  await page.ensureVideoCover();
+  assert.equal(page.data.videoThumbPath, 'wx://retry-frame.jpg');
+  assert.equal(page.data.useVideoCover, true);
+});

@@ -1,0 +1,14 @@
+<movable-area class="drag-area" style="height: {{areaHeight}}px;">
+  <movable-view wx:for="{{items}}" wx:key="id"
+    class="drag-item {{dragIndex === index ? 'is-dragging' : ''}}"
+    x="{{item.x}}" y="{{item.y}}" direction="all" out-of-bounds="{{true}}"
+    animation="{{dragIndex !== index}}" disabled="{{dragIndex !== index}}"
+    data-index="{{index}}" bindlongpress="start" bindchange="move"
+    bindtouchend="end" bindtouchcancel="cancel">
+    <view class="img-box">
+      <image src="{{item.url}}" mode="aspectFill" class="media-img" catchtap="preview" data-index="{{index}}" />
+      <view class="delete-btn" catchtap="remove" data-index="{{index}}">×</view>
+    </view>
+  </movable-view>
+  <view class="drag-item upload-btn-box" style="transform: translate({{addX}}px, {{addY}}px);" bindtap="add">+</view>
+</movable-area>

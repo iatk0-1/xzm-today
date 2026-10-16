@@ -670,3 +670,64 @@ test('越界拖动松手平滑回弹，不循环，新手势和换商品清理�
   assert.equal(detail.data.gallerySettling, true); start(); assert.equal(detail.data.gallerySettling, false);
   await detail.initializeProduct('another'); flush(280); assert.equal(detail.data.gallerySettling, false);
 });
+
+test('顶部视频沿用图片80%保留面积规则，横屏完整显示，换商品忽略旧视频回调', async () => {
+  let product = { id: '1', videoUrl: 'first.mp4', skuMatrix: [] };
+  const { instance } = setup('productDetail', { get: async () => ({ product }) });
+  await instance.getProductDetail('1');
+  assert.equal(instance.data.bannerVideoFit, 'contain');
+  const load = (src, width, height) => instance.onBannerVideoMetadata({
+    currentTarget: { dataset: { src } }, detail: { width, height }
+  });
+  for (const [w, h, fit] of [[800,1000,'cover'], [640,1000,'cover'],
+    [639,1000,'contain'], [1920,1080,'contain'], [1080,1920,'contain'], [0,0,'contain']]) {
+    load('first.mp4',w,h);
+    assert.equal(instance.data.bannerVideoFit,fit);
+  }
+  load('first.mp4',800,1000);
+  await instance.getProductDetail('1');
+  assert.equal(instance.data.bannerVideoFit,'cover');
+  product = { id: '2', videoUrl: 'second.mp4', skuMatrix: [] };
+  await instance.getProductDetail('2');
+  assert.equal(instance.data.bannerVideoFit,'contain');
+  load('first.mp4',800,1000);
+  assert.equal(instance.data.bannerVideoFit,'contain');
+  load('second.mp4',800,1000);
+  assert.equal(instance.data.bannerVideoFit,'cover');
+});
+
+test('普通详情页顶部画廊使用同一套轨道位移，拖动过程不触发原生 swiper 分页', () => {
+  const { instance } = setup('productDetail');
+  instance.data.embedded = false;
+  instance.data.bannerImgs = ['a.jpg', 'b.jpg'];
+  instance.data.product = { videoUrl: '' };
+  instance.data.bannerIndex = 0;
+  instance.data.bannerBaseWidth = 375;
+  instance.data.bannerTranslateX = 0;
+  instance.onPageBannerTouchStart({ touches: [{ clientX: 200, clientY: 100 }] });
+  instance.onPageBannerTouchMove({ touches: [{ clientX: 120, clientY: 102 }] });
+  assert.equal(instance.data.bannerTranslateX, -80);
+  assert.equal(instance.data.bannerIndex, 0);
+  instance.onPageBannerTouchEnd();
+  assert.equal(instance.data.bannerIndex, 1);
+  assert.equal(instance.data.bannerTranslateX, -375);
+  instance.onPageBannerTouchStart({ touches: [{ clientX: 100, clientY: 100 }] });
+  instance.onPageBannerTouchMove({ touches: [{ clientX: 115, clientY: 170 }] });
+  instance.onPageBannerTouchEnd();
+  assert.equal(instance.data.bannerIndex, 1, '纵向拖动不切换图片');
+});
+
+test('普通详情与弹窗共用横向轨道样式，CSS函数不混入模板插值', () => {
+  const base = path.resolve(__dirname, '../../components/productDetail');
+  const styles = fs.readFileSync(path.join(base, 'content.wxss'), 'utf8');
+  const pageStyles = fs.readFileSync(path.resolve(__dirname, '../../pages/detail/detail.wxss'), 'utf8');
+  const componentStyles = fs.readFileSync(path.join(base, 'index.wxss'), 'utf8');
+  const document = fs.readFileSync(path.join(base, 'document.wxml'), 'utf8');
+  assert.match(pageStyles, /productDetail\/content\.wxss/);
+  assert.match(componentStyles, /@import "\.\/content\.wxss"/);
+  assert.match(styles, /\.banner-track\s*\{[^}]*display:\s*flex/);
+  assert.match(styles, /\.banner-cell\s*\{[^}]*flex-shrink:\s*0/);
+  assert.match(styles, /\.banner-strip\s*\{[^}]*height:\s*100%/);
+  assert.doesNotMatch(document, /style="transform: translateX/);
+  assert.match(document, /style="\{\{'transform: translateX/);
+});

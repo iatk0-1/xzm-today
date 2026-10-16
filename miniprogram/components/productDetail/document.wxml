@@ -9,27 +9,30 @@
   <view class="product-load-state" wx:if="{{loading}}">正在加载商品...</view>
   <view class="product-load-state product-load-error" wx:elif="{{loadError}}" bindtap="retryProduct">{{loadError}} · 点击重试</view>
   <view class="main-swiper-wrap {{embedded && galleryAnimating ? 'gallery-animating' : ''}}" style="{{embedded ? 'height: ' + galleryHeight + 'px;' : ''}}" wx:if="{{product.id}}" data-gesture="image" data-gallery="banner">
-    <swiper wx:if="{{!embedded}}" data-gesture="image" data-gallery="banner" current="{{bannerIndex}}" bindchange="onBannerChange" class="main-swiper" indicator-dots="true" indicator-color="rgba(0,0,0,0.15)" indicator-active-color="#111" circular="{{false}}">
-      <swiper-item data-gesture="image" data-gallery="banner" wx:if="{{product.videoUrl}}">
-        <video id="productBannerVideo" class="swiper-video" data-gesture="image" data-gallery="banner"
-               src="{{product.videoUrl}}"
-               poster="{{product.image}}"
-               object-fit="cover"
-               show-play-btn="{{true}}"
-               controls="{{false}}"
-               autoplay="{{false}}"
-               muted
-               loop>
-        </video>
-      </swiper-item>
-      <swiper-item data-gesture="image" data-gallery="banner" wx:for="{{bannerImgs}}" wx:key="*this">
-        <image class="swiper-img" data-gesture="image" data-gallery="banner" src="{{item}}" mode="{{bannerImageModes[index] || 'aspectFit'}}" bindload="onBannerImageLoad" data-src="{{item}}" catchtap="previewBannerImage" data-index="{{index}}"></image>
-      </swiper-item>
-    </swiper>
+    <view wx:if="{{!embedded}}" class="banner-strip page-banner-strip" data-gesture="image" data-gallery="banner"
+          bindtouchstart="onPageBannerTouchStart" bindtouchmove="onPageBannerTouchMove"
+          bindtouchend="onPageBannerTouchEnd" bindtouchcancel="onPageBannerTouchCancel">
+      <view class="banner-track {{bannerDragging ? '' : 'gallery-settling'}}"
+            style="{{'height: ' + bannerBaseHeight + 'px; transform: translate3d(' + bannerTranslateX + 'px, 0, 0);'}}">
+        <view wx:if="{{product.videoUrl}}" class="banner-cell" style="width: {{bannerBaseWidth}}px;">
+          <video id="productBannerVideo" class="swiper-video" src="{{product.videoUrl}}" poster="{{product.image}}"
+                 object-fit="{{bannerVideoFit}}" data-src="{{product.videoUrl}}"
+                 bindloadedmetadata="onBannerVideoMetadata" show-play-btn="{{true}}" controls="{{false}}" autoplay="{{false}}" muted loop />
+        </view>
+        <view wx:for="{{bannerImgs}}" wx:key="*this" class="banner-cell" style="width: {{bannerBaseWidth}}px;">
+          <image class="swiper-img" src="{{item}}" mode="{{bannerImageModes[index] || 'aspectFit'}}"
+                 bindload="onBannerImageLoad" data-src="{{item}}" catchtap="previewBannerImage" data-index="{{index}}" />
+        </view>
+      </view>
+      <view wx:if="{{bannerImgs.length + (product.videoUrl ? 1 : 0) > 1}}" class="banner-dots">
+        <view wx:if="{{product.videoUrl}}" class="banner-dot {{bannerIndex === 0 ? 'active' : ''}}" />
+        <view wx:for="{{bannerImgs}}" wx:key="*this" class="banner-dot {{bannerIndex === index + (product.videoUrl ? 1 : 0) ? 'active' : ''}}" />
+      </view>
+    </view>
     <view wx:else class="banner-strip" data-gesture="image" data-gallery="banner">
-      <view class="banner-track {{gallerySettling ? 'gallery-settling' : ''}} {{galleryAnimating ? 'gallery-transform-animating' : ''}}" style="height: {{galleryBaseHeight}}px; transform: translate3d({{galleryTranslateX}}px, 0, 0) scale({{galleryScale}});" data-gesture="image" data-gallery="banner">
+      <view class="banner-track {{gallerySettling ? 'gallery-settling' : ''}} {{galleryAnimating ? 'gallery-transform-animating' : ''}}" style="{{'height: ' + galleryBaseHeight + 'px; transform: translate3d(' + galleryTranslateX + 'px, 0, 0) scale(' + galleryScale + ');'}}" data-gesture="image" data-gallery="banner">
         <view wx:if="{{product.videoUrl}}" class="banner-cell" style="width: {{galleryBaseWidth}}px;" data-gesture="image" data-gallery="banner">
-          <video id="productBannerVideo" class="swiper-video" data-gesture="image" data-gallery="banner" src="{{product.videoUrl}}" poster="{{product.image}}" object-fit="cover" controls="{{false}}" autoplay="{{false}}" muted loop />
+          <video id="productBannerVideo" class="swiper-video" data-gesture="image" data-gallery="banner" src="{{product.videoUrl}}" poster="{{product.image}}" object-fit="{{bannerVideoFit}}" data-src="{{product.videoUrl}}" bindloadedmetadata="onBannerVideoMetadata" controls="{{false}}" autoplay="{{false}}" muted loop />
         </view>
         <view wx:for="{{bannerImgs}}" wx:key="*this" class="banner-cell" style="width: {{galleryBaseWidth}}px;" data-gesture="image" data-gallery="banner">
           <image class="swiper-img" data-gesture="image" data-gallery="banner" src="{{item}}" mode="{{bannerImageModes[index] || 'aspectFit'}}" bindload="onBannerImageLoad" data-src="{{item}}" catchtap="previewBannerImage" data-index="{{index}}" />
@@ -109,7 +112,7 @@
         </swiper-item>
       </swiper>
       <view wx:else class="detail-swiper detail-strip" data-gesture="image" data-gallery="detail">
-        <view class="detail-strip-track" style="transform: translateX(-{{(currentDetailIndex - 1) * 100}}%);" data-gesture="image" data-gallery="detail">
+        <view class="detail-strip-track" style="{{'transform: translateX(-' + ((currentDetailIndex - 1) * 100) + '%);'}}" data-gesture="image" data-gallery="detail">
           <view class="detail-strip-cell" wx:for="{{detailImgs}}" wx:key="*this" data-gesture="image" data-gallery="detail">
             <image class="detail-swiper-img" data-gesture="image" data-gallery="detail" src="{{item}}" mode="{{detailImageModes[index] || 'aspectFit'}}" bindload="onDetailImageLoad" data-src="{{item}}" catchtap="previewDetailImage" data-index="{{index}}" />
           </view>

@@ -24,6 +24,11 @@ function createProductDetailConfig() {
     currentTab: 0,
     bannerImgs: [],
     bannerImageModes: [],
+    bannerVideoFit: 'contain',
+    bannerBaseWidth: 375,
+    bannerBaseHeight: 468.75,
+    bannerTranslateX: 0,
+    bannerDragging: false,
     lookbookImgs: [],
     detailImgs: [],
     detailImageModes: [],
@@ -124,6 +129,63 @@ function createProductDetailConfig() {
 
   onBannerChange: function(e) {
     this.setData({ bannerIndex: e.detail.current });
+  },
+
+  onPageBannerTouchStart: function(e) {
+    if (this.data.embedded || !e.touches || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    this._pageBannerTouch = { x: touch.clientX, y: touch.clientY, dx: 0, direction: '' };
+    this.setData({ bannerDragging: true });
+  },
+
+  onPageBannerTouchMove: function(e) {
+    const swipe = this._pageBannerTouch;
+    if (this.data.embedded || !swipe || !e.touches || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    swipe.dx = touch.clientX - swipe.x;
+    const dy = touch.clientY - swipe.y;
+    if (!swipe.direction && (Math.abs(swipe.dx) > 6 || Math.abs(dy) > 6)) {
+      swipe.direction = Math.abs(swipe.dx) >= Math.abs(dy) ? 'horizontal' : 'vertical';
+    }
+    if (swipe.direction !== 'horizontal') return;
+    const count = this.data.bannerImgs.length + (this.data.product.videoUrl ? 1 : 0);
+    const width = this.data.bannerBaseWidth || 375;
+    const min = -Math.max(0, (count - 1) * width);
+    const base = -(this.data.bannerIndex || 0) * width;
+    const raw = base + swipe.dx;
+    const resistance = value => width * 0.18 * value / (width + value);
+    const offset = raw > 0 ? resistance(raw) : raw < min ? min - resistance(min - raw) : raw;
+    this.setData({ bannerTranslateX: offset });
+  },
+
+  onPageBannerTouchEnd: function() {
+    const swipe = this._pageBannerTouch;
+    if (this.data.embedded || !swipe) return;
+    this._pageBannerTouch = null;
+    const count = this.data.bannerImgs.length + (this.data.product.videoUrl ? 1 : 0);
+    let next = this.data.bannerIndex || 0;
+    if (swipe.direction === 'horizontal' && Math.abs(swipe.dx) >= 40) {
+      next = Math.max(0, Math.min(count - 1, next + (swipe.dx < 0 ? 1 : -1)));
+    }
+    this.setData({ bannerIndex: next, bannerDragging: false, bannerTranslateX: -next * (this.data.bannerBaseWidth || 375) });
+  },
+
+  onPageBannerTouchCancel: function() {
+    const swipe = this._pageBannerTouch;
+    if (this.data.embedded || !swipe) return;
+    this._pageBannerTouch = null;
+    const index = this.data.bannerIndex || 0;
+    this.setData({ bannerDragging: false, bannerTranslateX: -index * (this.data.bannerBaseWidth || 375) });
+  },
+
+  onBannerVideoMetadata: function(e) {
+    const src = e.currentTarget.dataset.src;
+    if (!src || src !== this.data.product.videoUrl) return;
+    const { width, height } = e.detail;
+    const fit = getBannerImageMode(width, height) === 'aspectFill' ? 'cover' : 'contain';
+    if (!this._bannerVideoFitCache) this._bannerVideoFitCache = new Map();
+    this._bannerVideoFitCache.set(src, fit);
+    this.setData({ bannerVideoFit: fit });
   },
 
   onBannerImageLoad: function(e) {
@@ -249,6 +311,9 @@ function createProductDetailConfig() {
         sizes = [...new Set(skuMatrix.map(s => s.size))].filter(s => s);
       }
 
+      const bannerWidth = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).windowWidth || 375;
+      const bannerHeight = bannerWidth * 1.25;
+
       this.setData({
         loading: false, loadError: '',
         product: {
@@ -273,6 +338,11 @@ function createProductDetailConfig() {
         },
         bannerImgs: banners,
         bannerImageModes: banners.map(url => this._bannerModeCache && this._bannerModeCache.get(url) || 'aspectFit'),
+        bannerVideoFit: this._bannerVideoFitCache && this._bannerVideoFitCache.get(product.videoUrl) || 'contain',
+        bannerBaseWidth: bannerWidth,
+        bannerBaseHeight: bannerHeight,
+        bannerTranslateX: 0,
+        bannerDragging: false,
         lookbookImgs: product.lookbookImages || [],
         detailImgs: product.detailImages || [],
         detailImageModes: (product.detailImages || []).map(() => 'aspectFit'),
@@ -513,7 +583,8 @@ function createProductDetailConfig() {
   },
 
   onDetailSwiperChange: function(e) {
-    this.setData({ currentDetailIndex: e.detail.current + 1 });
+    const index = e.detail.current + 1;
+    this.setData({ currentDetailIndex: index });
   },
 
   changeDetailImage: function(e) {

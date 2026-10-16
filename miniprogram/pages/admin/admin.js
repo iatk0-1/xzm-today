@@ -1,6 +1,7 @@
 const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/admin/admin.js
 const api = require('../../utils/api');
+const { extractVideoCover } = require('../../utils/videoCover');
 const auth = require('../../utils/auth');
 const config = require('../../utils/config');
 const stockUtils = require('../../utils/stock');
@@ -24,6 +25,7 @@ const pageDefinition = {
     videoUrl: '',
     videoThumbPath: '',
     useVideoCover: false,
+    videoCoverLoading: false,
     mediaList: [],
     maxProductImages: MAX_PRODUCT_IMAGES,
     dragIndex: -1,
@@ -185,6 +187,7 @@ const pageDefinition = {
   },
 
   onUnload() {
+    this._videoCoverDisposed = true;
     this.closeRelatedModal();
     // 页面卸载只清理退出提醒，草稿只能由用户主动保存。
     if (this._alertEnabled) {
@@ -721,15 +724,16 @@ const pageDefinition = {
 
   // ================= 拖拽媒体池 =================
   refreshGrid(list = this.data.mediaList) {
+    const offset = this.data.useVideoCover ? 1 : 0;
     let positionedList = list.map((item, index) => {
       if (index !== this.data.dragIndex) {
-        item.x = (index % COLUMNS) * ITEM_SIZE;
-        item.y = Math.floor(index / COLUMNS) * ITEM_SIZE;
+        item.x = ((index + offset) % COLUMNS) * ITEM_SIZE;
+        item.y = Math.floor((index + offset) / COLUMNS) * ITEM_SIZE;
       }
       return item;
     });
 
-    let btnIndex = list.length;
+    let btnIndex = list.length + offset;
     let btnX = (btnIndex % COLUMNS) * ITEM_SIZE;
     let btnY = Math.floor(btnIndex / COLUMNS) * ITEM_SIZE;
     let rows = Math.ceil((btnIndex + (list.length < MAX_PRODUCT_IMAGES ? 1 : 0)) / COLUMNS);
@@ -764,10 +768,6 @@ const pageDefinition = {
         let list = this.data.mediaList.concat(newItems);
         this.refreshGrid(list);
 
-        // 上传图片后，自动取消"使用视频封面"的勾选
-        if (this.data.useVideoCover) {
-          this.setData({ useVideoCover: false });
-        }
       },
       fail: (err) => {
         console.error('选择图片失败:', err);
@@ -785,7 +785,9 @@ const pageDefinition = {
 
   onDragStart(e) {
     wx.vibrateShort();
-    this.setData({ dragIndex: e.currentTarget.dataset.index });
+    const index = Number(e.currentTarget.dataset.index);
+    const item = this.data.mediaList[index];
+    this.setData({ dragIndex: index, tempMoveX: item.x, tempMoveY: item.y });
   },
 
   onDragMove(e) {
@@ -807,7 +809,7 @@ const pageDefinition = {
     if (dropCol >= COLUMNS) dropCol = COLUMNS - 1;
     if (dropRow < 0) dropRow = 0;
 
-    let targetIdx = dropRow * COLUMNS + dropCol;
+    let targetIdx = Math.max(0, dropRow * COLUMNS + dropCol - (this.data.useVideoCover ? 1 : 0));
     if (targetIdx >= list.length) targetIdx = list.length - 1;
 
     if (targetIdx !== dragIdx) {
@@ -822,6 +824,9 @@ const pageDefinition = {
 
   // ================= 视频上传 =================
   uploadVideo() {
+    if (this.data.useVideoCover) {
+      return wx.showToast({ title: '请先取消视频封面勾选，再更换视频', icon: 'none' });
+    }
     this._markDirty();
     wx.chooseMedia({
       count: 1,
@@ -838,7 +843,7 @@ const pageDefinition = {
         console.log('视频选择成功，临时路径:', tempFile.tempFilePath);
         this.setData({
           videoUrl: tempFile.tempFilePath,
-          videoThumbPath: tempFile.thumbTempFilePath || '',
+          videoThumbPath: '',
           useVideoCover: false
         });
       },
@@ -850,6 +855,9 @@ const pageDefinition = {
   },
 
   removeVideo() {
+    if (this.data.useVideoCover) {
+      return wx.showToast({ title: '请先取消视频封面勾选，再删除视频', icon: 'none' });
+    }
     this._markDirty();
     this.setData({
       videoUrl: '',
@@ -860,7 +868,45 @@ const pageDefinition = {
 
   toggleVideoCover() {
     this._markDirty();
-    this.setData({ useVideoCover: !this.data.useVideoCover });
+    const selected = !this.data.useVideoCover;
+    this.setData({ useVideoCover: selected });
+    this.refreshGrid();
+    if (selected) this.ensureVideoCover().catch(() => {});
+  },
+
+  previewVideoCover() {
+    if (this.data.videoThumbPath) this.previewImageSafe(this.data.videoThumbPath, [this.data.videoThumbPath]);
+  },
+
+  retryVideoCover() {
+    this.ensureVideoCover().catch(() => {});
+  },
+
+  ensureVideoCover() {
+    if (this.data.videoThumbPath) return Promise.resolve(this.data.videoThumbPath);
+    const source = this.data.videoUrl;
+    if (this._videoCoverTask && this._videoCoverSource === source) return this._videoCoverTask;
+    if (!source) return Promise.reject(new Error('请先选择商品视频'));
+    this._videoCoverSource = source;
+    this.setData({ videoCoverLoading: true });
+    const task = extractVideoCover(source).then(path => {
+      if (!this._videoCoverDisposed && this.data.videoUrl === source) {
+        this.setData({ videoThumbPath: path });
+      }
+      return path;
+    }).catch(error => {
+      if (!this._videoCoverDisposed && this.data.useVideoCover && this.data.videoUrl === source) {
+        wx.showToast({ title: getErrorMessage(error, '视频封面生成失败，请重试'), icon: 'none' });
+      }
+      throw error;
+    }).finally(() => {
+      if (this._videoCoverTask === task) {
+        this._videoCoverTask = null;
+        if (!this._videoCoverDisposed) this.setData({ videoCoverLoading: false });
+      }
+    });
+    this._videoCoverTask = task;
+    return task;
   },
 
   // ================= 通用文件上传（COS 直传） =================
@@ -927,6 +973,13 @@ const pageDefinition = {
     let list = this.data[`${type}Imgs`];
     list.splice(index, 1);
     this.setData({ [`${type}Imgs`]: list });
+  },
+
+  onExtraImagesChange(e) {
+    const type = e.currentTarget.dataset.type;
+    if (type !== 'lookbook' && type !== 'detail') return;
+    this.setData({ [`${type}Imgs`]: e.detail.images });
+    this._markDirty();
   },
 
   // ================= 分类、尺码、颜色、SKU =================
@@ -1777,6 +1830,13 @@ const pageDefinition = {
       ? this.data.bundleGroups.some(function(g) { return g.skuList && g.skuList.length > 0; })
       : skuList.length > 0;
 
+    // 提交时等待正在生成的封面；失败保留勾选，允许原视频直接重试。
+    if (useVideoCover && !videoThumbPath) {
+      try { await this.ensureVideoCover(); } catch (error) { return; }
+      if (!this.data.useVideoCover || this.data.videoUrl !== videoUrl) return;
+      return this.submitProduct();
+    }
+
     // 校验：如果勾选了"使用视频封面"，可以不上传图片（视频缩略图作为封面）
     // 否则必须至少上传一张图片
     const hasMediaOrVideoCover = mediaList.length > 0 || (useVideoCover && videoUrl && videoThumbPath);
@@ -1824,6 +1884,9 @@ const pageDefinition = {
         wx.showLoading({ title: '上传视频封面...', mask: true });
         uploadedVideoThumbUrl = this.isTemporaryPath(videoThumbPath)
           ? await this.uploadFile(videoThumbPath, 'image/jpeg') : videoThumbPath;
+        if (!uploadedVideoThumbUrl) {
+          throw new Error('视频封面上传失败，请重试');
+        }
       }
 
       // 3. 构造封面图和轮播图（视频封面逻辑）
@@ -1893,7 +1956,7 @@ const pageDefinition = {
         // relatedProductIds 可能是 ID 列表或对象列表，需要正确处理
         relatedProductIds: manualRelated.map(item => typeof item === 'object' ? item.id : item),
         videoUrl: uploadedVideoUrl,
-        useVideoCover: !!(useVideoCover && uploadedVideoThumbUrl),
+        useVideoCover: !!useVideoCover,
         shippingInfo: shippingInfo || null,
         description: description || null,
         fabricCare: fabricCare || null,
@@ -2789,7 +2852,7 @@ const pageDefinition = {
   // E+F: Lookbook / Detail 图片预览
   previewExtraImage(e) {
     var type = e.currentTarget.dataset.type;
-    var index = e.currentTarget.dataset.index;
+    var index = e.detail.index == null ? e.currentTarget.dataset.index : e.detail.index;
     var urls = (type === 'lookbook' ? this.data.lookbookImgs : this.data.detailImgs).filter(function(u) { return u && u !== ''; });
     if (urls.length === 0) return this.previewImageSafe('', []);
     this.previewImageSafe(urls[index], urls);

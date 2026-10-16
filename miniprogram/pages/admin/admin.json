@@ -1,6 +1,7 @@
 {
   "navigationStyle": "custom",
   "usingComponents": {
+    "sortable-image-grid": "../../components/sortableImageGrid/index",
     "product-editor-shell": "../../components/productEditorShell/index",
     "product-schedule": "../../components/productSchedule/index"
   }
