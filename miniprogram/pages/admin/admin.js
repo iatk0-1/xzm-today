@@ -46,6 +46,8 @@ const pageDefinition = {
     purchaseNotice: DEFAULT_PURCHASE_NOTICE,
 
     title: '',
+    titleContentHeight: 0,
+    titleMaxHeight: 150,
     selectedStalls: [],
     selectedTags: [],
     stallSearchKeyword: '',
@@ -692,6 +694,23 @@ const pageDefinition = {
   _markDirty: function() {
     this._lastEditTime = Date.now();
     this._updateExitGuard();
+  },
+
+  onReady() {
+    // 以商品详情输入框的实际高度为上限，保持两个输入框的最大高度一致。
+    this.createSelectorQuery().select('#desc-input').boundingClientRect(rect => {
+      if (rect && rect.height > 0) {
+        this.setData({ titleMaxHeight: rect.height });
+      }
+    }).exec();
+  },
+
+  onTitleLineChange(e) {
+    // 原生事件包含自动折行、手动换行后的实际文本高度，也适用于商品和草稿回填。
+    const height = Number(e.detail.height);
+    if (Number.isFinite(height) && height >= 0 && height !== this.data.titleContentHeight) {
+      this.setData({ titleContentHeight: height });
+    }
   },
 
   onInput(e) {

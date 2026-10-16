@@ -62,7 +62,7 @@
       <view class="label"><text class="required">*</text>商品名称</view>
       <button class="product-schedule-trigger" size="mini" bindtap="openProductSchedule">定时上架/下架</button>
     </view>
-    <input class="input-box" placeholder="例如：经典藏青百褶裙" value="{{title}}" bindinput="onInput" data-field="title" />
+    <textarea class="input-box product-name-input" style="height: calc({{titleContentHeight}}px + 40rpx); max-height: {{titleMaxHeight}}px;" placeholder="例如：经典藏青百褶裙" value="{{title}}" bindinput="onInput" bindlinechange="onTitleLineChange" data-field="title" maxlength="140" adjust-position="{{true}}" adjust-keyboard-to="cursor" cursor-spacing="140"></textarea>
     <view class="product-schedule-summary" wx:if="{{productScheduleSummary}}">{{productScheduleSummary}}{{productScheduleDirty ? '（保存商品后生效）' : ''}}</view>
     <view class="product-schedule-summary" wx:elif="{{productScheduleDirty}}">已取消定时设置，保存商品后生效</view>
   </view>
