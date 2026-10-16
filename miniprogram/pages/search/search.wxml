@@ -1,21 +1,65 @@
-<view class="search-page">
-  <view class="search-bar">
+<view class="search-page" style="padding-top: {{totalNavHeight}}px;" bindtap="onPageTap">
+  <view class="search-header" style="padding-top: {{navTop}}px;">
+  <view class="search-bar" style="height: {{navHeight}}px;">
+    <view class="nav-back" catchtap="goBack" aria-label="返回上一页"><view class="back-arrow"></view></view>
+    <view class="search-box" catchtap="onSearchInputTap">
+    <icon type="search" size="14" color="#999"></icon>
     <input
       class="search-input"
+      style="height: {{navHeight}}px; line-height: {{navHeight}}px;"
       placeholder="输入衣服名称、关键词..."
       bindinput="onInput"
       confirm-type="search"
       bindconfirm="doSearch"
-      auto-focus="true"
+      focus="{{focus}}"
+      adjust-position="{{false}}"
       value="{{keyword}}"
       bindfocus="onSearchFocus"
       bindblur="onSearchBlur"
     />
-    <view class="search-btn" bindtap="doSearch">搜索</view>
+    </view>
+  </view>
+
+  <view class="sort-row">
+    <view class="sort-tab {{currentMainTab === '上新' ? 'active' : ''}}" catchtap="handleMainTabChange" data-tab="上新">上新</view>
+    <view class="sort-tab {{currentMainTab === '销量' ? 'active' : ''}}" catchtap="handleMainTabChange" data-tab="销量">
+      <text>销量</text><view class="sales-arrow {{showSalesPanel ? 'expanded' : ''}}"></view>
+    </view>
+    <view class="sales-panel" wx:if="{{showSalesPanel}}">
+      <view class="sales-period {{salesMonths === item.months ? 'active' : ''}}" wx:for="{{salesPeriods}}" wx:key="months" catchtap="selectSalesPeriod" data-months="{{item.months}}">
+        <text>{{item.label}}</text><text wx:if="{{salesMonths === item.months}}">✓</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="stall-filter-row" style="top: {{totalNavHeight}}px;">
+    <view class="filter-all {{!selectedStall ? 'active' : ''}}" catchtap="selectStall" data-stall="all">全部</view>
+    <view class="filter-divider"></view>
+    <scroll-view class="stall-scroll" scroll-x scroll-into-view="{{selectedStall ? 'stall-' + selectedStall : ''}}">
+      <view class="stall-tags">
+        <view id="stall-{{item.id}}" class="stall-tag {{selectedStall == item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" catchtap="selectStall" data-stall="{{item.id}}">{{item.name}}</view>
+      </view>
+    </scroll-view>
+    <view class="filter-divider"></view>
+    <view class="stall-menu-switch" catchtap="toggleAllPanel" aria-label="展开全部档口">
+      <view class="stall-menu-icon"><view></view><view></view><view></view></view>
+    </view>
+  </view>
+
+  <view class="all-panel-content" wx:if="{{showAllPanel}}" style="top: {{totalNavHeight}}px; margin-top: 88rpx;">
+    <scroll-view scroll-y class="panel-scroll-area">
+      <view class="group-section" wx:for="{{groupedStalls}}" wx:key="letter">
+        <view class="group-title">{{item.letter}}</view>
+        <view class="all-panel-grid">
+          <view class="all-panel-tag {{selectedStall == stall.id ? 'active' : ''}}" wx:for="{{item.list}}" wx:for-item="stall" wx:key="id" catchtap="selectStall" data-stall="{{stall.id}}">{{stall.name}}</view>
+        </view>
+      </view>
+      <view class="stall-empty" wx:if="{{!stallList.length}}">暂无档口</view>
+    </scroll-view>
   </view>
 
   <!-- 搜索历史下拉框 -->
-  <view class="search-history-dropdown {{showHistory ? 'show' : ''}}" wx:if="{{recentSearches.length > 0}}">
+  <view class="search-history-dropdown {{showHistory ? 'show' : ''}}" wx:if="{{recentSearches.length > 0}}" style="top: {{navTop + navHeight}}px;" catchtap="stopTap">
     <view class="history-header">
       <view class="history-title">最近搜索</view>
       <view class="history-clear" bindtap="clearAllSearches">清空</view>
@@ -27,37 +71,47 @@
       </view>
     </view>
   </view>
+  </view>
 
-  <view class="result-box">
+  <view class="filter-mask" wx:if="{{showSalesPanel || showAllPanel}}" catchtap="hideFilterPanels" style="top: {{totalNavHeight}}px;"></view>
+
+  <view class="result-box" bindtouchstart="onProductTouchStart">
+    <view class="search-input-dismiss-layer" wx:if="{{searchEditing}}" catchtap="onPageTap"></view>
     <view wx:if="{{loadError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="retrySearch">{{loadError}} · 点击重试</view>
     <!-- 搜索后的结果展示 -->
-    <view wx:if="{{results.length === 0 && searched && !loadError && !loading}}" class="empty-tip">没有找到相关的衣服哦~</view>
+    <view wx:if="{{results.length === 0 && page > 1 && !loadError && !loading}}" class="empty-tip">{{searched ? '没有找到相关的衣服哦~' : '当前条件下暂无商品'}}</view>
 
     <view class="goods-list" wx:if="{{results.length > 0}}">
       <!-- 左列 -->
       <view class="goods-column">
-        <view class="goods-item" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+        <view class="goods-item" wx:for="{{leftColumn}}" wx:key="id" catchtap="goToDetail" data-id="{{item.id}}">
           <view class="goods-image-wrap">
             <image class="goods-img" src="{{item.coverUrl || item.image}}" mode="widthFix"></image>
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="goods-info">
             <view class="goods-title">{{item.name || item.title}}</view>
-            <view class="goods-price">¥ {{item.displayPrice || item.price || '0.00'}}</view>
+            <view class="goods-price-row">
+              <view class="goods-price">¥ {{item.displayPrice || item.price || '0.00'}}</view>
+              <text class="goods-sold" wx:if="{{item.soldQty !== undefined && item.soldQty !== null}}">已售{{item.soldQty}}</text>
+            </view>
           </view>
         </view>
       </view>
 
       <!-- 右列 -->
       <view class="goods-column">
-        <view class="goods-item" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+        <view class="goods-item" wx:for="{{rightColumn}}" wx:key="id" catchtap="goToDetail" data-id="{{item.id}}">
           <view class="goods-image-wrap">
             <image class="goods-img" src="{{item.coverUrl || item.image}}" mode="widthFix"></image>
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="goods-info">
             <view class="goods-title">{{item.name || item.title}}</view>
-            <view class="goods-price">¥ {{item.displayPrice || item.price || '0.00'}}</view>
+            <view class="goods-price-row">
+              <view class="goods-price">¥ {{item.displayPrice || item.price || '0.00'}}</view>
+              <text class="goods-sold" wx:if="{{item.soldQty !== undefined && item.soldQty !== null}}">已售{{item.soldQty}}</text>
+            </view>
           </view>
         </view>
       </view>

@@ -81,9 +81,12 @@ page {
 
 .nav-tabs-left .tab-item {
   position: relative;
+  flex: none;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  white-space: nowrap;
 }
 
 /* 未选中状态 */
@@ -117,6 +120,12 @@ page {
 .nav-tabs-left .tab-item.active .line {
   transform: scaleX(1); /* 选中时弹出 */
   opacity: 1;
+}
+
+/* 与搜索页一致：下划线对准两个 32rpx 的文字，不把右侧箭头计入居中。 */
+.nav-tabs-left .sales-tab .line {
+  align-self: flex-start;
+  margin-left: 12rpx;
 }
 
 /* 购物车胶囊 */
@@ -161,7 +170,7 @@ page {
   height: 88rpx; /* 固定高度，非常关键 */
 }
 
-/* 左侧全部开关 */
+/* 左侧全部按钮 */
 .btn-all-switch {
   display: flex;
   align-items: center;
@@ -169,16 +178,103 @@ page {
   padding: 0 24rpx 0 30rpx;
   height: 100%;
   font-size: 28rpx;
-  font-weight: 600;
-  color: #1a1a1a;
+  font-weight: 400;
+  color: #666;
   flex-shrink: 0;
 }
 
-.icon-menu {
-  font-size: 32rpx;
-  margin-left: 8rpx;
-  font-weight: 300;
+.btn-all-switch.active {
+  color: #1a1a1a;
+  font-weight: 800;
+}
+
+.stall-menu-switch {
+  width: 88rpx;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stall-menu-icon {
+  width: 30rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 7rpx;
+}
+
+.stall-menu-icon view {
+  width: 100%;
+  height: 3rpx;
+  border-radius: 2rpx;
+  background: #666;
+}
+
+.stall-menu-switch.active .stall-menu-icon view {
+  background: #1a1a1a;
+}
+
+.sales-tab-label {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.sales-arrow {
+  width: 12rpx;
+  height: 12rpx;
+  border-top: 3rpx solid #999;
+  border-right: 3rpx solid #999;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+
+.tab-item.active .sales-arrow {
+  border-color: #1a1a1a;
+}
+
+.sales-arrow.expanded {
+  transform: rotate(135deg);
+}
+
+.sales-panel-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.25);
+  z-index: 1001;
+}
+
+.sales-panel {
+  position: fixed;
+  left: 138rpx;
+  width: 260rpx;
+  padding: 12rpx 0;
+  background: #fff;
+  border-radius: 0 0 16rpx 16rpx;
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
+  z-index: 1002;
+}
+
+.sales-period {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22rpx 30rpx;
   color: #666;
+  font-size: 28rpx;
+}
+
+.sales-period.active {
+  color: #1a1a1a;
+  background: #f5f5f5;
+  font-weight: 700;
+}
+
+.sales-period-check {
+  margin-left: 12rpx;
 }
 
 /* 高级分割线 */
@@ -192,6 +288,8 @@ page {
 /* 右侧滑动区 */
 .sub-nav-scroll {
   flex: 1;
+  width: 0;
+  min-width: 0;
   white-space: nowrap;
   height: 100%;
 }
@@ -249,7 +347,7 @@ page {
   width: 100%;
   background: #ffffff;
   z-index: 997;
-  padding: 0 0 40rpx 0;
+  padding: 30rpx 0 40rpx;
   box-sizing: border-box;
   border-radius: 0 0 32rpx 32rpx;
   box-shadow: 0 10rpx 20rpx rgba(0,0,0,0.05);
@@ -307,7 +405,7 @@ page {
 /* ==================
    瀑布流商品卡片 - 使用 Flexbox 实现正确的分页加载
 ================== */
-/* 列表滚动区：高度由 js 按窗口尺寸算，档口/分类时上边距让开吸顶子导航 */
+/* 列表滚动区：高度由 js 按窗口尺寸算，上边距让开常驻档口筛选。 */
 .list-scroll {
   width: 100%;
   box-sizing: border-box;
@@ -399,9 +497,27 @@ page {
   font-size: 32rpx;
   font-weight: 800;
   color: #1a1a1a;
+  white-space: nowrap;
+}
+
+.product-price-row {
+  display: flex;
+  align-items: baseline;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4rpx 12rpx;
+  margin-right: 8rpx;
+}
+
+.product-sold {
+  color: #999;
+  font-size: 22rpx;
+  white-space: nowrap;
 }
 
 .btn-add-cart {
+  flex-shrink: 0;
   width: 56rpx;
   height: 56rpx;
   border-radius: 50%;

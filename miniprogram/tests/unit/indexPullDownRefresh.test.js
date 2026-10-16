@@ -19,7 +19,7 @@ global.wx = {
   hideLoading() { wxCalls.hideLoading += 1; },
   stopPullDownRefresh() { wxCalls.stopPullDownRefresh += 1; },
   showToast() {},
-  navigateTo() {},
+  navigateTo(options) { wxCalls.navigateUrl = options.url; },
   reLaunch() {}
 };
 
@@ -115,7 +115,7 @@ test('下拉刷新：释放时重新查询商品首屏，带上当前筛选条�
 
   assert.equal(page.data.refreshing, false);
   assert.equal(searchCalls().length, 1);
-  assert.deepEqual(searchCalls()[0].params, { page: 1, size: 20, stallId: 's1', tagId: 't1' });
+  assert.deepEqual(searchCalls()[0].params, { page: 1, size: 20, sort: 'newest', stallId: 's1', tagId: 't1' });
 
   const urls = requestLog.map((item) => item.url).sort();
   assert.deepEqual(urls, ['/products/query', '/stalls', '/tags']);
@@ -243,21 +243,124 @@ test('下拉刷新：分页请求还在飞时先等它落地，再重新拉首�
   assert.equal(page.data.page, 2);
 });
 
-test('列表滚动区尺寸：窗口高度减掉导航栏，档口/分类再多让一条子导航', () => {
+test('列表滚动区尺寸：上新和销量都给常驻档口筛选行让位', () => {
   const page = createPage();
   page.data.totalNavHeight = 100;
 
   page.updateListMetrics();
-  assert.equal(page.data.listHeight, 700); // 800 - 100
-  assert.equal(page.data.listTop, 0);
+  assert.equal(page.data.listHeight, 656); // 800 - 100 - 44
+  assert.equal(page.data.listTop, 44);
 
-  page.setData({ currentMainTab: '档口' });
+  page.setData({ currentMainTab: '销量' });
   page.updateListMetrics();
   assert.equal(page.data.listTop, 44); // 88rpx 在 375 宽的屏上是 44px
   assert.equal(page.data.listHeight, 656);
 
   page.setData({ currentMainTab: '上新' });
   page.updateListMetrics();
-  assert.equal(page.data.listTop, 0);
-  assert.equal(page.data.listHeight, 700);
+  assert.equal(page.data.listTop, 44);
+  assert.equal(page.data.listHeight, 656);
+});
+
+const event = (dataset) => ({ currentTarget: { dataset } });
+
+test('销量：首次点击按近一个月查询，再次点击只展开下拉框，选范围后重新查首屏', async () => {
+  const page = createPage();
+  requestHandler = backendStub();
+  page.data.selectedStall = 's1';
+  await page.handleMainTabChange(event({ tab: '销量' }));
+  assert.equal(page.data.showSalesPanel, false);
+  assert.deepEqual(searchCalls()[0].params, { page: 1, size: 20, sort: 'sales', salesMonths: 1, stallId: 's1' });
+
+  page.handleMainTabChange(event({ tab: '销量' }));
+  assert.equal(page.data.showSalesPanel, true);
+  assert.equal(searchCalls().length, 1);
+  for (const months of [3, 6, 12, 1]) {
+    await page.selectSalesPeriod(event({ months }));
+    assert.equal(page.data.showSalesPanel, false);
+    assert.deepEqual(searchCalls().at(-1).params, { page: 1, size: 20, sort: 'sales', salesMonths: months, stallId: 's1' });
+  }
+});
+
+test('档口：全部清除档口条件，切回上新保留筛选；两个面板互斥', async () => {
+  const page = createPage();
+  requestHandler = backendStub();
+  await page.handleMainTabChange(event({ tab: '销量' }));
+  page.handleMainTabChange(event({ tab: '销量' }));
+  page.toggleAllPanel();
+  assert.equal(page.data.showAllPanel, true);
+  assert.equal(page.data.showSalesPanel, false);
+  await page.selectStall(event({ stall: 's2', name: 'B档口' }));
+  assert.equal(page.data.showAllPanel, false);
+  assert.equal(searchCalls().at(-1).params.stallId, 's2');
+  assert.equal(page.data.currentMainTab, '销量');
+  await page.handleMainTabChange(event({ tab: '上新' }));
+  assert.deepEqual(searchCalls().at(-1).params, { page: 1, size: 20, sort: 'newest', stallId: 's2' });
+  await page.selectStall(event({ stall: 'all' }));
+  assert.equal(page.data.selectedStall, '');
+  assert.deepEqual(searchCalls().at(-1).params, { page: 1, size: 20, sort: 'newest' });
+});
+
+test('销量分页和下拉刷新保留所选时间范围，分享链接可以恢复条件', async () => {
+  const page = createPage();
+  requestHandler = backendStub();
+  page.restoreShareFilters({ tab: '销量', salesMonths: '6', stallId: 's2', tagId: 't1' });
+  assert.equal(page.data.showSalesPanel, false);
+  assert.equal(page.data.salesMonths, 6);
+  await page.getProductsList();
+  page.data.hasMore = true;
+  await page.getProductsList(false);
+  assert.deepEqual(searchCalls().at(-1).params, { page: 2, size: 20, sort: 'sales', salesMonths: 6, stallId: 's2', tagId: 't1' });
+  await page.onRefresh();
+  assert.equal(searchCalls().at(-1).params.salesMonths, 6);
+  assert.equal(searchCalls().at(-1).params.page, 1);
+  const restored = createPage();
+  restored.restoreShareFilters(Object.fromEntries(new URLSearchParams(page.buildShareQuery())));
+  assert.equal(restored.data.currentMainTab, '销量');
+  assert.equal(restored.data.salesMonths, 6);
+  assert.equal(restored.data.selectedStall, 's2');
+  restored.restoreShareFilters({ tab: '档口', stallId: 's1', salesMonths: '99' });
+  assert.equal(restored.data.currentMainTab, '上新');
+  assert.equal(restored.data.selectedStall, 's1');
+  assert.equal(restored.data.salesMonths, 1);
+});
+
+test('快速切换筛选：丢弃旧响应，合并等待中的查询并使用最终条件', async () => {
+  const page = createPage();
+  let resolveOld;
+  requestHandler = async () => {
+    if (searchCalls().length === 1) return new Promise(resolve => { resolveOld = resolve; });
+    return { content: [makeProduct('latest')], hasNext: false };
+  };
+  const initial = page.getProductsList();
+  const sales = page.handleMainTabChange(event({ tab: '销量' }));
+  const period = page.selectSalesPeriod(event({ months: 12 }));
+  const stall = page.selectStall(event({ stall: 's2', name: 'B档口' }));
+  resolveOld({ content: [makeProduct('outdated')], hasNext: true });
+  await Promise.all([initial, sales, period, stall]);
+  assert.equal(searchCalls().length, 2);
+  assert.deepEqual(searchCalls().at(-1).params, { page: 1, size: 20, sort: 'sales', salesMonths: 12, stallId: 's2' });
+  assert.deepEqual(page.data.productList.map(item => item.id), ['latest']);
+  assert.deepEqual(page.data.leftColumn.map(item => item.id), ['latest']);
+  assert.equal(page.data.page, 2);
+  assert.equal(page.data.loading, false);
+});
+
+test('首页进入搜索：带上排序、销量范围和档口条件，上新时也保留已选时间范围', () => {
+  const page = createPage();
+  page.setData({ currentMainTab: '销量', salesMonths: 6, selectedStall: 's&2', selectedTag: 't1' });
+  page.goToSearch();
+  let url = new URL(wxCalls.navigateUrl, 'https://miniapp.test');
+  assert.equal(url.pathname, '/pages/search/search');
+  assert.equal(url.searchParams.get('tab'), '销量');
+  assert.equal(url.searchParams.get('salesMonths'), '6');
+  assert.equal(url.searchParams.get('stallId'), 's&2');
+  assert.equal(url.searchParams.get('tagId'), 't1');
+
+  page.setData({ currentMainTab: '上新' });
+  page.goToSearch();
+  url = new URL(wxCalls.navigateUrl, 'https://miniapp.test');
+  assert.equal(url.searchParams.get('tab'), null);
+  assert.equal(url.searchParams.get('salesMonths'), '6');
+  assert.equal(url.searchParams.get('stallId'), 's&2');
 });

@@ -16,8 +16,8 @@
           <text>上新</text>
           <view class="line"></view> </view>
 
-        <view class="tab-item {{currentMainTab === '档口' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="档口">
-          <text>档口</text>
+        <view class="tab-item sales-tab {{currentMainTab === '销量' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="销量">
+          <view class="sales-tab-label"><text>销量</text><view class="sales-arrow {{showSalesPanel ? 'expanded' : ''}}"></view></view>
           <view class="line"></view>
         </view>
 
@@ -31,13 +31,11 @@
     </view>
   </view>
 
-  <!-- ================== 新增：左右分治的高级子导航栏 ================== -->
-  <view class="sub-nav-bar" wx:if="{{currentMainTab === '档口' || currentMainTab === '分类'}}" style="top: {{totalNavHeight}}px;">
+  <!-- 档口筛选常驻：全部清除筛选，右侧菜单展开完整档口列表。 -->
+  <view class="sub-nav-bar" style="top: {{totalNavHeight}}px;">
     
-    <!-- 左侧固定：总控开关 (支持双向切换与动态图标) -->
-    <view class="btn-all-switch" bindtap="toggleAllPanel">
+    <view class="btn-all-switch {{!selectedStall ? 'active' : ''}}" bindtap="selectStall" data-stall="all">
       <text>全部</text>
-      <text class="icon-menu">{{showAllPanel ? '×' : '≡'}}</text>
     </view>
     
     <view class="sub-nav-divider"></view> <!-- 微妙的视觉分割线 -->
@@ -45,17 +43,20 @@
     <!-- 右侧滑动：纯净列表（不再有重复的全部） -->
     <scroll-view class="sub-nav-scroll" scroll-x="true">
       <view class="sub-nav-container">
-        <!-- 档口的标签列表 -->
-        <block wx:if="{{currentMainTab === '档口'}}">
-          <view class="sub-tag {{selectedStall === item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}" data-name="{{item.name}}">{{item.name}}</view>
-        </block>
-        <!-- 分类的标签列表 -->
-        <block wx:if="{{currentMainTab === '分类'}}">
-          <view class="sub-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}" data-name="{{item.name}}">{{item.name}}</view>
-        </block>
-        <view class="sub-tag-placeholder"></view> <!-- 留白占位，更高级 -->
+        <view class="sub-tag {{selectedStall == item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}" data-name="{{item.name}}">{{item.name}}</view>
       </view>
     </scroll-view>
+    <view class="sub-nav-divider"></view>
+    <view class="stall-menu-switch {{showAllPanel ? 'active' : ''}}" bindtap="toggleAllPanel" aria-label="展开全部档口">
+      <view class="stall-menu-icon"><view></view><view></view><view></view></view>
+    </view>
+  </view>
+
+  <view class="sales-panel-mask" wx:if="{{showSalesPanel}}" catchtap="closeSalesPanel" style="top: {{totalNavHeight}}px;"></view>
+  <view class="sales-panel" wx:if="{{showSalesPanel}}" style="top: {{totalNavHeight}}px;">
+    <view class="sales-period {{salesMonths === item.months ? 'active' : ''}}" wx:for="{{salesPeriods}}" wx:key="months" bindtap="selectSalesPeriod" data-months="{{item.months}}">
+      <text>{{item.label}}</text><text wx:if="{{salesMonths === item.months}}" class="sales-period-check">✓</text>
+    </view>
   </view>
 
   <!-- ================== 新增：展开时的高级大面板 (A-Z版) ================== -->
@@ -63,33 +64,15 @@
   
   <view class="all-panel-content {{showAllPanel ? 'slide-down' : ''}}" wx:if="{{showAllPanel}}" style="top: {{totalNavHeight}}px; margin-top: 88rpx;">
     
-    <!-- 档口专属：A-Z 分组面板 -->
-    <block wx:if="{{currentMainTab === '档口'}}">
-      <view class="panel-top-action">
-        <!-- 独立放置的全部按钮 -->
-        <view class="all-panel-tag {{selectedStall === '' ? 'active' : ''}}" bindtap="selectStall" data-stall="all" data-name="全部档口">全部档口</view>
-      </view>
+    <!-- A-Z 分组面板只展示具体档口。 -->
       <scroll-view scroll-y class="panel-scroll-area">
         <view class="group-section" wx:for="{{groupedStalls}}" wx:key="letter">
           <view class="group-title">{{item.letter}}</view> <!-- A, B, C... 标题 -->
           <view class="all-panel-grid">
-            <view class="all-panel-tag {{selectedStall === stall.id ? 'active' : ''}}" wx:for="{{item.list}}" wx:for-item="stall" wx:key="id" bindtap="selectStall" data-stall="{{stall.id}}" data-name="{{stall.name}}">{{stall.name}}</view>
+            <view class="all-panel-tag {{selectedStall == stall.id ? 'active' : ''}}" wx:for="{{item.list}}" wx:for-item="stall" wx:key="id" bindtap="selectStall" data-stall="{{stall.id}}" data-name="{{stall.name}}">{{stall.name}}</view>
           </view>
         </view>
       </scroll-view>
-    </block>
-
-    <!-- 分类专属：极简平铺面板 -->
-    <block wx:if="{{currentMainTab === '分类'}}">
-      <view class="panel-top-action">
-        <view class="all-panel-tag {{selectedTag === '' ? 'active' : ''}}" bindtap="selectTag" data-tag="all" data-name="全部分类">全部分类</view>
-      </view>
-      <scroll-view scroll-y class="panel-scroll-area">
-        <view class="all-panel-grid" style="padding-top: 10rpx;">
-          <view class="all-panel-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}" data-name="{{item.name}}">{{item.name}}</view>
-        </view>
-      </scroll-view>
-    </block>
   </view>
 
   <!-- 商品瀑布流：整块作为滚动容器，释放时触发下拉刷新（指示器落在导航栏下沿，不会被顶栏盖住） -->
@@ -117,7 +100,10 @@
           <view class="product-info">
             <view class="product-title">{{item.name || item.title}}</view>
             <view class="product-bottom">
-              <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
+              <view class="product-price-row">
+                <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
+                <text class="product-sold" wx:if="{{item.soldQty !== undefined && item.soldQty !== null}}">已售{{item.soldQty}}</text>
+              </view>
               <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
                 <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
               </view>
@@ -136,7 +122,10 @@
           <view class="product-info">
             <view class="product-title">{{item.name || item.title}}</view>
             <view class="product-bottom">
-              <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
+              <view class="product-price-row">
+                <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
+                <text class="product-sold" wx:if="{{item.soldQty !== undefined && item.soldQty !== null}}">已售{{item.soldQty}}</text>
+              </view>
               <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
                 <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
               </view>
