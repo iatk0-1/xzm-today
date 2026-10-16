@@ -53,6 +53,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     // 搜索
     searchKeyword: '',
     timeType: 'created',
+    sortDirection: 'desc',
     
     // 时间范围
     dateRange: {
@@ -141,8 +142,9 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   switchTimeType: function(e) {
     const timeType = e.currentTarget.dataset.type;
-    if (!['created', 'shipped'].includes(timeType) || timeType === this.data.timeType) return;
-    this.setData({ timeType });
+    if (!['created', 'shipped'].includes(timeType)) return;
+    const sortDirection = timeType === this.data.timeType && this.data.sortDirection === 'desc' ? 'asc' : 'desc';
+    this.setData({ timeType, sortDirection });
     this.loadOrders();
   },
 
@@ -231,7 +233,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       const backendStatus = STATUS_MAP[this.data.currentTab];
       
       // 构建参数对象，过滤掉 undefined 值
-      const params = { timeType: this.data.timeType };
+      const params = { timeType: this.data.timeType, sortDirection: this.data.sortDirection };
       if (backendStatus) params.status = backendStatus;
       if (this.data.searchKeyword) params.keyword = this.data.searchKeyword;
       if (this.data.dateRange.startDate) params.startDate = this.data.dateRange.startDate;

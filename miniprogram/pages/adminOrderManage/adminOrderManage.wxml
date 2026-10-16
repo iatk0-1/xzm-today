@@ -17,8 +17,8 @@
       <!-- 时间范围筛选 -->
       <view class="date-filter">
         <view class="time-type-switch">
-          <view class="time-type-option {{timeType === 'created' ? 'selected' : ''}}" bindtap="switchTimeType" data-type="created">下单时间</view>
-          <view class="time-type-option {{timeType === 'shipped' ? 'selected' : ''}}" bindtap="switchTimeType" data-type="shipped">发货时间</view>
+          <view class="time-type-option {{timeType === 'created' ? 'selected' : ''}}" bindtap="switchTimeType" data-type="created">下单时间{{timeType === 'created' && sortDirection === 'asc' ? '↑' : '↓'}}</view>
+          <view class="time-type-option {{timeType === 'shipped' ? 'selected' : ''}}" bindtap="switchTimeType" data-type="shipped">发货时间{{timeType === 'shipped' && sortDirection === 'asc' ? '↑' : '↓'}}</view>
         </view>
         <view class="date-picker" bindtap="showDateRangeSelector">
           <text wx:if="{{!dateRange.startDate && !dateRange.endDate}}">选择时间范围</text>

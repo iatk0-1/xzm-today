@@ -37,19 +37,23 @@ test('订单管理最近 1 天为当天，确认后按日期重查首屏', () =>
   assert.equal(loads[0].startDate, today);
 });
 
-test('切换发货时间保留日期范围并重新查询，重复点击不重查', () => {
+test('时间按钮默认倒序，重复点击切换方向，换时间类型恢复倒序并保留日期', () => {
   const page = Object.assign({}, pageConfig);
   page.data = JSON.parse(JSON.stringify(pageConfig.data));
   page.data.dateRange = { startDate: '2026-10-01', endDate: '2026-10-10', quickSelect: '' };
   page.setData = patch => Object.assign(page.data, patch);
   const loads = [];
-  page.loadOrders = () => loads.push(page.data.timeType);
+  page.loadOrders = () => loads.push([page.data.timeType, page.data.sortDirection]);
+  assert.equal(page.data.sortDirection, 'desc');
   page.switchTimeType({ currentTarget: { dataset: { type: 'shipped' } } });
   assert.equal(page.data.timeType, 'shipped');
   assert.equal(page.data.dateRange.startDate, '2026-10-01');
   page.switchTimeType({ currentTarget: { dataset: { type: 'shipped' } } });
+  assert.equal(page.data.sortDirection, 'asc');
+  page.switchTimeType({ currentTarget: { dataset: { type: 'shipped' } } });
+  assert.equal(page.data.sortDirection, 'desc');
   page.switchTimeType({ currentTarget: { dataset: { type: 'created' } } });
-  assert.deepEqual(loads, ['shipped', 'created']);
+  assert.deepEqual(loads, [['shipped', 'desc'], ['shipped', 'asc'], ['shipped', 'desc'], ['created', 'desc']]);
 });
 
 test('切换时间类型发送对应筛选参数，旧请求后返回不会覆盖新排序', async () => {
@@ -61,12 +65,15 @@ test('切换时间类型发送对应筛选参数，旧请求后返回不会覆�
   await new Promise(resolve => setImmediate(resolve));
   const oldRequest = pendingRequests.shift();
   assert.equal(oldRequest.params.timeType, 'created');
+  assert.equal(oldRequest.params.sortDirection, 'desc');
   page.data.timeType = 'shipped';
+  page.data.sortDirection = 'asc';
   page.data.dateRange.startDate = '2026-10-01';
   const second = page.loadOrders();
   await new Promise(resolve => setImmediate(resolve));
   const newRequest = pendingRequests.shift();
   assert.equal(newRequest.params.timeType, 'shipped');
+  assert.equal(newRequest.params.sortDirection, 'asc');
   assert.equal(newRequest.params.startDate, '2026-10-01');
   assert.equal(newRequest.params.page, 1);
   newRequest.resolve({ content: [{ id: 'new', latestShippedAt: '2026-10-15T10:00:00+08:00' }], totalElements: 1 });
