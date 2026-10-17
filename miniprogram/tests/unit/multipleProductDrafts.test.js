@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function harness({ live = false, options = {}, saved = [], upload, submit, failSave } = {}) {
+function harness({ live = false, options = {}, saved = [], upload, submit, failSave, beforeList, beforeDetail } = {}) {
   const rows = new Map(saved.map(row => [String(row.id), structuredClone(row)]));
   const requests = [], modals = [], events = [];
   let definition, serial = 10 + saved.length;
@@ -20,9 +20,15 @@ function harness({ live = false, options = {}, saved = [], upload, submit, failS
       if (url.includes('/context?')) return { token: 'server-context', sessionId: options.sessionId || null };
       if (url.includes('/summary')) return { total: rows.size };
       if (url.includes('/drafts/v2?')) {
+        if (beforeList) await beforeList();
         const query = new URL('https://example.com' + url).searchParams;
-        return { content: [...rows.values()].filter(row => row.draftType === query.get('draftType') && String(row.relatedId) === query.get('relatedId')) };
+        const filtered = [...rows.values()].filter(row => row.draftType === query.get('draftType')
+          && (!query.has('relatedId') || String(row.relatedId) === query.get('relatedId'))
+          && (!query.has('sessionId') || String(row.sessionId) === query.get('sessionId')))
+          .sort((a, b) => Date.parse(b.savedAt || 0) - Date.parse(a.savedAt || 0));
+        return { content: filtered.slice(0, Number(query.get('size') || 20)) };
       }
+      if (beforeDetail) await beforeDetail();
       return rows.get(decodeURIComponent(url.split('/').at(-1)));
     },
     async post(url, body) {
@@ -73,6 +79,7 @@ test('独立新增流程各存一份，同页继续保存只更新原草稿', as
   env.page.setData({ title: '棉袄A新版' }); await env.page.saveProductDraft();
   assert.equal(env.rows.size, 1); assert.equal(env.page._draftId, id); assert.equal(env.page._draftVersion, 2);
   const another = harness({ saved: [...env.rows.values()] }); await another.load();
+  another.modals[0].success({ confirm: false });
   another.page.setData({ title: '棉袄B' }); await another.page.saveProductDraft();
   assert.equal(another.rows.size, 2);
   assert.equal(another.requests.filter(row => row[0] === 'post' && row[1] === '/drafts/v2').length, 1);
@@ -107,6 +114,113 @@ test('不恢复编辑草稿仍保留它，使用当前商品提交只消费对�
   env.modals[0].success({ confirm: false });
   assert.equal(env.page._draftId, '31'); assert.equal(env.page._draftContextToken, 'server-context');
   assert.notEqual(env.page.data.title, '旧草稿'); assert.equal(env.rows.size, 1);
+});
+
+function newDraft(id, title, savedAt, extra = {}) {
+  return { id, title, savedAt, draftType: 'create', relatedId: null, sessionId: null,
+    version: 3, contextToken: 'saved-context-' + id, clientDraftKey: 'saved-key-' + id,
+    capabilities: { edit: true }, draftData: { title }, ...extra };
+}
+
+test('普通新增提示最近保存的新增草稿，确认后绑定原稿编号与版本继续保存', async () => {
+  const env = harness({ saved: [
+    newDraft('21', '老新增', '2026-10-17T01:00:00Z'),
+    newDraft('22', '最近新增', '2026-10-17T03:00:00Z'),
+    newDraft('23', '其他编辑', '2026-10-17T04:00:00Z', { draftType: 'edit', relatedId: 'P1' }),
+    newDraft('24', '直播新增', '2026-10-17T05:00:00Z', { draftType: 'live_create', sessionId: 'S1' })
+  ] });
+  await env.load();
+  assert.equal(env.modals.length, 1);assert.match(env.modals[0].content, /最近新增/);
+  assert.match(env.modals[0].content, /2026-10-17 11:00/);
+  assert.equal(env.page._draftId, undefined);assert.equal(env.page.data.title, '');
+  await env.modals[0].success({ confirm: true });
+  assert.equal(env.page.data.title, '最近新增');assert.equal(env.page._draftId, '22');
+  assert.equal(env.page._draftVersion, 3);assert.equal(env.page._draftContextToken, 'saved-context-22');
+  assert.equal(env.page.hasUnsavedDraftChanges(), false);
+  env.page.setData({ title: '接着修改' });await env.page.saveProductDraft();
+  assert.equal(env.rows.size, 4);assert.equal(env.rows.get('22').draftData.title, '接着修改');
+  assert.equal(env.requests.filter(row => row[0] === 'put').at(-1)[1], '/drafts/v2/22');
+  assert.equal(env.rows.get('21').draftData.title, '老新增');
+});
+
+test('继续新建不绑定或删除最近草稿，保存和直接发布都不消费旧稿', async () => {
+  const saved = [newDraft('21', '原草稿', '2026-10-17T01:00:00Z')];
+  const env = harness({ saved });await env.load();await env.modals[0].success({ confirm: false });
+  assert.equal(env.page._draftId, undefined);assert.equal(env.page._draftContextToken, 'server-context');
+  env.page.setData({ title: '另一件商品' });await env.page.saveProductDraft();
+  assert.equal(env.rows.size, 2);assert.equal(env.rows.get('21').draftData.title, '原草稿');
+  assert.notEqual(env.page._clientDraftKey, 'saved-key-21');
+  const publishing = harness({ saved });await publishing.load();await publishing.modals[0].success({ confirm: false });
+  await publishing.page.submitDraftProduct({ name: '独立新建' });
+  const body = publishing.requests.find(row => row[1] === '/product-submissions/v2')[2];
+  assert.equal(body.sourceDraftId, null);assert.equal(body.sourceDraftVersion, null);
+});
+
+test('直播新增只提示当前场次最近草稿，不恢复普通新增或其他场次', async () => {
+  const env = harness({ live: true, options: { sessionId: 'S1' }, saved: [
+    newDraft('21', '本场较早', '2026-10-17T01:00:00Z', { draftType: 'live_create', sessionId: 'S1' }),
+    newDraft('22', '本场最近', '2026-10-17T02:00:00Z', { draftType: 'live_create', sessionId: 'S1' }),
+    newDraft('23', '其他场次', '2026-10-17T03:00:00Z', { draftType: 'live_create', sessionId: 'S2' }),
+    newDraft('24', '普通新增', '2026-10-17T04:00:00Z')
+  ] });
+  await env.load();assert.equal(env.modals.length, 1);assert.match(env.modals[0].content, /本场最近/);
+  await env.modals[0].success({ confirm: true });assert.equal(env.page._draftId, '22');
+  await env.page.submitDraftProduct({ name: '发布本场草稿' });
+  const body = env.requests.find(row => row[1] === '/product-submissions/v2')[2];
+  assert.equal(body.sourceDraftId, '22');assert.equal(body.draftType, 'live_create');assert.equal(body.sessionId, 'S1');
+  const other = harness({ live: true, options: { sessionId: 'S3' }, saved: [...env.rows.values()] });
+  await other.load();assert.equal(other.modals.length, 0);
+});
+
+test('查询期间已经填写内容或退出页面，不再弹新增恢复提示', async () => {
+  for (const exiting of [false, true]) {
+    let release;
+    const env = harness({ saved: [newDraft('21', '旧草稿', '2026-10-17T01:00:00Z')],
+      beforeList: () => new Promise(resolve => { release = resolve; }) });
+    const loading = env.load();
+    while (!release) await Promise.resolve();
+    if (exiting) env.page.onUnload();else env.page.setData({ title: '刚填写的内容' });
+    release();await loading;
+    assert.equal(env.modals.length, 0);assert.equal(env.page._draftId, undefined);
+    if (!exiting) {
+      assert.equal(env.page.data.title, '刚填写的内容');
+      assert.equal(env.page.hasUnsavedDraftChanges(), true);
+    }
+  }
+});
+
+test('点击恢复时重新读取草稿最新版本，查询失败仍可继续新建', async () => {
+  const env = harness({ saved: [newDraft('21', '初始版本', '2026-10-17T01:00:00Z')] });
+  await env.load();
+  env.rows.set('21', newDraft('21', '另一设备已更新', '2026-10-17T02:00:00Z', { version: 4 }));
+  await env.modals[0].success({ confirm: true });
+  assert.equal(env.page.data.title, '另一设备已更新');assert.equal(env.page._draftVersion, 4);
+  const failed = harness({ beforeList: async () => { throw new Error('网络异常'); } });
+  await failed.load();assert.equal(failed.page.data.draftProblem, '');
+  assert.ok(failed.events.some(row => row[0] === 'toast' && /查询失败/.test(row[1])));
+  failed.page.setData({ title: '照常新增' });assert.equal(await failed.page.saveProductDraft(), true);
+});
+
+test('恢复时草稿已删除或当前页已卸载，不绑定旧稿也不锁住新增表单', async () => {
+  const removed = harness({ saved: [newDraft('21', '被删除', '2026-10-17T01:00:00Z')] });
+  await removed.load();removed.rows.delete('21');await removed.modals[0].success({ confirm: true });
+  assert.equal(removed.page._draftId, undefined);assert.equal(removed.page._draftRestoring, false);
+  assert.equal(removed.page.data.title, '');assert.equal(removed.page.data.draftProblem, '');
+  let release;
+  const left = harness({ saved: [newDraft('21', '旧草稿', '2026-10-17T01:00:00Z')],
+    beforeDetail: () => new Promise(resolve => { release = resolve; }) });
+  await left.load();const restoring = left.modals[0].success({ confirm: true });
+  while (!release) await Promise.resolve();
+  left.page.onUnload();release();await restoring;
+  assert.equal(left.page._draftId, undefined);assert.equal(left.page.data.title, '');
+});
+
+test('没有匹配新增草稿不提示，草稿箱指定打开也不再提示最近草稿', async () => {
+  const saved = [newDraft('21', '编辑草稿', '2026-10-17T01:00:00Z', { draftType: 'edit', relatedId: 'P1' })];
+  const fresh = harness({ saved });await fresh.load();assert.equal(fresh.modals.length, 0);
+  const explicit = harness({ options: { draftId: '22' }, saved: [newDraft('22', '指定新增', '2026-10-17T01:00:00Z')] });
+  await explicit.load();assert.equal(explicit.modals.length, 0);assert.equal(explicit.page.data.title, '指定新增');
+  assert.equal(explicit.requests.some(row => row[1].startsWith('/drafts/v2?')), false);
 });
 
 test('媒体字符串数组、SKU和重复路径统一上传，保存后地址回填且不会重复上传', async () => {

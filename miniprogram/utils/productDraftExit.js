@@ -72,6 +72,48 @@ function integrateProductDraftExit(page) {
       draftWarnings: record.warnings || [] });
   };
 
+  page.offerLatestNewDraft = async function() {
+    const context = this._draftContextOptions;
+    const canRestore = () => !this._draftUnloaded && !this._draftExiting && !this._draftId
+      && !this.data.draftSaving && !this._pricingSubmitting && !this._submitted
+      && draftSnapshot(this) === this._initialDraftSnapshot;
+    try {
+      // 列表已按保存时间倒序；普通新增只找create，直播新增还要限定本场。
+      const result = await draft.list({ ...context, page: 1, size: 1 });
+      const latest = (result.content || [])[0];
+      if (!latest || (latest.capabilities && !latest.capabilities.edit) || !canRestore()) return;
+      wx.showModal({ title: '发现新增商品草稿',
+        content: '最近保存：' + (latest.title || '未命名商品') + '\n保存时间：'
+          + draft.formatTime(latest.savedAt) + '\n是否恢复这份草稿？选择继续新建会保留原草稿。',
+        confirmText: '恢复草稿', cancelText: '继续新建', success: async res => {
+          if (!res.confirm || !canRestore()) return;
+          this._draftRestoring = true;
+          try {
+            // 确认时再读详情，恢复期间若其他设备已经发布或删除，应保留新建页面。
+            const saved = await draft.loadDraft(latest.id);
+            if (!canRestore()) return;
+            if (!saved || !saved.draftData || saved.draftType !== context.draftType
+              || saved.relatedId != null || String(saved.sessionId || '') !== String(context.sessionId || '')
+              || (saved.capabilities && !saved.capabilities.edit)) {
+              throw new Error('这份草稿暂不能恢复，请到草稿箱查看');
+            }
+            this._draftContextToken = saved.contextToken || this._draftContextToken;
+            this.bindDraftRecord(saved);
+            await this.restoreDraft(saved.draftData);
+          } catch (error) {
+            console.error('恢复新增商品草稿失败:', error);
+            if (!this._draftUnloaded) wx.showToast({ title: getErrorMessage(error, '恢复草稿失败，请到草稿箱重试'), icon: 'none' });
+          } finally {
+            this._draftRestoring = false;
+            if (!this._draftUnloaded) this._updateExitGuard();
+          }
+        } });
+    } catch (error) {
+      console.warn('查询最近新增草稿失败:', error);
+      if (!this._draftUnloaded) wx.showToast({ title: '最近草稿查询失败，可继续新建或到草稿箱重试', icon: 'none' });
+    }
+  };
+
   page.refreshDraftCount = async function() {
     try {
       const value = await draft.summary();
@@ -243,7 +285,12 @@ function integrateProductDraftExit(page) {
       await originalLoad.call(this, options);
       if (this._productLoadFailed && !record) throw new Error('商品内容加载失败，请重新打开页面；原草稿仍保留');
       this._initialDraftSnapshot = draftSnapshot(this);
+      // 在草稿查询前固定初始基线，等待网络时的输入也必须保留为未保存修改。
+      this.captureDraftBaseline();
       if (record) await this.restoreDraft(record.draftData);
+      else if (['create', 'live_create'].includes(this._draftContextOptions.draftType)) {
+        await this.offerLatestNewDraft();
+      }
       else if (this._draftContextOptions.relatedId) {
         const result = await draft.list({ ...this._draftContextOptions, size: 1 });
         const existing = (result.content || []).find(item => !item.capabilities || item.capabilities.edit);
@@ -267,7 +314,10 @@ function integrateProductDraftExit(page) {
       this.handleDraftError(error);
     } finally {
       this._draftInitializing = false;
-      if (!this._draftUnloaded) this.captureDraftBaseline();
+      if (!this._draftUnloaded) {
+        if (!this._draftReady) this.captureDraftBaseline();
+        else this._updateExitGuard();
+      }
     }
   };
 
