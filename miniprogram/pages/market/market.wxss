@@ -1,3 +1,4 @@
+@import "../../styles/wishLike.wxss";
 page { background-color: #ffffff; }
 .market-wrapper { height: 100vh; overflow: hidden; }
 .market-scroll { height: calc(100vh - 100rpx - env(safe-area-inset-bottom)); }
@@ -62,9 +63,8 @@ page { background-color: #ffffff; }
 .card-actions { display: flex; align-items: center; min-height: 28px; }
 .linked-cart { display: flex; align-items: center; justify-content: flex-start; width: 36px; min-height: 28px; }
 .linked-cart-icon { width: 20px; height: 20px; display: block; }
-.like-action { margin-left: auto; display: flex; align-items: center; gap: 5px; min-height: 28px; padding-left: 10px; }
-.heart-icon { font-size: 18px; line-height: 1; color: #111; }
-.like-count { font-family: -apple-system, sans-serif; font-size: 10px; color: #888; letter-spacing: 0.5px; }
+/* 数字贴齐卡片右边缘，点击留白向左扩展，不把内容往内推。 */
+.like-action { margin-left: auto; flex-shrink: 0; justify-content: flex-end; padding-left: 10px; }
 
 /* 悬浮发布按钮 */
 .wish-management-actions {

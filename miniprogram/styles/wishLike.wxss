@@ -1,0 +1,27 @@
+/* 市集和详情共用点赞样式，整个爱心、数字及周围留白均可点击。 */
+.wish-like-control {
+  display: inline-flex; align-items: center; justify-content: flex-start; gap: 5px;
+  min-width: 64px; min-height: 44px; padding: 8px 0; box-sizing: border-box;
+}
+.heart-icon {
+  display: inline-block; font-family: -apple-system, sans-serif;
+  flex: 0 0 24px; width: 24px; text-align: center;
+  font-size: 22px; line-height: 24px; letter-spacing: 0; color: #111;
+  transform-origin: center;
+}
+.heart-icon.liked { color: #e5484d; }
+.heart-icon.like-pop { animation: heart-pop 320ms ease-out; }
+.heart-icon.like-shrink { animation: heart-shrink 240ms ease-out; }
+@keyframes heart-pop {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  70% { transform: scale(0.95); }
+}
+@keyframes heart-shrink {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(0.8); }
+}
+.like-count {
+  font-family: -apple-system, sans-serif; font-size: 10px; color: #888;
+  letter-spacing: 0.5px; white-space: nowrap; font-variant-numeric: tabular-nums;
+}

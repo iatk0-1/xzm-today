@@ -1,4 +1,5 @@
 @import "../../styles/detailBack.wxss";
+@import "../../styles/wishLike.wxss";
 page { background-color: #ffffff; }
 
 .share-float {
@@ -151,28 +152,11 @@ page { background-color: #ffffff; }
 }
 
 .like-btn {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
   margin-bottom: 16rpx;
 }
 
-.heart-icon {
-  font-size: 22px;
-  color: #111;
-}
-.like-btn.liked .heart-icon {
-  color: #d32f2f;
-}
-
-.like-count {
-  font-family: -apple-system, sans-serif;
-  font-size: 13px;
-  color: #666;
-  letter-spacing: 0.5px;
-}
-
 .like-hint {
+  display: block;
   font-family: -apple-system, sans-serif;
   font-size: 11px;
   color: #bbb;

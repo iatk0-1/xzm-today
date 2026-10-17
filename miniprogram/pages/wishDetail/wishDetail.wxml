@@ -37,9 +37,9 @@
 
     <!-- 点赞区域 -->
     <view class="like-section">
-      <view class="like-btn {{wish.isLiked ? 'liked' : ''}}" bindtap="handleLike">
-        <text class="heart-icon">{{wish.isLiked ? '♥' : '♡'}}</text>
-        <text class="like-count">热度 {{wish.likes || 0}}</text>
+      <view class="like-btn wish-like-control" bindtap="handleLike" aria-role="button" aria-label="{{wish.isLiked ? '取消点赞' : '点赞'}}">
+        <text class="heart-icon {{wish.isLiked ? 'liked' : ''}} {{likeAnimation}}" bindanimationend="clearLikeAnimation">{{wish.isLiked ? '♥' : '♡'}}</text>
+        <text class="like-count">{{wish.likes || 0}}</text>
       </view>
       <text class="like-hint">点赞支持这个心愿，达到50热度主理人将为你寻觅</text>
     </view>

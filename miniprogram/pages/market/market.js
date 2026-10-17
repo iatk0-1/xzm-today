@@ -252,6 +252,7 @@ Page(pageSync.wrap({
 
     // 先更新本地状态
     targetWish.isLiked = !targetWish.isLiked;
+    targetWish.likeAnimation = targetWish.isLiked ? 'like-pop' : 'like-shrink';
     if (targetWish.isLiked) {
       targetWish.likes = originalLikes + 1;
     } else {
@@ -278,12 +279,20 @@ Page(pageSync.wrap({
       // 回滚状态
       targetWish.isLiked = originalLiked;
       targetWish.likes = originalLikes;
+      targetWish.likeAnimation = '';
 
       this.updateWishColumns(currentWishes);
 
       const errorMsg = getErrorMessage(err, '操作失败');
       wx.showToast({ title: errorMsg, icon: 'none' });
     }
+  },
+
+  clearLikeAnimation: function(e) {
+    const wish = this.data.wishes.find(item => String(item.id) === String(e.currentTarget.dataset.id));
+    if (!wish || !wish.likeAnimation) return;
+    wish.likeAnimation = '';
+    this.updateWishColumns(this.data.wishes, {}, true);
   },
 
   toggleWishManagement: async function() {

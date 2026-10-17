@@ -10,6 +10,7 @@ Page(pageSync.wrap({
   data: {
     wish: { images: [] },
     wishId: null,
+    likeAnimation: '',
     productSheetVisible: false,
     showVideo: false,
     statusBarHeight: 20,
@@ -334,7 +335,7 @@ Page(pageSync.wrap({
     // 乐观更新
     wish.isLiked = !wish.isLiked;
     wish.likes = wish.isLiked ? originalLikes + 1 : Math.max(0, originalLikes - 1);
-    this.setData({ wish: wish });
+    this.setData({ wish: wish, likeAnimation: wish.isLiked ? 'like-pop' : 'like-shrink' });
 
     try {
       if (wish.isLiked) {
@@ -346,9 +347,13 @@ Page(pageSync.wrap({
       // 回滚
       wish.isLiked = originalLiked;
       wish.likes = originalLikes;
-      this.setData({ wish: wish });
+      this.setData({ wish: wish, likeAnimation: '' });
       wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
     }
+  },
+
+  clearLikeAnimation: function() {
+    this.setData({ likeAnimation: '' });
   },
 
   // 删除心愿
