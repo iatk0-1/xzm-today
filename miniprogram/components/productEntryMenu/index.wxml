@@ -1,0 +1,9 @@
+<view wx:if="{{visible}}" class="product-menu-mask" catchtap="close" catchtouchmove="blockTouch">
+  <view class="product-menu" catchtap="blockTouch" role="dialog" aria-label="商品操作">
+    <view class="product-menu-content">
+      <button class="product-menu-item" bindtap="createProduct"><text class="product-menu-icon">＋</text><text>新增商品</text></button>
+      <button class="product-menu-item" bindtap="openDrafts"><text class="product-menu-icon">▤</text><text>草稿箱</text></button>
+    </view>
+    <view class="product-menu-arrow"></view>
+  </view>
+</view>

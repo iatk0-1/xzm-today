@@ -306,7 +306,7 @@ test('商品已经保存成功后再点提交复用成功结果，不重复创�
   assert.equal(env.requests.filter(row => row[1] === '/product-submissions/v2').length, 1);
 });
 
-function draftBox({ list, summary, remove } = {}) {
+function draftBox({ list, summary, remove, publish, pricingLoad, pricingSave } = {}) {
   let definition;
   const modals = [], routes = [];
   const draft = require('../../utils/draft');
@@ -316,6 +316,16 @@ function draftBox({ list, summary, remove } = {}) {
     require(name) {
       if (name.endsWith('/auth')) return { ensureAuthenticated: async () => {}, isAdmin: () => true, isStallManager: () => false };
       if (name.endsWith('/error')) return require('../../utils/error');
+      if (name.endsWith('/productDraftPublisher')) return { publishDraft: publish || (async () => ({ product: { id: 'new-product' } })) };
+      if (name.endsWith('/productDraftPricing')) return { createDraftPricingEditor: () => ({
+        resetRules() {},
+        load: pricingLoad || (async row => ({ record: { ...row, draftData: {} }, rules: [{ id: '30', name: '测试规则' }],
+          costInput: '', mixedCosts: false, ruleId: '30', ruleName: '测试规则', revision: 0 })),
+        save: pricingSave || (async (model, changes) => {
+          model.record = { ...model.record, version: Number(model.record.version) + 1,
+            draftData: { ...model.record.draftData, costPrice: changes.costInput } };
+          return model.record;
+        }) }) };
       return { ...draft, list: list || (async () => ({ content: [], hasNext: false })),
         summary: summary || (async () => ({ total: '2', limit: 100 })), batchDelete: remove || (async () => {}) };
     }
@@ -353,7 +363,165 @@ test('草稿箱继续编辑只传草稿ID，普通编辑事件可以传回商品
   const forwarded = [];
   const env = draftBox({ list: async () => ({ content: [{ id: '9007199254740993123', version: 1, draftType: 'edit', summary: {} }], hasNext: false }) });
   env.page.getOpenerEventChannel = () => ({ emit: (...args) => forwarded.push(args) });
-  await env.page.reload();env.page.openDraft({ currentTarget: { dataset: { id: '9007199254740993123' } } });
+  await env.page.reload();await env.page.openDraft({ currentTarget: { dataset: { id: '9007199254740993123' } } });
   assert.equal(env.routes[0].url, '/pages/admin/admin?draftId=9007199254740993123');
   env.routes[0].events.productUpdated({ id: 'P1' });assert.equal(forwarded[0][0], 'productUpdated');
+});
+
+test('草稿箱全选覆盖当前筛选的全部分页，再点取消全选清空全部选择', async () => {
+  const queries = [];
+  const env = draftBox({ list: async query => {
+    queries.push(query);
+    return { content: [{ id: String(query.page), version: query.page, draftType: 'create' }], hasNext: query.page < 3 };
+  } });
+  env.page.setData({ keyword: '棉袄', typeIndex: 1, sessionId: '66' });
+  await env.page.reload();
+  env.page.toggleSelectMode();
+  await env.page.toggleSelectAll();
+  assert.equal(env.page.data.selectedCount, 3);
+  assert.equal(env.page.data.allSelected, true);
+  assert.ok(env.page.data.items.every(item => item.selected));
+  assert.equal(queries.length, 3);
+  assert.ok(queries.every(query => query.keyword === '棉袄' && query.draftType === 'create' && query.sessionId === '66'));
+  await env.page.toggleSelectAll();
+  assert.equal(env.page.data.selectedCount, 0);
+  assert.equal(env.page.data.allSelected, false);
+  assert.ok(env.page.data.items.every(item => !item.selected));
+});
+
+test('草稿箱全选加载失败保留原选择，不把未加载完误标成全部选中', async () => {
+  const env = draftBox({ list: async ({ page }) => {
+    if (page > 1) throw new Error('翻页失败');
+    return { content: [{ id: '1', version: 3 }], hasNext: true };
+  } });
+  await env.page.reload();env.page.toggleSelectMode();
+  env.page.toggleSelect({ currentTarget: { dataset: { id: '1' } } });
+  await env.page.toggleSelectAll();
+  assert.equal(env.page.data.selectedCount, 1);
+  assert.equal(env.page.data.allSelected, false);
+  assert.equal(env.page.data.selectingAll, false);
+  assert.equal(env.page.data.moreError, '翻页失败');
+});
+
+test('批量发布逐份保存，成功项移走、失败项保留选中并展示原因', async () => {
+  const rows = [{ id: '1', title: '棉袄A', version: 4, draftType: 'create' },
+    { id: '2', title: '棉袄B', version: 8, draftType: 'edit' }];
+  const submitted = [], forwarded = [];
+  let inFlight = 0;
+  const env = draftBox({ list: async () => ({ content: rows, hasNext: false }),
+    summary: async () => ({ total: rows.length, limit: 100 }),
+    publish: async item => {
+      assert.equal(inFlight++, 0);
+      submitted.push(item);
+      await Promise.resolve();inFlight--;
+      if (item.id === '2') throw new Error('请先填写商品名称');
+      rows.splice(rows.findIndex(row => row.id === item.id), 1);
+      return { product: { id: 'P1' } };
+    } });
+  env.page.getOpenerEventChannel = () => ({ emit: (...args) => forwarded.push(args) });
+  await env.page.reload();env.page.toggleSelectMode();await env.page.toggleSelectAll();
+  await env.page.publishSelected();
+  assert.equal(submitted.length, 2);
+  assert.deepEqual(JSON.parse(JSON.stringify(submitted.map(({ id, version }) => ({ id, version })))), [{ id: '1', version: 4 }, { id: '2', version: 8 }]);
+  assert.equal(env.page.data.items.length, 1);
+  assert.equal(env.page.data.items[0].id, '2');
+  assert.equal(env.page.data.items[0].selected, true);
+  assert.match(env.page.data.items[0].warningText, /请先填写商品名称/);
+  assert.equal(env.page.data.selectedCount, 1);
+  assert.equal(env.page.data.total, 1);
+  assert.equal(env.page.data.publishing, false);
+  assert.equal(env.modals[0].title, '已发布 1 份，失败 1 份');
+  assert.equal(forwarded[0][0], 'productUpdated');
+});
+
+test('批量发布期间锁住重复点击、选择、删除和新建，页面退出后不再发布下一份', async () => {
+  let finish, count = 0;
+  const env = draftBox({ list: async () => ({ content: [{ id: '1', version: 1 }, { id: '2', version: 2 }], hasNext: false }),
+    publish: () => { count++;return new Promise(resolve => { finish = resolve; }); } });
+  await env.page.reload();env.page.toggleSelectMode();await env.page.toggleSelectAll();
+  const publishing = env.page.publishSelected();
+  await env.page.publishSelected();
+  env.page.toggleSelect({ currentTarget: { dataset: { id: '1' } } });
+  env.page.toggleSelectMode();env.page.deleteSelected();env.page.createProduct();
+  assert.equal(env.page.data.selectedCount, 2);
+  assert.equal(env.page.data.selecting, true);
+  assert.equal(env.modals.length, 0);
+  assert.equal(env.routes.length, 0);
+  env.page.onUnload();
+  let writes = 0;
+  env.page.setData = () => { writes++; };
+  finish({ product: { id: 'P1' } });
+  await publishing;
+  assert.equal(count, 1);
+  assert.equal(writes, 0);
+});
+
+test('草稿卡片修改成本失焦自动保存，批量所选版本同步为保存后的版本', async () => {
+  const env = draftBox({ list: async () => ({ content: [{ id: '1', version: 7 }], hasNext: false }) });
+  await env.page.reload();await env.page.ensurePricing(env.page.data.items[0]);
+  env.page.toggleSelectMode();env.page.toggleSelect({ currentTarget: { dataset: { id: '1' } } });
+  const event = { currentTarget: { dataset: { id: '1' } }, detail: { value: '12' } };
+  env.page.onDraftCostInput(event);
+  assert.equal(env.page.data.items[0].pricing.dirty, true);
+  await env.page.onDraftCostBlur(event);
+  assert.equal(env.page.data.items[0].version, 8);
+  assert.equal(env.page._selected.get('1'), 8);
+  assert.equal(env.page.data.items[0].pricing.saved, true);
+  assert.equal(env.page.data.items[0].pricing.dirty, false);
+});
+
+test('草稿卡片保存尚未完成时直接发布，等待最新成本保存并使用最新版本提交', async () => {
+  let finishSave, submitted;
+  const env = draftBox({ list: async () => ({ content: [{ id: '1', version: 7, title: '棉袄' }], hasNext: false }),
+    pricingSave: (model, changes) => new Promise(resolve => { finishSave = () => {
+      model.record = { ...model.record, version: 8, draftData: { costPrice: changes.costInput } };
+      resolve(model.record);
+    }; }), publish: async item => { submitted = item;return { product: { id: 'P1' } }; } });
+  await env.page.reload();await env.page.ensurePricing(env.page.data.items[0]);
+  const event = { currentTarget: { dataset: { id: '1' } }, detail: { value: '12' } };
+  env.page.onDraftCostInput(event);
+  const saving = env.page.onDraftCostBlur(event);
+  const publishing = env.page.publishOne(event);
+  assert.equal(submitted, undefined);
+  finishSave();
+  await saving;
+  await publishing;
+  assert.equal(submitted.version, 8);
+});
+
+test('保存期间再次输入成本，旧响应不能把新输入标记为已保存，后续失焦保存新值', async () => {
+  const pending = [], values = [];
+  const env = draftBox({ list: async () => ({ content: [{ id: '1', version: 7 }], hasNext: false }),
+    pricingSave: (model, changes) => new Promise(resolve => { values.push(changes.costInput);pending.push(() => {
+      model.record = { ...model.record, version: model.record.version + 1, draftData: { costPrice: changes.costInput } };
+      resolve(model.record);
+    }); }) });
+  await env.page.reload();await env.page.ensurePricing(env.page.data.items[0]);
+  const event = value => ({ currentTarget: { dataset: { id: '1' } }, detail: { value } });
+  env.page.onDraftCostInput(event('10'));
+  const first = env.page.onDraftCostBlur(event('10'));
+  env.page.onDraftCostInput(event('20'));
+  pending[0]();await first;
+  assert.equal(env.page.data.items[0].pricing.costInput, '20');
+  assert.equal(env.page.data.items[0].pricing.dirty, true);
+  const second = env.page.onDraftCostBlur(event('20'));
+  pending[1]();await second;
+  assert.deepEqual(values, ['10', '20']);
+  assert.equal(env.page.data.items[0].pricing.dirty, false);
+});
+
+test('草稿卡片成本保存失败时保留输入并阻止发布，刷新也不能丢弃这次修改', async () => {
+  let submitted = false;
+  const env = draftBox({ list: async () => ({ content: [{ id: '1', version: 7 }], hasNext: false }),
+    pricingSave: async () => { throw new Error('计价失败'); }, publish: async () => { submitted = true; } });
+  await env.page.reload();await env.page.ensurePricing(env.page.data.items[0]);
+  const event = { currentTarget: { dataset: { id: '1' } }, detail: { value: '12' } };
+  env.page.onDraftCostInput(event);await env.page.onDraftCostBlur(event);
+  assert.equal(env.page.data.items[0].pricing.error, '计价失败');
+  await env.page.reload();
+  assert.equal(env.page.data.items[0].pricing.costInput, '12');
+  await env.page.publishOne(event);
+  assert.equal(submitted, false);
+  assert.equal(env.page._pricingModels.get('1').costInput, '12');
+  assert.equal(env.modals.at(-1).title, '已发布 0 份，失败 1 份');
 });

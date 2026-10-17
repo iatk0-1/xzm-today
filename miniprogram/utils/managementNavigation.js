@@ -1,7 +1,16 @@
 const auth = require('./auth');
 const workbench = require('./workbench');
 
-// 四个主页面的加号统一进入商品新增页，按当前所选角色校验权限。
+// 四个主页面的加号统一打开浮动菜单，打开及选择时都按当前角色校验权限。
+function openProductMenu(page) {
+  if (!auth.isAdmin() && !auth.isStallManager()) {
+    wx.showToast({ title: '无权限', icon: 'none' });
+    return;
+  }
+  const menu = page.selectComponent('#product-entry-menu');
+  if (menu) menu.open();
+}
+
 function openProductCreate() {
   if (!auth.isAdmin() && !auth.isStallManager()) {
     wx.showToast({ title: '无权限', icon: 'none' });
@@ -25,4 +34,4 @@ function openWorkbenchEntry(name) {
   wx.navigateTo({ url: entry.url });
 }
 
-module.exports = { openProductCreate, openWorkbenchEntry };
+module.exports = { openProductMenu, openProductCreate, openWorkbenchEntry };

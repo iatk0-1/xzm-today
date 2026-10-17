@@ -1,0 +1,6 @@
+.product-menu-mask { position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,.16); }
+.product-menu { position:absolute; bottom:calc(126rpx + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); width:320rpx; background:#fff; border-radius:20rpx; box-shadow:0 12rpx 48rpx rgba(0,0,0,.15); }
+.product-menu-content { width:100%; box-sizing:border-box; padding:8rpx 0; border-radius:inherit; overflow:hidden; }
+.product-menu-item { display:flex; align-items:center; gap:22rpx; width:100%; min-width:0; max-width:100%; box-sizing:border-box; margin:0; padding:0 32rpx; height:98rpx; line-height:98rpx; text-align:left; font-size:29rpx; font-weight:500; color:#222; background:#fff; border-radius:0; }
+.product-menu-item::after { border:none; }.product-menu-item + .product-menu-item { border-top:1rpx solid #f0f0f0; }.product-menu-item:active { background:#f6f6f6; }
+.product-menu-icon { width:36rpx; text-align:center; font-size:36rpx; font-weight:400; color:#555; }.product-menu-arrow { position:absolute; left:50%; bottom:-12rpx; width:24rpx; height:24rpx; background:#fff; transform:translateX(-50%) rotate(45deg); }

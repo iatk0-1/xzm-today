@@ -481,9 +481,9 @@ Page({
   handleCustomerServiceContact: function(e) {
     customerServiceNavigation.openFromContact(e);
   },
-  // 加号直接进入商品新增页面。
+  // 加号打开新增商品、草稿箱浮动菜单。
   goToCreateProduct: function() {
-    managementNavigation.openProductCreate();
+    managementNavigation.openProductMenu(this);
   },
 
   goToWorkbench: function(e) {

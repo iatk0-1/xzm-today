@@ -149,3 +149,7 @@ page { background-color: #f7f8fa; padding-bottom: 40px; }
 .pricing-panel { padding:24rpx; background:#f2f6fa; border-radius:16rpx; }
 .pricing-default-row { display:flex; gap:16rpx; }
 .pricing-default-row input { flex:1; min-width:0; }
+.pricing-rule-heading { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }
+.pricing-rule-heading .label { flex:1; min-width:0; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pricing-rule-arrow { flex-shrink:0; color:#747a83; font-size:36rpx; }
+.pricing-rule-state { flex-shrink:0; color:#747a83; font-size:24rpx; }

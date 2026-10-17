@@ -3,5 +3,8 @@
   "navigationBarBackgroundColor": "#ffffff",
   "navigationBarTextStyle": "black",
   "enablePullDownRefresh": true,
-  "backgroundTextStyle": "dark"
+  "backgroundTextStyle": "dark",
+  "usingComponents": {
+    "product-entry-menu": "../../components/productEntryMenu/index"
+  }
 }

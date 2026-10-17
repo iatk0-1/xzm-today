@@ -442,7 +442,7 @@ Page(pageSync.wrap({
     customerServiceNavigation.openFromContact(e);
   },
   goToCreateProduct: function() {
-    managementNavigation.openProductCreate();
+    managementNavigation.openProductMenu(this);
   },
 
   onShareAppMessage: function() {

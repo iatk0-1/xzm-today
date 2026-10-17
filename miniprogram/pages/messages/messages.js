@@ -142,6 +142,6 @@ Page({
   goToMarket() { wx.reLaunch({ url: '/pages/market/market' }); },
   goToUser() { wx.reLaunch({ url: '/pages/user/user' }); },
   goToCreateProduct() {
-    managementNavigation.openProductCreate();
+    managementNavigation.openProductMenu(this);
   }
 });

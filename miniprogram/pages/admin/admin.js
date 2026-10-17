@@ -2794,5 +2794,5 @@ const pageDefinition = {
     this.previewImageSafe(urls[index], urls);
   },
 };
-integrateProductPricing(pageDefinition, { allowAdminManualPricing: true });
+integrateProductPricing(pageDefinition, { allowAdminManualPricing: true, rememberEditorChoices: true });
 Page(pageDefinition);

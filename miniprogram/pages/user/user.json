@@ -1,4 +1,6 @@
 {
   "navigationStyle": "custom",
-  "usingComponents": {}
+  "usingComponents": {
+    "product-entry-menu": "../../components/productEntryMenu/index"
+  }
 }

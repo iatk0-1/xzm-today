@@ -141,3 +141,5 @@
 </view>
 
 <include src="../../templates/productSkuPanel.wxml" />
+
+<product-entry-menu id="product-entry-menu" />

@@ -41,3 +41,5 @@
     <view class="tab-item" bindtap="goToUser">我</view>
   </view>
 </view>
+
+<product-entry-menu id="product-entry-menu" />

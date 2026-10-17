@@ -27,6 +27,13 @@ function loadPage(name, role) {
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../utils/managementNavigation.js'), 'utf8'), {
     require: request => request === './workbench' ? require('../../utils/workbench') : auth, wx, module: menuModule
   });
+  let component;
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../components/productEntryMenu/index.js'), 'utf8'), {
+    Component: value => { component = value; }, wx,
+    require: request => request.endsWith('/auth') ? auth : menuModule.exports
+  });
+  const productMenu = { ...component.methods, data: { ...component.data },
+    setData(patch) { Object.assign(this.data, patch); } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, `../../pages/${name}/${name}.js`), 'utf8'), {
     require(request) {
         if (request.endsWith('/error')) return require('../../utils/error');
@@ -41,13 +48,14 @@ function loadPage(name, role) {
     getApp: () => ({}), wx, console, clearInterval() {}, setInterval() {}
   });
   const page = { ...pageConfig, data: { ...pageConfig.data } };
+  page.selectComponent = id => id === '#product-entry-menu' ? productMenu : null;
   page.setData = patch => Object.assign(page.data, patch);
   if (page.checkAdmin) page.checkAdmin();
   else {
     page.loadContact = () => {};
     page.onShow();
   }
-  return { page, navigations, toasts, get sheet() { return sheet; } };
+  return { page, productMenu, component, navigations, toasts, get sheet() { return sheet; } };
 }
 
 function evaluateCondition(expression, data) {
@@ -56,7 +64,7 @@ function evaluateCondition(expression, data) {
 
 for (const name of ['index', 'market', 'messages', 'user']) {
   for (const role of ['stall_manager', 'admin', 'user']) {
-    test(`${role} 在 ${name} 自定义底栏中，加号仅用于商品新增并按角色显示`, () => {
+    test(`${role} 在 ${name} 自定义底栏中，加号打开商品浮动菜单并按角色显示`, () => {
       const fixture = loadPage(name, role);
       const wxml = fs.readFileSync(path.join(__dirname, `../../pages/${name}/${name}.wxml`), 'utf8');
       const portals = Array.from(wxml.matchAll(/<view class="tab-item admin-portal" wx:if="\{\{([^}]+)\}\}" bindtap="([^"]+)"/g));
@@ -64,12 +72,48 @@ for (const name of ['index', 'market', 'messages', 'user']) {
       const [, condition, handler] = portals[0];
       assert.equal(evaluateCondition(condition, fixture.page.data), role !== 'user');
       fixture.page[handler]();
-      assert.equal(fixture.sheet, undefined, '点击加号不能弹出管理菜单');
-      assert.deepEqual(fixture.navigations, role === 'user' ? [] : ['/pages/admin/admin']);
+      assert.equal(fixture.sheet, undefined, '使用自定义浮动窗');
+      assert.equal(fixture.productMenu.data.visible, role !== 'user');
+      assert.deepEqual(fixture.navigations, [], '点击加号不直接跳转');
       assert.deepEqual(fixture.toasts, role === 'user' ? ['无权限'] : []);
+      if (role !== 'user') {
+        fixture.productMenu.createProduct();
+        assert.deepEqual(fixture.navigations, ['/pages/admin/admin']);
+        assert.equal(fixture.productMenu.data.visible, false);
+        fixture.page[handler]();fixture.productMenu.openDrafts();
+        assert.deepEqual(fixture.navigations, ['/pages/admin/admin', '/pages/productDrafts/index']);
+        assert.equal(fixture.productMenu.data.visible, false);
+      }
+      const json = JSON.parse(fs.readFileSync(path.join(__dirname, `../../pages/${name}/${name}.json`), 'utf8'));
+      assert.equal(json.usingComponents['product-entry-menu'], '../../components/productEntryMenu/index');
+      assert.match(wxml, /<product-entry-menu id="product-entry-menu"/);
     });
   }
 }
+
+test('浮动菜单点外部关闭、阻止内部穿透，离开主页面收起，重复点已关闭菜单不导航', () => {
+  const fixture = loadPage('index', 'admin');
+  fixture.page.goToCreateProduct();fixture.productMenu.blockTouch();
+  assert.equal(fixture.productMenu.data.visible, true);
+  fixture.productMenu.close();assert.equal(fixture.productMenu.data.visible, false);
+  fixture.productMenu.createProduct();fixture.productMenu.openDrafts();assert.deepEqual(fixture.navigations, []);
+  fixture.page.goToCreateProduct();fixture.component.pageLifetimes.hide.call(fixture.productMenu);
+  assert.equal(fixture.productMenu.data.visible, false);
+  const template = fs.readFileSync(path.join(__dirname, '../../components/productEntryMenu/index.wxml'), 'utf8');
+  assert.match(template, /class="product-menu-mask" catchtap="close"/);
+  assert.match(template, /class="product-menu" catchtap="blockTouch"/);
+  assert.ok(template.indexOf('新增商品') < template.indexOf('草稿箱'));
+});
+
+test('菜单展开后角色切换为普通用户，旧菜单也不能新增商品或打开草稿箱', async () => {
+  for (const action of ['createProduct', 'openDrafts']) {
+    const fixture = loadPage('user', 'admin');fixture.page.goToCreateProduct();
+    await fixture.page.switchRole();fixture.sheet.success({ tapIndex: 0 });fixture.navigations.length = 0;
+    fixture.productMenu[action]();
+    assert.equal(fixture.productMenu.data.visible, false);
+    assert.deepEqual(fixture.navigations, []);assert.equal(fixture.toasts.at(-1), '无权限');
+  }
+});
 
 const workbenchTemplate = fs.readFileSync(path.join(__dirname, '../../pages/user/user.wxml'), 'utf8');
 const workbenchCondition = workbenchTemplate.match(/class="workbench-section" wx:if="\{\{([^}]+)\}\}"/)[1];

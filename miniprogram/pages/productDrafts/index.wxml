@@ -1,16 +1,32 @@
 <view class="draft-page">
-  <view class="draft-heading"><view><view class="heading-title">商品草稿</view><text class="subtitle">已保存 {{total}} / {{limit}} · 长期保留</text></view><button class="text-button" bindtap="toggleSelectMode" disabled="{{deleting}}">{{selecting ? '完成' : '批量管理'}}</button></view>
-  <view class="search-row"><input value="{{keyword}}" placeholder="搜索商品标题" maxlength="200" bindinput="onKeywordInput" bindconfirm="search" confirm-type="search"/><button wx:if="{{keyword}}" class="clear" bindtap="clearSearch">×</button><button class="search-button" bindtap="search">搜索</button></view>
-  <view class="filter-row"><picker range="{{types}}" range-key="label" value="{{typeIndex}}" bindchange="selectType"><view class="filter">{{types[typeIndex].label}} ▾</view></picker><view wx:if="{{sessionId}}" class="session-filter" bindtap="clearSession">本场直播 ×</view><button class="text-button" bindtap="createProduct">＋ 新增商品</button></view>
+  <view class="draft-heading"><text class="subtitle">已保存 {{total}} / {{limit}} · 长期保留</text></view>
+  <view class="search-row"><input value="{{keyword}}" disabled="{{deleting || publishing || selectingAll}}" placeholder="搜索商品标题" maxlength="200" bindinput="onKeywordInput" bindconfirm="search" confirm-type="search"/><button wx:if="{{keyword}}" class="clear" bindtap="clearSearch" disabled="{{deleting || publishing || selectingAll}}">×</button><button class="search-button" bindtap="search" disabled="{{deleting || publishing || selectingAll}}">搜索</button></view>
+  <view class="filter-row">
+    <view class="filter-controls"><picker range="{{types}}" range-key="label" value="{{typeIndex}}" bindchange="selectType" disabled="{{deleting || publishing || selectingAll}}"><view class="filter">{{types[typeIndex].label}} ▾</view></picker><view wx:if="{{sessionId}}" class="session-filter" bindtap="clearSession">本场直播 ×</view></view>
+    <view class="filter-actions"><button class="text-button" bindtap="toggleSelectMode" disabled="{{deleting || publishing || selectingAll}}">{{selecting ? '完成' : '批量管理'}}</button><button class="text-button" bindtap="createProduct" disabled="{{deleting || publishing || selectingAll}}">＋ 新增商品</button></view>
+  </view>
   <view wx:if="{{error}}" class="state"><text>{{error}}</text><button bindtap="reload">重新加载</button></view>
   <scroll-view wx:else scroll-y class="draft-list {{selecting ? 'with-actions' : ''}}" refresher-enabled="true" refresher-triggered="{{refreshing}}" bindrefresherrefresh="reload" bindscrolltolower="loadMore">
     <view wx:if="{{!items.length && !loading}}" class="state"><view>{{keyword || typeIndex || sessionId ? '没有找到符合条件的草稿' : '还没有商品草稿'}}</view><text class="subtitle">在商品编辑页点击“保存草稿”，下次接着编辑</text></view>
     <view class="draft-card {{item.selected ? 'selected' : ''}}" wx:for="{{items}}" wx:key="id">
       <view class="card-content" bindtap="openDraft" data-id="{{item.id}}"><view wx:if="{{selecting}}" class="checkbox">{{item.selected ? '✓' : ''}}</view><image wx:if="{{item.coverUrl}}" class="cover" src="{{item.coverUrl}}" mode="aspectFill"/><view wx:else class="cover placeholder">暂无图片</view><view class="card-info"><view class="card-title">{{item.title}}</view><view class="badges"><text>{{item.typeLabel}}</text><text wx:if="{{item.summary.bundle}}">套装</text></view><view wx:if="{{item.stallsText}}" class="subtitle">{{item.stallsText}}</view><view wx:if="{{item.sessionId}}" class="subtitle">直播场次 {{item.sessionId}}</view><view class="saved-time">{{item.savedText}} 保存</view></view></view>
+      <view wx:if="{{!item.capabilities || item.capabilities.edit}}" class="draft-pricing">
+        <view class="pricing-fields">
+          <view class="draft-cost-field"><text class="pricing-label">统一成本</text><input class="draft-cost-input" type="digit" value="{{item.pricing.costInput}}" placeholder="{{item.pricing.mixedCosts ? '多种成本' : '填写成本'}}" disabled="{{!item.pricing.ready || deleting || publishing || selectingAll}}" data-id="{{item.id}}" bindinput="onDraftCostInput" bindblur="onDraftCostBlur" /></view>
+          <picker class="draft-rule-picker" range="{{item.pricing.rules}}" range-key="name" value="{{item.pricing.ruleIndex}}" disabled="{{!item.pricing.ready || !item.pricing.rules.length || deleting || publishing || selectingAll}}" data-id="{{item.id}}" bindchange="onDraftRuleChange"><view class="draft-rule-field"><text class="pricing-label">计价规则</text><text class="draft-rule-name">{{item.pricing.ruleName || '选择规则'}}</text><text class="draft-rule-arrow">›</text></view></picker>
+        </view>
+        <view class="draft-pricing-status">
+          <text wx:if="{{item.pricing.loading}}">正在加载成本和规则…</text><text wx:elif="{{item.pricing.saving}}">正在计算并保存…</text><text wx:elif="{{item.pricing.error}}" class="pricing-save-error">{{item.pricing.error}}</text><text wx:elif="{{item.pricing.dirty}}">修改待保存</text><text wx:elif="{{item.pricing.saved}}" class="pricing-saved">已自动保存{{item.pricing.priceText ? '，售价 ¥' + item.pricing.priceText : ''}}</text><text wx:else>填写成本将统一修改全部 SKU，选择规则后自动计算售价</text>
+          <button wx:if="{{item.pricing.error && !item.pricing.saving}}" class="pricing-retry" data-id="{{item.id}}" bindtap="{{item.pricing.ready ? 'retrySavePricing' : 'retryPricing'}}" disabled="{{deleting || publishing || selectingAll}}">重试</button>
+        </view>
+      </view>
       <view wx:if="{{item.warningText}}" class="warning">{{item.warningText}}</view>
-      <view wx:if="{{!selecting}}" class="card-actions"><button class="text-button danger" bindtap="deleteOne" data-id="{{item.id}}" disabled="{{deleting}}">删除</button><button class="continue" bindtap="openDraft" data-id="{{item.id}}">{{item.capabilities.edit ? '继续编辑' : '查看草稿'}}</button></view>
+      <view wx:if="{{!selecting}}" class="card-actions"><button class="text-button danger" bindtap="deleteOne" data-id="{{item.id}}" disabled="{{deleting || publishing}}">删除</button><button wx:if="{{!item.capabilities || item.capabilities.edit}}" class="publish-one" bindtap="publishOne" data-id="{{item.id}}" disabled="{{deleting || publishing}}">发布</button><button class="continue" bindtap="openDraft" data-id="{{item.id}}" disabled="{{deleting || publishing}}">{{item.capabilities.edit ? '继续编辑' : '查看草稿'}}</button></view>
     </view>
     <view wx:if="{{loading}}" class="list-state">正在加载…</view><view wx:elif="{{moreError}}" class="list-state" bindtap="loadMore">{{moreError}} · 点击重试</view><view wx:elif="{{items.length && !hasMore}}" class="list-state">已显示全部草稿</view>
   </scroll-view>
-  <view wx:if="{{selecting}}" class="batch-actions"><text>已选 {{selectedCount}} 份</text><button bindtap="deleteSelected" disabled="{{!selectedCount || deleting}}" loading="{{deleting}}">删除所选</button></view>
+  <view wx:if="{{selecting}}" class="batch-panel">
+    <view class="batch-status">{{publishing ? publishProgress : '已选 ' + selectedCount + ' 份'}}</view>
+    <view class="batch-actions"><button class="select-all" bindtap="toggleSelectAll" disabled="{{deleting || publishing || selectingAll || loading || !items.length}}" loading="{{selectingAll}}">{{allSelected ? '取消全选' : '全选'}}</button><button class="publish-selected" bindtap="publishSelected" disabled="{{!selectedCount || deleting || publishing || selectingAll || loading}}" loading="{{publishing}}">发布</button><button class="delete-selected" bindtap="deleteSelected" disabled="{{!selectedCount || deleting || publishing || selectingAll}}" loading="{{deleting}}">删除所选</button></view>
+  </view>
 </view>

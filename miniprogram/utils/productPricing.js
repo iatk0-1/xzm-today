@@ -4,7 +4,26 @@ const auth = require('./auth');
 const finance = require('./managerFinance');
 const { integrateProductDraftExit } = require('./productDraftExit');
 
-function integrateProductPricing(page, { allowAdminManualPricing = false } = {}) {
+function integrateProductPricing(page, { allowAdminManualPricing = false, rememberEditorChoices = false } = {}) {
+  const choiceKey = () => {
+    const user = auth.getUserInfo();
+    return user && user.userId != null ? 'product_editor_choices:' + String(user.userId) : null;
+  };
+  page.readEditorChoices = function() {
+    if (!rememberEditorChoices) return {};
+    try {
+      const key = choiceKey();
+      const saved = key && wx.getStorageSync(key);
+      return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+    } catch (error) { console.warn('读取商品编辑选择缓存失败'); return {}; }
+  };
+  page.saveEditorChoice = function(patch) {
+    if (!rememberEditorChoices) return;
+    try {
+      const key = choiceKey();
+      if (key) wx.setStorageSync(key, { ...this.readEditorChoices(), ...patch });
+    } catch (error) { console.warn('保存商品编辑选择缓存失败'); }
+  };
   Object.assign(page.data, {
     costPrice: '', defaultPrice: '', quickCost: '', batchCost: '',
     isAdmin: false,
@@ -17,10 +36,11 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     return allowAdminManualPricing && auth.isAdmin() && !this.data.isStallManager;
   };
 
-  page.cancelPricing = function() {
+  page.cancelPricing = function({ preserveSkuPricing = false } = {}) {
     if (this._pricingTimer) clearTimeout(this._pricingTimer);
     this._pricingSequence = (this._pricingSequence || 0) + 1;
-    this.setData({ pricingBusy: false });
+    if (!preserveSkuPricing && this._skuPricingRequests) this._skuPricingRequests.clear();
+    this.setData({ pricingBusy: !!(this._skuPricingRequests && this._skuPricingRequests.size) });
   };
 
   page.productCost = function(value) {
@@ -62,7 +82,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   };
 
   page.showRule = function(rule, source) {
-    if (this.canManuallyPrice()) this.cancelPricing();
+    this.cancelPricing();
     this.setData({
       pricingRuleId: rule ? String(rule.id) : '',
       pricingRuleName: rule ? rule.name : '',
@@ -88,7 +108,8 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
       }
       return;
     }
-    const selectedRuleId = this.data.pricingRuleId;
+    const selectedRuleId = this.data.pricingRuleId || (this._restoreEditorChoices && !this._editorDraftRestored
+      ? this.readEditorChoices().pricingRuleId : '');
     if (this.data.isStallManager) {
       this.cancelPricing();
       this.showRule(null, '');
@@ -157,8 +178,12 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
       && String(rule.id) !== String(this.data.pricingRuleId || '')) return;
     this._ruleToken = (this._ruleToken || 0) + 1;
     this.showRule(rule.id === '' ? null : rule, this.data.isStallManager ? '手动选择' : '管理员选择');
+    this.saveEditorChoice({ pricingRuleId: this.data.pricingRuleId });
     this._markDirty();
-    if (!this.canManuallyPrice()) await this.recalculatePricing(false);
+    // 明确选择规则即应用到全部SKU；管理员之后仍可按原流程手动调整售价。
+    if (this.canManuallyPrice()) {
+      if (rule.id !== '') await this.applyPricingRule();
+    } else await this.recalculatePricing(false);
   };
 
   page.onCostInput = function(event) {
@@ -168,12 +193,8 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   };
 
   page.schedulePricing = function() {
-    if (this.canManuallyPrice()) {
-      this.cancelPricing();
-      return;
-    }
-    if (this._pricingTimer) clearTimeout(this._pricingTimer);
-    this._pricingSequence = (this._pricingSequence || 0) + 1;
+    this.cancelPricing();
+    if (this.canManuallyPrice()) return;
     this._pricingTimer = setTimeout(() => this.recalculatePricing(false), 350);
   };
 
@@ -193,6 +214,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   };
 
   page.recalculatePricing = async function(strict, skuOnly = false, targets = null) {
+    if (this._skuPricingRequests) this._skuPricingRequests.clear();
     const sequence = (this._pricingSequence || 0) + 1;
     this._pricingSequence = sequence;
     if (this.data.isBundleMode) this.saveActiveGroupState();
@@ -270,8 +292,13 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
 
   const originalOnLoad = page.onLoad;
   page.onLoad = async function(options) {
+    this._restoreEditorChoices = rememberEditorChoices && (!options || (!options.editId && !options.copyId && !options.productId && !options.convertFromLiveProductId));
     await originalOnLoad.call(this, options);
     this.setData({ isAdmin: auth.isAdmin() });
+    const savedChoices = this._restoreEditorChoices ? this.readEditorChoices() : {};
+    if (!this._editorDraftRestored && typeof savedChoices.publishOnSale === 'boolean') {
+      this.setData({ publishOnSale: savedChoices.publishOnSale });
+    }
     try {
       if (this.data.isStallManager) {
         const profile = await api.get('/stall-managers/mine');
@@ -283,11 +310,20 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
       await this.loadPricingChoices();
       if (!options || (!options.editId && !options.copyId && !options.productId && !options.convertFromLiveProductId)) {
         if (!this.data.isStallManager) {
-          const preference = await api.get('/pricing-rules/preference/mine');
+          const preference = typeof savedChoices.pricingRuleId === 'string'
+            ? { ruleId: savedChoices.pricingRuleId } : await api.get('/pricing-rules/preference/mine');
           const rule = this.data.pricingRules.find(item => String(item.id) === String(preference.ruleId));
           if (rule) this.showRule(rule, '上次成功保存使用');
         }
         await this.useStallPricing();
+        if (this._restoreEditorChoices && !this._editorDraftRestored) {
+          const saved = this.readEditorChoices();
+          if (typeof saved.publishOnSale === 'boolean') this.setData({ publishOnSale: saved.publishOnSale });
+          if (!this.data.isStallManager && typeof saved.pricingRuleId === 'string') {
+            const rule = this.data.pricingRules.find(item => String(item.id) === saved.pricingRuleId);
+            if (rule) this.showRule(rule.id === '' ? null : rule, '上次选择');
+          }
+        }
       }
     } catch (error) {
       this.setData({ pricingError: getErrorMessage(error, '加载计价规则失败') });
@@ -380,15 +416,69 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     const field = event.currentTarget.dataset.field;
     if (field === 'price' && !this.canManuallyPrice()) return;
     originalInput.call(this, event);
-    if (this.canManuallyPrice()) {
-      if (field === 'price' || field === 'costPrice') this.cancelPricing();
-      this._afterBundleSkuChange();
-      return;
+    if (field === 'price' || field === 'costPrice') {
+      const sku = this.data.skuList[event.currentTarget.dataset.index];
+      if (this._skuPricingRequests) this._skuPricingRequests.delete(sku);
+      this.cancelPricing({ preserveSkuPricing: true });
     }
-    if (field === 'costPrice') {
+    if (field === 'costPrice' && !this.canManuallyPrice()) {
       this.setData({ ['skuList[' + event.currentTarget.dataset.index + '].price']: '' });
-      this._afterBundleSkuChange();
-      this.schedulePricing();
+    }
+    this._afterBundleSkuChange();
+  };
+
+  page.onSkuCostBlur = async function(event) {
+    const index = Number(event.currentTarget.dataset.index);
+    const sku = this.data.skuList[index];
+    if (!sku || sku._toBeRemoved) return;
+    if (String(sku.costPrice == null ? '' : sku.costPrice) !== event.detail.value) this.onSkuInput(event);
+    this._afterBundleSkuChange();
+    this.cancelPricing({ preserveSkuPricing: true });
+    const requests = this._skuPricingRequests || (this._skuPricingRequests = new Map());
+    const request = {};
+    requests.set(sku, request);
+    const ruleKey = JSON.stringify([this.data.pricingRuleId, this.data.pricingRuleSegments]);
+    const costInput = sku.costPrice;
+    // 使用SKU对象定位，删除行或切换套装后，响应仍只对应原来那一行。
+    const locate = () => {
+      if (requests.get(sku) !== request || sku.costPrice !== costInput
+        || ruleKey !== JSON.stringify([this.data.pricingRuleId, this.data.pricingRuleSegments])) return null;
+      if (!this.data.isBundleMode) {
+        const row = this.data.skuList.indexOf(sku);
+        return row < 0 || sku._toBeRemoved ? null : ['skuList[' + row + ']'];
+      }
+      for (let group = 0; group < this.data.bundleGroups.length; group++) {
+        const rows = group === this.data.activeGroupIndex ? this.data.skuList : this.data.bundleGroups[group].skuList || [];
+        const row = rows.indexOf(sku);
+        if (row < 0 || sku._toBeRemoved) continue;
+        const paths = ['bundleGroups[' + group + '].skuList[' + row + ']'];
+        if (group === this.data.activeGroupIndex) paths.push('skuList[' + row + ']');
+        return paths;
+      }
+      return null;
+    };
+    try {
+      if (!this.data.pricingRuleId || !this.data.pricingRuleSegments.length) throw new Error('请选择有效计价规则');
+      const cost = this.skuCost(costInput, true);
+      this.setData({ pricingBusy: true, pricingError: '' });
+      const segments = this.data.pricingRuleSegments.map(({ label, ...segment }) => segment);
+      const result = await api.post('/pricing-rules/preview', { segments, cost });
+      const paths = locate();
+      if (!paths) return;
+      const updates = { pricingError: '' };
+      paths.forEach(path => {
+        updates[path + '.costPrice'] = cost;
+        updates[path + '.price'] = String(result.price);
+      });
+      this.setData(updates);
+      this._markDirty();
+    } catch (error) {
+      if (locate()) this.setData({ pricingError: getErrorMessage(error, 'SKU成本计价失败') });
+    } finally {
+      if (requests.get(sku) === request) {
+        requests.delete(sku);
+        this.setData({ pricingBusy: requests.size > 0 });
+      }
     }
   };
 
@@ -430,6 +520,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
 
   const originalRestore = page.restoreDraft;
   page.restoreDraft = function(data) {
+    this._editorDraftRestored = true;
     originalRestore.call(this, data);
     this.setData({
       costPrice: data.costPrice || '', pricingRuleId: data.pricingRuleId || '',
@@ -441,6 +532,14 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     if (this.canManuallyPrice()) return this.schedulePricing();
     return this.recalculatePricing(false);
   };
+
+  if (rememberEditorChoices && page.togglePublishStatus) {
+    const originalTogglePublish = page.togglePublishStatus;
+    page.togglePublishStatus = function(event) {
+      originalTogglePublish.call(this, event);
+      this.saveEditorChoice({ publishOnSale: this.data.publishOnSale });
+    };
+  }
 
   const originalSubmit = page.submitProduct;
   page.submitProduct = async function() {
@@ -501,6 +600,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   page.onUnload = function() {
     if (this._pricingTimer) clearTimeout(this._pricingTimer);
     this._pricingSequence = (this._pricingSequence || 0) + 1;
+    if (this._skuPricingRequests) this._skuPricingRequests.clear();
     originalUnload.call(this);
   };
   integrateProductDraftExit(page);

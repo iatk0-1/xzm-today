@@ -1,5 +1,5 @@
 <product-editor-shell title="{{editId ? '编辑商品' : '新增商品'}}" show-exit-confirm="{{showExitConfirm}}" saving="{{draftSaving}}" bind:back="requestEditorExit" bind:cancel="cancelEditorExit" bind:saveexit="saveDraftAndExit" bind:discardexit="discardDraftAndExit" />
-<product-draft-status count="{{draftCount}}" saved="{{draftSavedText}}" dirty="{{draftDirty}}" saving="{{draftSaving}}" problem="{{draftProblem}}" warnings="{{draftWarnings}}" conflict="{{draftConflict}}" can-reload="{{editId || (editMode && productId)}}" bind:open="openDraftBox" bind:reload="reloadDraftSource" bind:latest="useLatestProduct" />
+<product-draft-status saving="{{draftSaving}}" problem="{{draftProblem}}" warnings="{{draftWarnings}}" conflict="{{draftConflict}}" can-reload="{{editId || (editMode && productId)}}" bind:reload="reloadDraftSource" bind:latest="useLatestProduct" />
 <view class="admin-container">
   <view class="header-hint" wx:if="{{convertFromLiveProductId}}">
     请检查并编辑商品信息，确认后创建新商品并自动关联
@@ -227,20 +227,18 @@
     <input class="input-box" type="digit" placeholder="默认成本（可选，大于0）" value="{{costPrice}}" bindinput="onCostInput" />
   </view>
 
-  <view class="form-group pricing-panel">
+  <view class="form-group pricing-panel pricing-rule-panel">
     <picker wx:if="{{!isStallManager || (selectedStalls.length && pricingRules.length > 1 && !stallPricingLoading)}}" range="{{pricingRules}}" range-key="name" bindchange="choosePricingRule">
       <view class="pricing-rule-heading">
         <view class="label">计价规则：{{pricingRuleName || '未选择'}}</view>
+        <text wx:if="{{pricingBusy}}" class="pricing-rule-state">计算中…</text>
         <text class="pricing-rule-arrow">›</text>
       </view>
     </picker>
-    <view wx:else class="label">计价规则：{{pricingRuleName || '未选择'}}</view>
-    <view class="muted" wx:if="{{isStallManager && !selectedStalls.length}}">请先选择分配给你的档口，再选择计价规则。</view>
-    <view class="muted" wx:if="{{isStallManager && stallPricingLoading}}">正在加载档口计价规则...</view>
-    <block wx:if="{{isAdmin}}">
-      <view class="pricing-rule-segment" wx:for="{{pricingRuleSegments}}" wx:key="index">{{item.label}}：{{item.formula}}</view>
-    </block>
-    <button class="pricing-apply-btn" bindtap="applyPricingRule" loading="{{pricingBusy}}" disabled="{{pricingBusy || !pricingRuleId || !pricingRuleSegments.length}}">一键应用</button>
+    <view wx:else class="pricing-rule-heading">
+      <view class="label">计价规则：{{stallPricingLoading ? '加载中…' : isStallManager && !selectedStalls.length ? '请先选择档口' : pricingRuleName || '未选择'}}</view>
+      <text wx:if="{{pricingBusy}}" class="pricing-rule-state">计算中…</text>
+    </view>
     <view class="pricing-error" wx:if="{{pricingError}}">{{pricingError}}</view>
   </view>
 
@@ -277,7 +275,7 @@
           <view class="sku-right">
             <view class="mini-field">
               <text class="mini-field-label">成本</text>
-              <input class="mini-input" type="digit" placeholder="成本" value="{{item.costPrice}}" bindinput="onSkuInput" data-index="{{index}}" data-field="costPrice" />
+              <input class="mini-input" type="digit" placeholder="成本" value="{{item.costPrice}}" bindinput="onSkuInput" bindblur="onSkuCostBlur" data-index="{{index}}" data-field="costPrice" />
             </view>
             <view class="mini-field">
               <text class="mini-field-label">价格</text>

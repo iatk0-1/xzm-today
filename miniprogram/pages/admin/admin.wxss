@@ -939,12 +939,9 @@ line-height: 88rpx; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; }
 }
 
 .pricing-rule-heading { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }
-.pricing-rule-heading .label { flex:1; min-width:0; }
-.pricing-rule-arrow { color:#747a83; font-size:36rpx; }
-.pricing-rule-segment { font-size:26rpx; color:#333; line-height:1.7; overflow-wrap:break-word; }
-.pricing-apply-btn { margin:20rpx 0 0; padding:0 24rpx; background:#1a1a1a; color:#fff; font-size:26rpx; line-height:2.8; border-radius:10rpx; }
-.pricing-apply-btn::after { border:none; }
-.pricing-apply-btn[disabled] { background:#ededed; color:#999; }
+.pricing-rule-heading .label { flex:1; min-width:0; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pricing-rule-arrow { flex-shrink:0; color:#747a83; font-size:36rpx; }
+.pricing-rule-state { flex-shrink:0; font-size:24rpx; color:#747a83; }
 .pricing-error { color:#b53a30; padding:16rpx 0; }
 
 .product-name-header { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: 16rpx; }
