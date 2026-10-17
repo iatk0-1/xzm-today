@@ -441,8 +441,6 @@ page {
   flex-shrink: 0;
   width: 56rpx;
   height: 56rpx;
-  border-radius: 50%;
-  background-color: #f8f8f8;
   display: flex;
   align-items: center;
   justify-content: center;
