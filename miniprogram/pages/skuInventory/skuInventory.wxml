@@ -1,51 +1,53 @@
 <view class="container">
-  <view wx:if="{{quantityRetryPending}}" class="operation-pending" bindtap="retryQuantityOperation">上次数量操作结果待确认，点此沿用原请求重试</view>
-  <view wx:if="{{unbindReviewAvailable}}" class="operation-pending" bindtap="confirmPendingUnbindWaybill">面单取消响应丢失？在物流平台核实取消后，点此登记依据并续办原解绑</view>
-  <view class="filter-bar">
-    <view class="filter-tabs">
-      <view wx:for="{{inventoryTabs}}" wx:key="id" class="inventory-tab {{inventoryTab === item.id ? 'active' : ''}}" data-tab="{{item.id}}" bindtap="changeInventoryTab">{{item.name}}</view>
-    </view>
-    <view class="relation-filter-section">
-      <view class="relation-filter-row">
-        <text class="relation-filter-label">档口</text>
-        <view class="relation-filter-fixed relation-filter-tag {{selectedStall === '' ? 'active' : ''}}" bindtap="selectStall" data-stall="all">全部</view>
-        <scroll-view class="relation-filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
-          <view class="relation-filter-options">
-            <view class="relation-filter-tag {{selectedStall === item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}">{{item.name}}</view>
-          </view>
-        </scroll-view>
+  <view class="inventory-toolbar">
+    <view wx:if="{{quantityRetryPending}}" class="operation-pending" bindtap="retryQuantityOperation">上次数量操作结果待确认，点此沿用原请求重试</view>
+    <view wx:if="{{unbindReviewAvailable}}" class="operation-pending" bindtap="confirmPendingUnbindWaybill">面单取消响应丢失？在物流平台核实取消后，点此登记依据并续办原解绑</view>
+    <view class="filter-bar">
+      <view class="filter-tabs">
+        <view wx:for="{{inventoryTabs}}" wx:key="id" class="inventory-tab {{inventoryTab === item.id ? 'active' : ''}}" data-tab="{{item.id}}" bindtap="changeInventoryTab">{{item.name}}</view>
       </view>
-      <view class="relation-filter-row">
-        <text class="relation-filter-label">标签</text>
-        <view class="relation-filter-fixed relation-filter-tag {{selectedTag === '' ? 'active' : ''}}" bindtap="selectTag" data-tag="all">全部</view>
-        <scroll-view class="relation-filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
-          <view class="relation-filter-options">
-            <view class="relation-filter-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}">{{item.name}}</view>
-          </view>
-        </scroll-view>
+      <view class="relation-filter-section">
+        <view class="relation-filter-row">
+          <text class="relation-filter-label">档口</text>
+          <view class="relation-filter-fixed relation-filter-tag {{selectedStall === '' ? 'active' : ''}}" bindtap="selectStall" data-stall="all">全部</view>
+          <scroll-view class="relation-filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+            <view class="relation-filter-options">
+              <view class="relation-filter-tag {{selectedStall === item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}">{{item.name}}</view>
+            </view>
+          </scroll-view>
+        </view>
+        <view class="relation-filter-row">
+          <text class="relation-filter-label">标签</text>
+          <view class="relation-filter-fixed relation-filter-tag {{selectedTag === '' ? 'active' : ''}}" bindtap="selectTag" data-tag="all">全部</view>
+          <scroll-view class="relation-filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+            <view class="relation-filter-options">
+              <view class="relation-filter-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}">{{item.name}}</view>
+            </view>
+          </scroll-view>
+        </view>
+      </view>
+      <view class="date-filter">
+        <view class="date-picker" bindtap="showDateRangeSelector">
+          <text wx:if="{{!dateRange.startDate && !dateRange.endDate}}">选择上架时间范围</text>
+          <text wx:else>上架：{{dateRange.startDate || '开始'}} - {{dateRange.endDate || '结束'}}</text>
+        </view>
+        <view class="clear-date" wx:if="{{dateRange.startDate || dateRange.endDate}}" bindtap="clearDateRange">×</view>
+      </view>
+      <view class="search-bar">
+        <input class="search-input" placeholder="搜索商品名称" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="search" />
+        <button class="search-btn" bindtap="search">搜索</button>
       </view>
     </view>
-    <view class="date-filter">
-      <view class="date-picker" bindtap="showDateRangeSelector">
-        <text wx:if="{{!dateRange.startDate && !dateRange.endDate}}">选择上架时间范围</text>
-        <text wx:else>上架：{{dateRange.startDate || '开始'}} - {{dateRange.endDate || '结束'}}</text>
+    <view class="inventory-action-bar">
+      <view class="select-all" bindtap="toggleSelectAll">
+        <view class="inventory-checkbox {{allSelected ? 'checked' : ''}}"><text wx:if="{{allSelected}}">✓</text></view>
+        <text>全选</text>
       </view>
-      <view class="clear-date" wx:if="{{dateRange.startDate || dateRange.endDate}}" bindtap="clearDateRange">×</view>
+      <button class="batch-receive-btn" bindtap="openBatchReceiveModal" disabled="{{!pendingReceiveItems.length && !batchRetryPending}}">{{batchRetryPending ? '入库待确认' : '批量入库'}}</button>
+      <button class="stock-shipping-btn" bindtap="openShippingModal">按照库存发货</button>
     </view>
-    <view class="search-bar">
-      <input class="search-input" placeholder="搜索商品名称" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="search" />
-      <button class="search-btn" bindtap="search">搜索</button>
-    </view>
+    <view class="selection-summary" wx:if="{{selectedCount || pendingReceiveItems.length}}">已选 {{selectedCount}} 个商品 · 待入库 {{pendingReceiveProductCount}} 个商品，{{pendingReceiveItems.length}} 个规格，共 {{pendingReceiveTotal}} 件（切换筛选保留）</view>
   </view>
-  <view class="inventory-action-bar">
-    <view class="select-all" bindtap="toggleSelectAll">
-      <view class="inventory-checkbox {{allSelected ? 'checked' : ''}}"><text wx:if="{{allSelected}}">✓</text></view>
-      <text>全选</text>
-    </view>
-    <button class="batch-receive-btn" bindtap="openBatchReceiveModal" disabled="{{!pendingReceiveItems.length && !batchRetryPending}}">{{batchRetryPending ? '入库待确认' : '批量入库'}}</button>
-    <button class="stock-shipping-btn" bindtap="openShippingModal">按照库存发货</button>
-  </view>
-  <view class="selection-summary" wx:if="{{selectedCount || pendingReceiveItems.length}}">已选 {{selectedCount}} 个商品 · 待入库 {{pendingReceiveProductCount}} 个商品，{{pendingReceiveItems.length}} 个规格，共 {{pendingReceiveTotal}} 件（切换筛选保留）</view>
   <view class="product-list">
     <view class="product-item {{item.selected ? 'selected' : ''}}" wx:for="{{productList}}" wx:key="id">
       <view class="product-select" catchtap="toggleProductSelection" data-id="{{item.id}}">
