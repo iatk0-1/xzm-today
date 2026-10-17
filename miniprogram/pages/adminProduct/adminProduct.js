@@ -3,11 +3,13 @@ const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/adminProduct/adminProduct.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const draft = require('../../utils/draft');
 const { isProductSoldOut } = require('../../utils/stock');
 const { beijingParts, hasPendingSchedule } = require('../../utils/productSchedule');
 
 Page(autoSearch.wrap({
   data: {
+    draftCount: 0,
     products: [],
     isLoading: false,  // 初始为 false，允许首次加载
     isRefreshing: false,
@@ -37,6 +39,14 @@ Page(autoSearch.wrap({
     showProductSchedule: false
   },
 
+  async refreshDraftCount() {
+    try { const value = await draft.summary(); this.setData({ draftCount: Number(value.total) }); }
+    catch (error) { console.warn('加载草稿数量失败:', error); }
+  },
+  goToDraftBox() { wx.navigateTo({ url: '/pages/productDrafts/index', events: {
+    productUpdated: product => this.updateVisibleProduct(product)
+  } }); },
+
   onLoad: function() {
     this.setData({ isStallManager: auth.isStallManager() });
     this.loadFilterOptions();
@@ -44,6 +54,7 @@ Page(autoSearch.wrap({
   },
 
   onShow() {
+    this.refreshDraftCount();
     this._schedulePageVisible = true;
     this.planScheduleRefresh();
   },

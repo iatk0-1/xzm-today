@@ -1,5 +1,6 @@
 <!-- miniprogram/pages/liveRoomPublish/publish.wxml -->
 <product-editor-shell title="{{editMode ? '编辑直播商品' : '新增直播商品'}}" show-exit-confirm="{{showExitConfirm}}" saving="{{draftSaving}}" bind:back="requestEditorExit" bind:cancel="cancelEditorExit" bind:saveexit="saveDraftAndExit" bind:discardexit="discardDraftAndExit" />
+<product-draft-status count="{{draftCount}}" saved="{{draftSavedText}}" dirty="{{draftDirty}}" saving="{{draftSaving}}" problem="{{draftProblem}}" warnings="{{draftWarnings}}" conflict="{{draftConflict}}" can-reload="{{editId || (editMode && productId)}}" bind:open="openDraftBox" bind:reload="reloadDraftSource" bind:latest="useLatestProduct" />
 <view class="admin-container">
   <view class="header-title">{{editMode ? '编辑直播商品' : '上架直播商品'}}</view>
 

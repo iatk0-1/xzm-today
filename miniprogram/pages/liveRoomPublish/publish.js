@@ -78,6 +78,7 @@ const pageDefinition = {
   },
 
   async onLoad(options) {
+    this._productLoadFailed = false;
     await auth.ensureAuthenticated({ silent: true });
     this.setData({ isStallManager: auth.isStallManager() && !auth.isAdmin() });
     await Promise.all([this.loadRecentStallsAndTags(), this.loadSizeCategories()]);
@@ -108,6 +109,7 @@ const pageDefinition = {
 
   // 加载已有商品数据用于编辑
   loadProductForEdit: async function(productId) {
+    this._productLoadFailed = false;
     wx.showLoading({ title: '加载商品...' });
     try {
       const res = await api.get(`/products/${productId}?manage=true`);
@@ -195,14 +197,14 @@ const pageDefinition = {
       if (res.bundleGroups && res.bundleGroups.length) {
         const groups = res.bundleGroups.map(group => {
           const rows = (group.skus || []).map(sku => ({
-            skuId: sku.id || null, sizeId: sku.sizeId || null,
+            skuId: sku.id || null, bundleGroupId: group.id, sizeId: sku.sizeId || null,
             color: sku.spec || sku.color || '图片色', size: sku.size || '均码',
             costPrice: sku.costPrice == null ? '' : String(sku.costPrice),
             price: String(sku.retailPrice || ''),
             stock: sku.unlimitedStock ? '' : String(sku.stockMain == null ? '' : sku.stockMain),
             image: productImageUrl(sku.imageUrl) || ''
           }));
-          return { name: group.name, skuList: rows,
+          return { id: group.id, name: group.name, skuList: rows,
             colors: [...new Set(rows.map(row => row.color))],
             sizeOptions: this.data.sizeOptions.map(size => ({ ...size, selected: rows.some(row => row.size === size.name) })) };
         });
@@ -214,6 +216,7 @@ const pageDefinition = {
       this.checkDraft();
     } catch (err) {
       wx.hideLoading();
+      this._productLoadFailed = true;
       console.error('加载商品失败:', err);
       wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
@@ -969,7 +972,7 @@ const pageDefinition = {
 
       // 3. 构建 SKU 数据（使用已上传的 URL）
       const skus = skuList.map((sku, index) => {
-        const stockStr = sku.stock ? String(sku.stock).trim() : '';
+        const stockStr = String(sku.stock == null ? '' : sku.stock).trim();
         const isUnlimited = stockStr === '';
         const stockNum = isUnlimited ? 0 : (Number(stockStr) || 0);
         if (!isUnlimited && stockNum > 999999999) {
@@ -977,6 +980,8 @@ const pageDefinition = {
           throw new Error('库存超出范围');
         }
         return {
+          id: this.data.editMode ? sku.skuId || undefined : undefined,
+          bundleGroupId: this.data.editMode ? sku.bundleGroupId || undefined : undefined,
           spec: sku.color || '默认',
           size: sku.size || '均码',
           barcode: '',
@@ -989,7 +994,11 @@ const pageDefinition = {
         };
       });
 
+      const videoUrl = this.data.videoUrl || '';
+      const uploadedVideoUrl = videoUrl && this.isTemporaryPath(videoUrl)
+        ? await this.uploadFile(videoUrl, 'video/mp4') : videoUrl;
       const productData = {
+        videoUrl: uploadedVideoUrl || null,
         name: title,
         costPrice: this.productCost(this.data.costPrice),
         pricingRuleId: String(this.data.pricingRuleId),
@@ -1019,7 +1028,7 @@ const pageDefinition = {
             skus: (bg.skuList || []).filter(sku => !sku._toBeRemoved).map(sku => {
               const stock = String(sku.stock == null ? '' : sku.stock).trim();
               if (stock && (!/^\d+$/.test(stock) || Number(stock) > 999999999)) throw new Error('库存必须为0到999999999的整数');
-              return { spec: sku.color || '默认', size: sku.size || '均码', barcode: '',
+              return { id: this.data.editMode ? sku.skuId || undefined : undefined, bundleGroupId: this.data.editMode ? bg.id || undefined : undefined, spec: sku.color || '默认', size: sku.size || '均码', barcode: '',
                 costPrice: this.skuCost(sku.costPrice), retailPrice: Number(sku.price),
                 stockMain: stock === '' ? 0 : Number(stock), isUnlimitedStock: stock === '',
                 imageUrl: sku.image || null, sizeId: sku.sizeId || null };
@@ -1034,13 +1043,13 @@ const pageDefinition = {
       if (editMode && productId) {
         // 编辑模式：更新已有商品
         wx.showLoading({ title: '更新商品...', mask: true });
-        await api.put('/live-products/' + productId, productData);
+        await this.submitDraftProduct(productData);
         wx.hideLoading();
         wx.showToast({ title: '更新成功!', icon: 'success' });
       } else {
         // 创建模式：新增直播商品
         wx.showLoading({ title: '创建商品...', mask: true });
-        await api.post('/live-products?sessionId=' + sessionId, productData);
+        await this.submitDraftProduct(productData);
         wx.hideLoading();
         wx.showToast({ title: '上架成功!', icon: 'success' });
       }
@@ -1061,11 +1070,7 @@ const pageDefinition = {
       wx.disableAlertBeforeUnload();
       this._alertEnabled = false;
     }
-    try {
-      await this.clearDraft();
-    } catch (e) {
-      console.warn('草稿清理失败，商品已保存成功:', e);
-    }
+    // 草稿已在后端商品保存事务中消费。
 
     setTimeout(() => {
       wx.navigateBack();
@@ -1230,16 +1235,16 @@ const pageDefinition = {
       sizeOptions: data.sizeOptions,
       colors: data.colors,
       skuList: data.skuList.map(function(sku) {
-        return { skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size, costPrice: sku.costPrice, price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved };
+        return { skuId: sku.skuId, bundleGroupId: sku.bundleGroupId, sizeId: sku.sizeId, color: sku.color, size: sku.size, costPrice: sku.costPrice, price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved };
       }),
       displayPrice: data.displayPrice,
       isBundleMode: data.isBundleMode,
       activeGroupIndex: data.activeGroupIndex,
       bundleGroups: data.bundleGroups.map(function(bg) {
         return {
-          name: bg.name, colors: bg.colors, sizeOptions: bg.sizeOptions,
+          id: bg.id, name: bg.name, colors: bg.colors, sizeOptions: bg.sizeOptions,
           skuList: (bg.skuList || []).map(function(sku) {
-            return { skuId: sku.skuId, sizeId: sku.sizeId, color: sku.color, size: sku.size, costPrice: sku.costPrice, price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved };
+            return { skuId: sku.skuId, bundleGroupId: sku.bundleGroupId, sizeId: sku.sizeId, color: sku.color, size: sku.size, costPrice: sku.costPrice, price: sku.price, stock: sku.stock, image: sku.image || '', _toBeRemoved: sku._toBeRemoved };
           })
         };
       })
@@ -1250,39 +1255,6 @@ const pageDefinition = {
   saveDraft: function() {
     return this.saveProductDraft();
   },
-  clearDraft: async function() {
-    try {
-      await draft.removeDraft();
-    } catch (e) {
-      console.warn('清除草稿失败:', e);
-    }
-  },
-
-  checkDraft: async function() {
-    var self = this;
-    var record = await draft.loadDraft();
-    if (!record || !record.draftData) return;
-
-    // 一个账号只存一份草稿：只恢复本页面对应场景的草稿，别把普通商品草稿恢复成直播商品
-    if (record.draftType !== this.getDraftType()) return;
-    if (String(record.relatedId || '') !== this.getDraftRelatedId()) return;
-
-    var savedAt = record.savedAt ? new Date(record.savedAt).toLocaleString() : '未知时间';
-
-    wx.showModal({
-      title: '发现草稿',
-      content: '上次编辑时间：' + savedAt + '\n\n是否恢复草稿内容？',
-      confirmText: '恢复',
-      cancelText: '忽略',
-      success: function(res) {
-        if (res.confirm) {
-          self.restoreDraft(record.draftData);
-        }
-        self._updateExitGuard();
-      }
-    });
-  },
-
   // 恢复草稿：草稿里的图片已是 CDN URL，缺失字段一律用默认值兜底
   restoreDraft(draftData) {
     var data = this.data;
@@ -1315,7 +1287,7 @@ const pageDefinition = {
     if (restored.isBundleMode && d.bundleGroups) {
       restored.bundleGroups = d.bundleGroups.map(function(bg) {
         return {
-          name: bg.name || '',
+          id: bg.id, name: bg.name || '',
           colors: bg.colors || [],
           sizeOptions: bg.sizeOptions || [],
           skuList: (bg.skuList || []).map(function(sku) {

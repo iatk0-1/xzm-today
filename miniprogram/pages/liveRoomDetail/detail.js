@@ -3,10 +3,12 @@ const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/liveRoomDetail/detail.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const draft = require('../../utils/draft');
 const { formatStock, hasStock } = require('../../utils/stock');
 
 Page(pageSync.wrap({
   data: {
+    draftCount: 0,
     sessionId: null,
     session: {},
     products: [],
@@ -39,6 +41,13 @@ Page(pageSync.wrap({
     convertProduct: null
   },
 
+  async refreshDraftCount() {
+    if (!auth.isAdmin() || !this.data.sessionId) return;
+    try { const value = await draft.summary({ sessionId: this.data.sessionId }); this.setData({ draftCount: Number(value.sessionCount) }); }
+    catch (error) { console.warn('加载本场草稿数量失败:', error); }
+  },
+  goToDraftBox() { wx.navigateTo({ url: '/pages/productDrafts/index?sessionId=' + encodeURIComponent(this.data.sessionId) }); },
+
   onLoad: function(options) {
     if (options.id) {
       this.setData({ sessionId: options.id });
@@ -55,6 +64,7 @@ Page(pageSync.wrap({
   },
 
   onShow: function() {
+    this.refreshDraftCount();
     this.checkAdmin();
   },
 

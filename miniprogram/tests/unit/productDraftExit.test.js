@@ -31,10 +31,18 @@ function harness(file, { save, record, manager = false, product, useVideoCover, 
     post: async url => url.endsWith('/preview') ? { price: '20' } : {}
   };
   const draft = {
+    createKey: require('../../utils/draft').createKey,
+    formatTime: require('../../utils/draft').formatTime,
+    editorOptions: require('../../utils/draft').editorOptions,
+    context: async options => ({ token: 'test-context', sessionId: options.sessionId }),
+    summary: async () => ({ total: record ? 1 : 0 }),
+    list: async options => ({ content: record && String(record.relatedId) === String(options.relatedId)
+      && record.draftType === options.draftType ? [{ ...record, id: 'draft-1', version: 1 }] : [] }),
     isRemoteUrl: require('../../utils/draft').isRemoteUrl,
-    loadDraft: async () => record || null,
+    loadDraft: async () => record ? { id: 'draft-1', version: 1, contextToken: 'test-context', ...record } : null,
     removeDraft: async () => events.push(['delete']),
-    saveDraft: async (data, upload, opts) => { events.push(['save', structuredClone(data), opts]); if (save) await save(data, upload, opts); }
+    saveDraft: async (data, upload, opts) => { events.push(['save', structuredClone(data), opts]); if (save) await save(data, upload, opts);
+      return { id: opts.id || 'draft-1', version: Number(opts.version || 0) + 1, draftData: data, savedAt: '2026-10-17T12:00:00+08:00' }; }
   };
   const cache = new Map();
   function load(filename) {
@@ -254,11 +262,11 @@ test('草稿媒体上传失败拒绝整次保存，不提交缺失图片的草�
     require: () => ({ post: async (url, body) => events.push([url, body]) })
   });
   await assert.rejects(module.exports.saveDraft({ mediaList: [{ url: 'wx://tmp/image' }] },
-    async () => { throw new Error('上传失败'); }), /上传失败/);
+    async () => { throw new Error('上传失败'); }, {}), /上传失败/);
   assert.equal(events.length, 0);
   const types = [];
   await module.exports.saveDraft({ videoUrl: 'wx://tmp/video', mediaList: [{ url: 'https://tmp/image' }] },
-    async (file, type) => { types.push(type); return 'https://example.com/' + types.length; });
+    async (file, type) => { types.push(type); return 'https://example.com/' + types.length; }, {});
   assert.deepEqual(types, ['video/mp4', 'image/jpeg']);
   assert.equal(events.length, 1);
 });

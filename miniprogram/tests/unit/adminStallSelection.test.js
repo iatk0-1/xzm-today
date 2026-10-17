@@ -28,6 +28,11 @@ function setup({ manager = true, userId = 8, saved, assigned = [], failPublish =
         page.canManuallyPrice = () => !manager;
         page.productCost = value => require('../../utils/managerFinance').money(value);
         page.skuCost = value => require('../../utils/managerFinance').money(value);
+        page.submitDraftProduct = async body => {
+          submissions.push({ url: page.data.editId ? '/products/' + page.data.editId : '/products', body });
+          if (failPublish) throw new Error('模拟发布失败');
+          return { product: { id: 9 } };
+        };
       } };
       if (name.endsWith('/purchaseNotice')) return require('../../utils/purchaseNotice');
       if (name.endsWith('/managerFinance')) return require('../../utils/managerFinance');

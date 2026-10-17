@@ -133,9 +133,11 @@ const pageDefinition = {
   },
 
   async onLoad(options) {
+    this._productLoadFailed = false;
     try {
       await auth.ensureAuthenticated({ silent: true });
     } catch (err) {
+      this._productLoadFailed = true;
       console.error('管理员页面认证恢复失败:', err);
       wx.showToast({ title: getErrorMessage(err, '登录状态恢复失败，请稍后重试'), icon: 'none' });
       return;
@@ -147,6 +149,7 @@ const pageDefinition = {
         const stalls = await api.get('/stall-managers/stalls/mine');
         this.setData({ assignedStalls: stalls || [], recentStalls: stalls || [] });
       } catch (err) {
+        this._productLoadFailed = true;
         wx.showToast({ title: getErrorMessage(err, '加载负责档口失败'), icon: 'none' });
         return;
       }
@@ -216,6 +219,7 @@ const pageDefinition = {
 
   // 加载商品详情用于编辑
   loadProductForEdit: async function(productId) {
+    this._productLoadFailed = false;
     wx.showLoading({ title: '加载中...' });
     try {
       const res = await api.get(`/products/${productId}?manage=true`);
@@ -466,6 +470,7 @@ const pageDefinition = {
       wx.hideLoading();
       this.checkDraft();
     } catch (err) {
+      this._productLoadFailed = true;
       console.error('加载商品失败:', err);
       wx.hideLoading();
       wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
@@ -474,6 +479,7 @@ const pageDefinition = {
 
   // 加载直播商品详情用于转换
   loadLiveProductForConvert: async function(liveProductId) {
+    this._productLoadFailed = false;
     wx.showLoading({ title: '加载中...' });
     try {
       // 调用直播商品详情接口
@@ -676,6 +682,7 @@ const pageDefinition = {
         icon: 'success'
       });
     } catch (err) {
+      this._productLoadFailed = true;
       console.error('加载直播商品失败:', err);
       wx.hideLoading();
       wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
@@ -1996,7 +2003,7 @@ const pageDefinition = {
       if (editId) {
         // 编辑模式：调用更新接口
         wx.showLoading({ title: '保存修改...', mask: true });
-        const updateRes = await api.put(`/products/${editId}`, productData);
+        const updateRes = await this.submitDraftProduct(productData);
         const eventChannel = this.getOpenerEventChannel && this.getOpenerEventChannel();
         if (eventChannel && eventChannel.emit) {
           eventChannel.emit('productUpdated', { ...(updateRes.product || updateRes), schedule: updateRes.schedule || null });
@@ -2005,28 +2012,8 @@ const pageDefinition = {
       } else {
         // 创建模式：调用创建接口
         wx.showLoading({ title: '创建商品...', mask: true });
-        const createRes = await api.post('/products', productData);
+        await this.submitDraftProduct(productData);
         wx.hideLoading();
-
-        // 如果是从直播商品转换而来，调用关联接口
-        if (this.data.convertFromLiveProductId) {
-          wx.showLoading({ title: '关联商品...', mask: true });
-          try {
-            // 后端返回格式：{ product: { id: xxx, ... }, skus: [...] }
-            const newProductId = createRes.product?.id || createRes.id;
-            if (newProductId) {
-              await api.post(`/live-products/${this.data.convertFromLiveProductId}/link-normal?normalProductId=${newProductId}`);
-              wx.hideLoading();
-            } else {
-              wx.hideLoading();
-              console.warn('无法获取新商品 ID，跳过关联');
-            }
-          } catch (linkErr) {
-            wx.hideLoading();
-            console.error('关联直播商品失败:', linkErr);
-            // 关联失败不影响主流程，只显示警告
-          }
-        }
       }
 
       // 发布成功时再记一次，确保从草稿恢复的档口也能用于下次发布。
@@ -2038,8 +2025,7 @@ const pageDefinition = {
         wx.disableAlertBeforeUnload();
         this._alertEnabled = false;
       }
-      // 清除草稿
-      this.clearDraft();
+      // 草稿已由后端在商品保存事务中消费。
 
       wx.showToast({ title: editId ? '修改成功!' : '发布成功!', icon: 'success' });
       setTimeout(() => {
@@ -2664,38 +2650,7 @@ const pageDefinition = {
   saveDraft: function() {
     return this.saveProductDraft();
   },
-  clearDraft: async function() {
-    try {
-      await draft.removeDraft();
-    } catch (e) {
-      // ignore
-    }
-  },
-
-  checkDraft: async function() {
-    var self = this;
-    var draftRes = await draft.loadDraft();
-    if (!draftRes) return;
-
-    // 一个账号只存一份草稿：忽略直播商品发布页存的草稿，避免两边互相恢复错数据
-    if (draftRes.draftType && draftRes.draftType.indexOf('live_') === 0) return;
-    if (draftRes.draftType !== this._draftType
-      || String(draftRes.relatedId || '') !== String(this._relatedId || '')) return;
-
-    var savedAt = draftRes.savedAt ? new Date(draftRes.savedAt).toLocaleString() : '未知时间';
-
-    wx.showModal({
-      title: '发现草稿',
-      content: '上次编辑时间：' + savedAt + '\n\n是否恢复草稿内容？',
-      confirmText: '恢复',
-      cancelText: '忽略',
-      success: function(res) {
-        if (res.confirm) {
-          self.restoreDraft(draftRes.draftData);
-        }
-      }
-    });
-  },
+  // 草稿恢复、保存和发布清理由 productDraftExit 统一管理。
 
   // 恢复草稿：向下兼容 — 缺失字段用默认值，多余字段自动忽略
   restoreDraft: function(draftData) {

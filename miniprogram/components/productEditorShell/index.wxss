@@ -8,7 +8,7 @@
 .editor-exit-title { font-size: 34rpx; font-weight: 600; color: #1a1a1a; text-align: center; }
 .editor-exit-content { font-size: 28rpx; color: #666; line-height: 1.6; margin: 24rpx 0 28rpx; }
 .editor-exit-actions { display: flex; align-items: center; gap: 16rpx; }
-.editor-exit-actions button { flex: 1; width: 0; min-width: 0; box-sizing: border-box; height: 72rpx; padding: 0 12rpx; font-size: 26rpx; line-height: 72rpx; border-radius: 10rpx; margin: 0; white-space: nowrap; }
+.editor-exit-actions button { flex: 1; width: 0; min-width: 0; box-sizing: border-box; height: 72rpx; padding: 0 6rpx; font-size: 23rpx; line-height: 72rpx; border-radius: 10rpx; margin: 0; white-space: nowrap; }
 .editor-exit-save { background: #07c160; color: #fff; }
 .editor-exit-discard { background: #f5f5f5; color: #b42318; }
 .editor-exit-cancel { background: #f5f5f5; color: #555; }

@@ -102,3 +102,17 @@ test('批量删除心愿仅广播后端确认删除的心愿ID', async () => {
     [{ entity: 'wishes', id: '101', removed: true }, { entity: 'wishes', id: '102', removed: true }]);
   page.onUnload();
 });
+
+test('新版商品提交同步普通编辑、直播新增和转换来源', async () => {
+  const batches = [];
+  const page = sync.wrap({}, changes => batches.push(changes));
+  page.onLoad();
+  sync.recordMutation('/product-submissions/v2', 'POST', { draftType: 'edit' }, { product: { id: '501' } });
+  sync.recordMutation('/product-submissions/v2', 'POST', { draftType: 'live_create', sessionId: '601' }, { product: { id: '502' } });
+  sync.recordMutation('/product-submissions/v2', 'POST', { draftType: 'convert', relatedId: '503' }, { product: { id: '504' } });
+  await page.onShow();
+  assert.deepEqual(batches[0].map(item => [item.entity, item.id]),
+    [['products', '501'], ['live-products', '502'], ['products', '504'], ['live-products', '503']]);
+  assert.equal(batches[0][1].sessionId, '601');
+  page.onUnload();
+});

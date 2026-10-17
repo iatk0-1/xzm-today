@@ -3,6 +3,7 @@
   <view class="admin-header">
     <view class="page-title">商品管理台</view>
     <view class="header-actions">
+      <view class="header-btn" bindtap="goToDraftBox">草稿箱（{{draftCount}}）</view>
       <view class="header-btn {{selectMode ? 'active' : ''}}" bindtap="toggleSelectMode">
         {{selectMode ? '退出多选' : '多选'}}
       </view>

@@ -1,4 +1,5 @@
 <product-editor-shell title="{{editId ? '编辑商品' : '新增商品'}}" show-exit-confirm="{{showExitConfirm}}" saving="{{draftSaving}}" bind:back="requestEditorExit" bind:cancel="cancelEditorExit" bind:saveexit="saveDraftAndExit" bind:discardexit="discardDraftAndExit" />
+<product-draft-status count="{{draftCount}}" saved="{{draftSavedText}}" dirty="{{draftDirty}}" saving="{{draftSaving}}" problem="{{draftProblem}}" warnings="{{draftWarnings}}" conflict="{{draftConflict}}" can-reload="{{editId || (editMode && productId)}}" bind:open="openDraftBox" bind:reload="reloadDraftSource" bind:latest="useLatestProduct" />
 <view class="admin-container">
   <view class="header-hint" wx:if="{{convertFromLiveProductId}}">
     请检查并编辑商品信息，确认后创建新商品并自动关联

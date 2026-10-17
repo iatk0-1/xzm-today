@@ -53,7 +53,10 @@ function pageHarness(file, { get, post, put, del, upload, manager = false } = {}
         if (name === './productDraftExit') return runModule('../../utils/productDraftExit.js');
         if (name.endsWith('/stock')) return { UNLIMITED_THRESHOLD: 999999999 };
         if (name.endsWith('/config')) return {};
-        if (name.endsWith('/draft')) return { loadDraft: async () => null, removeDraft: async () => {} };
+        if (name.endsWith('/draft') || name === './draft') return {
+          createKey: require('../../utils/draft').createKey, context: async () => ({ token: 'pricing-test' }),
+          summary: async () => ({ total: 0 }), list: async () => ({ content: [] })
+        };
         return {};
       }
     }, { filename: target });
@@ -74,6 +77,13 @@ function pageHarness(file, { get, post, put, del, upload, manager = false } = {}
     }
   };
   page._authorized = true;
+  // 本组只验证价格构造，商品提交事务由 multipleProductDrafts 专项验证。
+  if (page.submitDraftProduct) page.submitDraftProduct = data => {
+    const live = file.includes('liveRoomPublish');
+    const id = live ? page.data.productId : page.data.editId;
+    const url = live ? '/live-products' : '/products';
+    return id ? api.put(url + '/' + id, data) : api.post(url + (live ? '?sessionId=' + page.data.sessionId : ''), data);
+  };
   return { page, calls, wx, auth, storage };
 }
 
@@ -249,12 +259,12 @@ test('负责人直播新增档口列表和搜索只包含本人已分配档口',
   assert.equal(calls.some(call => call.url.startsWith('/stalls/search')), false);
 });
 
-test('负责人复制历史无档口商品为新增商品时清掉原规则并要求选择档口', () => {
+test('负责人复制历史无档口商品为新增商品时清掉原规则并要求选择档口', async () => {
   const { page } = pageHarness('../../pages/admin/admin.js', { manager: true });
   page._markDirty = () => {};
   page.setData({ isStallManager: true, editId: '10', selectedStalls: [], pricingRuleId: '31',
     pricingRuleSegments: [{ lower: 0, upper: null, formula: 'x+5' }] });
-  page.copyCurrentProduct();
+  await page.copyCurrentProduct();
   assert.equal(page.data.editId, null);
   assert.equal(page.data.pricingRuleId, '');
   assert.equal(page.data.pricingRuleSegments.length, 0);
@@ -1058,7 +1068,7 @@ test('发布套装编辑提交平铺SKU成本/分组/ID，复制商品清理旧S
   assert.equal(request.skus[0].imageUrl, 'https://example.com/top');
   assert.equal(request.skus[1].imageUrl, 'https://example.com/trousers');
   assert.equal(request.skus[1].bundleGroupId, '8');
-  page.copyCurrentProduct();
+  await page.copyCurrentProduct();
   assert.equal(page.data.editId, null);
   assert.equal(page.data.skuList[0].skuId, null);
   assert.equal(page.data.skuList[0].costPrice, '10');

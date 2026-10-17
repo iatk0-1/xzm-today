@@ -310,7 +310,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     };
   }
 
-  page.copyCurrentProduct = function() {
+  page.copyCurrentProduct = async function() {
     if (!this.data.editId) return;
     if (this.data.isBundleMode) this.saveActiveGroupState();
     const cloneSku = sku => ({ ...sku, skuId: null, bundleGroupId: null, soldMain: 0, lockedMain: 0 });
@@ -326,6 +326,15 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
     }
     this._draftType = 'create';
     this._relatedId = null;
+    this._draftContextOptions = { draftType: 'create', relatedId: null, sessionId: null };
+    this._draftId = null; this._draftVersion = null;
+    this._clientDraftKey = require('./draft').createKey();
+    this._pendingDraftSave = null; this._pendingProductSubmission = null;
+    this._lastProductResult = null; this._submitted = false;
+    this._draftEditorOptions = {};
+    this.setData({ draftSavedText: '', draftProblem: '', draftWarnings: [], draftConflict: false });
+    try { this._draftContextToken = (await require('./draft').context(this._draftContextOptions)).token; }
+    catch (error) { this._draftContextToken = null; this.setData({ draftProblem: getErrorMessage(error, '创建商品编辑上下文失败') }); }
     if (this.data.isStallManager) this.useStallPricing();
     this._markDirty();
     wx.showToast({ title: '已复制为新商品，请检查成本与规则', icon: 'none' });
@@ -334,7 +343,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
   ['toggleBundleMode', 'addBundleGroup', 'removeBundleGroup', 'onBundleGroupNameInput'].forEach(name => {
     const original = page[name];
     page[name] = function(...args) {
-      if (this.data.editId) {
+      if (this.data.editId || (this.data.editMode && this.data.productId)) {
         wx.showToast({ title: '已有商品保留分组结构，可复制为新商品调整', icon: 'none' });
         return;
       }
@@ -435,6 +444,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false } = {})
 
   const originalSubmit = page.submitProduct;
   page.submitProduct = async function() {
+    if (this._lastProductResult) return;
     if (this.data.draftSaving) {
       wx.showToast({ title: '正在保存草稿，请稍后保存商品', icon: 'none' });
       return;

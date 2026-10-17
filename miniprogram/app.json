@@ -57,6 +57,11 @@
   ],
   "subPackages": [
     {
+      "name": "productDrafts",
+      "root": "pages/productDrafts",
+      "pages": ["index"]
+    },
+    {
       "name": "productPublish",
       "root": "pages/admin",
       "pages": ["admin"]

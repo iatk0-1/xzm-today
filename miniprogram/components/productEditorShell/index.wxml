@@ -11,9 +11,9 @@
     <view class="editor-exit-title">有未保存的修改</view>
     <view class="editor-exit-content">保存草稿后退出，或直接退出不保存本次修改。</view>
     <view class="editor-exit-actions">
-      <button class="editor-exit-cancel" bindtap="cancel" disabled="{{saving}}">取消</button>
-      <button class="editor-exit-save" bindtap="save" loading="{{saving}}" disabled="{{saving}}">保存</button>
-      <button class="editor-exit-discard" bindtap="discard" disabled="{{saving}}">退出</button>
+      <button class="editor-exit-cancel" bindtap="cancel" disabled="{{saving}}">继续编辑</button>
+      <button class="editor-exit-save" bindtap="save" loading="{{saving}}" disabled="{{saving}}">保存并退出</button>
+      <button class="editor-exit-discard" bindtap="discard" disabled="{{saving}}">放弃本次修改</button>
     </view>
   </view>
 </view>
