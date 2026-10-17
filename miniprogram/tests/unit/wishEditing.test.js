@@ -39,7 +39,8 @@ function setup(role = 'admin', filename = 'publishWish') {
       return {};
     }
   });
-  const page = Object.assign({}, config, { data: plain(config.data) });
+  const page = Object.assign({}, config, { data: plain(config.data),
+    selectComponent: () => ({ pause: () => { calls.pauses = (calls.pauses || 0) + 1; } }) });
   page.setData = patch => {
     for (const [key, value] of Object.entries(patch)) {
       const keys = key.replace(/\[(\d+)\]/g, '.$1').split('.');
@@ -435,15 +436,12 @@ test('视频封面占用一个图片名额，99张图片时禁止勾选首帧', 
   assert.match(calls.toasts[0].title, /移除一张图片/);
 });
 
-test('详情视频滑走、页面隐藏和打开商品时暂停', () => {
+test('详情页面隐藏和打开商品时通知通用画廊暂停', () => {
   const { page, calls } = setup('user', 'wishDetail');
   page.setData({ wish: { images: [], videoUrl: 'https://old/video.mp4' } });
-  page.onWishMediaChange({ detail: { current: 0 } });
-  assert.equal(calls.pauses || 0, 0);
-  page.onWishMediaChange({ detail: { current: 1 } });
   page.onHide();
   page.onProductSheetVisibility({ detail: { visible: true } });
-  assert.equal(calls.pauses, 3);
+  assert.equal(calls.pauses, 2);
 });
 
 

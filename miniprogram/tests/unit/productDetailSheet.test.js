@@ -1,3 +1,4 @@
+const setupGallery = require('./helpers/mediaGallery');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -814,23 +815,23 @@ test('顶部视频沿用图片80%保留面积规则，横屏完整显示，换�
 });
 
 test('普通详情页顶部画廊使用同一套轨道位移，拖动过程不触发原生 swiper 分页', () => {
-  const { instance } = setup('productDetail');
+  const { instance } = setupGallery({ images: ['a.jpg', 'b.jpg'] });
   instance.data.embedded = false;
   instance.data.bannerImgs = ['a.jpg', 'b.jpg'];
   instance.data.product = { videoUrl: '' };
   instance.data.bannerIndex = 0;
   instance.data.bannerBaseWidth = 375;
   instance.data.bannerTranslateX = 0;
-  instance.onPageBannerTouchStart({ touches: [{ clientX: 200, clientY: 100 }] });
-  instance.onPageBannerTouchMove({ touches: [{ clientX: 120, clientY: 102 }] });
+  instance.onTouchStart({ touches: [{ clientX: 200, clientY: 100 }] });
+  instance.onTouchMove({ touches: [{ clientX: 120, clientY: 102 }] });
   assert.equal(instance.data.bannerTranslateX, -80);
   assert.equal(instance.data.bannerIndex, 0);
-  instance.onPageBannerTouchEnd();
+  instance.onTouchEnd();
   assert.equal(instance.data.bannerIndex, 1);
   assert.equal(instance.data.bannerTranslateX, -375);
-  instance.onPageBannerTouchStart({ touches: [{ clientX: 100, clientY: 100 }] });
-  instance.onPageBannerTouchMove({ touches: [{ clientX: 115, clientY: 170 }] });
-  instance.onPageBannerTouchEnd();
+  instance.onTouchStart({ touches: [{ clientX: 100, clientY: 100 }] });
+  instance.onTouchMove({ touches: [{ clientX: 115, clientY: 170 }] });
+  instance.onTouchEnd();
   assert.equal(instance.data.bannerIndex, 1, '纵向拖动不切换图片');
 });
 
@@ -900,35 +901,35 @@ test('视频完整显示时按画面比例缩小播放器，白色留边由外�
 });
 
 test('普通详情横滑锁住页面滚动，纵滑不锁，松手取消与多指恢复滚动', () => {
-  const { instance } = setup('productDetail');
+  const { instance } = setupGallery({ images: ['a.jpg', 'b.jpg'] });
   instance.data.embedded = false;
   instance.data.bannerImgs = ['a','b'];
   instance.data.product = {};
   const touch = (x,y) => ({ touches: [{ clientX:x, clientY:y }] });
-  instance.onPageBannerTouchStart(touch(200,100));
-  assert.equal(instance.data.pageBannerScrollLocked,false,'按下时保留原生纵向滚动');
-  instance.onPageBannerTouchMove(touch(120,110));
-  assert.equal(instance.data.pageBannerScrollLocked,true);
-  instance.onPageBannerTouchMove(touch(100,200));
-  assert.equal(instance.data.pageBannerScrollLocked,true,'横滑方向一旦确认不因后续上下偏移改变');
-  instance.onPageBannerTouchEnd();
-  assert.equal(instance.data.pageBannerScrollLocked,false);
-  instance.onPageBannerTouchStart(touch(200,100));
-  assert.equal(instance.data.pageBannerScrollLocked,false);
-  instance.onPageBannerTouchMove(touch(198,103));
-  assert.equal(instance.data.pageBannerScrollLocked,false,'方向未确认时不抢原生滚动');
-  instance.onPageBannerTouchMove(touch(195,170));
-  assert.equal(instance.data.pageBannerScrollLocked,false);
-  instance.onPageBannerTouchMove(touch(80,175));
-  assert.equal(instance.data.pageBannerScrollLocked,false,'起手纵向后持续交给正文，不因横向偏移改成翻图');
-  instance.onPageBannerTouchEnd();
-  for (const cancel of [() => instance.onPageBannerTouchCancel(),
-    () => instance.onPageBannerTouchMove({ touches:[{},{}] })]) {
-    instance.onPageBannerTouchStart(touch(200,100));
-    instance.onPageBannerTouchMove(touch(120,102));
-    assert.equal(instance.data.pageBannerScrollLocked,true);
+  instance.onTouchStart(touch(200,100));
+  assert.equal(instance.data.scrollLocked,false,'按下时保留原生纵向滚动');
+  instance.onTouchMove(touch(120,110));
+  assert.equal(instance.data.scrollLocked,true);
+  instance.onTouchMove(touch(100,200));
+  assert.equal(instance.data.scrollLocked,true,'横滑方向一旦确认不因后续上下偏移改变');
+  instance.onTouchEnd();
+  assert.equal(instance.data.scrollLocked,false);
+  instance.onTouchStart(touch(200,100));
+  assert.equal(instance.data.scrollLocked,false);
+  instance.onTouchMove(touch(198,103));
+  assert.equal(instance.data.scrollLocked,false,'方向未确认时不抢原生滚动');
+  instance.onTouchMove(touch(195,170));
+  assert.equal(instance.data.scrollLocked,false);
+  instance.onTouchMove(touch(80,175));
+  assert.equal(instance.data.scrollLocked,false,'起手纵向后持续交给正文，不因横向偏移改成翻图');
+  instance.onTouchEnd();
+  for (const cancel of [() => instance.onTouchCancel(),
+    () => instance.onTouchMove({ touches:[{},{}] })]) {
+    instance.onTouchStart(touch(200,100));
+    instance.onTouchMove(touch(120,102));
+    assert.equal(instance.data.scrollLocked,true);
     cancel();
-    assert.equal(instance.data.pageBannerScrollLocked,false);
+    assert.equal(instance.data.scrollLocked,false);
   }
   const page = fs.readFileSync(path.resolve(__dirname,'../../pages/detail/detail.wxml'),'utf8');
   assert.match(page, /<scroll-view[^>]*scroll-y="\{\{!pageBannerScrollLocked\}\}"/);

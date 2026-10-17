@@ -13,6 +13,7 @@ Page(pageSync.wrap({
     likeAnimation: '',
     productSheetVisible: false,
     showVideo: false,
+    pageBannerScrollLocked: false,
     statusBarHeight: 20,
     navHeight: 64,
     linkedProducts: [],
@@ -103,11 +104,12 @@ Page(pageSync.wrap({
   stopVideoTap: function() {},
 
   pauseWishVideo: function() {
-    if (this.data.wish.videoUrl && wx.createVideoContext) wx.createVideoContext('wishBannerVideo', this).pause();
+    const gallery = this.selectComponent && this.selectComponent('#wishMediaGallery');
+    if (gallery && gallery.pause) gallery.pause();
   },
 
-  onWishMediaChange: function(e) {
-    if (e.detail.current !== 0) this.pauseWishVideo();
+  onGalleryScrollLockChange: function(e) {
+    this.setData({ pageBannerScrollLocked: !!e.detail.locked });
   },
 
   onWishVideoError: function() {
@@ -430,15 +432,6 @@ Page(pageSync.wrap({
     }
     if (getCurrentPages().length > 1) wx.navigateBack();
     else wx.reLaunch({ url: '/pages/market/market' });
-  },
-
-  // 图片全屏预览
-  previewImage: function(e) {
-    var images = this.data.wish.images || [];
-    var index = e && e.currentTarget ? Number(e.currentTarget.dataset.index || 0) : 0;
-    if (images.length > 0) {
-      wx.previewImage({ urls: images, current: images[index] || images[0] });
-    }
   },
 
   onShareAppMessage: function(res) {

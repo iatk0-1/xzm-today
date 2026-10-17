@@ -3,7 +3,6 @@ const api = require('../../utils/api');
 const { normalizeProductImages } = require('../../utils/productImage');
 const { getBannerImageMode, getDetailImageMode } = require('../../utils/productGallery');
 const { getPurchaseNotice } = require('../../utils/purchaseNotice');
-const { resolveDirection } = require('../../utils/productSheetGesture');
 const auth = require('../../utils/auth');
 const { formatStock, hasStock, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
 const { findSelectedSku, getSkuOptions, getDefaultSkuSelection, getSkuOptionSelection } = require('../../utils/skuSelection');
@@ -29,10 +28,6 @@ function createProductDetailConfig() {
     bannerImageModes: [],
     bannerVideoFit: 'contain',
     bannerVideoStyle: 'width: 100%; height: 100%;',
-    bannerBaseWidth: 375,
-    bannerBaseHeight: 468.75,
-    bannerTranslateX: 0,
-    bannerDragging: false,
     pageBannerScrollLocked: false,
     lookbookImgs: [],
     detailImgs: [],
@@ -108,7 +103,6 @@ function createProductDetailConfig() {
   },
 
   onHide: function() {
-    if (!this.data.embedded) this.onPageBannerTouchCancel();
     this._videoFloatDrag = null;
     this.pauseProductVideos();
   },
@@ -121,6 +115,8 @@ function createProductDetailConfig() {
   },
 
   pauseProductVideos: function() {
+    const gallery = this.selectComponent && this.selectComponent('#detailMediaGallery');
+    if (gallery && gallery.pause) gallery.pause();
     if (!wx.createVideoContext) return;
     ['productBannerVideo', 'mainFullscreenVideo'].forEach(id => {
       const video = wx.createVideoContext(id, this);
@@ -140,57 +136,8 @@ function createProductDetailConfig() {
     this.setData({ bannerIndex: e.detail.current });
   },
 
-  onPageBannerTouchStart: function(e) {
-    if (this.data.embedded || !e.touches || e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    this._pageBannerTouch = { x: touch.clientX, y: touch.clientY, dx: 0, direction: '' };
-    // 与全屏弹窗一致：起手保持原生纵滚可用，只在确认横滑后锁定。
-    // 起手禁用 scroll-y 会使原生滚动容器错过整次纵向手势。
-    this.setData({ bannerDragging: true, pageBannerScrollLocked: false });
-  },
-
-  onPageBannerTouchMove: function(e) {
-    const swipe = this._pageBannerTouch;
-    if (this.data.embedded || !swipe) return;
-    if (!e.touches || e.touches.length !== 1) return this.onPageBannerTouchCancel();
-    const touch = e.touches[0];
-    swipe.dx = touch.clientX - swipe.x;
-    const dy = touch.clientY - swipe.y;
-    if (!swipe.direction) swipe.direction = resolveDirection(swipe.dx, dy, true);
-    if (swipe.direction === 'vertical' && this.data.pageBannerScrollLocked) {
-      this.setData({ pageBannerScrollLocked: false });
-    }
-    if (swipe.direction !== 'horizontal') return;
-    if (!this.data.pageBannerScrollLocked) this.setData({ pageBannerScrollLocked: true });
-    this._suppressTapUntil = Date.now() + 350;
-    const count = this.data.bannerImgs.length + (this.data.product.videoUrl ? 1 : 0);
-    const width = this.data.bannerBaseWidth || 375;
-    const min = -Math.max(0, (count - 1) * width);
-    const base = -(this.data.bannerIndex || 0) * width;
-    const raw = base + swipe.dx;
-    const resistance = value => width * 0.18 * value / (width + value);
-    const offset = raw > 0 ? resistance(raw) : raw < min ? min - resistance(min - raw) : raw;
-    this.setData({ bannerTranslateX: offset });
-  },
-
-  onPageBannerTouchEnd: function() {
-    const swipe = this._pageBannerTouch;
-    if (this.data.embedded || !swipe) return;
-    this._pageBannerTouch = null;
-    const count = this.data.bannerImgs.length + (this.data.product.videoUrl ? 1 : 0);
-    let next = this.data.bannerIndex || 0;
-    if (swipe.direction === 'horizontal' && Math.abs(swipe.dx) >= 40) {
-      next = Math.max(0, Math.min(count - 1, next + (swipe.dx < 0 ? 1 : -1)));
-    }
-    this.setData({ bannerIndex: next, bannerDragging: false, pageBannerScrollLocked: false, bannerTranslateX: -next * (this.data.bannerBaseWidth || 375) });
-  },
-
-  onPageBannerTouchCancel: function() {
-    const swipe = this._pageBannerTouch;
-    if (this.data.embedded || !swipe) return;
-    this._pageBannerTouch = null;
-    const index = this.data.bannerIndex || 0;
-    this.setData({ bannerDragging: false, pageBannerScrollLocked: false, bannerTranslateX: -index * (this.data.bannerBaseWidth || 375) });
+  onGalleryScrollLockChange: function(e) {
+    this.setData({ pageBannerScrollLocked: !!e.detail.locked });
   },
 
   onBannerVideoMetadata: function(e) {
@@ -337,9 +284,6 @@ function createProductDetailConfig() {
         sizes = [...new Set(skuMatrix.map(s => s.size))].filter(s => s);
       }
 
-      const bannerWidth = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).windowWidth || 375;
-      const bannerHeight = bannerWidth * 1.25;
-
       this.setData({
         loading: false, loadError: '',
         product: {
@@ -366,10 +310,6 @@ function createProductDetailConfig() {
         bannerImageModes: banners.map(url => this._bannerModeCache && this._bannerModeCache.get(url) || 'aspectFit'),
         bannerVideoFit: this._bannerVideoFitCache && this._bannerVideoFitCache.get(product.videoUrl) || 'contain',
         bannerVideoStyle: this._bannerVideoStyleCache && this._bannerVideoStyleCache.get(product.videoUrl) || 'width: 100%; height: 100%;',
-        bannerBaseWidth: bannerWidth,
-        bannerBaseHeight: bannerHeight,
-        bannerTranslateX: 0,
-        bannerDragging: false,
         lookbookImgs: product.lookbookImages || [],
         detailImgs: product.detailImages || [],
         detailImageModes: (product.detailImages || []).map(() => 'aspectFit'),
@@ -1004,6 +944,7 @@ function createProductDetailConfig() {
 
   openVideoOverlay: function() {
     if (Date.now() < (this._suppressTapUntil || 0)) return;
+    this.pauseProductVideos();
     this.setData({ showVideo: true });
     clearTimeout(this._videoTimer);
     this._videoTimer = setTimeout(() => {

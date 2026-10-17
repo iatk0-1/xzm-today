@@ -1,18 +1,11 @@
 <view class="wish-nav" wx:if="{{!productSheetVisible}}" style="padding-top: {{statusBarHeight}}px;">
   <view class="wish-nav-row"><view class="nav-back" bindtap="goBack" aria-role="button" aria-label="返回"><view class="back-arrow"></view></view></view>
 </view>
-<scroll-view class="wish-page-scroll" scroll-y="{{!productSheetVisible && !showVideo}}" style="height: 100vh;" enhanced="true" show-scrollbar="false">
+<scroll-view class="wish-page-scroll" scroll-y="{{!productSheetVisible && !showVideo && !pageBannerScrollLocked}}" style="height: 100vh;" enhanced="true" show-scrollbar="false">
 <view class="page-wrapper">
 
-  <!-- 心愿图片 -->
-  <swiper class="wish-swiper" indicator-dots="{{wish.images.length + (wish.videoUrl ? 1 : 0) > 1}}" circular="{{false}}" wx:if="{{wish.images.length || wish.videoUrl}}" bindchange="onWishMediaChange">
-    <swiper-item wx:if="{{wish.videoUrl}}">
-      <video id="wishBannerVideo" class="wish-video" src="{{wish.videoUrl}}" poster="{{wish.image}}" controls object-fit="contain" binderror="onWishVideoError" />
-    </swiper-item>
-    <swiper-item wx:for="{{wish.images}}" wx:key="*this">
-      <image class="wish-image" src="{{item}}" mode="aspectFill" catchtap="previewImage" data-index="{{index}}"></image>
-    </swiper-item>
-  </swiper>
+  <media-gallery id="wishMediaGallery" images="{{wish.images}}" video-url="{{wish.videoUrl}}" poster="{{wish.image}}" media-key="{{wishId}}"
+    inactive="{{productSheetVisible || showVideo || showShareTemplates}}" bindscrolllockchange="onGalleryScrollLockChange" />
 
   <!-- 内容区 -->
   <view class="content-section">

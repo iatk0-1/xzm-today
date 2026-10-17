@@ -1,0 +1,11 @@
+:host { display: block; width: 100%; }
+.media-gallery { position: relative; width: 100%; height: 125vw; overflow: hidden; background: #fff; }
+.banner-strip { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.banner-track { display: flex; transform-origin: left top; will-change: transform; }
+.banner-cell { flex-shrink: 0; height: 100%; overflow: hidden; }
+.banner-video-cell { display: flex; align-items: center; justify-content: center; background: #fff; }
+.swiper-img, .swiper-video { width: 100%; height: 100%; display: block; background: #fff; }
+.banner-dots { position: absolute; bottom: 12px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; pointer-events: none; }
+.banner-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(0,0,0,.15); }
+.banner-dot.active { background: #111; }
+.gallery-settling { transition: transform .28s cubic-bezier(.22,.61,.36,1); }

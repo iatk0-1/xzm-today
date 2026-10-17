@@ -1,6 +1,7 @@
 {
   "usingComponents": {
-    "product-detail-sheet": "../../components/productDetailSheet/index"
+    "product-detail-sheet": "../../components/productDetailSheet/index",
+    "media-gallery": "../../components/mediaGallery/index"
   },
   "navigationBarTitleText": "心愿详情",
   "navigationStyle": "custom"

@@ -9,26 +9,8 @@
   <view class="product-load-state" wx:if="{{loading}}">正在加载商品...</view>
   <view class="product-load-state product-load-error" wx:elif="{{loadError}}" bindtap="retryProduct">{{loadError}} · 点击重试</view>
   <view class="main-swiper-wrap {{embedded && galleryAnimating ? 'gallery-animating' : ''}}" style="{{embedded ? 'height: ' + galleryHeight + 'px;' : ''}}" wx:if="{{product.id}}" data-gesture="image" data-gallery="banner">
-    <view wx:if="{{!embedded}}" class="banner-strip page-banner-strip" data-gesture="image" data-gallery="banner"
-          bindtouchstart="onPageBannerTouchStart" bindtouchmove="onPageBannerTouchMove"
-          bindtouchend="onPageBannerTouchEnd" bindtouchcancel="onPageBannerTouchCancel">
-      <view class="banner-track {{bannerDragging ? '' : 'gallery-settling'}}"
-            style="{{'height: ' + bannerBaseHeight + 'px; transform: translate3d(' + bannerTranslateX + 'px, 0, 0);'}}">
-        <view wx:if="{{product.videoUrl}}" class="banner-cell banner-video-cell" style="width: {{bannerBaseWidth}}px;">
-          <video id="productBannerVideo" class="swiper-video" style="{{bannerVideoStyle}}" src="{{product.videoUrl}}" poster="{{product.image}}"
-                 object-fit="{{bannerVideoFit}}" data-src="{{product.videoUrl}}"
-                 bindloadedmetadata="onBannerVideoMetadata" show-play-btn="{{true}}" controls="{{false}}" autoplay="{{false}}" muted loop />
-        </view>
-        <view wx:for="{{bannerImgs}}" wx:key="*this" class="banner-cell" style="width: {{bannerBaseWidth}}px;">
-          <image class="swiper-img" src="{{item}}" mode="{{bannerImageModes[index] || 'aspectFit'}}"
-                 bindload="onBannerImageLoad" data-src="{{item}}" catchtap="previewBannerImage" data-index="{{index}}" />
-        </view>
-      </view>
-      <view wx:if="{{bannerImgs.length + (product.videoUrl ? 1 : 0) > 1}}" class="banner-dots">
-        <view wx:if="{{product.videoUrl}}" class="banner-dot {{bannerIndex === 0 ? 'active' : ''}}" />
-        <view wx:for="{{bannerImgs}}" wx:key="*this" class="banner-dot {{bannerIndex === index + (product.videoUrl ? 1 : 0) ? 'active' : ''}}" />
-      </view>
-    </view>
+    <media-gallery wx:if="{{!embedded}}" id="detailMediaGallery" images="{{bannerImgs}}" video-url="{{product.videoUrl}}" poster="{{product.image}}" media-key="{{product.id}}"
+      inactive="{{showVideo || showSku || showShareTemplates}}" bindscrolllockchange="onGalleryScrollLockChange" />
     <view wx:else class="banner-strip" data-gesture="image" data-gallery="banner">
       <view class="banner-track {{gallerySettling ? 'gallery-settling' : ''}} {{galleryAnimating ? 'gallery-transform-animating' : ''}}" style="{{'height: ' + galleryBaseHeight + 'px; transform: translate3d(' + galleryTranslateX + 'px, 0, 0) scale(' + galleryScale + ');'}}" data-gesture="image" data-gallery="banner">
         <view wx:if="{{product.videoUrl}}" class="banner-cell banner-video-cell" style="width: {{galleryBaseWidth}}px;" data-gesture="image" data-gallery="banner">
