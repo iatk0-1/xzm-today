@@ -7,9 +7,11 @@ const { groupStalls } = require('../../utils/productFilters');
 
 Page({
   data: {
-    navTop: 0,
-    navHeight: 0,
-    totalNavHeight: 0,
+    currentMainTab: '上新',
+    selectedStall: '',
+    stallList: [],
+    groupedStalls: [],
+    showAllPanel: false,
     keyword: '',
     appliedKeyword: '',
     results: [],
@@ -20,20 +22,6 @@ Page({
     showHistory: false,  // 控制搜索历史下拉框显示/隐藏
     focus: true,  // 搜索框获得焦点
     searchEditing: true,
-    currentMainTab: '上新',
-    salesMonths: 1,
-    salesPeriods: [
-      { months: 1, label: '近一个月' },
-      { months: 3, label: '近三个月' },
-      { months: 6, label: '近半年' },
-      { months: 12, label: '近一年' }
-    ],
-    selectedStall: '',
-    selectedTag: '',
-    stallList: [],
-    groupedStalls: [],
-    showSalesPanel: false,
-    showAllPanel: false,
     // 分页参数
     page: 1,
     pageSize: 20,
@@ -42,27 +30,12 @@ Page({
     searchType: 'all'  // 'all' 或 'keyword'
   },
 
-  // 先恢复入口条件，首次查询就使用首页当前的排序与筛选。
+  // 先恢复首页带来的档口，首次查询就应用筛选条件。
   onLoad: function(options = {}) {
     this._pageClosed = false;
-    const menu = wx.getMenuButtonBoundingClientRect();
-    this.setData({ navTop: menu.top, navHeight: menu.height, totalNavHeight: menu.bottom + 40 });
-    const months = Number(options.salesMonths);
-    let tab = options.tab || '';
-    try {
-      tab = decodeURIComponent(tab);
-    } catch (err) {
-      // 兼容外部链接中的不完整转义，无法识别的排序使用上新。
-    }
-    this.setData({
-      currentMainTab: tab === '销量' || options.sort === 'sales' ? '销量' : '上新',
-      salesMonths: [1, 3, 6, 12].includes(months) ? months : 1,
-      selectedStall: options.stallId || '',
-      selectedTag: options.tagId || ''
-    });
-    this.loadRecentSearches();
-    this.loadStallList();
-    return this.fetchAllProducts();
+    const stallId = options.stallId || '';
+    this.setData({ selectedStall: stallId, currentMainTab: stallId ? '档口' : '上新', showAllPanel: false });
+    return Promise.all([this.fetchAllProducts(), this.loadRecentSearches(), this.loadStallList()]);
   },
 
   loadStallList: async function() {
@@ -72,83 +45,44 @@ Page({
       if (!this._pageClosed) this.setData({ stallList: stalls, groupedStalls: groupStalls(stalls) });
     } catch (err) {
       console.error('加载档口列表失败:', err);
+      if (!this._pageClosed) this.setData({ stallList: [], groupedStalls: [] });
     }
-  },
-
-  hideFilterPanels: function() {
-    this.setData({ showSalesPanel: false, showAllPanel: false });
   },
 
   handleMainTabChange: function(e) {
     const tab = e.currentTarget.dataset.tab;
-    if (tab !== '上新' && tab !== '销量') return;
+    if (tab !== '上新' && tab !== '档口') return;
     this.finishSearchInput();
-    if (tab === '销量' && this.data.currentMainTab === '销量') {
-      this.setData({ showSalesPanel: !this.data.showSalesPanel, showAllPanel: false, showHistory: false });
-      return this.submitChangedKeyword();
+    this.setData({ currentMainTab: tab, showAllPanel: false });
+    if (tab === '上新') {
+      this.setData({ selectedStall: '' });
+      return this.doSearch();
     }
-    this.setData({ currentMainTab: tab, showSalesPanel: false, showAllPanel: false, showHistory: false });
-    return this.reloadFilteredProducts();
-  },
-
-  selectSalesPeriod: function(e) {
-    const months = Number(e.currentTarget.dataset.months);
-    if (![1, 3, 6, 12].includes(months)) return;
-    this.finishSearchInput();
-    this.setData({ salesMonths: months, currentMainTab: '销量', showSalesPanel: false });
-    return this.reloadFilteredProducts();
+    return this.submitChangedKeyword();
   },
 
   toggleAllPanel: function() {
     this.finishSearchInput();
-    this.setData({ showAllPanel: !this.data.showAllPanel, showSalesPanel: false, showHistory: false });
+    this.setData({ showAllPanel: !this.data.showAllPanel });
     return this.submitChangedKeyword();
+  },
+
+  closeAllPanel: function() {
+    this.setData({ showAllPanel: false });
   },
 
   selectStall: function(e) {
     const stallId = e.currentTarget.dataset.stall;
     this.finishSearchInput();
-    this.setData({ selectedStall: stallId === 'all' ? '' : stallId, showAllPanel: false, showSalesPanel: false });
-    return this.reloadFilteredProducts();
+    this.setData({ selectedStall: stallId === 'all' ? '' : stallId,
+      currentMainTab: '档口', showAllPanel: false });
+    return this.doSearch();
   },
 
-  reloadFilteredProducts: function() {
-    clearTimeout(this._blurTimer);
-    this.setData({ showHistory: false });
-    // 点击筛选项也属于离开输入框，把输入的关键词和新条件合并查询。
-    return this.queryProducts(true, this.data.keyword.trim());
-  },
-
-  submitChangedKeyword: function() {
-    const word = this.data.keyword.trim();
-    const applied = this._pendingSearch ? this._pendingSearch.word : this.data.appliedKeyword;
-    if (word !== applied) return this.queryProducts(true, word);
-  },
-
-  goBack: function() {
-    wx.navigateBack({ delta: 1, fail: () => wx.reLaunch({ url: '/pages/index/index' }) });
-  },
-
-  onSearchInputTap: function() {
-    if (!this.data.focus) this.setData({ focus: true, searchEditing: true });
-  },
-
-  stopTap: function() {},
-
-  // 收起输入只执行一次，筛选点击不再冒泡重复操作原生输入框和键盘。
-  finishSearchInput: function() {
-    clearTimeout(this._blurTimer);
-    this._searchBlurPending = false;
-    const wasFocused = this.data.focus;
-    if (wasFocused || this.data.searchEditing || this.data.showHistory) {
-      this.setData({ focus: false, searchEditing: false, showHistory: false });
-    }
-    if (wasFocused && typeof wx.hideKeyboard === 'function') wx.hideKeyboard();
-  },
-
-  onPageTap: function() {
+  goToCart: function() {
     this.finishSearchInput();
-    return this.submitChangedKeyword();
+    this.closeAllPanel();
+    wx.navigateTo({ url: '/pages/cart/cart' });
   },
 
   // 加载最近搜索记录
@@ -187,7 +121,7 @@ Page({
   onSearchFocus: function() {
     clearTimeout(this._blurTimer);
     this._searchBlurPending = false;
-    this.setData({ focus: true, searchEditing: true, showHistory: true, showSalesPanel: false, showAllPanel: false });
+    this.setData({ focus: true, searchEditing: true, showHistory: true, showAllPanel: false });
   },
 
   // 搜索框失去焦点
@@ -203,12 +137,26 @@ Page({
     }, 200);
   },
 
+  finishSearchInput: function() {
+    clearTimeout(this._blurTimer);
+    this._searchBlurPending = false;
+    const wasFocused = this.data.focus;
+    this.setData({ focus: false, searchEditing: false, showHistory: false });
+    if (wasFocused && typeof wx.hideKeyboard === 'function') wx.hideKeyboard();
+  },
+
+  submitChangedKeyword: function() {
+    const word = this.data.keyword.trim();
+    const applied = this._pendingSearch ? this._pendingSearch.word : this.data.appliedKeyword;
+    if (word !== applied) return this.queryProducts(true, word);
+  },
+
   doSearch: function(reset = true) {
     clearTimeout(this._blurTimer);
     reset = reset !== false;
     if (reset) this.finishSearchInput();
     const word = reset ? this.data.keyword.trim() : this.data.appliedKeyword;
-    this.setData({ showHistory: false, showSalesPanel: false, showAllPanel: false });
+    this.setData({ showHistory: false, showAllPanel: false });
     return this.queryProducts(reset, word);
   },
 
@@ -226,12 +174,10 @@ Page({
     }
     if (!this.data.hasMore) return;
     const version = this._queryVersion || 0;
-    const { page, pageSize, currentMainTab, salesMonths, selectedStall, selectedTag } = this.data;
-    const params = { page, size: pageSize, sort: currentMainTab === '销量' ? 'sales' : 'newest' };
+    const { page, pageSize, selectedStall } = this.data;
+    const params = { page, size: pageSize, sort: 'newest' };
     if (word) params.keyword = word;
-    if (currentMainTab === '销量') params.salesMonths = salesMonths;
     if (selectedStall) params.stallId = selectedStall;
-    if (selectedTag) params.tagId = selectedTag;
     this.setData({ loading: true, loadError: '' });
     if (reset) wx.showLoading({ title: word ? '搜索中...' : '加载中...' });
     try {
@@ -343,16 +289,19 @@ Page({
     });
   },
 
-  // 记录手指按下时的输入状态，避免 blur 先于 tap 到达时误进详情。
+  // 记住触摸开始时是否还在输入，避免失焦回调先完成导致本次点击误跳转。
   onProductTouchStart: function() {
     this._productTouchStartedWhileEditing = this.data.searchEditing || this.data.focus || this._searchBlurPending;
   },
 
-  // 编辑搜索时，点商品只结束输入并搜索；后续正常点击才进入详情。
+  // 输入中点商品只结束输入；之后正常点击才进入详情。
   goToDetail: function(e) {
     const dismissSearch = this.data.searchEditing || this.data.focus || this._searchBlurPending || this._productTouchStartedWhileEditing;
     this._productTouchStartedWhileEditing = false;
-    if (dismissSearch) return this.onPageTap();
+    if (dismissSearch) {
+      this.finishSearchInput();
+      return this.submitChangedKeyword();
+    }
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
       url: `/pages/detail/detail?id=${id}`

@@ -7,7 +7,6 @@ const auth = require('../../utils/auth');
 const managementNavigation = require('../../utils/managementNavigation');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const customerServiceUnread = require('../../utils/customerServiceUnread');
-const { groupStalls } = require('../../utils/productFilters');
 const { formatStock, hasStock, isProductSoldOut, isSkuSoldOut } = require('../../utils/stock');
 const { findSelectedSku, getSkuOptions, getDefaultSkuSelection, getSkuOptionSelection } = require('../../utils/skuSelection');
 const app = getApp();
@@ -21,14 +20,7 @@ Page(pageSync.wrap({
 
     // 2. 小红书同款交互参数
     currentMainTab: '上新',
-    showSalesPanel: false,
-    salesMonths: 1,
-    salesPeriods: [
-      { months: 1, label: '近一个月' },
-      { months: 3, label: '近三个月' },
-      { months: 6, label: '近半年' },
-      { months: 12, label: '近一年' }
-    ],
+    showStall: false,
     showTag: false,
     selectedStall: '',
     selectedTag: '',
@@ -109,16 +101,14 @@ Page(pageSync.wrap({
     const shareTab = options.tab || '';
 
     // 标签入口保持隐藏，带标签参数的分享页不主动展开标签面板。
-    // 兼容旧档口分享链接；档口筛选与上新/销量排序独立。
-    const currentMainTab = shareTab === '销量' ? '销量' : '上新';
-    const months = Number(options.salesMonths);
+    // 档口页仍按分享前的状态显示；没有筛选时回到默认的“上新”。
+    const currentMainTab = shareTab === '档口' || stallId ? '档口' : '上新';
 
     this.setData({
       currentMainTab: currentMainTab,
       selectedStall: stallId,
       selectedTag: tagId,
-      showSalesPanel: false,
-      salesMonths: [1, 3, 6, 12].includes(months) ? months : 1,
+      showStall: false,
       showTag: false,
       showAllPanel: false
     });
@@ -178,10 +168,12 @@ Page(pageSync.wrap({
     };
   },
 
-  // 档口筛选常驻，列表始终让开 88rpx 子导航。
+  // 列表滚动区尺寸：窗口高度减去顶部导航；档口/分类还要给吸顶子导航让位
   updateListMetrics: function() {
     const win = this.getWindowSize();
-    const listTop = Math.round(88 * win.width / 750);
+    const subNavVisible = this.data.currentMainTab === '档口' || this.data.currentMainTab === '分类';
+    // 列表只让开固定的 88rpx 子导航高度，避免商品卡片上方多出一截空白
+    const listTop = subNavVisible ? Math.round(88 * win.width / 750) : 0;
     const listHeight = Math.max(200, win.height - (this.data.totalNavHeight || 0) - listTop);
 
     if (listTop === this.data.listTop && listHeight === this.data.listHeight) return;
@@ -239,28 +231,13 @@ Page(pageSync.wrap({
   getProductsList: function(reset = true, options = {}) {
     const silent = options.silent === true;
 
-    if (reset) {
-      this._productsQueryVersion = (this._productsQueryVersion || 0) + 1;
-    }
-
-    // 切换条件时等待旧请求结束，再用最后一次选择重查；旧响应不再写入列表。
+    // 已有请求在飞行中：直接复用它，避免两次响应回来把列表搅乱
     if (this.data.loading) {
-      if (reset) {
-        if (!this._pendingProductsReset) {
-          this._pendingProductsReset = Promise.resolve(this._productsTask)
-            .catch(() => {})
-            .then(() => {
-              this._pendingProductsReset = null;
-              return this.getProductsList(true, options);
-            });
-        }
-        return this._pendingProductsReset;
-      }
       return this._productsTask || Promise.resolve();
     }
 
     if (reset) {
-      this.setData({ page: 1, productList: [], leftColumn: [], rightColumn: [], hasMore: true });
+      this.setData({ page: 1, productList: [], hasMore: true });
     }
 
     if (!this.data.hasMore) {
@@ -273,7 +250,6 @@ Page(pageSync.wrap({
   },
 
   fetchProducts: async function(reset, silent) {
-    const queryVersion = this._productsQueryVersion || 0;
     this.setData({ loading: true, loadError: '' });
 
     if (reset && !silent) {
@@ -281,15 +257,14 @@ Page(pageSync.wrap({
     }
 
     try {
-      const { page, pageSize, selectedStall, selectedTag, currentMainTab, salesMonths } = this.data;
+      const { page, pageSize, selectedStall, selectedTag } = this.data;
 
       // 构建查询参数
       const params = {
         page: page,
         size: pageSize,
-        sort: currentMainTab === '销量' ? 'sales' : 'newest'
+        sort: 'newest'
       };
-      if (currentMainTab === '销量') params.salesMonths = salesMonths;
 
       // 如果选择了档口，按档口筛选（使用 stall 参数）
       if (selectedStall) {
@@ -302,13 +277,16 @@ Page(pageSync.wrap({
       }
 
       const res = await api.get('/products/query', params);
-      if (queryVersion !== (this._productsQueryVersion || 0)) return;
 
       // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
       const newProducts = (res.content || []).map(function(product) {
         return Object.assign({}, product, { soldOut: isProductSoldOut(product) });
       });
       const hasMore = res.hasNext !== undefined ? res.hasNext : newProducts.length === pageSize;
+
+      if (reset && !silent) {
+        wx.hideLoading();
+      }
 
       const allProducts = reset ? newProducts : this.data.productList.concat(newProducts);
       
@@ -332,13 +310,13 @@ Page(pageSync.wrap({
         loading: false
       });
     } catch (err) {
-      console.error('拉取商品失败:', err);
-      if (queryVersion === (this._productsQueryVersion || 0)) {
-        this.setData({ loadError: getErrorMessage(err, '商品列表加载失败，请稍后重试') });
+      if (reset && !silent) {
+        wx.hideLoading();
       }
-    } finally {
-      if (reset && !silent) wx.hideLoading();
+      console.error('拉取商品失败:', err);
       this.setData({ loading: false });
+      this.setData({ loadError: getErrorMessage(err, '商品列表加载失败，请稍后重试') });
+    } finally {
       this._productsTask = null;
     }
   },
@@ -404,9 +382,45 @@ Page(pageSync.wrap({
     try {
       const stalls = await api.get('/stalls');
 
+      // ✨核心魔法：前端极简拼音首字母提取器
+      const getPinYinFirstLetter = (str) => {
+        if (!str || !str.trim()) return '#';
+        let char = str.trim()[0];
+        if (/[A-Za-z]/.test(char)) return char.toUpperCase(); // 英文直接大写
+        if (!/[\u4e00-\u9fa5]/.test(char)) return '#'; // 符号归入#
+        const letters = "ABCDEFGHJKLMNOPQRSTWXYZ".split('');
+        const zh = "阿八嚓哒妸发旮哈讥咔垃痳拿噢妑七呥扨它穵夕丫帀".split('');
+        for (let i = 0; i < zh.length; i++) {
+          if ((!zh[i+1] || zh[i+1].localeCompare(char, 'zh-Hans-CN') > 0) && char.localeCompare(zh[i], 'zh-Hans-CN') >= 0) {
+            return letters[i];
+          }
+        }
+        return '#';
+      };
+
+      // 数据清洗与 A-Z 分装
+      let groupedObj = {};
+      stalls.forEach(stall => {
+        let initial = getPinYinFirstLetter(stall.name);
+        if (!groupedObj[initial]) groupedObj[initial] = [];
+        groupedObj[initial].push(stall);
+      });
+
+      // 整理成按 A-Z 排序的数组，# 放最后
+      let groupedStalls = Object.keys(groupedObj).sort((a, b) => {
+        if (a === '#') return 1;
+        if (b === '#') return -1;
+        return a.localeCompare(b);
+      }).map(key => ({
+        letter: key,
+        list: groupedObj[key].slice().sort((a, b) =>
+          String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hans-CN')
+        )
+      }));
+
       this.setData({
         stallList: stalls, // 纯净的列表供滑动区使用，不加"全部"
-        groupedStalls: groupStalls(stalls)
+        groupedStalls: groupedStalls
       });
     } catch (err) {
       console.error('加载档口列表失败:', err);
@@ -430,27 +444,26 @@ Page(pageSync.wrap({
     this.setData({ isAdmin: !!auth.isAdmin(), isStallManager: !!auth.isStallManager() });
   },
 
-  // 排序与档口筛选独立，重复点击销量才展开时间范围。
+  // 小红书灵魂交互逻辑
   handleMainTabChange(e) {
     const tabName = e.currentTarget.dataset.tab;
-    if (tabName !== '上新' && tabName !== '销量') return;
-    if (tabName === '销量' && this.data.currentMainTab === '销量') {
-      this.setData({ showSalesPanel: !this.data.showSalesPanel, showAllPanel: false });
-      return;
+
+    if (tabName === '档口') {
+      this.setData({ currentMainTab: '档口', showStall: true, showTag: false, showAllPanel: false });
+    } else if (tabName === '分类') {
+      this.setData({ currentMainTab: '分类', showTag: true, showStall: false, showAllPanel: false });
+    } else if (tabName === '上新') {
+      this.setData({
+        currentMainTab: '上新', showStall: false, showTag: false, showAllPanel: false, selectedStall: '', selectedTag: ''
+      });
+      this.getProductsList();
     }
-    this.setData({ currentMainTab: tabName, showSalesPanel: false, showAllPanel: false });
-    return this.getProductsList();
+
+    this.updateListMetrics();
   },
 
-  closeSalesPanel() {
-    this.setData({ showSalesPanel: false });
-  },
-
-  selectSalesPeriod(e) {
-    const months = Number(e.currentTarget.dataset.months);
-    if (![1, 3, 6, 12].includes(months)) return;
-    this.setData({ salesMonths: months, currentMainTab: '销量', showSalesPanel: false });
-    return this.getProductsList();
+  closeStallPanel() {
+    this.setData({ showStall: false });
   },
 
   closeTagPanel() {
@@ -459,7 +472,7 @@ Page(pageSync.wrap({
 
   // === 新增：全部面板的开启与关闭 ===
   toggleAllPanel() { 
-    this.setData({ showAllPanel: !this.data.showAllPanel, showSalesPanel: false });
+    this.setData({ showAllPanel: !this.data.showAllPanel });
   },
   closeAllPanel() { 
     this.setData({ showAllPanel: false }); 
@@ -472,14 +485,14 @@ Page(pageSync.wrap({
     this.setData({
       selectedStall: stallId === 'all' ? '' : stallId,
       selectedStallName: stallId === 'all' ? '' : stallName,
-      showSalesPanel: false,
-      showAllPanel: false // 点击后自动收起全屏面板
+      showStall: false,
+      showAllPanel: false, // 点击后自动收起全屏面板
+      currentMainTab: '档口'
     });
 
     this.updateListMetrics();
-    const task = this.getProductsList();
+    this.getProductsList();
     wx.showToast({ title: stallId === 'all' ? '已显示全部' : '已切换至：' + stallName, icon: 'none' });
-    return task;
   },
 
   selectTag(e) {
@@ -501,9 +514,9 @@ Page(pageSync.wrap({
 
   // 基础跳转功能
   goToSearch: function() {
-    const query = this.buildShareQuery();
-    const salesMonths = this.data.currentMainTab === '销量' ? '' : 'salesMonths=' + this.data.salesMonths;
-    wx.navigateTo({ url: '/pages/search/search?' + [query, salesMonths].filter(Boolean).join('&') });
+    const stallId = this.data.selectedStall;
+    const query = stallId ? '?stallId=' + encodeURIComponent(stallId) : '';
+    wx.navigateTo({ url: '/pages/search/search' + query });
   },
   goToCart: function() { wx.navigateTo({ url: '/pages/cart/cart' }); },
   goToDetail: function(e) {
@@ -1002,9 +1015,6 @@ bundleInputBlur(e) {
 
     if (currentMainTab !== '上新') {
       query.push('tab=' + encodeURIComponent(currentMainTab));
-    }
-    if (currentMainTab === '销量') {
-      query.push('salesMonths=' + this.data.salesMonths);
     }
     if (this.data.selectedStall) {
       query.push('stallId=' + encodeURIComponent(this.data.selectedStall));
