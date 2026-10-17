@@ -14,7 +14,6 @@ function formatRequestError(err) {
   return getErrorMessage(err, '操作失败，请稍后重试');
 }
 
-
 // 拖拽网格配置
 const ITEM_SIZE = 105;
 const COLUMNS = 3;
@@ -241,7 +240,6 @@ const pageDefinition = {
   loadSizeCategories: async function() {
     try {
       const res = await api.get('/sizes/categories');
-      console.log('尺码类型和尺码:', res);
 
       let currentSizeCategoryId = null;
       let currentSizeCategoryName = '';
@@ -309,7 +307,6 @@ const pageDefinition = {
       sourceType: ['camera', 'album'],
       sizeType: ['compressed'],
       success: (res) => {
-        console.log('图片选择成功:', res.tempFiles);
         let newItems = res.tempFiles.map((file, i) => ({
           id: 'img_' + Date.now() + i,
           url: file.tempFilePath,
@@ -369,7 +366,6 @@ const pageDefinition = {
 
   // ================= 通用文件上传（COS 直传） =================
   uploadFile: async function(filePath, contentType) {
-    console.log('开始上传文件:', filePath, '类型:', contentType);
 
     const isVideo = filePath.toLowerCase().endsWith('.mp4');
     const isImage = contentType && contentType.startsWith('image/');
@@ -860,9 +856,6 @@ const pageDefinition = {
     this.setData({ [key]: e.detail.value });
   },
 
-
-
-
   uploadSkuImage(e) {
     const index = e.currentTarget.dataset.index;
     wx.chooseMedia({
@@ -1035,8 +1028,6 @@ const pageDefinition = {
         });
         productData.skus = [];
       }
-
-
 
       const { editMode, productId } = this.data;
 
@@ -1366,7 +1357,6 @@ const pageDefinition = {
       (d.colors && d.colors.length > 0) ||
       (d.isBundleMode && d.bundleGroups && d.bundleGroups.length > 0));
   },
-
 
 };
 integrateProductPricing(pageDefinition);

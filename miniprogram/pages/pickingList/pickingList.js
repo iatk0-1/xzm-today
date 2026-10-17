@@ -493,7 +493,6 @@ Page(autoSearch.wrap(pageSync.wrap({
     const index = e.currentTarget.dataset.index;
     const key = `filteredList[${index}].imageLoadFailed`;
     this.setData({ [key]: true });
-    console.log('图片加载失败，使用默认图片');
   },
 
   // 创建报单（显示详情弹窗）

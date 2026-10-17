@@ -485,7 +485,6 @@ Page({
         return;
       }
 
-      console.log('提交售后申请:', requestData);
       await api.post('/after-sales', requestData);
 
       wx.hideLoading();

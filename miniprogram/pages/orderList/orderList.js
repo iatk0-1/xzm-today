@@ -179,11 +179,7 @@ Page(pageSync.wrap({
     app.pendingConfirmOrderId = orderId;
     var self = this;
 
-    console.log('[确认收货-列表] merchantId=' + order.merchantId
-      + ', outTradeNo=' + order.outTradeNo + ', payTxnId=' + order.payTxnId);
-
     if (typeof wx.openBusinessView !== 'function') {
-      console.log('[确认收货-列表] wx.openBusinessView 不可用，降级弹框');
       this.fallbackConfirm(orderId);
       return;
     }
@@ -194,9 +190,6 @@ Page(pageSync.wrap({
         merchant_id: order.merchantId || '',
         merchant_trade_no: order.outTradeNo || '',
         transaction_id: order.payTxnId || ''
-      },
-      success: function() {
-        console.log('[确认收货-列表] 组件已打开');
       },
       fail: function(err) {
         console.error('[确认收货-列表] 组件打开失败:', JSON.stringify(err));

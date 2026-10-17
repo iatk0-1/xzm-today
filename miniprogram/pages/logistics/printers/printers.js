@@ -252,7 +252,6 @@ Page({
       onlyFromCamera: true,
       scanType: ['qrCode'],
       success: (res) => {
-        console.log('扫码结果:', res.result);
 
         // 解析二维码内容，提取 ticket
         // 格式：pages/printer-login/authorize?ticket=xxx

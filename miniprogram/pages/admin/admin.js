@@ -13,7 +13,6 @@ const finance = require('../../utils/managerFinance');
 const { scheduleSummary } = require('../../utils/productSchedule');
 const { DEFAULT_PURCHASE_NOTICE, getPurchaseNotice } = require('../../utils/purchaseNotice');
 
-
 // 拖拽网格配置
 const ITEM_SIZE = 105;
 const COLUMNS = 3;
@@ -220,7 +219,6 @@ const pageDefinition = {
     wx.showLoading({ title: '加载中...' });
     try {
       const res = await api.get(`/products/${productId}?manage=true`);
-      console.log('商品详情响应:', res);
 
       // 后端返回格式：{ product: {...}, skus: [{id, spec, size, ...}] }
       const product = normalizeProductImages(res.product || res);
@@ -244,9 +242,6 @@ const pageDefinition = {
         image: productImageUrl(sku.imageUrl) || '',
         sizeId: sku.sizeId || null
       }));
-
-      console.log('商品详情:', product);
-      console.log('SKU Matrix:', skuMatrix);
 
       // 处理尺码类型：优先使用商品的 sizeCategoryId，如果没有则从 SKU 的 sizeId 推断
       let currentSizeCategoryId = product.sizeCategoryId || null;
@@ -336,7 +331,6 @@ const pageDefinition = {
             displayPrice: r.product.displayPrice
           }));
       }
-      console.log('关联商品:', formData.manualRelated);
 
       // 处理封面图和轮播图
       let mediaList = [];
@@ -484,7 +478,6 @@ const pageDefinition = {
     try {
       // 调用直播商品详情接口
       const res = await api.get(`/products/${liveProductId}?manage=true`);
-      console.log('直播商品详情:', res);
 
       const product = normalizeProductImages(res.product || res);
       const skusFromApi = res.skus || [];
@@ -500,9 +493,6 @@ const pageDefinition = {
         image: productImageUrl(sku.imageUrl) || '',
         sizeId: sku.sizeId || null // 保留 sizeId，使用相同的规格
       }));
-
-      console.log('商品详情:', product);
-      console.log('SKU Matrix:', skuMatrix);
 
       // 处理尺码类型：优先使用商品的 sizeCategoryId
       let currentSizeCategoryId = product.sizeCategoryId || null;
@@ -571,7 +561,6 @@ const pageDefinition = {
             displayPrice: r.product.displayPrice
           }));
       }
-      console.log('关联商品:', formData.manualRelated);
 
       // 处理封面图和轮播图
       let mediaList = [];
@@ -759,7 +748,6 @@ const pageDefinition = {
       sourceType: ['camera', 'album'],
       sizeType: ['compressed'],
       success: (res) => {
-        console.log('图片选择成功:', res.tempFiles);
         let newItems = res.tempFiles.map((file, i) => ({
           id: 'img_' + Date.now() + i,
           url: file.tempFilePath,
@@ -849,7 +837,6 @@ const pageDefinition = {
           wx.showToast({ title: '视频最长1分钟，请重新选择', icon: 'none' });
           return;
         }
-        console.log('视频选择成功，临时路径:', tempFile.tempFilePath);
         this.setData({
           videoUrl: tempFile.tempFilePath,
           videoThumbPath: '',
@@ -921,7 +908,6 @@ const pageDefinition = {
 
   // ================= 通用文件上传（COS 直传） =================
   uploadFile: async function(filePath, contentType) {
-    console.log('开始上传文件:', filePath, '类型:', contentType);
 
     const isVideo = filePath.toLowerCase().endsWith('.mp4');
     const isImage = contentType && contentType.startsWith('image/');
@@ -1235,7 +1221,6 @@ const pageDefinition = {
   loadSizeCategories: async function() {
     try {
       const res = await api.get('/sizes/categories');
-      console.log('尺码类型和尺码:', res);
 
       // 默认选择第一个尺码类型
       let currentSizeCategoryId = null;
@@ -1916,8 +1901,6 @@ const pageDefinition = {
 
       // 3. 构造后端要求的 SKU 格式
       // 过滤掉 _toBeRemoved 标记的 SKU，这些是用户已删除的规格，不应该提交给后端
-      console.log('提交前 skuList:', JSON.stringify(skuList));
-      console.log('editId:', editId);
       const skus = skuList.filter(sku => !sku._toBeRemoved).map((sku, index) => {
         const stockStr = String(sku.stock == null ? '' : sku.stock).trim();
         const isUnlimited = stockStr === '';
@@ -1940,13 +1923,9 @@ const pageDefinition = {
         // 编辑模式下，如果有 skuId，需要传递给后端
         if (editId && sku.skuId) {
           skuData.id = sku.skuId;
-          console.log(`SKU ${sku.color}-${sku.size} 有 skuId=${sku.skuId}, sizeId=${sku.sizeId}`);
-        } else {
-          console.log(`SKU ${sku.color}-${sku.size} 没有 skuId (editId=${editId}, sku.skuId=${sku.skuId})`);
         }
         return skuData;
       });
-      console.log('构造后的 skus:', JSON.stringify(skus));
 
       // 4. 构造商品请求数据
       const productData = {
@@ -2014,8 +1993,6 @@ const pageDefinition = {
         if (editId) productData.bundleGroups = undefined;
       }
 
-      console.log('提交商品数据:', JSON.stringify(productData));
-
       if (editId) {
         // 编辑模式：调用更新接口
         wx.showLoading({ title: '保存修改...', mask: true });
@@ -2040,7 +2017,6 @@ const pageDefinition = {
             if (newProductId) {
               await api.post(`/live-products/${this.data.convertFromLiveProductId}/link-normal?normalProductId=${newProductId}`);
               wx.hideLoading();
-              console.log('直播商品关联成功，新商品 ID:', newProductId);
             } else {
               wx.hideLoading();
               console.warn('无法获取新商品 ID，跳过关联');
@@ -2081,51 +2057,38 @@ const pageDefinition = {
   },
 
   uploadMediaList: async function(list) {
-    console.log('uploadMediaList 开始上传，列表:', list);
     const urls = [];
     for (const item of list) {
-      console.log('处理图片项:', item.url);
       // 微信临时文件路径（如 http://tmp/... 或 http://127.0.0.1:59208/__tmp__/...）需要上传
       // 只有真正的 http(s) 远程 URL 才直接使用
       if (this.isRemoteUrl(item.url)) {
-        console.log('使用远程 URL，跳过上传:', item.url);
         urls.push(item.url);
       } else {
-        console.log('调用 uploadFile 上传:', item.url);
         const url = await this.uploadFile(item.url, 'image/jpeg');
-        console.log('上传后返回 URL:', url);
         urls.push(url);
       }
     }
-    console.log('uploadMediaList 完成，返回 URLs:', urls);
     return urls;
   },
 
   // 判断是否是远程 URL（http:// 或 https:// 开头，且不是微信临时文件路径）
   isRemoteUrl: function(url) {
-    console.log('isRemoteUrl 检查:', url);
     if (!url) return false;
     // 使用 isTemporaryPath 判断，如果不是临时路径则视为远程 URL
     return !this.isTemporaryPath(url);
   },
 
   uploadImageList: async function(list) {
-    console.log('uploadImageList 开始上传，列表:', list);
     const urls = [];
     for (const url of list) {
-      console.log('处理图片项:', url);
       // 微信临时文件路径需要上传到 MinIO
       if (this.isRemoteUrl(url)) {
-        console.log('使用远程 URL，跳过上传:', url);
         urls.push(url);
       } else {
-        console.log('调用 uploadFile 上传:', url);
         const uploadedUrl = await this.uploadFile(url, 'image/jpeg');
-        console.log('上传后返回 URL:', uploadedUrl);
         urls.push(uploadedUrl);
       }
     }
-    console.log('uploadImageList 完成，返回 URLs:', urls);
     return urls;
   },
 

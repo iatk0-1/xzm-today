@@ -317,7 +317,7 @@ for (const type of ['lookbook', 'detail']) {
   });
 }
 
-test('视频封面固定首位，普通图片删除和排序不取消勾选，只有手动取消才释放首位', async () => {
+test('视频封面固定首位，普通图片删除和排序不取消勾选，删除视频同时清空封面并释放首位', async () => {
   const { page } = harness('../../pages/admin/admin.js');
   await page.onLoad({});
   page.setData({ useVideoCover: true, videoUrl: 'https://example.com/video.mp4',
@@ -332,14 +332,17 @@ test('视频封面固定首位，普通图片删除和排序不取消勾选，�
   assert.equal(page.data.useVideoCover, true);
   page.removeMedia({ currentTarget: { dataset: { index: 0 } } });
   assert.equal(page.data.useVideoCover, true);
-  page.removeVideo();
-  assert.equal(page.data.videoUrl, 'https://example.com/video.mp4');
-  assert.equal(page.data.useVideoCover, true);
   page.toggleVideoCover();
   assert.equal(page.data.useVideoCover, false);
   assert.equal(page.data.mediaList[0].x, 0);
   page.toggleVideoCover();
   assert.equal(page.data.mediaList[0].x, 105);
+  page.removeVideo();
+  assert.equal(page.data.videoUrl, '');
+  assert.equal(page.data.videoThumbPath, '');
+  assert.equal(page.data.useVideoCover, false);
+  assert.equal(page.data.videoCoverLoading, false);
+  assert.equal(page.data.mediaList[0].x, 0);
 });
 
 test('勾选已有视频自动取帧不上传，取消时隐藏封面，完成后重新勾选复用结果', async () => {

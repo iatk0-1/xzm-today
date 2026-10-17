@@ -88,7 +88,6 @@ Page({
     socket.onOpen(() => {
       this._connectingWs = false;
       this._wsRetriedAfterAuthClose = false;
-      console.log('WS opened');
     });
     socket.onMessage((res) => {
       try {
@@ -272,12 +271,10 @@ Page({
 
       const compressResult = await compressImage(filePath);
       filePath = compressResult.path;
-      console.log('[上传] 图片压缩 ' + (compressResult.ok ? '成功' : '未生效 — ' + (compressResult.reason || '未知原因')));
 
       const webpResult = await toWebp(filePath);
       filePath = webpResult.path;
       const webpOk = webpResult.ok;
-      console.log('[上传] WebP转换 ' + (webpOk ? '成功' : '未生效 — ' + (webpResult.reason || '未知原因')));
 
       const cosUpload = require('../../utils/cos-upload');
       const imageUrl = await cosUpload.uploadFile(filePath, 'chats', null, webpOk ? 'webp' : null);
@@ -299,11 +296,9 @@ Page({
     wx.showLoading({ title: '上传视频中...' });
     try {
       const { compressVideo } = require('../../utils/media');
-      const originalSize = (fileSize / (1024 * 1024)).toFixed(1);
 
       const compressResult = await compressVideo(filePath);
       filePath = compressResult.path;
-      console.log('[上传] 视频压缩 ' + (compressResult.ok ? '成功' : '未生效 — ' + (compressResult.reason || '未知原因')) + ' (原' + originalSize + 'MB)');
 
       const cosUpload = require('../../utils/cos-upload');
       const videoUrl = await cosUpload.uploadFile(filePath, 'chats');

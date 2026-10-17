@@ -61,7 +61,6 @@ Page(pageSync.wrap({
   // 检查管理员权限
   checkAdmin: function() {
     const isAdmin = auth.isAdmin();
-    console.log('checkAdmin: auth.isAdmin() =', isAdmin);
     this.setData({ isAdmin: isAdmin });
   },
 
@@ -72,7 +71,6 @@ Page(pageSync.wrap({
     try {
       await auth.ensureAuthenticated({ silent: true });
       const detail = await api.get(`/live-sessions/${sessionId}`);
-      console.log('session detail:', detail, 'status:', detail?.status);
 
       // 如果后端返回 null 或 undefined，说明场次已被删除或不存在
       if (!detail || !detail.id) {
@@ -229,8 +227,7 @@ Page(pageSync.wrap({
         if (res.confirm) {
           wx.showLoading({ title: '结束中...' });
           try {
-            const endResult = await api.post(`/live-sessions/${this.data.sessionId}/end`);
-            console.log('结束直播接口返回:', endResult);
+            await api.post(`/live-sessions/${this.data.sessionId}/end`);
 
             wx.hideLoading();
             wx.showToast({ title: '直播已结束', icon: 'success' });

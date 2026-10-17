@@ -32,7 +32,6 @@ Page({
   // 用户选择头像（官方 open-type="chooseAvatar" 回调）
   onChooseAvatar: function(e) {
     const { avatarUrl } = e.detail;
-    console.log('用户选择的头像临时路径:', avatarUrl);
     
     // 直接更新预览
     this.setData({
