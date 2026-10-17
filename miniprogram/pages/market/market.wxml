@@ -72,6 +72,7 @@
     </view>
 
     <view class="empty-state" wx:elif="{{!loading}}">暂无心愿，点击右下角成为第一个策展人</view>
+    <view class="market-scroll-spacer"></view>
   </scroll-view>
 
   <view class="wish-management-actions" wx:if="{{isAdmin}}">
