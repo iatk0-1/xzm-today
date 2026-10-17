@@ -1,0 +1,121 @@
+<view class="sku-mask {{showSku ? 'fade-in' : ''}}" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
+
+<view class="sku-panel {{showSku ? 'slide-up' : ''}}" wx:if="{{showSku}}">
+  <view class="sku-close" catchtap="closeSkuPanel">×</view>
+
+  <view class="sku-header" wx:if="{{currentProduct}}">
+    <view class="sku-image-column">
+      <view class="sku-img-wrap">
+        <image class="sku-img" src="{{currentSkuImage || currentProduct.coverUrl || currentProduct.image}}" mode="aspectFill" catchtap="previewSkuPanelImage"></image>
+        <view class="sold-out-overlay sku-sold-out-overlay" wx:if="{{currentSkuId ? currentSkuSoldOut : currentProduct.soldOut}}"><text>售罄</text></view>
+      </view>
+    </view>
+    <view class="sku-main">
+      <view class="sku-price" wx:if="{{bundleSelections.length === 0}}">
+        ¥{{currentSkuPrice || currentProduct.retailPrice || currentProduct.displayPrice || '0.00'}}
+      </view>
+      <view class="sku-price" wx:else>
+        {{bundlePriceRange}}
+      </view>
+
+      <view class="sku-stock sku-stock-low" wx:if="{{bundleSelections.length === 0 && !currentSkuUnlimited && currentSkuStock != null && currentSkuStock <= 3}}">
+        库存：仅剩{{currentSkuStock}}件
+      </view>
+      <view class="sku-stock" wx:elif="{{bundleSelections.length === 0 && (isAdmin || isStallManager) && currentSkuStock != null}}">
+        库存：{{currentSkuStockText}}
+      </view>
+
+      <view class="sku-meta-row" wx:if="{{bundleSelections.length === 0}}">
+        <view class="sku-choose-tip">已选：{{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
+        <view class="sku-quantity">
+          <text class="sku-quantity-label">数量</text>
+          <view class="sku-quantity-control">
+            <view class="sku-quantity-btn {{quantity <= 1 ? 'disabled' : ''}}" catchtap="skuQuantityMinus">-</view>
+            <input class="sku-quantity-input" type="number" value="{{quantity}}" bindinput="skuQuantityInput" bindblur="skuQuantityInputBlur" />
+            <view class="sku-quantity-btn {{!currentSkuUnlimited && currentSkuStock !== null && currentSkuStock <= quantity ? 'disabled' : ''}}" catchtap="skuQuantityPlus">+</view>
+          </view>
+        </view>
+      </view>
+      <view class="sku-choose-tip" wx:else>已选：{{bundleNamesStr}}</view>
+    </view>
+  </view>
+
+  <!-- 套装商品子项选择 -->
+  <scroll-view scroll-y style="max-height: 55vh; padding: 0 16rpx; padding-bottom: 0rpx;" wx:if="{{bundleSelections.length > 0}}">
+    <view class="bundle-group-card {{sel.isOutOfStock ? 'out-of-stock-card' : ''}}" wx:for="{{bundleSelections}}" wx:key="index" wx:for-item="sel" wx:for-index="bgIdx">
+
+      <image class="bundle-card-img" src="{{sel.selectedSku.imageUrl || sel.skus[0].imageUrl || currentProduct.coverUrl}}" mode="aspectFill" bindtap="previewBundleImage" data-url="{{sel.selectedSku.imageUrl || sel.skus[0].imageUrl || currentProduct.coverUrl}}"></image>
+
+      <view class="bundle-card-right">
+        <view class="bundle-card-header">
+          <view class="bundle-card-title">
+            <text class="bg-step">{{bgIdx + 1}}</text>
+            <text>{{sel.bundleGroupName}}</text>
+          </view>
+        </view>
+
+        <view class="bundle-card-specs" wx:if="{{sel.uniqueColors.length > 0}}">
+          <text class="spec-label">颜色</text>
+          <view class="sku-options minimal">
+            <view class="sku-tag minimal {{sel.selectedColor === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{sel.colorOptions}}" wx:key="value" wx:for-item="item" bindtap="selectBundleColor" data-index="{{bgIdx}}" data-color="{{item.value}}">{{item.value}}</view>
+          </view>
+        </view>
+
+        <view class="bundle-card-specs" wx:if="{{sel.uniqueSizes.length > 0}}">
+          <text class="spec-label">尺码</text>
+          <view class="sku-options minimal">
+            <view class="sku-tag minimal {{sel.selectedSize === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{sel.sizeOptions}}" wx:key="value" wx:for-item="item" bindtap="selectBundleSize" data-index="{{bgIdx}}" data-size="{{item.value}}">{{item.value}}</view>
+          </view>
+        </view>
+
+        <view class="bundle-card-footer">
+          <view class="bundle-sku-price" style="color: #1a1a1a;">
+            ¥{{sel.computedPrice || sel.selectedSku.price || sel.skus[0].price || sel.skus[0].retailPrice}}
+          </view>
+          <view class="stepper" wx:if="{{sel.selectedSku}}">
+            <view class="step-btn {{sel.quantity <= 1 ? 'disabled' : ''}}" catchtap="bundleMinus" data-index="{{bgIdx}}">-</view>
+            <input class="step-input" type="number" value="{{sel.quantity}}" bindinput="bundleInput" bindblur="bundleInputBlur" data-index="{{bgIdx}}" />
+            <view class="step-btn {{(!sel.selectedSku.unlimitedStock && sel.quantity >= sel.selectedSku.stock) ? 'disabled' : ''}}" catchtap="bundlePlus" data-index="{{bgIdx}}">+</view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 普通商品颜色/尺码选择 -->
+  <scroll-view scroll-y style="max-height: 50vh;" wx:else>
+    <view class="sku-section" wx:if="{{uniqueColors.length > 0}}">
+      <view class="sku-title">颜色</view>
+      <view class="sku-options">
+        <view class="sku-tag {{selectedColor === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{colorOptions}}" wx:key="value" bindtap="selectColor" data-color="{{item.value}}">{{item.value}}</view>
+      </view>
+    </view>
+
+    <view class="sku-section" wx:if="{{uniqueSizes.length > 0}}">
+      <view class="sku-title">尺码</view>
+      <view class="sku-options">
+        <view class="sku-tag {{selectedSize === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{sizeOptions}}" wx:key="value" bindtap="selectSize" data-size="{{item.value}}">{{item.value}}</view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <block wx:if="{{bundleSelections.length > 0}}">
+    <view class="bundle-summary-bar" wx:if="{{bundleTotalCount > 0}}">
+      已选 {{bundleTotalCount}} 件，合计: <text class="summary-price">¥{{bundleTotalPrice}}</text>
+    </view>
+    <view class="sku-actions-new" style="{{bundleTotalCount > 0 ? 'padding-top: 10rpx;' : ''}}">
+      <view class="sku-btn-item cart {{!bundleAllSelected ? 'btn-disabled' : ''}}" bindtap="confirmAddToCart" data-action="cart">加入购物车</view>
+      <view class="sku-btn-item buy {{!bundleAllSelected ? 'btn-disabled' : ''}}" bindtap="confirmAddToCart" data-action="buy">立即购买</view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="sku-actions-new" wx:if="{{currentSkuStock <= 0 && currentSkuStock !== null && !currentSkuUnlimited}}">
+      <view class="sku-btn-item sold-out">已售罄</view>
+    </view>
+    <view class="sku-actions-new" wx:else>
+      <view class="sku-btn-item cart" bindtap="confirmAddToCart" data-action="cart">加入购物车</view>
+      <view class="sku-btn-item buy" bindtap="confirmAddToCart" data-action="buy">立即购买</view>
+    </view>
+  </block>
+</view>

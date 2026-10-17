@@ -16,7 +16,7 @@ Module._load = function(request, ...args) {
   return originalLoad.call(this, request, ...args);
 };
 try {
-  for (const name of ['index', 'detail']) {
+  for (const name of ['index', 'search', 'detail']) {
     global.Page = config => { pages[name] = config; };
     require(`../../pages/${name}/${name}.js`);
   }
@@ -41,6 +41,7 @@ function createPage(name, skus, bundleGroups) {
   page.setData = patch => Object.assign(page.data, patch);
   const product = { id: 1, coverUrl: 'cover.jpg', skuMatrix: skus, bundleGroups };
   page.data.product = product;
+  if (name === 'search') Object.assign(page.data, { focus: false, searchEditing: false });
   page.open = () => page.openSkuPanel(event({ product, action: 'cart' }));
   return page;
 }
@@ -56,7 +57,7 @@ test('默认组合按照界面颜色、尺码顺序，而不是有货 SKU 的返
   assert.deepEqual(getDefaultSkuSelection(skus), { selectedColor: '白色', selectedSize: 'M' });
 });
 
-for (const name of ['index', 'detail']) {
+for (const name of ['index', 'search', 'detail']) {
   test(`${name}：打开弹窗跳过缺货组合，默认白色 M，并同步 SKU 价格、图片和库存`, () => {
     const page = createPage(name, makeSkus());
     page.open();

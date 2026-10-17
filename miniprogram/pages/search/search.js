@@ -5,13 +5,14 @@ const auth = require('../../utils/auth');
 const { isProductSoldOut } = require('../../utils/stock');
 const { groupStalls } = require('../../utils/productFilters');
 
+const productSkuPanel = require('../../utils/productSkuPanel');
+
 Page({
   data: {
-    currentMainTab: '上新',
-    selectedStall: '',
-    stallList: [],
-    groupedStalls: [],
-    showAllPanel: false,
+    ...productSkuPanel.initialData,
+    navTop: 0,
+    navHeight: 0,
+    totalNavHeight: 0,
     keyword: '',
     appliedKeyword: '',
     results: [],
@@ -22,6 +23,13 @@ Page({
     showHistory: false,  // 控制搜索历史下拉框显示/隐藏
     focus: true,  // 搜索框获得焦点
     searchEditing: true,
+    currentMainTab: '上新',
+    selectedStall: '',
+    stallScrollLeft: 0,
+    selectedTag: '',
+    stallList: [],
+    groupedStalls: [],
+    showAllPanel: false,
     // 分页参数
     page: 1,
     pageSize: 20,
@@ -30,59 +38,140 @@ Page({
     searchType: 'all'  // 'all' 或 'keyword'
   },
 
-  // 先恢复首页带来的档口，首次查询就应用筛选条件。
+  // 先恢复入口条件，首次查询就使用首页当前的排序与筛选。
   onLoad: function(options = {}) {
     this._pageClosed = false;
-    const stallId = options.stallId || '';
-    this.setData({ selectedStall: stallId, currentMainTab: stallId ? '档口' : '上新', showAllPanel: false });
-    return Promise.all([this.fetchAllProducts(), this.loadRecentSearches(), this.loadStallList()]);
+    const menu = wx.getMenuButtonBoundingClientRect();
+    this.setData({ navTop: menu.top, navHeight: menu.height, totalNavHeight: menu.bottom + 40 });
+    let tab = options.tab || '';
+    try {
+      tab = decodeURIComponent(tab);
+    } catch (err) {
+      // 兼容外部链接中的不完整转义，无法识别的排序使用上新。
+    }
+    this.setData({
+      currentMainTab: tab === '销量' || options.sort === 'sales' ? '销量' : '上新',
+      selectedStall: options.stallId || '',
+      selectedTag: options.tagId || ''
+    });
+    this.loadRecentSearches();
+    this.loadStallList();
+    return this.fetchAllProducts();
   },
 
   loadStallList: async function() {
     try {
       await auth.ensureAuthenticated({ silent: true });
       const stalls = await api.get('/stalls');
-      if (!this._pageClosed) this.setData({ stallList: stalls, groupedStalls: groupStalls(stalls) });
+      if (!this._pageClosed) {
+        this.setData({ stallList: stalls, groupedStalls: groupStalls(stalls) }, () => this.ensureSelectedStallVisible());
+      }
     } catch (err) {
       console.error('加载档口列表失败:', err);
-      if (!this._pageClosed) this.setData({ stallList: [], groupedStalls: [] });
     }
+  },
+
+  hideFilterPanels: function() {
+    this.setData({ showAllPanel: false });
   },
 
   handleMainTabChange: function(e) {
     const tab = e.currentTarget.dataset.tab;
-    if (tab !== '上新' && tab !== '档口') return;
+    if (tab !== '上新' && tab !== '销量') return;
     this.finishSearchInput();
-    this.setData({ currentMainTab: tab, showAllPanel: false });
-    if (tab === '上新') {
-      this.setData({ selectedStall: '' });
-      return this.doSearch();
-    }
-    return this.submitChangedKeyword();
+    if (this.data.currentMainTab === tab) return this.submitChangedKeyword();
+    this.setData({ currentMainTab: tab, showAllPanel: false, showHistory: false });
+    return this.reloadFilteredProducts();
   },
 
   toggleAllPanel: function() {
     this.finishSearchInput();
-    this.setData({ showAllPanel: !this.data.showAllPanel });
+    this.setData({ showAllPanel: !this.data.showAllPanel, showHistory: false });
     return this.submitChangedKeyword();
-  },
-
-  closeAllPanel: function() {
-    this.setData({ showAllPanel: false });
   },
 
   selectStall: function(e) {
     const stallId = e.currentTarget.dataset.stall;
     this.finishSearchInput();
-    this.setData({ selectedStall: stallId === 'all' ? '' : stallId,
-      currentMainTab: '档口', showAllPanel: false });
-    return this.doSearch();
+    this.setData({ selectedStall: stallId === 'all' ? '' : stallId, showAllPanel: false }, () => this.ensureSelectedStallVisible());
+    return this.reloadFilteredProducts();
   },
 
-  goToCart: function() {
+  ensureSelectedStallVisible: function() {
+    const stallId = this.data.selectedStall;
+    if (!stallId || typeof wx.createSelectorQuery !== 'function') return;
+    const query = wx.createSelectorQuery().in(this);
+    query.select('.stall-scroll').boundingClientRect();
+    query.select('#stall-' + stallId).boundingClientRect();
+    query.select('.stall-scroll').scrollOffset();
+    query.select('.stall-tags').boundingClientRect();
+    query.select('.stall-edge-fade-right').boundingClientRect();
+    query.exec(results => {
+      if (this._pageClosed || this.data.selectedStall !== stallId) return;
+      const [viewport, tag, offset, content, fade] = results;
+      if (!viewport || !tag || !offset || !content) return;
+      // 左侧保留7rpx留白；测量和scroll-left使用px，按窗口宽度换算。
+      const windowInfo = typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo()
+        : (typeof wx.getSystemInfoSync === 'function' ? wx.getSystemInfoSync() : null);
+      const leftInset = 7 * ((windowInfo && windowInfo.windowWidth) || 375) / 750;
+      const inset = Math.min(fade ? fade.width / 2 : 0, viewport.width / 2);
+      const visibleLeft = viewport.left + leftInset;
+      const tagRight = tag.left + tag.width;
+      const viewportRight = viewport.left + viewport.width - inset;
+      let delta = 0;
+      if (tag.left < visibleLeft) delta = tag.left - visibleLeft;
+      else if (tagRight > viewportRight) delta = tagRight - viewportRight;
+      else return;
+      const maxLeft = Math.max(0, content.width - viewport.width);
+      const scrollLeft = Math.max(0, Math.min(maxLeft, offset.scrollLeft + delta));
+      if (Math.abs(offset.scrollLeft - scrollLeft) < 1) return;
+      const applyTarget = () => this.setData({ stallScrollLeft: scrollLeft });
+      // 手动滑动后再次选择同一目标时，先同步实际位置，再启动一次原生滚动。
+      if (this.data.stallScrollLeft === scrollLeft) {
+        this.setData({ stallScrollLeft: offset.scrollLeft }, applyTarget);
+      } else {
+        applyTarget();
+      }
+    });
+  },
+
+  reloadFilteredProducts: function() {
+    clearTimeout(this._blurTimer);
+    this.setData({ showHistory: false });
+    // 点击筛选项也属于离开输入框，把输入的关键词和新条件合并查询。
+    return this.queryProducts(true, this.data.keyword.trim());
+  },
+
+  submitChangedKeyword: function() {
+    const word = this.data.keyword.trim();
+    const applied = this._pendingSearch ? this._pendingSearch.word : this.data.appliedKeyword;
+    if (word !== applied) return this.queryProducts(true, word);
+  },
+
+  goBack: function() {
+    wx.navigateBack({ delta: 1, fail: () => wx.reLaunch({ url: '/pages/index/index' }) });
+  },
+
+  onSearchInputTap: function() {
+    if (!this.data.focus) this.setData({ focus: true, searchEditing: true });
+  },
+
+  stopTap: function() {},
+
+  // 收起输入只执行一次，筛选点击不再冒泡重复操作原生输入框和键盘。
+  finishSearchInput: function() {
+    clearTimeout(this._blurTimer);
+    this._searchBlurPending = false;
+    const wasFocused = this.data.focus;
+    if (wasFocused || this.data.searchEditing || this.data.showHistory) {
+      this.setData({ focus: false, searchEditing: false, showHistory: false });
+    }
+    if (wasFocused && typeof wx.hideKeyboard === 'function') wx.hideKeyboard();
+  },
+
+  onPageTap: function() {
     this.finishSearchInput();
-    this.closeAllPanel();
-    wx.navigateTo({ url: '/pages/cart/cart' });
+    return this.submitChangedKeyword();
   },
 
   // 加载最近搜索记录
@@ -137,20 +226,6 @@ Page({
     }, 200);
   },
 
-  finishSearchInput: function() {
-    clearTimeout(this._blurTimer);
-    this._searchBlurPending = false;
-    const wasFocused = this.data.focus;
-    this.setData({ focus: false, searchEditing: false, showHistory: false });
-    if (wasFocused && typeof wx.hideKeyboard === 'function') wx.hideKeyboard();
-  },
-
-  submitChangedKeyword: function() {
-    const word = this.data.keyword.trim();
-    const applied = this._pendingSearch ? this._pendingSearch.word : this.data.appliedKeyword;
-    if (word !== applied) return this.queryProducts(true, word);
-  },
-
   doSearch: function(reset = true) {
     clearTimeout(this._blurTimer);
     reset = reset !== false;
@@ -174,10 +249,11 @@ Page({
     }
     if (!this.data.hasMore) return;
     const version = this._queryVersion || 0;
-    const { page, pageSize, selectedStall } = this.data;
-    const params = { page, size: pageSize, sort: 'newest' };
+    const { page, pageSize, currentMainTab, selectedStall, selectedTag } = this.data;
+    const params = { page, size: pageSize, sort: currentMainTab === '销量' ? 'sales' : 'newest' };
     if (word) params.keyword = word;
     if (selectedStall) params.stallId = selectedStall;
+    if (selectedTag) params.tagId = selectedTag;
     this.setData({ loading: true, loadError: '' });
     if (reset) wx.showLoading({ title: word ? '搜索中...' : '加载中...' });
     try {
@@ -289,19 +365,26 @@ Page({
     });
   },
 
-  // 记住触摸开始时是否还在输入，避免失焦回调先完成导致本次点击误跳转。
+  ...productSkuPanel.methods,
+
+  openSkuPanel: function(e) {
+    const dismissSearch = this.data.searchEditing || this.data.focus || this._searchBlurPending || this._productTouchStartedWhileEditing;
+    this._productTouchStartedWhileEditing = false;
+    if (dismissSearch) return this.onPageTap();
+    this.setData({ isAdmin: !!auth.isAdmin(), isStallManager: !!auth.isStallManager() });
+    return productSkuPanel.methods.openSkuPanel.call(this, e);
+  },
+
+  // 记录手指按下时的输入状态，避免 blur 先于 tap 到达时误进详情。
   onProductTouchStart: function() {
     this._productTouchStartedWhileEditing = this.data.searchEditing || this.data.focus || this._searchBlurPending;
   },
 
-  // 输入中点商品只结束输入；之后正常点击才进入详情。
+  // 编辑搜索时，点商品只结束输入并搜索；后续正常点击才进入详情。
   goToDetail: function(e) {
     const dismissSearch = this.data.searchEditing || this.data.focus || this._searchBlurPending || this._productTouchStartedWhileEditing;
     this._productTouchStartedWhileEditing = false;
-    if (dismissSearch) {
-      this.finishSearchInput();
-      return this.submitChangedKeyword();
-    }
+    if (dismissSearch) return this.onPageTap();
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
       url: `/pages/detail/detail?id=${id}`

@@ -19,7 +19,7 @@ global.wx = {
   hideLoading() { wxCalls.hideLoading += 1; },
   stopPullDownRefresh() { wxCalls.stopPullDownRefresh += 1; },
   showToast() {},
-  navigateTo({ url }) { wxCalls.navigateUrl = url; },
+  navigateTo(options) { wxCalls.navigateUrl = options.url; },
   reLaunch() {}
 };
 
@@ -64,8 +64,9 @@ function createPage() {
 
   const page = Object.assign({}, pageConfig);
   page.data = JSON.parse(JSON.stringify(pageConfig.data));
-  page.setData = (patch) => {
+  page.setData = (patch, callback) => {
     Object.keys(patch).forEach((key) => { page.data[key] = patch[key]; });
+    if (callback) callback();
   };
   return page;
 }
@@ -243,50 +244,288 @@ test('下拉刷新：分页请求还在飞时先等它落地，再重新拉首�
   assert.equal(page.data.page, 2);
 });
 
-test('列表滚动区尺寸：窗口高度减掉导航栏，档口/分类再多让一条子导航', () => {
+test('列表滚动区尺寸：上新和销量都给常驻档口筛选行让位', () => {
   const page = createPage();
   page.data.totalNavHeight = 100;
 
   page.updateListMetrics();
-  assert.equal(page.data.listHeight, 700); // 800 - 100
-  assert.equal(page.data.listTop, 0);
+  assert.equal(page.data.listHeight, 656); // 800 - 100 - 44
+  assert.equal(page.data.listTop, 44);
 
-  page.setData({ currentMainTab: '档口' });
+  page.setData({ currentMainTab: '销量' });
   page.updateListMetrics();
   assert.equal(page.data.listTop, 44); // 88rpx 在 375 宽的屏上是 44px
   assert.equal(page.data.listHeight, 656);
 
   page.setData({ currentMainTab: '上新' });
   page.updateListMetrics();
-  assert.equal(page.data.listTop, 0);
-  assert.equal(page.data.listHeight, 700);
+  assert.equal(page.data.listTop, 44);
+  assert.equal(page.data.listHeight, 656);
 });
 
+const event = (dataset) => ({ currentTarget: { dataset } });
 
-test('首页首屏、分页和档口筛选均使用上架时间排序，并保持后端返回次序', async () => {
+test('销量：查询全部销量，重复点击不发请求、不打开时间范围面板', async () => {
   const page = createPage();
-  requestHandler = async () => ({ content: [makeProduct('p9'), makeProduct('p2')], hasNext: true });
+  requestHandler = backendStub();
+  page.data.selectedStall = 's1';
+  await page.handleMainTabChange(event({ tab: '销量' }));
+  assert.deepEqual(searchCalls()[0].params, { page: 1, size: 20, sort: 'sales', stallId: 's1' });
+  await page.handleMainTabChange(event({ tab: '销量' }));
+  assert.equal(searchCalls().length, 1);
+});
+
+test('档口：全部清除档口条件，切回上新保留筛选；选择后关闭档口面板', async () => {
+  const page = createPage();
+  requestHandler = backendStub();
+  await page.handleMainTabChange(event({ tab: '销量' }));
+  page.handleMainTabChange(event({ tab: '销量' }));
+  page.toggleAllPanel();
+  assert.equal(page.data.showAllPanel, true);
+  await page.selectStall(event({ stall: 's2', name: 'B档口' }));
+  assert.equal(page.data.showAllPanel, false);
+  assert.equal(searchCalls().at(-1).params.stallId, 's2');
+  assert.equal(page.data.currentMainTab, '销量');
+  await page.handleMainTabChange(event({ tab: '上新' }));
+  assert.deepEqual(searchCalls().at(-1).params, { page: 1, size: 20, sort: 'newest', stallId: 's2' });
+  await page.selectStall(event({ stall: 'all' }));
+  assert.equal(page.data.selectedStall, '');
+  assert.deepEqual(searchCalls().at(-1).params, { page: 1, size: 20, sort: 'newest' });
+});
+
+test('销量分页、下拉刷新和分享恢复均查全部销量，忽略旧月份参数', async () => {
+  const page = createPage();
+  requestHandler = backendStub();
+  page.restoreShareFilters({ tab: '销量', salesMonths: '6', stallId: 's2', tagId: 't1' });
   await page.getProductsList();
-  assert.deepEqual(searchCalls()[0].params, { page: 1, size: 20, sort: 'newest' });
-  assert.deepEqual(page.data.productList.map(item => item.id), ['p9', 'p2']);
+  page.data.hasMore = true;
   await page.getProductsList(false);
-  assert.deepEqual(searchCalls()[1].params, { page: 2, size: 20, sort: 'newest' });
-  page.selectStall({ currentTarget: { dataset: { stall: 's2', name: 'B档口' } } });
-  await flush();
-  assert.deepEqual(searchCalls()[2].params, { page: 1, size: 20, sort: 'newest', stallId: 's2' });
+  assert.deepEqual(searchCalls().at(-1).params, { page: 2, size: 20, sort: 'sales', stallId: 's2', tagId: 't1' });
+  await page.onRefresh();
+  assert.equal(searchCalls().at(-1).params.salesMonths, undefined);
+  assert.equal(searchCalls().at(-1).params.page, 1);
+  const restored = createPage();
+  restored.restoreShareFilters(Object.fromEntries(new URLSearchParams(page.buildShareQuery())));
+  assert.equal(restored.data.currentMainTab, '销量');
+  assert.equal(restored.data.selectedStall, 's2');
+  restored.restoreShareFilters({ tab: '档口', stallId: 's1', salesMonths: '99' });
+  assert.equal(restored.data.currentMainTab, '上新');
+  assert.equal(restored.data.selectedStall, 's1');
 });
 
-test('首页进入搜索携带已选档口，参数正确编码，未筛选时不附加档口', () => {
+test('快速切换筛选：丢弃旧响应，合并等待中的查询并使用最终条件', async () => {
   const page = createPage();
-  for (const stallId of ['9007199254740993123', 's&2']) {
-    page.setData({ selectedStall: stallId });
-    page.goToSearch();
-    const url = new URL(wxCalls.navigateUrl, 'https://miniapp.test');
-    assert.equal(url.pathname, '/pages/search/search');
-    assert.equal(url.searchParams.get('stallId'), stallId);
-    assert.equal(Array.from(url.searchParams).length, 1);
-  }
-  page.setData({ selectedStall: '' });
+  let resolveOld;
+  requestHandler = async () => {
+    if (searchCalls().length === 1) return new Promise(resolve => { resolveOld = resolve; });
+    return { content: [makeProduct('latest')], hasNext: false };
+  };
+  const initial = page.getProductsList();
+  const sales = page.handleMainTabChange(event({ tab: '销量' }));
+  const stall = page.selectStall(event({ stall: 's2', name: 'B档口' }));
+  resolveOld({ content: [makeProduct('outdated')], hasNext: true });
+  await Promise.all([initial, sales, stall]);
+  assert.equal(searchCalls().length, 2);
+  assert.deepEqual(searchCalls().at(-1).params, { page: 1, size: 20, sort: 'sales', stallId: 's2' });
+  assert.deepEqual(page.data.productList.map(item => item.id), ['latest']);
+  assert.deepEqual(page.data.leftColumn.map(item => item.id), ['latest']);
+  assert.equal(page.data.page, 2);
+  assert.equal(page.data.loading, false);
+});
+
+test('首页进入搜索：带上排序和档口条件，不再传递月份范围', () => {
+  const page = createPage();
+  page.setData({ currentMainTab: '销量', selectedStall: 's&2', selectedTag: 't1' });
   page.goToSearch();
-  assert.equal(wxCalls.navigateUrl, '/pages/search/search');
+  let url = new URL(wxCalls.navigateUrl, 'https://miniapp.test');
+  assert.equal(url.pathname, '/pages/search/search');
+  assert.equal(url.searchParams.get('tab'), '销量');
+  assert.equal(url.searchParams.get('salesMonths'), null);
+  assert.equal(url.searchParams.get('stallId'), 's&2');
+  assert.equal(url.searchParams.get('tagId'), 't1');
+
+  page.setData({ currentMainTab: '上新' });
+  page.goToSearch();
+  url = new URL(wxCalls.navigateUrl, 'https://miniapp.test');
+  assert.equal(url.searchParams.get('tab'), null);
+  assert.equal(url.searchParams.get('salesMonths'), null);
+  assert.equal(url.searchParams.get('stallId'), 's&2');
+});
+
+
+test('首页选中档口最小滚动，两端限制滚动范围，全部保留列表位置', async () => {
+  const page = createPage();
+  requestHandler = backendStub();
+  const callbacks = [];
+  const selectors = [];
+  global.wx.createSelectorQuery = () => ({
+    in(owner) { assert.equal(owner, page); return this; },
+    select(selector) { selectors.push(selector); return this; },
+    boundingClientRect() { return this; }, scrollOffset() { return this; },
+    exec(callback) { callbacks.push(callback); }
+  });
+  try {
+    await page.selectStall(event({ stall: 's2', name: 'B档口' }));
+    callbacks.shift()([{ left: 80, width: 240 }, { left: 280, width: 80 }, { scrollLeft: 100 }, { width: 700 }]);
+    assert.equal(page.data.stallScrollLeft, 140);
+    assert.deepEqual(selectors, ['.sub-nav-scroll', '#stall-s2', '.sub-nav-scroll', '.sub-nav-container', '.stall-edge-fade-right']);
+    await page.selectStall(event({ stall: 'first', name: '首档口' }));
+    callbacks.shift()([{ left: 80, width: 240 }, { left: 60, width: 80 }, { scrollLeft: 10 }, { width: 700 }]);
+    assert.equal(page.data.stallScrollLeft, 0);
+    await page.selectStall(event({ stall: 'last', name: '末档口' }));
+    callbacks.shift()([{ left: 80, width: 240 }, { left: 390, width: 80 }, { scrollLeft: 400 }, { width: 700 }]);
+    assert.equal(page.data.stallScrollLeft, 460);
+    await page.selectStall(event({ stall: 'all' }));
+    assert.equal(page.data.stallScrollLeft, 460);
+    assert.equal(callbacks.length, 0);
+  } finally {
+    delete global.wx.createSelectorQuery;
+  }
+});
+
+test('首页恢复分享档口后加载列表会定位，旧选择或卸载后的测量不再生效', async () => {
+  const page = createPage();
+  requestHandler = backendStub();
+  const callbacks = [];
+  global.wx.createSelectorQuery = () => ({
+    in() { return this; }, select() { return this; }, boundingClientRect() { return this; },
+    scrollOffset() { return this; }, exec(callback) { callbacks.push(callback); }
+  });
+  const result = [{ left: 80, width: 240 }, { left: 280, width: 80 }, { scrollLeft: 100 }, { width: 700 }];
+  try {
+    page.restoreShareFilters({ stallId: 's1' });
+    await page.loadStallList();
+    callbacks.shift()(result);
+    assert.equal(page.data.stallScrollLeft, 140);
+    await page.selectStall(event({ stall: 's1', name: 'A档口' }));
+    await page.selectStall(event({ stall: 's2', name: 'B档口' }));
+    callbacks.shift()([{ ...result[0] }, { left: 10, width: 80 }, result[2], result[3]]);
+    assert.equal(page.data.stallScrollLeft, 140);
+    page.onUnload();
+    callbacks.shift()(result);
+    assert.equal(page.data.stallScrollLeft, 140);
+  } finally {
+    delete global.wx.createSelectorQuery;
+  }
+});
+
+
+test('首页切档口静默刷新，不弹全局加载框，连续选中后仍更新对应商品', async () => {
+  const page = createPage();
+  requestHandler = backendStub();
+  await page.selectStall(event({ stall: 's1', name: 'A档口' }));
+  await page.selectStall(event({ stall: 's2', name: 'B档口' }));
+  assert.equal(wxCalls.showLoading, 0);
+  assert.equal(wxCalls.hideLoading, 0);
+  assert.equal(searchCalls().length, 2);
+  assert.equal(searchCalls().at(-1).params.stallId, 's2');
+  assert.equal(page.data.loading, false);
+  assert.equal(page.data.productList.length, 3);
+});
+
+test('首页最小滚动目标与上次相同但用户已手动滑走时，重新下发目标；已最小滚动不再启动动画', () => {
+  const page = createPage();
+  page.setData({ selectedStall: 's1', stallScrollLeft: 140 });
+  const patches = [];
+  const originalSetData = page.setData;
+  page.setData = (patch, callback) => { patches.push(patch); originalSetData(patch, callback); };
+  let offset = 100;
+  let left = 280;
+  global.wx.createSelectorQuery = () => ({
+    in() { return this; }, select() { return this; }, boundingClientRect() { return this; },
+    scrollOffset() { return this; },
+    exec(callback) { callback([{ left: 80, width: 240 }, { left, width: 80 }, { scrollLeft: offset }, { width: 700 }]); }
+  });
+  try {
+    page.ensureSelectedStallVisible();
+    assert.deepEqual(patches, [{ stallScrollLeft: 100 }, { stallScrollLeft: 140 }]);
+    patches.length = 0;
+    offset = 140;
+    left = 160;
+    page.ensureSelectedStallVisible();
+    assert.equal(patches.length, 0);
+  } finally {
+    delete global.wx.createSelectorQuery;
+  }
+});
+
+
+test('首页标签已完整显示时不滚动，左右遮挡时只补齐被遮住的距离', () => {
+  const page = createPage();
+  page.setData({ selectedStall: 's1', stallScrollLeft: 100 });
+  const patches = [];
+  const originalSetData = page.setData;
+  page.setData = (patch, callback) => { patches.push(patch); originalSetData(patch, callback); };
+  let tagLeft = 80;
+  global.wx.createSelectorQuery = () => ({
+    in() { return this; }, select() { return this; }, boundingClientRect() { return this; },
+    scrollOffset() { return this; },
+    exec(callback) { callback([{ left: 80, width: 240 }, { left: tagLeft, width: 80 }, { scrollLeft: 100 }, { width: 700 }]); }
+  });
+  try {
+    for (tagLeft of [83.5, 160, 240]) page.ensureSelectedStallVisible();
+    assert.equal(patches.length, 0);
+    tagLeft = 60;
+    page.ensureSelectedStallVisible();
+    assert.equal(page.data.stallScrollLeft, 76.5);
+    patches.length = 0;
+    tagLeft = 280;
+    page.ensureSelectedStallVisible();
+    assert.deepEqual(patches, [{ stallScrollLeft: 140 }]);
+  } finally {
+    delete global.wx.createSelectorQuery;
+  }
+});
+
+
+test('首页档口让开渐隐遮罩后完整展示，清晰区域内的标签不滚动', () => {
+  const page = createPage();
+  page.setData({ selectedStall: 's1', stallScrollLeft: 100 });
+  const patches = [];
+  const originalSetData = page.setData;
+  page.setData = (patch, callback) => { patches.push(patch); originalSetData(patch, callback); };
+  let tagLeft = 160;
+  global.wx.createSelectorQuery = () => ({
+    in() { return this; }, select() { return this; }, boundingClientRect() { return this; },
+    scrollOffset() { return this; },
+    exec(callback) { callback([{ left: 80, width: 240 }, { left: tagLeft, width: 80 }, { scrollLeft: 100 }, { width: 700 }, { width: 24 }]); }
+  });
+  try {
+    page.ensureSelectedStallVisible();
+    assert.equal(patches.length, 0);
+    tagLeft = 83.5;
+    page.ensureSelectedStallVisible();
+    assert.equal(patches.length, 0);
+    assert.equal(page.data.stallScrollLeft, 100);
+    tagLeft = 240;
+    page.ensureSelectedStallVisible();
+    assert.equal(page.data.stallScrollLeft, 112);
+  } finally {
+    delete global.wx.createSelectorQuery;
+  }
+});
+
+
+test('首页左侧定位按屏幕宽度换算7rpx留白', () => {
+  const page = createPage(); const wx = global.wx;
+  const previousWindowInfo = wx.getWindowInfo;
+  const previousSelectorQuery = wx.createSelectorQuery;
+  page.setData({ selectedStall: 's1' });
+  wx.createSelectorQuery = () => ({
+    in() { return this; }, select() { return this; }, boundingClientRect() { return this; },
+    scrollOffset() { return this; },
+    exec(callback) { callback([{ left: 80, width: 240 }, { left: 60, width: 80 }, { scrollLeft: 100 }, { width: 700 }]); }
+  });
+  try {
+    for (const width of [375, 750]) {
+      wx.getWindowInfo = () => ({ windowWidth: width });
+      page.ensureSelectedStallVisible();
+      assert.equal(page.data.stallScrollLeft, 80 - 7 * width / 750);
+    }
+  } finally {
+    if (previousWindowInfo) wx.getWindowInfo = previousWindowInfo;
+    else delete wx.getWindowInfo;
+    if (previousSelectorQuery) wx.createSelectorQuery = previousSelectorQuery;
+    else delete wx.createSelectorQuery;
+  }
 });

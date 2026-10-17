@@ -16,8 +16,8 @@
           <text>上新</text>
           <view class="line"></view> </view>
 
-        <view class="tab-item {{currentMainTab === '档口' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="档口">
-          <text>档口</text>
+        <view class="tab-item {{currentMainTab === '销量' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="销量">
+          <text>销量</text>
           <view class="line"></view>
         </view>
 
@@ -31,31 +31,25 @@
     </view>
   </view>
 
-  <!-- ================== 新增：左右分治的高级子导航栏 ================== -->
-  <view class="sub-nav-bar" wx:if="{{currentMainTab === '档口' || currentMainTab === '分类'}}" style="top: {{totalNavHeight}}px;">
+  <!-- 档口筛选常驻：全部清除筛选，右侧菜单展开完整档口列表。 -->
+  <view class="sub-nav-bar" style="top: {{totalNavHeight}}px;">
     
-    <!-- 左侧固定：总控开关 (支持双向切换与动态图标) -->
-    <view class="btn-all-switch" bindtap="toggleAllPanel">
-      <text>全部</text>
-      <text class="icon-menu">{{showAllPanel ? '×' : '≡'}}</text>
-    </view>
+    <view class="btn-all-switch {{!selectedStall ? 'active' : ''}}" bindtap="selectStall" data-stall="all"><view class="stall-label"><text class="stall-label-sizing" aria-hidden="true">全部</text><view class="stall-label-text"><text>全部</text></view></view></view>
     
-    <view class="sub-nav-divider"></view> <!-- 微妙的视觉分割线 -->
 
     <!-- 右侧滑动：纯净列表（不再有重复的全部） -->
-    <scroll-view class="sub-nav-scroll" scroll-x="true">
-      <view class="sub-nav-container">
-        <!-- 档口的标签列表 -->
-        <block wx:if="{{currentMainTab === '档口'}}">
-          <view class="sub-tag {{selectedStall === item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}" data-name="{{item.name}}">{{item.name}}</view>
-        </block>
-        <!-- 分类的标签列表 -->
-        <block wx:if="{{currentMainTab === '分类'}}">
-          <view class="sub-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}" data-name="{{item.name}}">{{item.name}}</view>
-        </block>
-        <view class="sub-tag-placeholder"></view> <!-- 留白占位，更高级 -->
-      </view>
-    </scroll-view>
+    <view class="sub-nav-divider"></view>
+    <view class="stall-scroll-frame">
+      <scroll-view class="sub-nav-scroll" scroll-x="true" scroll-left="{{stallScrollLeft}}" scroll-with-animation>
+        <view class="sub-nav-container">
+          <view id="stall-{{item.id}}" class="sub-tag {{selectedStall == item.id ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}" data-name="{{item.name}}"><view class="stall-label"><text class="stall-label-sizing" aria-hidden="true">{{item.name}}</text><view class="stall-label-text"><text>{{item.name}}</text></view></view></view>
+        </view>
+      </scroll-view>
+      <view class="stall-edge-fade stall-edge-fade-right" aria-hidden="true"></view>
+    </view>
+    <view class="stall-menu-switch {{showAllPanel ? 'active' : ''}}" bindtap="toggleAllPanel" aria-label="{{showAllPanel ? '收起全部档口' : '展开全部档口'}}">
+      <view class="stall-menu-arrow {{showAllPanel ? 'expanded' : ''}}"></view>
+    </view>
   </view>
 
   <!-- ================== 新增：展开时的高级大面板 (A-Z版) ================== -->
@@ -63,33 +57,15 @@
   
   <view class="all-panel-content {{showAllPanel ? 'slide-down' : ''}}" wx:if="{{showAllPanel}}" style="top: {{totalNavHeight}}px; margin-top: 88rpx;">
     
-    <!-- 档口专属：A-Z 分组面板 -->
-    <block wx:if="{{currentMainTab === '档口'}}">
-      <view class="panel-top-action">
-        <!-- 独立放置的全部按钮 -->
-        <view class="all-panel-tag {{selectedStall === '' ? 'active' : ''}}" bindtap="selectStall" data-stall="all" data-name="全部档口">全部档口</view>
-      </view>
+    <!-- A-Z 分组面板只展示具体档口。 -->
       <scroll-view scroll-y class="panel-scroll-area">
         <view class="group-section" wx:for="{{groupedStalls}}" wx:key="letter">
           <view class="group-title">{{item.letter}}</view> <!-- A, B, C... 标题 -->
           <view class="all-panel-grid">
-            <view class="all-panel-tag {{selectedStall === stall.id ? 'active' : ''}}" wx:for="{{item.list}}" wx:for-item="stall" wx:key="id" bindtap="selectStall" data-stall="{{stall.id}}" data-name="{{stall.name}}">{{stall.name}}</view>
+            <view class="all-panel-tag {{selectedStall == stall.id ? 'active' : ''}}" wx:for="{{item.list}}" wx:for-item="stall" wx:key="id" bindtap="selectStall" data-stall="{{stall.id}}" data-name="{{stall.name}}">{{stall.name}}</view>
           </view>
         </view>
       </scroll-view>
-    </block>
-
-    <!-- 分类专属：极简平铺面板 -->
-    <block wx:if="{{currentMainTab === '分类'}}">
-      <view class="panel-top-action">
-        <view class="all-panel-tag {{selectedTag === '' ? 'active' : ''}}" bindtap="selectTag" data-tag="all" data-name="全部分类">全部分类</view>
-      </view>
-      <scroll-view scroll-y class="panel-scroll-area">
-        <view class="all-panel-grid" style="padding-top: 10rpx;">
-          <view class="all-panel-tag {{selectedTag === item.id ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}" data-name="{{item.name}}">{{item.name}}</view>
-        </view>
-      </scroll-view>
-    </block>
   </view>
 
   <!-- 商品瀑布流：整块作为滚动容器，释放时触发下拉刷新（指示器落在导航栏下沿，不会被顶栏盖住） -->
@@ -106,6 +82,7 @@
     lower-threshold="50"
   >
     <view wx:if="{{loadError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="retryProducts">{{loadError}} · 点击重试</view>
+    <view class="list-loading" wx:if="{{loading && !productList.length}}">加载中...</view>
     <view class="waterfall-container">
       <!-- 左列 -->
       <view class="waterfall-column">
@@ -117,7 +94,9 @@
           <view class="product-info">
             <view class="product-title">{{item.name || item.title}}</view>
             <view class="product-bottom">
-              <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
+              <view class="product-price-row">
+                <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
+              </view>
               <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
                 <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
               </view>
@@ -136,7 +115,9 @@
           <view class="product-info">
             <view class="product-title">{{item.name || item.title}}</view>
             <view class="product-bottom">
-              <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
+              <view class="product-price-row">
+                <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
+              </view>
               <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}">
                 <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
               </view>
@@ -159,124 +140,4 @@
   </view>
 </view>
 
-<view class="sku-mask {{showSku ? 'fade-in' : ''}}" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
-
-<view class="sku-panel {{showSku ? 'slide-up' : ''}}" wx:if="{{showSku}}">
-  <view class="sku-close" catchtap="closeSkuPanel">×</view>
-
-  <view class="sku-header" wx:if="{{currentProduct}}">
-    <view class="sku-image-column">
-      <view class="sku-img-wrap">
-        <image class="sku-img" src="{{currentSkuImage || currentProduct.coverUrl || currentProduct.image}}" mode="aspectFill" catchtap="previewSkuPanelImage"></image>
-        <view class="sold-out-overlay sku-sold-out-overlay" wx:if="{{currentSkuId ? currentSkuSoldOut : currentProduct.soldOut}}"><text>售罄</text></view>
-      </view>
-    </view>
-    <view class="sku-main">
-      <view class="sku-price" wx:if="{{bundleSelections.length === 0}}">
-        ¥{{currentSkuPrice || currentProduct.retailPrice || currentProduct.displayPrice || '0.00'}}
-      </view>
-      <view class="sku-price" wx:else>
-        {{bundlePriceRange}}
-      </view>
-
-      <view class="sku-stock sku-stock-low" wx:if="{{bundleSelections.length === 0 && !currentSkuUnlimited && currentSkuStock != null && currentSkuStock <= 3}}">
-        库存：仅剩{{currentSkuStock}}件
-      </view>
-      <view class="sku-stock" wx:elif="{{bundleSelections.length === 0 && (isAdmin || isStallManager) && currentSkuStock != null}}">
-        库存：{{currentSkuStockText}}
-      </view>
-
-      <view class="sku-meta-row" wx:if="{{bundleSelections.length === 0}}">
-        <view class="sku-choose-tip">已选：{{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
-        <view class="sku-quantity">
-          <text class="sku-quantity-label">数量</text>
-          <view class="sku-quantity-control">
-            <view class="sku-quantity-btn {{quantity <= 1 ? 'disabled' : ''}}" catchtap="skuQuantityMinus">-</view>
-            <input class="sku-quantity-input" type="number" value="{{quantity}}" bindinput="skuQuantityInput" bindblur="skuQuantityInputBlur" />
-            <view class="sku-quantity-btn {{!currentSkuUnlimited && currentSkuStock !== null && currentSkuStock <= quantity ? 'disabled' : ''}}" catchtap="skuQuantityPlus">+</view>
-          </view>
-        </view>
-      </view>
-      <view class="sku-choose-tip" wx:else>已选：{{bundleNamesStr}}</view>
-    </view>
-  </view>
-
-  <!-- 套装商品子项选择 -->
-  <scroll-view scroll-y style="max-height: 55vh; padding: 0 16rpx; padding-bottom: 0rpx;" wx:if="{{bundleSelections.length > 0}}">
-    <view class="bundle-group-card {{sel.isOutOfStock ? 'out-of-stock-card' : ''}}" wx:for="{{bundleSelections}}" wx:key="index" wx:for-item="sel" wx:for-index="bgIdx">
-      
-      <image class="bundle-card-img" src="{{sel.selectedSku.imageUrl || sel.skus[0].imageUrl || currentProduct.coverUrl}}" mode="aspectFill" bindtap="previewBundleImage" data-url="{{sel.selectedSku.imageUrl || sel.skus[0].imageUrl || currentProduct.coverUrl}}"></image>
-      
-      <view class="bundle-card-right">
-        <view class="bundle-card-header">
-          <view class="bundle-card-title">
-            <text class="bg-step">{{bgIdx + 1}}</text>
-            <text>{{sel.bundleGroupName}}</text>
-          </view>
-        </view>
-        
-        <view class="bundle-card-specs" wx:if="{{sel.uniqueColors.length > 0}}">
-          <text class="spec-label">颜色</text>
-          <view class="sku-options minimal">
-            <view class="sku-tag minimal {{sel.selectedColor === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{sel.colorOptions}}" wx:key="value" wx:for-item="item" bindtap="selectBundleColor" data-index="{{bgIdx}}" data-color="{{item.value}}">{{item.value}}</view>
-          </view>
-        </view>
-        
-        <view class="bundle-card-specs" wx:if="{{sel.uniqueSizes.length > 0}}">
-          <text class="spec-label">尺码</text>
-          <view class="sku-options minimal">
-            <view class="sku-tag minimal {{sel.selectedSize === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{sel.sizeOptions}}" wx:key="value" wx:for-item="item" bindtap="selectBundleSize" data-index="{{bgIdx}}" data-size="{{item.value}}">{{item.value}}</view>
-          </view>
-        </view>
-
-        <view class="bundle-card-footer">
-          <view class="bundle-sku-price" style="color: #1a1a1a;">
-            ¥{{sel.computedPrice || sel.selectedSku.price || sel.skus[0].price || sel.skus[0].retailPrice}}
-          </view>
-          <view class="stepper" wx:if="{{sel.selectedSku}}">
-            <view class="step-btn {{sel.quantity <= 1 ? 'disabled' : ''}}" catchtap="bundleMinus" data-index="{{bgIdx}}">-</view>
-            <input class="step-input" type="number" value="{{sel.quantity}}" bindinput="bundleInput" bindblur="bundleInputBlur" data-index="{{bgIdx}}" />
-            <view class="step-btn {{(!sel.selectedSku.unlimitedStock && sel.quantity >= sel.selectedSku.stock) ? 'disabled' : ''}}" catchtap="bundlePlus" data-index="{{bgIdx}}">+</view>
-          </view>
-        </view>
-      </view>
-    </view>
-  </scroll-view>
-
-  <!-- 普通商品颜色/尺码选择 -->
-  <scroll-view scroll-y style="max-height: 50vh;" wx:else>
-    <view class="sku-section" wx:if="{{uniqueColors.length > 0}}">
-      <view class="sku-title">颜色</view>
-      <view class="sku-options">
-        <view class="sku-tag {{selectedColor === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{colorOptions}}" wx:key="value" bindtap="selectColor" data-color="{{item.value}}">{{item.value}}</view>
-      </view>
-    </view>
-
-    <view class="sku-section" wx:if="{{uniqueSizes.length > 0}}">
-      <view class="sku-title">尺码</view>
-      <view class="sku-options">
-        <view class="sku-tag {{selectedSize === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{sizeOptions}}" wx:key="value" bindtap="selectSize" data-size="{{item.value}}">{{item.value}}</view>
-      </view>
-    </view>
-  </scroll-view>
-
-  <block wx:if="{{bundleSelections.length > 0}}">
-    <view class="bundle-summary-bar" wx:if="{{bundleTotalCount > 0}}">
-      已选 {{bundleTotalCount}} 件，合计: <text class="summary-price">¥{{bundleTotalPrice}}</text>
-    </view>
-    <view class="sku-actions-new" style="{{bundleTotalCount > 0 ? 'padding-top: 10rpx;' : ''}}">
-      <view class="sku-btn-item cart {{!bundleAllSelected ? 'btn-disabled' : ''}}" bindtap="confirmAddToCart" data-action="cart">加入购物车</view>
-      <view class="sku-btn-item buy {{!bundleAllSelected ? 'btn-disabled' : ''}}" bindtap="confirmAddToCart" data-action="buy">立即购买</view>
-    </view>
-  </block>
-
-  <block wx:else>
-    <view class="sku-actions-new" wx:if="{{currentSkuStock <= 0 && currentSkuStock !== null && !currentSkuUnlimited}}">
-      <view class="sku-btn-item sold-out">已售罄</view>
-    </view>
-    <view class="sku-actions-new" wx:else>
-      <view class="sku-btn-item cart" bindtap="confirmAddToCart" data-action="cart">加入购物车</view>
-      <view class="sku-btn-item buy" bindtap="confirmAddToCart" data-action="buy">立即购买</view>
-    </view>
-  </block>
-</view>
+<include src="../../templates/productSkuPanel.wxml" />
