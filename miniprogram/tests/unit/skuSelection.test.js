@@ -6,6 +6,8 @@ const { getDefaultSkuSelection } = require('../../utils/skuSelection');
 const pages = {};
 global.getApp = () => ({});
 global.wx = {};
+let keyboardHides = 0;
+global.wx.hideKeyboard = () => { keyboardHides++; };
 const originalLoad = Module._load;
 Module._load = function(request, ...args) {
   if (request.endsWith('utils/api')) return {};
@@ -58,6 +60,82 @@ test('默认组合按照界面颜色、尺码顺序，而不是有货 SKU 的返
 });
 
 for (const name of ['index', 'search', 'detail']) {
+  test(`${name}：数量输入可删空、保留零和超库存值，失焦后再校验`, () => {
+    const page = createPage(name, makeSkus());
+    page.open();
+    for (const [input, expected] of [['', 1], ['0', 1], ['999', 5], ['003', 3]]) {
+      page.skuQuantityInputFocus({ currentTarget: { id: 'sku-quantity-input', dataset: {} } });
+      page.skuQuantityInput({ detail: { value: input } });
+      assert.equal(page.data.quantity, input);
+      page.skuQuantityInputBlur({ detail: { value: input } });
+      assert.equal(page.data.quantity, expected);
+      assert.equal(typeof page.data.quantity, 'number');
+    }
+    page.data.currentSkuUnlimited = true;
+    page.skuQuantityInput({ detail: { value: '123' } });
+    page.skuQuantityInputBlur({ detail: { value: '123' } });
+    assert.equal(page.data.quantity, 123);
+  });
+
+  test(`${name}：输入中点按钮只收键盘，下一次点击才正常执行`, () => {
+    const page = createPage(name, makeSkus());
+    page.open();
+    page.skuQuantityInputFocus({ currentTarget: { id: 'sku-quantity-input', dataset: {} } });
+    page.skuQuantityInput({ detail: { value: '2' } });
+    const tap = { target: { id: 'plus' }, currentTarget: { dataset: {} } };
+    const hides = keyboardHides;
+    page.onSkuQuantityTouchStart(tap);
+    page.skuQuantityPlus(tap);
+    assert.equal(keyboardHides, hides + 1);
+    assert.equal(page.data.quantity, 2);
+    page.onSkuQuantityTouchStart(tap);
+    page.skuQuantityPlus(tap);
+    assert.equal(page.data.quantity, 3);
+  });
+
+  test(`${name}：先 blur 后 tap 也不误关弹窗、切规格、预览或提交购买`, () => {
+    const actions = ['closeSkuPanel', 'selectColor', 'selectSize', 'skuQuantityMinus', 'skuQuantityPlus',
+      'previewSkuPanelImage', name === 'detail' ? 'confirmSkuAction' : 'confirmAddToCart'];
+    for (const action of actions) {
+      const page = createPage(name, makeSkus([3, 3, 3, 3, 3, 3]));
+      page.open();
+      page.skuQuantityInputFocus({ currentTarget: { id: 'sku-quantity-input', dataset: {} } });
+      page.skuQuantityInput({ detail: { value: '' } });
+      const tap = { target: { id: 'other' }, currentTarget: { dataset: { color: '白色', size: 'L', action: 'buy' } } };
+      page.onSkuQuantityTouchStart(tap);
+      page.skuQuantityInputBlur({ detail: { value: '' } });
+      page[action](tap);
+      page.onSkuPanelTap(tap);
+      assert.equal(page.data.showSku, true, action);
+      assert.equal(page.data.selectedColor, '黑色', action);
+      assert.equal(page.data.selectedSize, 'S', action);
+      assert.equal(page.data.quantity, 1, action);
+    }
+  });
+
+  test(`${name}：点击当前输入框继续编辑，空白区域先收键盘，再点遮罩才关闭`, () => {
+    const page = createPage(name, makeSkus());
+    page.open();
+    const input = { target: { id: 'sku-quantity-input' }, currentTarget: { id: 'sku-quantity-input', dataset: {} } };
+    page.onSkuQuantityTouchStart(input);
+    page.skuQuantityInputFocus(input);
+    page.skuQuantityInput({ detail: { value: '' } });
+    const hides = keyboardHides;
+    page.onSkuQuantityTouchStart(input);
+    page.onSkuPanelTap(input);
+    assert.equal(page.data.quantity, '');
+    assert.equal(keyboardHides, hides);
+    const outside = { target: { id: 'mask' } };
+    page.onSkuQuantityTouchStart(outside);
+    page.onSkuPanelTap(outside);
+    assert.equal(keyboardHides, hides + 1);
+    page.closeSkuPanel(outside); // 同一次点击即便继续传递也不能关闭。
+    assert.equal(page.data.showSku, true);
+    page.onSkuQuantityTouchStart(outside);
+    page.closeSkuPanel(outside);
+    assert.equal(page.data.showSku, false);
+  });
+
   test(`${name}：打开弹窗跳过缺货组合，默认白色 M，并同步 SKU 价格、图片和库存`, () => {
     const page = createPage(name, makeSkus());
     page.open();
@@ -242,3 +320,40 @@ test('首页套装保留再次点击取消子项的交互，取消后不再计�
   assert.equal(page.data.bundleSelections[0].selectedSku.skuId, 5);
   assert.equal(page.data.bundleTotalCount, 1);
 });
+
+for (const name of ['index', 'search']) {
+  test(`${name}：套装数量编辑不提前校验，失焦统一更新库存限制、件数和总价`, () => {
+    const skus = makeSkus();
+    const page = createPage(name, skus, [{ name: '上衣', skus }]);
+    page.open();
+    for (const [input, expected] of [['', 1], ['0', 1], ['99', 5], ['3', 3]]) {
+      const e = { currentTarget: { id: 'bundle-quantity-0', dataset: { index: 0 } }, detail: { value: input } };
+      page.skuQuantityInputFocus(e);
+      page.bundleInput(e);
+      assert.equal(page.data.bundleSelections[0].quantity, input);
+      page.bundleInputBlur(e);
+      assert.equal(page.data.bundleSelections[0].quantity, expected);
+      assert.equal(page.data.bundleTotalCount, expected);
+      assert.equal(page.data.bundleTotalPrice, (24 * expected).toFixed(2));
+    }
+  });
+
+  test(`${name}：套装数量失焦后同一次点击不触发加减、选规格和购买`, () => {
+    for (const action of ['bundleMinus', 'bundlePlus', 'selectBundleColor', 'selectBundleSize', 'previewBundleImage', 'confirmAddToCart']) {
+      const skus = makeSkus();
+      const page = createPage(name, skus, [{ name: '上衣', skus }]);
+      page.open();
+      const input = { currentTarget: { id: 'bundle-quantity-0', dataset: { index: 0 } }, detail: { value: '3' } };
+      page.skuQuantityInputFocus(input);
+      page.bundleInput(input);
+      const button = { target: { id: 'other' }, currentTarget: { dataset: { index: 0, color: '白色', size: 'L', action: 'buy', url: 'image.jpg' } } };
+      page.onSkuQuantityTouchStart(button);
+      page.bundleInputBlur(input);
+      page[action](button);
+      assert.equal(page.data.showSku, true, action);
+      assert.equal(page.data.bundleSelections[0].quantity, 3, action);
+      assert.equal(page.data.bundleSelections[0].selectedSku.skuId, 5, action);
+      assert.equal(page.data.bundleTotalPrice, '72.00', action);
+    }
+  });
+}

@@ -8,7 +8,7 @@ const plain = value => JSON.parse(JSON.stringify(value));
 
 function setup(component = 'productDetailSheet', handlers = {}) {
   let definition, timerId = 0, now = 1000;
-  const timers = new Map(), events = [], calls = { locks: 0, suppress: 0, pause: 0, posts: [], navigation: [], storage: [] };
+  const timers = new Map(), events = [], calls = { locks: 0, suppress: 0, pause: 0, keyboardHides: 0, posts: [], navigation: [], storage: [] };
   const child = { lockVerticalGesture() { calls.locks++; }, suppressGestureTap() { calls.suppress++; },
     pauseProductVideos() { calls.pause++; }, getProductShare: () => ({ path: '/pages/detail/detail?id=1' }) };
   const filename = path.resolve(__dirname, '../../components', component, 'index.js');
@@ -21,6 +21,7 @@ function setup(component = 'productDetailSheet', handlers = {}) {
     wx: { getWindowInfo: () => ({ windowWidth: 375, windowHeight: 750, statusBarHeight: 24 }),
       getMenuButtonBoundingClientRect: () => ({ left: 280, bottom: 70 }), showLoading() {}, hideLoading() {},
       showToast() {}, showModal() {}, createVideoContext: () => ({ pause() {}, play() {} }),
+      hideKeyboard() { calls.keyboardHides++; },
       navigateTo: value => calls.navigation.push(value), setStorageSync: (key, value) => calls.storage.push({ key, value }) },
     require(name) {
       if (name.endsWith('/api')) return {
@@ -29,6 +30,11 @@ function setup(component = 'productDetailSheet', handlers = {}) {
       };
       if (name.endsWith('/auth')) return { isAdmin: () => !!handlers.admin, isStallManager: () => false, ensureAuthenticated: async () => {} };
       if (name.endsWith('/shareImage')) return { createShareImage: async () => '' };
+      if (name.endsWith('/skuQuantityEditor')) {
+        const module = { exports: {} };
+        vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../utils/skuQuantityEditor.js'), 'utf8'), { ...ctx, module });
+        return module.exports;
+      }
       if (name === './controller') {
         const module = { exports: {} };
         vm.runInNewContext(fs.readFileSync(path.join(path.dirname(filename), 'controller.js'), 'utf8'), { ...ctx, module });
@@ -331,6 +337,75 @@ test('返回和原生返回只关闭商品窗口，先下滑动画再清理，�
   assert.equal(events.filter(e => e.name === 'close').length, 1);
   assert.equal(calls.navigation.length, 0);
   assert.ok(calls.pause > 0);
+});
+
+for (const action of ['cart', 'buy']) {
+  for (const blurFirst of [false, true]) {
+    test(`心愿内半屏商品${action}：编辑数量时首次点购买按钮只收键盘，blur 优先=${blurFirst}`, () => {
+      const { instance: detail, calls } = setup('productDetail');
+      detail.data.product = { id: '1', name: '外套', coverUrl: 'cover.jpg',
+        skuMatrix: [{ skuId: '11', color: '黑色', size: 'M', stock: 5, price: 99 }] };
+      detail.openSkuPanel(tap({ action }));
+      detail.skuQuantityInputFocus({ currentTarget: { id: 'sku-quantity-input', dataset: {} } });
+      detail.skuQuantityInput({ detail: { value: '3' } });
+      const button = { ...tap({ action }), target: { id: 'sku-action' } };
+      detail.onSkuQuantityTouchStart(button);
+      if (blurFirst) detail.skuQuantityInputBlur({ detail: { value: '3' } });
+      detail.confirmSkuAction(button);
+      assert.equal(detail.data.showSku, true);
+      assert.equal(calls.posts.length, 0);
+      assert.equal(calls.navigation.length, 0);
+      detail.onSkuQuantityTouchStart(button);
+      detail.confirmSkuAction(button);
+      if (action === 'cart') {
+        assert.equal(calls.posts.length, 1);
+        assert.equal(calls.posts[0].data.count, 3);
+      } else {
+        assert.equal(calls.navigation.length, 1);
+        assert.equal(calls.storage[0].value[0].count, 3);
+      }
+    });
+
+    test(`心愿内半屏商品${action}：外层遮罩先收键盘，再关 SKU，最后退出商品，blur 优先=${blurFirst}`, () => {
+      const env = opened(), sheet = env.instance;
+      const { instance: detail, calls } = setup('productDetail');
+      sheet.selectComponent = () => detail;
+      detail.data.product = { id: '1', name: '外套', coverUrl: 'cover.jpg',
+        skuMatrix: [{ skuId: '11', color: '黑色', size: 'M', stock: 5, price: 99 }] };
+      detail.openSkuPanel(tap({ action }));
+      detail.skuQuantityInputFocus({ currentTarget: { id: 'sku-quantity-input', dataset: {} } });
+      detail.skuQuantityInput({ detail: { value: '' } });
+      const outside = { target: { id: 'sheet-mask' } };
+      sheet.onOverlayTouchStart(outside);
+      if (blurFirst) detail.skuQuantityInputBlur({ detail: { value: '' } });
+      sheet.requestClose(outside);
+      assert.equal(detail.data.quantity, 1);
+      assert.equal(detail.data.showSku, true);
+      assert.equal(sheet.data.sheetTop, 250);
+      assert.equal(sheet._closing, false);
+      assert.equal(calls.keyboardHides, blurFirst ? 0 : 1);
+      assert.equal(calls.posts.length, 0);
+      assert.equal(calls.navigation.length, 0);
+      sheet.onOverlayTouchStart(outside);
+      sheet.requestClose(outside);
+      assert.equal(detail.data.showSku, false);
+      assert.equal(sheet._closing, false);
+      sheet.onOverlayTouchStart(outside);
+      sheet.requestClose(outside);
+      env.flush(280);
+      assert.equal(sheet.data.visible, false);
+    });
+  }
+}
+
+test('原生容器已退出时，即使 SKU 仍打开也完成外层清理', () => {
+  const env = opened(), sheet = env.instance;
+  env.child.closeTopOverlay = () => true;
+  sheet.onContainerLeave();
+  sheet.onContainerLeft();
+  assert.equal(sheet.data.visible, false);
+  assert.equal(sheet.data.mounted, false);
+  assert.equal(env.events.filter(e => e.name === 'close').length, 1);
 });
 
 test('离开和尺寸变化保留商品及正文状态，切关联商品清理正文避免串数据', () => {

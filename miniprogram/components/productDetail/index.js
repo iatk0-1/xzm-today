@@ -250,11 +250,13 @@ Component({
     },
     suppressGestureTap() { this._suppressTapUntil = Date.now() + 350; },
     getProductShare(res) { return config.onShareAppMessage.call(this, res); },
-    closeTopOverlay() {
+    closeTopOverlay(e) {
+      if (this.dismissSkuQuantityKeyboard(e)) return true;
       if (this.data.showVideo) this.closeVideoOverlay();
       else if (this.data.showShareTemplates) this.closeShareTemplateSelector();
       else if (this.data.showSku) this.closeSkuPanel();
-      else this.triggerEvent('close');
+      else return !!this.data.purchasePending;
+      return true;
     }
   }
 });

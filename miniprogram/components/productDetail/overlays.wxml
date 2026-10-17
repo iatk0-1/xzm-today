@@ -45,9 +45,9 @@
     <view class="btn-buy-half action-disabled">立即购买</view>
   </block>
 </view>
-<view class="sku-mask" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
+<view class="sku-mask" wx:if="{{showSku}}" capture-bind:touchstart="onSkuQuantityTouchStart" catchtap="closeSkuPanel"></view>
 
-<view class="sku-panel {{showSku ? 'show' : ''}}">
+<view class="sku-panel {{showSku ? 'show' : ''}}" capture-bind:touchstart="onSkuQuantityTouchStart" bindtap="onSkuPanelTap">
   <view class="sku-close" catchtap="closeSkuPanel">×</view>
   <view class="sku-header">
     <view class="sku-image-column">
@@ -66,7 +66,7 @@
           <text class="sku-quantity-label">数量</text>
           <view class="sku-quantity-control">
             <view class="sku-quantity-btn {{quantity <= 1 ? 'disabled' : ''}}" catchtap="skuQuantityMinus">-</view>
-            <input class="sku-quantity-input" type="number" value="{{quantity}}" bindinput="skuQuantityInput" bindblur="skuQuantityInputBlur" />
+            <input id="sku-quantity-input" class="sku-quantity-input" type="number" value="{{quantity}}" hold-keyboard="{{true}}" bindfocus="skuQuantityInputFocus" bindinput="skuQuantityInput" bindblur="skuQuantityInputBlur" />
             <view class="sku-quantity-btn {{!currentSkuUnlimited && currentSkuStock !== null && currentSkuStock <= quantity ? 'disabled' : ''}}" catchtap="skuQuantityPlus">+</view>
           </view>
         </view>

@@ -9,9 +9,11 @@ const { formatStock, hasStock, isSkuSoldOut, isProductSoldOut } = require('../..
 const { findSelectedSku, getSkuOptions, getDefaultSkuSelection, getSkuOptionSelection } = require('../../utils/skuSelection');
 const { createShareImage } = require('../../utils/shareImage');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
+const skuQuantityEditor = require('../../utils/skuQuantityEditor');
 
 function createProductDetailConfig() {
   return {
+  ...skuQuantityEditor,
   data: {
     embedded: false,
     loading: false,
@@ -621,6 +623,7 @@ function createProductDetailConfig() {
     if (Date.now() < (this._suppressTapUntil || 0)) return;
     const product = this.data.product;
     if (!product.id || product.offSale || product.soldOut) return;
+    this.resetSkuQuantityEditing();
 
     this.setData({ isAdmin: !!auth.isAdmin(), isStallManager: !!auth.isStallManager() });
 
@@ -685,11 +688,13 @@ function createProductDetailConfig() {
     this.checkSkuMatch();
   },
 
-  closeSkuPanel() {
+  closeSkuPanel(e) {
+    if (this.dismissSkuQuantityKeyboard(e)) return;
     this.setData({ showSku: false });
   },
 
   selectColor(e) {
+    if (this.dismissSkuQuantityKeyboard(e)) return;
     if (Date.now() < (this._suppressTapUntil || 0)) return;
     const selection = getSkuOptionSelection(this.data.product.skuMatrix || [],
       this.data.selectedColor, this.data.selectedSize, 'selectedColor', e.currentTarget.dataset.color);
@@ -699,6 +704,7 @@ function createProductDetailConfig() {
   },
 
   selectSize(e) {
+    if (this.dismissSkuQuantityKeyboard(e)) return;
     if (Date.now() < (this._suppressTapUntil || 0)) return;
     const selection = getSkuOptionSelection(this.data.product.skuMatrix || [],
       this.data.selectedColor, this.data.selectedSize, 'selectedSize', e.currentTarget.dataset.size);
@@ -743,21 +749,14 @@ function createProductDetailConfig() {
     }
   },
 
-  normalizeSkuQuantity(value, stock, unlimitedStock) {
-    var quantity = parseInt(value, 10);
-    if (isNaN(quantity) || quantity < 1) quantity = 1;
-    if (!unlimitedStock && stock != null && Number(stock) > 0) {
-      quantity = Math.min(quantity, Number(stock));
-    }
-    return quantity;
-  },
-
-  skuQuantityMinus() {
+  skuQuantityMinus(e) {
+    if (this.dismissSkuQuantityKeyboard(e)) return;
     if (this.data.quantity <= 1) return;
     this.setData({ quantity: this.data.quantity - 1 });
   },
 
-  skuQuantityPlus() {
+  skuQuantityPlus(e) {
+    if (this.dismissSkuQuantityKeyboard(e)) return;
     const { quantity, currentSkuStock, currentSkuUnlimited } = this.data;
     const hasStockLimit = !currentSkuUnlimited && currentSkuStock !== null;
     const maxQuantity = hasStockLimit ? Number(currentSkuStock) : 99;
@@ -772,22 +771,9 @@ function createProductDetailConfig() {
     this.setData({ quantity: quantity + 1 });
   },
 
-  skuQuantityInput(e) {
-    const { currentSkuStock, currentSkuUnlimited } = this.data;
-    this.setData({
-      quantity: this.normalizeSkuQuantity(e.detail.value, currentSkuStock, currentSkuUnlimited)
-    });
-  },
-
-  skuQuantityInputBlur(e) {
-    const { currentSkuStock, currentSkuUnlimited } = this.data;
-    this.setData({
-      quantity: this.normalizeSkuQuantity(e.detail.value, currentSkuStock, currentSkuUnlimited)
-    });
-  },
-
   // 套装子项选择处理
   selectBundleColor(e) {
+    if (this.dismissSkuQuantityKeyboard(e)) return;
     if (Date.now() < (this._suppressTapUntil || 0)) return;
     var idx = e.currentTarget.dataset.index;
     var color = e.currentTarget.dataset.color;
@@ -796,6 +782,7 @@ function createProductDetailConfig() {
   },
 
   selectBundleSize(e) {
+    if (this.dismissSkuQuantityKeyboard(e)) return;
     if (Date.now() < (this._suppressTapUntil || 0)) return;
     var idx = e.currentTarget.dataset.index;
     var size = e.currentTarget.dataset.size;
@@ -830,6 +817,7 @@ function createProductDetailConfig() {
   },
 
   confirmSkuAction(e) {
+    if (this.dismissSkuQuantityKeyboard(e)) return;
     if (Date.now() < (this._suppressTapUntil || 0)) return;
     const action = e.currentTarget.dataset.action || this.data.skuAction;
     const { product, bundleSelections, bundleAllSelected } = this.data;
@@ -1088,7 +1076,8 @@ switchAuraTab(e) {
   },
 
   // E: SKU 面板商品图预览（单张）
-  previewSkuPanelImage: function() {
+  previewSkuPanelImage: function(e) {
+    if (this.dismissSkuQuantityKeyboard(e)) return;
     var current = this.data.currentSkuImage || this.data.product.image || this.data.product.coverUrl;
     if (current) {
       wx.previewImage({ urls: [current], current: current });

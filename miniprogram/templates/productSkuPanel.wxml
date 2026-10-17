@@ -1,6 +1,6 @@
-<view class="sku-mask {{showSku ? 'fade-in' : ''}}" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
+<view class="sku-mask {{showSku ? 'fade-in' : ''}}" wx:if="{{showSku}}" capture-bind:touchstart="onSkuQuantityTouchStart" catchtap="closeSkuPanel"></view>
 
-<view class="sku-panel {{showSku ? 'slide-up' : ''}}" wx:if="{{showSku}}">
+<view class="sku-panel {{showSku ? 'slide-up' : ''}}" wx:if="{{showSku}}" capture-bind:touchstart="onSkuQuantityTouchStart" bindtap="onSkuPanelTap">
   <view class="sku-close" catchtap="closeSkuPanel">×</view>
 
   <view class="sku-header" wx:if="{{currentProduct}}">
@@ -31,7 +31,7 @@
           <text class="sku-quantity-label">数量</text>
           <view class="sku-quantity-control">
             <view class="sku-quantity-btn {{quantity <= 1 ? 'disabled' : ''}}" catchtap="skuQuantityMinus">-</view>
-            <input class="sku-quantity-input" type="number" value="{{quantity}}" bindinput="skuQuantityInput" bindblur="skuQuantityInputBlur" />
+            <input id="sku-quantity-input" class="sku-quantity-input" type="number" value="{{quantity}}" hold-keyboard="{{true}}" bindfocus="skuQuantityInputFocus" bindinput="skuQuantityInput" bindblur="skuQuantityInputBlur" />
             <view class="sku-quantity-btn {{!currentSkuUnlimited && currentSkuStock !== null && currentSkuStock <= quantity ? 'disabled' : ''}}" catchtap="skuQuantityPlus">+</view>
           </view>
         </view>
@@ -74,7 +74,7 @@
           </view>
           <view class="stepper" wx:if="{{sel.selectedSku}}">
             <view class="step-btn {{sel.quantity <= 1 ? 'disabled' : ''}}" catchtap="bundleMinus" data-index="{{bgIdx}}">-</view>
-            <input class="step-input" type="number" value="{{sel.quantity}}" bindinput="bundleInput" bindblur="bundleInputBlur" data-index="{{bgIdx}}" />
+            <input id="bundle-quantity-{{bgIdx}}" class="step-input" type="number" value="{{sel.quantity}}" hold-keyboard="{{true}}" bindfocus="skuQuantityInputFocus" bindinput="bundleInput" bindblur="bundleInputBlur" data-index="{{bgIdx}}" />
             <view class="step-btn {{(!sel.selectedSku.unlimitedStock && sel.quantity >= sel.selectedSku.stock) ? 'disabled' : ''}}" catchtap="bundlePlus" data-index="{{bgIdx}}">+</view>
           </view>
         </view>

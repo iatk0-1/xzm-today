@@ -50,6 +50,10 @@ Component({
       this._openTimer = setTimeout(() => { if (this._attached && !this._closing) this.snapTo('half'); }, 30);
     },
     getProductDetail() { return this.selectComponent('#productDetail'); },
+    onOverlayTouchStart(e) {
+      const child = this.getProductDetail();
+      if (child && child.onSkuQuantityTouchStart) child.onSkuQuantityTouchStart(e);
+    },
     blockTouch() {},
     onTitleChange(e) { this.setData({ productTitle: e.detail.title }); },
     onDocumentHeight(e) {
@@ -145,9 +149,11 @@ Component({
       if (e.target && e.target.id !== 'sheetPanel') return;
       if (this._closing) this.finishClose(); else this.completeSnap();
     },
-    requestClose() {
+    requestClose(e, containerLeaving = false) {
       if (!this.data.visible || this._closing) return;
       const child = this.getProductDetail();
+      // 半屏上方的遮罩也按键盘、SKU、商品弹窗的顺序处理。
+      if (!containerLeaving && child && child.closeTopOverlay && child.closeTopOverlay(e)) return;
       clearTimeout(this._openTimer); clearTimeout(this._animationTimer);
       this._gesture = null; this._closing = true;
       if (child) child.pauseProductVideos();
@@ -162,7 +168,8 @@ Component({
       this.triggerEvent('visibilitychange', { visible: false });
       this.triggerEvent('close');
     },
-    onContainerLeave() { this.requestClose(); },
+    // 原生容器已经开始退出时，继续完成清理，不能只关内部浮层。
+    onContainerLeave() { this.requestClose(null, true); },
     onContainerLeft() { if (this._closing) this.finishClose(); },
     getProductShare(res) {
       const child = this.getProductDetail();

@@ -53,13 +53,12 @@
     <view class="detail-price">¥ {{product.displayPrice || product.price}}</view>
 
     <view class="product-options-row">
-      <view class="consult-section">
+      <button class="consult-section consult-contact-button" size="mini" open-type="contact" bindcontact="handleCustomerServiceContact" session-from="product:{{product.id}}" show-message-card="true" send-message-title="{{product.title}}" send-message-path="/pages/detail/detail?id={{product.id}}" send-message-img="{{product.image}}">
         <view class="consult-left">
           <image class="consult-icon" src="/images/icons/customer-service.svg" mode="aspectFit"></image>
           <text class="consult-label">咨询客服</text>
         </view>
-        <button class="consult-contact-button" open-type="contact" bindcontact="handleCustomerServiceContact" session-from="product:{{product.id}}" show-message-card="true" send-message-title="{{product.title}}" send-message-path="/pages/detail/detail?id={{product.id}}" send-message-img="{{product.image}}"></button>
-      </view>
+      </button>
       <view class="options-section" bindtap="openSkuPanel" data-action="cart">
         <view class="size-selector">
           <text class="size-text" style="color: #333;">{{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</text>
