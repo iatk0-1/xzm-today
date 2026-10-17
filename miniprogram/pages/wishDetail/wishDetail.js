@@ -174,6 +174,21 @@ Page(pageSync.wrap({
 
   refreshShareFloatVisibility: function() {
     this.setData({ canShowShareFloat: auth.isAdmin() === true });
+    this.clampActionFloatPosition();
+  },
+
+  getActionFloatSize: function() {
+    const count = [this.data.canShowShareFloat, this.data.canEdit, this.data.canDelete].filter(Boolean).length;
+    return { width: 58, height: Math.max(1, count) * 58 + Math.max(0, count - 1) * 12 };
+  },
+
+  clampActionFloatPosition: function() {
+    if (!this._shareWindow) return;
+    const size = this.getActionFloatSize();
+    this.setData({
+      shareFloatLeft: Math.max(0, Math.min(this._shareWindow.width - size.width, this.data.shareFloatLeft)),
+      shareFloatTop: Math.max(0, Math.min(this._shareWindow.height - size.height, this.data.shareFloatTop))
+    });
   },
 
   initShareFloatPosition: function(sysInfo) {
@@ -187,6 +202,7 @@ Page(pageSync.wrap({
       shareFloatLeft: Math.max(0, windowWidth - floatSize - 18),
       shareFloatTop: Math.max(0, Math.min(windowHeight - floatSize, top))
     });
+    this.clampActionFloatPosition();
   },
 
   cancelFloatTouch: function() {
@@ -211,18 +227,23 @@ Page(pageSync.wrap({
     // 轻点时的细小抖动不移动按钮，避免视图位置改变打断点击。
     if (!drag.moved) return;
     const info = this._shareWindow || { width: 375, height: 667 };
+    const width = typeof size === 'number' ? size : size.width;
+    const height = typeof size === 'number' ? size : size.height;
     apply({
-      left: Math.max(0, Math.min(info.width - size, drag.left + dx)),
-      top: Math.max(info.minTop || 0, Math.min(info.height - size, drag.top + dy))
+      left: Math.max(0, Math.min(info.width - width, drag.left + dx)),
+      top: Math.max(info.minTop || 0, Math.min(info.height - height, drag.top + dy))
     });
   },
 
   startShareFloatDrag: function(e) {
     this.startFloatDrag(e, '_shareFloatDrag', this.data.shareFloatLeft, this.data.shareFloatTop);
+    if (this._shareFloatDrag) {
+      this._shareFloatDrag.action = (e.currentTarget && e.currentTarget.dataset.action) || 'share';
+    }
   },
 
   moveShareFloat: function(e) {
-    this.moveFloatDrag(e, '_shareFloatDrag', 58,
+    this.moveFloatDrag(e, '_shareFloatDrag', this.getActionFloatSize(),
       ({ left, top }) => this.setData({ shareFloatLeft: left, shareFloatTop: top }));
   },
 
@@ -230,7 +251,9 @@ Page(pageSync.wrap({
     var drag = this._shareFloatDrag;
     this._shareFloatDrag = null;
     if (drag && !drag.moved) {
-      this.openShareTemplateSelector();
+      if (drag.action === 'edit' && this.data.canEdit) return this.editWish();
+      if (drag.action === 'delete' && this.data.canDelete) return this.deleteWish();
+      if (drag.action === 'share') return this.openShareTemplateSelector();
     }
   },
 
@@ -303,6 +326,7 @@ Page(pageSync.wrap({
     // createdBy 存储的是 userId 的字符串形式
     var isCreator = wish.createdBy && String(userInfo.userId) === String(wish.createdBy);
     this.setData({ canDelete: !!(isAdmin || isCreator), canEdit: !!(isAdmin || isCreator) });
+    this.clampActionFloatPosition();
   },
 
   editWish: async function() {

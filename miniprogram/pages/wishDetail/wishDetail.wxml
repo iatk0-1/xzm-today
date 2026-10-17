@@ -4,10 +4,6 @@
 <scroll-view class="wish-page-scroll" scroll-y="{{!productSheetVisible && !showVideo}}" style="height: 100vh;" enhanced="true" show-scrollbar="false">
 <view class="page-wrapper">
 
-  <view class="share-float" wx:if="{{canShowShareFloat && !productSheetVisible}}" style="left: {{shareFloatLeft}}px; top: {{shareFloatTop}}px;" catchtouchstart="startShareFloatDrag" catchtouchmove="moveShareFloat" catchtouchend="endShareFloatDrag" catchtouchcancel="cancelFloatTouch">
-    <text>分享</text>
-  </view>
-
   <!-- 心愿图片 -->
   <swiper class="wish-swiper" indicator-dots="{{wish.images.length + (wish.videoUrl ? 1 : 0) > 1}}" circular="{{false}}" wx:if="{{wish.images.length || wish.videoUrl}}" bindchange="onWishMediaChange">
     <swiper-item wx:if="{{wish.videoUrl}}">
@@ -35,15 +31,6 @@
     <view class="wish-title">{{wish.title || wish.content}}</view>
     <view class="wish-content" wx:if="{{wish.content && wish.content !== wish.title}}">{{wish.content}}</view>
 
-    <!-- 点赞区域 -->
-    <view class="like-section">
-      <view class="like-btn wish-like-control" bindtap="handleLike" aria-role="button" aria-label="{{wish.isLiked ? '取消点赞' : '点赞'}}">
-        <text class="heart-icon {{wish.isLiked ? 'liked' : ''}} {{likeAnimation}}" bindanimationend="clearLikeAnimation">{{wish.isLiked ? '♥' : '♡'}}</text>
-        <text class="like-count">{{wish.likes || 0}}</text>
-      </view>
-      <text class="like-hint">点赞支持这个心愿，达到50热度主理人将为你寻觅</text>
-    </view>
-
     <!-- 底部信息 -->
     <view class="meta-section">
       <text class="meta-text">发布于 {{createdAtDisplay}}</text>
@@ -53,6 +40,21 @@
 </view>
 
 </scroll-view>
+
+<!-- 点赞固定在底部右侧，不随详情内容滚动。 -->
+<view class="wish-like-bar" wx:if="{{!productSheetVisible && !showVideo}}">
+  <view class="like-btn wish-like-control" bindtap="handleLike" aria-role="button" aria-label="{{wish.isLiked ? '取消点赞' : '点赞'}}">
+    <text class="heart-icon {{wish.isLiked ? 'liked' : ''}} {{likeAnimation}}" bindanimationend="clearLikeAnimation">{{wish.isLiked ? '♥' : '♡'}}</text>
+    <text class="like-count">{{wish.likes || 0}}</text>
+  </view>
+</view>
+
+<!-- 悬浮操作按分享、编辑、删除排列，拖动时整组移动。 -->
+<view class="wish-action-floats" wx:if="{{!productSheetVisible && (canShowShareFloat || canEdit || canDelete)}}" style="left: {{shareFloatLeft}}px; top: {{shareFloatTop}}px;">
+  <view class="share-float" wx:if="{{canShowShareFloat}}" data-action="share" aria-role="button" aria-label="分享心愿" catchtouchstart="startShareFloatDrag" catchtouchmove="moveShareFloat" catchtouchend="endShareFloatDrag" catchtouchcancel="cancelFloatTouch">分享</view>
+  <view class="share-float edit-float" wx:if="{{canEdit}}" data-action="edit" aria-role="button" aria-label="编辑心愿" catchtouchstart="startShareFloatDrag" catchtouchmove="moveShareFloat" catchtouchend="endShareFloatDrag" catchtouchcancel="cancelFloatTouch">编辑</view>
+  <view class="share-float delete-float" wx:if="{{canDelete}}" data-action="delete" aria-role="button" aria-label="删除心愿" catchtouchstart="startShareFloatDrag" catchtouchmove="moveShareFloat" catchtouchend="endShareFloatDrag" catchtouchcancel="cancelFloatTouch">删除</view>
+</view>
 
 <!-- 分享卡片专用画布：按图片数量生成单图、双图或三联图，不影响页面展示 -->
 <canvas canvas-id="wishDetailShareCanvasSingle" class="share-canvas" width="500" height="400"></canvas>
@@ -82,12 +84,6 @@
     </view>
   </scroll-view>
   <view class="share-template-cancel" bindtap="closeShareTemplateSelector">取消</view>
-</view>
-
-<!-- 底部操作（仅创建者/管理员可见） -->
-<view class="bottom-delete-bar" wx:if="{{!productSheetVisible && (canDelete || canEdit)}}">
-  <view class="btn-delete" wx:if="{{canDelete}}" bindtap="deleteWish">删除此心愿</view>
-  <view class="btn-edit" wx:if="{{canEdit}}" bindtap="editWish">编辑心愿</view>
 </view>
 
 <product-detail-sheet id="productSheet" bindvisibilitychange="onProductSheetVisibility" />

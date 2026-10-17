@@ -61,11 +61,17 @@ page { background-color: #ffffff; }
 }
 
 /* 卡片底部：关联商品入口在左，点赞和数量在右。 */
+.progress-bar { width: 100%; height: 2px; margin-top: 10px; background: #f0f0f0; }
+.progress-fill { height: 100%; background: #111; transition: width 0.4s ease-out; }
 .card-actions { display: flex; align-items: center; min-height: 28px; }
-.linked-cart { display: flex; align-items: center; justify-content: flex-start; width: 36px; min-height: 28px; }
-.linked-cart-icon { width: 20px; height: 20px; display: block; }
-/* 数字贴齐卡片右边缘，点击留白向左扩展，不把内容往内推。 */
-.like-action { margin-left: auto; flex-shrink: 0; justify-content: flex-end; padding-left: 10px; }
+.linked-cart { display: flex; align-items: center; justify-content: flex-start; gap: 4px; min-height: 28px; }
+.linked-cart-icon { flex-shrink: 0; width: 20px; height: 20px; display: block; }
+.linked-cart-label { font-family: -apple-system, sans-serif; font-size: 11px; color: #333; white-space: nowrap; }
+/* 恢复原来的点赞行高度，数字贴齐卡片右边缘。 */
+.like-action { margin-left: auto; flex-shrink: 0; justify-content: flex-end; align-items: center; gap: 2px; min-height: 28px; padding: 0 0 0 10px; }
+/* 爱心保留旧版字号，移除固定占位，保留颜色和动画。 */
+.like-action .heart-icon { flex: 0 0 auto; width: auto; font-size: 16px; line-height: 24px; letter-spacing: 0; }
+.like-action .like-count { position: relative; top: 1px; font-size: 14px; line-height: 24px; letter-spacing: 0; }
 
 /* 悬浮发布按钮 */
 .wish-management-actions {

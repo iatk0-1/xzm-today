@@ -30,9 +30,14 @@
           <view class="card-content">
             <view class="card-desc">{{item.title || item.content}}</view>
 
+            <view class="progress-bar">
+              <view class="progress-fill" style="width: {{ (item.likes / 50) * 100 }}%; max-width: 100%;"></view>
+            </view>
+
             <view class="card-actions">
               <view class="linked-cart" wx:if="{{item.hasLinkedProducts}}" catchtap="goToWishDetail" data-id="{{item.id}}" aria-role="button" aria-label="查看关联商品">
                 <image class="linked-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
+                <text class="linked-cart-label">购买同款</text>
               </view>
               <view class="like-action wish-like-control" catchtap="handleLike" data-id="{{item.id}}" aria-role="button" aria-label="{{item.isLiked ? '取消点赞' : '点赞'}}">
                 <text class="heart-icon {{item.isLiked ? 'liked' : ''}} {{item.likeAnimation}}" bindanimationend="clearLikeAnimation" data-id="{{item.id}}">{{item.isLiked ? '♥' : '♡'}}</text>
@@ -56,9 +61,14 @@
           <view class="card-content">
             <view class="card-desc">{{item.title || item.content}}</view>
 
+            <view class="progress-bar">
+              <view class="progress-fill" style="width: {{ (item.likes / 50) * 100 }}%; max-width: 100%;"></view>
+            </view>
+
             <view class="card-actions">
               <view class="linked-cart" wx:if="{{item.hasLinkedProducts}}" catchtap="goToWishDetail" data-id="{{item.id}}" aria-role="button" aria-label="查看关联商品">
                 <image class="linked-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
+                <text class="linked-cart-label">购买同款</text>
               </view>
               <view class="like-action wish-like-control" catchtap="handleLike" data-id="{{item.id}}" aria-role="button" aria-label="{{item.isLiked ? '取消点赞' : '点赞'}}">
                 <text class="heart-icon {{item.isLiked ? 'liked' : ''}} {{item.likeAnimation}}" bindanimationend="clearLikeAnimation" data-id="{{item.id}}">{{item.isLiked ? '♥' : '♡'}}</text>
