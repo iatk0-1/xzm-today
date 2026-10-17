@@ -167,7 +167,9 @@ page { background-color: #ffffff; }
   flex-shrink: 0;
   justify-content: flex-end;
 }
-.like-btn .like-count { position: relative; top: 1px; font-size: 19px; line-height: 24px; }
+.like-btn .heart-icon { font-size: 24px; }
+.like-btn .heart-icon:not(.liked) { color: #888; }
+.like-btn .like-count { font-size: 12px; line-height: 24px; }
 
 /* 标题上方的关联商品横向列表 */
 .linked-section { margin-bottom: 32rpx; }
