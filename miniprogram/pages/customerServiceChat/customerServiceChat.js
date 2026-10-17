@@ -10,10 +10,20 @@ const supportedPages = ['pages/detail/detail', 'pages/orderDetail/orderDetail'];
 function formatMessage(m, formatTime) {
   let metadata = {};
   try { metadata = typeof m.metadata === 'string' ? JSON.parse(m.metadata) : (m.metadata || {}); } catch (err) {}
-  const mediaUrl = typeof m.mediaUrl === 'string'
+  let mediaUrl = typeof m.mediaUrl === 'string'
     ? m.mediaUrl.replace(/^http:\/\/mmbiz\.qpic\.cn\//i, 'https://mmbiz.qpic.cn/') : m.mediaUrl;
+  if (mediaUrl === '/api/v1/wechat/customer-service/auto-reply-qrcode') {
+    mediaUrl = config.API_BASE_URL.replace(/\/api\/v1\/?$/, '') + mediaUrl;
+  }
   return { ...m, errorMessage: m.errorMessage ? getBusinessFailureMessage(m.errorMessage, '消息发送未完成，请核对发送状态') : m.errorMessage, mediaUrl, metadata, displayTime: formatTime(m.createdAt),
+    isAutoReply: metadata.AutoReply === true,
     displayContent: displayWechatEmoji(m.content) || '[' + m.messageType + ']' };
+}
+
+function compareMessages(a, b) {
+  const first = new Date(a.createdAt).getTime();
+  const second = new Date(b.createdAt).getTime();
+  return (Number.isFinite(first) && Number.isFinite(second) ? first - second : 0) || Number(a.id) - Number(b.id);
 }
 
 Page({
@@ -58,7 +68,7 @@ Page({
         : (over48Hours ? '距用户最后一条消息已超过 48 小时，暂时无法发送；会话仍由当前客服接待' : '可回复时间已过，等待用户再次发送消息');
       const formatted = (messages || []).map(m => formatMessage(m, raw => this.formatTime(raw)));
       const preserved = silent ? this.data.messages.filter(old => !formatted.some(next => next.id === old.id)) : [];
-      const allMessages = [...preserved, ...formatted].sort((a, b) => Number(a.id) - Number(b.id));
+      const allMessages = [...preserved, ...formatted].sort(compareMessages);
       this.setData({ session, messages: allMessages, quotaText, loading: false,
         hasMore: silent ? this.data.hasMore : formatted.length >= 50,
         canReply: !!(activeMine && valid), canClaim: session.status === 'pending', canClose: activeMine,
@@ -377,6 +387,7 @@ Page({
   async retry(e) {
     if (!this.data.canReply || this._sending) return;
     const id = e.currentTarget.dataset.id;
+    if (this.data.messages.some(m => String(m.id) === String(id) && m.isAutoReply)) return;
     this._sending = true;
     this.setData({ sending: true });
     try {

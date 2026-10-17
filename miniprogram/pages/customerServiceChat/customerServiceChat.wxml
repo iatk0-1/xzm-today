@@ -16,9 +16,9 @@
       <view wx:elif="{{item.messageType === 'voice' && item.mediaUrl}}" class="msg-bubble voice-bubble {{item.direction === 'staff' ? 'bubble-right' : 'bubble-left'}}" bindtap="playVoice" data-url="{{item.mediaUrl}}">▶ 点击播放语音</view>
       <view wx:else class="msg-bubble {{item.direction === 'staff' ? 'bubble-right' : 'bubble-left'}}"><text class="msg-content" user-select="{{true}}">{{item.displayContent}}</text></view>
       <view wx:if="{{item.messageType === 'miniprogrampage' && canReply}}" class="card-reply" bindtap="reuseCard" data-metadata="{{item.metadata}}" data-cover="{{item.mediaUrl}}">回复此卡片</view>
-      <view class="msg-meta">{{item.displayTime}} <text wx:if="{{item.status === 'sent'}}">已发送</text><text wx:if="{{item.status === 'failed'}}">发送失败</text><text wx:if="{{item.status === 'unknown'}}">发送结果待核对</text><text wx:if="{{item.status === 'pending'}}">发送中</text></view>
+      <view class="msg-meta">{{item.displayTime}} <text wx:if="{{item.isAutoReply}}">自动回复 · </text><text wx:if="{{item.status === 'sent'}}">已发送</text><text wx:if="{{item.status === 'failed'}}">发送失败</text><text wx:if="{{item.status === 'unknown'}}">发送结果待核对</text><text wx:if="{{item.status === 'pending'}}">发送中</text></view>
       <view wx:if="{{item.status === 'failed' && item.errorMessage}}" class="msg-error">{{item.errorMessage}}</view>
-      <view wx:if="{{item.status === 'failed' && canReply}}" class="retry-btn" bindtap="retry" data-id="{{item.id}}">重试发送</view>
+      <view wx:if="{{item.status === 'failed' && canReply && !item.isAutoReply}}" class="retry-btn" bindtap="retry" data-id="{{item.id}}">重试发送</view>
     </view>
     <view id="msg-bottom"></view>
   </scroll-view>

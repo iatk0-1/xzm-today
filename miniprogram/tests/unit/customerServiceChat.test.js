@@ -408,3 +408,53 @@ test('表情选择器在光标位置插入微信代码并按原码发送', async
   await page.send();
   assert.equal(posts.at(-1).data.content, '你好[Doge]世界');
 });
+
+test('自动回复文字和二维码保留发送状态，二维码解析成当前后端地址并可预览', async () => {
+  session = activeSession();
+  newest = [
+    { id: 401, direction: 'staff', messageType: 'text', content: '小程序客服不在线，有事联系微信哦~',
+      status: 'sent', metadata: '{"AutoReply":true}' },
+    { id: 402, direction: 'staff', messageType: 'image', status: 'unknown',
+      mediaUrl: '/api/v1/wechat/customer-service/auto-reply-qrcode', metadata: { AutoReply: true } }
+  ];
+  const page = createPage();
+  await page.refresh();
+  assert.equal(page.data.messages[0].isAutoReply, true);
+  assert.equal(page.data.messages[0].status, 'sent');
+  assert.equal(page.data.messages[1].isAutoReply, true);
+  assert.equal(page.data.messages[1].status, 'unknown');
+  const config = require('../../utils/config');
+  const qrUrl = config.API_BASE_URL.replace(/\/api\/v1\/?$/, '') + '/api/v1/wechat/customer-service/auto-reply-qrcode';
+  assert.equal(page.data.messages[1].mediaUrl, qrUrl);
+  let preview;
+  wx.previewImage = options => { preview = options; };
+  page.previewImage({ currentTarget: { dataset: { url: page.data.messages[1].mediaUrl } } });
+  assert.equal(preview.current, qrUrl);
+});
+
+test('自动回复失败时不允许从页面重试绕过每日限制', async () => {
+  session = activeSession(); posts.length = 0;
+  newest = [{ id: 403, direction: 'staff', messageType: 'text', status: 'failed', metadata: { AutoReply: true } }];
+  const page = createPage();
+  await page.refresh();
+  await page.retry({ currentTarget: { dataset: { id: 403 } } });
+  assert.equal(posts.length, 0);
+});
+
+test('回填的自动回复按原发生时间插入聊天，轮询和翻页都保持正确顺序', async () => {
+  session = activeSession(); requests.length = 0;
+  newest = [
+    { id: 900, direction: 'staff', messageType: 'text', metadata: { AutoReply: true }, createdAt: '2026-10-18T09:00:00Z' },
+    { id: 901, direction: 'staff', messageType: 'image', metadata: { AutoReply: true }, createdAt: '2026-10-18T09:00:01Z' },
+    { id: 100, direction: 'user', messageType: 'text', createdAt: '2026-10-18T10:00:00Z' }
+  ];
+  const page = createPage();
+  await page.refresh();
+  assert.deepEqual(page.data.messages.map(m => m.id), [900, 901, 100]);
+  earlier = [{ id: 99, direction: 'user', createdAt: '2026-10-18T08:00:00Z' }];
+  page.setData({ hasMore: true });
+  await page.loadEarlier();
+  assert.equal(requests.at(-1).data.before, 900);
+  await page.refresh(true);
+  assert.deepEqual(page.data.messages.map(m => m.id), [99, 900, 901, 100]);
+});
