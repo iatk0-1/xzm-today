@@ -71,7 +71,7 @@ page { background-color: #ffffff; }
 .like-action { margin-left: auto; flex-shrink: 0; justify-content: flex-end; align-items: center; gap: 2px; min-height: 28px; padding: 0 0 0 10px; }
 /* 爱心保留旧版字号，移除固定占位，保留颜色和动画。 */
 .like-action .heart-icon { flex: 0 0 auto; width: auto; font-size: 16px; line-height: 24px; letter-spacing: 0; }
-.like-action .like-count { position: relative; top: 1px; font-size: 14px; line-height: 24px; letter-spacing: 0; }
+.like-action .like-count { position: relative; top: 1px; font-size: 13px; line-height: 24px; letter-spacing: 0; }
 
 /* 悬浮发布按钮 */
 .wish-management-actions {
