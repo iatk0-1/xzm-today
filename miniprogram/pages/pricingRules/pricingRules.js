@@ -16,7 +16,7 @@ Page({
     rules: [], editing: false, id: '', name: '', enabled: true, segments: [],
     activeIndex: 0, keys: ['x', '(', ')', '÷', '7', '8', '9', '×', '4', '5', '6', '-', '1', '2', '3', '+', '0', '.'],
     trialCost: '', trialPrice: '', calculatorOpen: false,
-    profitRule: false, minimumProfit: '10', profitPercent: '10', trialProfit: '', trialMarkup: '',
+    profitRule: false, cappedProfitRule: false, minimumProfit: '10', profitPercent: '10', trialProfit: '', trialMarkup: '',
     formulaCursor: 0, formulaCells: [],
     editingBoundary: '', boundaryValue: '', boundaryError: '', error: '', saving: false,
     ruleBusy: '',
@@ -56,12 +56,16 @@ Page({
   ruleRows(rules, assignedIds = this.data.currentRuleIds || []) {
     return (rules || []).filter(rule => !rule.deleted).map(rule => {
       const first = finance.segmentsWithLabels(rule.segments)[0];
+      const bands = finance.segmentsWithLabels(rule.profitBands);
       return { ...rule,
+        bandSummaries: bands.map(band => ({ label: band.label + (band.upper == null ? ' 无上限' : ''),
+          profit: '成本的' + band.profitPercent + '%与' + band.maximumProfit + '元取较小值' })),
         assigned: assignedIds.includes(String(rule.id)),
-        firstCondition: rule.minimumProfit != null ? '预期利润取 ' + rule.minimumProfit + ' 元与成本的'
+        firstCondition: bands.length ? '分段利润封顶，共 ' + bands.length + ' 个成本区间'
+          : rule.minimumProfit != null ? '预期利润取 ' + rule.minimumProfit + ' 元与成本的'
           + (rule.profitPercent == null ? 10 : rule.profitPercent) + '%中的较大值'
           : first ? first.label + (first.upper == null ? ' 无上限' : '') : '暂无条件公式',
-        firstFormula: rule.minimumProfit != null ? '(成本 + 预期利润) ÷ 0.98'
+        firstFormula: bands.length || rule.minimumProfit != null ? '(成本 + 预期利润) ÷ 0.98'
           : first ? first.formula : '暂无价格公式'
       };
     });
@@ -124,7 +128,7 @@ Page({
     this._previewRequest = (this._previewRequest || 0) + 1;
     this.setData({
       editing: true, id: '', name: '', enabled: true, activeIndex: 0, trialPrice: '',
-      profitRule: false, minimumProfit: '10', profitPercent: '10',
+      profitRule: false, cappedProfitRule: false, minimumProfit: '10', profitPercent: '10', trialProfit: '', trialMarkup: '',
       calculatorOpen: false, editingBoundary: '', boundaryValue: '', boundaryError: '', error: '',
       segments: finance.segmentsWithLabels([{
         lower: 0, upper: null, lowerInclusive: false, upperInclusive: false, formula: 'x'
@@ -135,6 +139,25 @@ Page({
   newProfitRule() {
     this.newRule();
     this.setData({ profitRule: true, name: '利润保底规则', minimumProfit: '10', profitPercent: '10', segments: [] });
+  },
+
+  newCappedProfitRule() {
+    this.newRule();
+    this.setData({ cappedProfitRule: true, name: '分段利润封顶规则',
+      segments: finance.segmentsWithLabels([{
+        lower: 0, upper: null, lowerInclusive: false, upperInclusive: false,
+        maximumProfit: '30', profitPercent: '10'
+      }]) });
+  },
+
+  bandInput(event) {
+    const { index, field } = event.currentTarget.dataset;
+    if (!this.data.cappedProfitRule || !['maximumProfit', 'profitPercent'].includes(field)) return;
+    const segments = this.data.segments.map(segment => ({ ...segment }));
+    if (!segments[Number(index)]) return;
+    segments[Number(index)][field] = event.detail.value;
+    this._previewRequest = (this._previewRequest || 0) + 1;
+    this.setData({ segments, trialPrice: '', trialProfit: '', trialMarkup: '', error: '' });
   },
 
   chooseProfit(event) {
@@ -149,8 +172,9 @@ Page({
     this.setData({
       editing: true, id: String(rule.id), name: rule.name, enabled: rule.enabled,
       profitRule: rule.minimumProfit != null, minimumProfit: String(rule.minimumProfit == null ? '10' : rule.minimumProfit),
+      cappedProfitRule: rule.profitBands != null,
       profitPercent: String(rule.profitPercent == null ? '10' : rule.profitPercent),
-      segments: finance.segmentsWithLabels(rule.segments), activeIndex: 0, trialPrice: '',
+      segments: finance.segmentsWithLabels(rule.profitBands || rule.segments), activeIndex: 0, trialPrice: '', trialProfit: '', trialMarkup: '',
       calculatorOpen: false, editingBoundary: '', boundaryValue: '', boundaryError: '', error: ''
     });
   },
@@ -162,15 +186,17 @@ Page({
     this.setData({
       editing: true, id: '', name: rule.name, enabled: rule.enabled,
       profitRule: rule.minimumProfit != null, minimumProfit: String(rule.minimumProfit == null ? '10' : rule.minimumProfit),
+      cappedProfitRule: rule.profitBands != null,
       profitPercent: String(rule.profitPercent == null ? '10' : rule.profitPercent),
-      segments: finance.segmentsWithLabels((rule.segments || []).map(segment => ({ ...segment }))),
-      activeIndex: 0, trialPrice: '', calculatorOpen: false,
+      segments: finance.segmentsWithLabels((rule.profitBands || rule.segments || []).map(segment => ({ ...segment }))),
+      activeIndex: 0, trialPrice: '', trialProfit: '', trialMarkup: '', calculatorOpen: false,
       formulaCursor: 0, formulaCells: [], editingBoundary: '', boundaryValue: '',
       boundaryError: '', error: ''
     });
   },
 
   openCalculator(event) {
+    if (this.data.cappedProfitRule) return;
     if (!this.finishBoundaryEdit()) return;
     const activeIndex = Number(event.currentTarget.dataset.index);
     const segment = this.data.segments[activeIndex];
@@ -263,6 +289,7 @@ Page({
     if (value.length > 512) return this.fail(new Error('公式不能超过512个字符'));
     this._formulaCursorRequest = (this._formulaCursorRequest || 0) + 1;
     selected.formula = value;
+    this._previewRequest = (this._previewRequest || 0) + 1;
     this.setData({
       segments: finance.segmentsWithLabels(segments), formulaCursor: nextCursor,
       formulaCells: this.formulaCells(value), trialPrice: '', error: ''
@@ -271,6 +298,7 @@ Page({
 
   toggle(event) {
     if (!this.finishBoundaryEdit()) return;
+    this._previewRequest = (this._previewRequest || 0) + 1;
     const index = Number(event.currentTarget.dataset.index);
     const boundaryIndex = event.currentTarget.dataset.side === 'left' ? index - 1 : index;
     this.setData({
@@ -295,6 +323,7 @@ Page({
 
   boundaryInput(event) {
     if (event.currentTarget.dataset.boundary !== this.data.editingBoundary) return;
+    this._previewRequest = (this._previewRequest || 0) + 1;
     this.setData({ boundaryValue: event.detail.value, boundaryError: '', error: '' });
   },
 
@@ -314,20 +343,21 @@ Page({
       if (side === 'right' && segment.upper == null) {
         // 未输入数字时保持无上限；确认有效数字后自动补齐末段。
         if (value) {
-          if (segments.length >= 100) throw new Error('一条规则最多100个区间');
+          const limit = this.data.cappedProfitRule ? 50 : 100;
+          if (segments.length >= limit) throw new Error('一条规则最多' + limit + '个区间');
           const boundary = Number(finance.money(value));
           if (boundary <= Number(segment.lower)) throw new Error('新分界点必须大于当前区间下界');
           segments = segments.map(item => ({ ...item }));
           segments[index].upper = boundary;
           segments[index].upperInclusive = true;
-          segments.push({
-            lower: boundary, upper: null, lowerInclusive: false, upperInclusive: false,
-            formula: segment.formula
+          segments.push({ ...segment,
+            lower: boundary, upper: null, lowerInclusive: false, upperInclusive: false
           });
         }
       } else {
         segments = finance.changeBoundary(segments, side === 'left' ? index - 1 : index, value);
       }
+      this._previewRequest = (this._previewRequest || 0) + 1;
       this.setData({
         segments: finance.segmentsWithLabels(segments), editingBoundary: '', boundaryValue: '',
         boundaryError: '', trialPrice: '', error: ''
@@ -343,11 +373,14 @@ Page({
     if (!this.finishBoundaryEdit()) return;
     const index = Number(event.currentTarget.dataset.index);
     if (index <= 0) return;
-    if (!await finance.confirmAction('合并区间', '合并到上一段并保留上一段公式，请检查合并后的公式再保存。')) return;
+    if (!await finance.confirmAction('合并区间', this.data.cappedProfitRule
+      ? '合并到上一段并保留上一段的利润比例和最高预期利润，请检查后再保存。'
+      : '合并到上一段并保留上一段公式，请检查合并后的公式再保存。')) return;
     const segments = this.data.segments.map(segment => ({ ...segment }));
     segments[index - 1].upper = segments[index].upper;
     segments[index - 1].upperInclusive = segments[index].upperInclusive;
     segments.splice(index, 1);
+    this._previewRequest = (this._previewRequest || 0) + 1;
     this.setData({
       segments: finance.segmentsWithLabels(segments), activeIndex: index - 1, trialPrice: '',
       calculatorOpen: false, error: ''
@@ -376,6 +409,18 @@ Page({
   },
 
   pricingSettings() {
+    if (this.data.cappedProfitRule) {
+      if (!this.data.segments.length || this.data.segments.length > 50) throw new Error('利润封顶规则需要1至50个成本区间');
+      return { profitBands: this.data.segments.map((segment, index) => {
+        let maximumProfit, profitPercent;
+        try { maximumProfit = finance.money(segment.maximumProfit); }
+        catch (_) { throw new Error('第' + (index + 1) + '段最高预期利润须大于零，最多两位小数且不超过99999999.99元'); }
+        try { profitPercent = finance.money(segment.profitPercent, true); }
+        catch (_) { throw new Error('第' + (index + 1) + '段利润比例须填写非负数字，最多两位小数且不超过99999999.99%'); }
+        return { lower: segment.lower, upper: segment.upper, lowerInclusive: segment.lowerInclusive,
+          upperInclusive: segment.upperInclusive, maximumProfit, profitPercent };
+      }) };
+    }
     if (!this.data.profitRule) return { segments: this.cleanSegments() };
     let minimumProfit;
     try { minimumProfit = finance.money(this.data.minimumProfit); }

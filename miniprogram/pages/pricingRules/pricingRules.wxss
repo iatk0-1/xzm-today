@@ -60,3 +60,4 @@ button.rule-delete { margin: 0; padding: 0 20rpx; line-height: 2.4; color: #b326
 .profit-presets { display: flex; gap: 16rpx; margin: 12rpx 0 24rpx; }
 .profit-presets button { flex: 1; margin: 0; }
 .profit-formula { font-size: 27rpx; line-height: 1.8; margin-bottom: 12rpx; word-break: break-all; }
+.capped-band-summary { margin-top: 12rpx; padding-top: 12rpx; border-top: 1rpx solid #dce3e9; font-size: 26rpx; line-height: 1.7; word-break: break-all; }
