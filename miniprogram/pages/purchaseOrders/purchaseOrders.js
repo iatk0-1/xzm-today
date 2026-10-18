@@ -156,6 +156,7 @@ Page(autoSearch.wrap({
 
       const batches = (res.content || []).map(item => ({
         ...item,
+        costSummary: this.formatBatchCost(item),
         displayTime: this.formatTime(item.createdAt),
         expanded: expandedIds.includes(String(item.id)),
         detailList: [],
@@ -213,6 +214,8 @@ Page(autoSearch.wrap({
       this.updateBatch(batchId, {
         detailList: (items || []).map(item => ({
           ...item,
+          costPriceText: this.formatCost(item.costPrice),
+          costAmountText: this.formatCost(item.costAmount),
           imageUrl: item.imageUrl || '',
           defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
           displayTime: this.formatTime(item.createdAt),
@@ -364,14 +367,41 @@ Page(autoSearch.wrap({
       const detailList = batch.detailList.flatMap(item => !cancelled.has(String(item.id)) ? [item]
         : (keepCancelled ? [{ ...item, status: 'cancelled', selected: false }] : []));
       if (!detailList.length) return [];
-      return [{ ...batch, detailList, selectedCount: detailList.filter(item => item.selected).length, allSelected: false,
+      const nextBatch = { ...batch, detailList, selectedCount: detailList.filter(item => item.selected).length, allSelected: false,
         itemCount: keepCancelled ? batch.itemCount : Math.max(0, Number(batch.itemCount) - changed.length),
         totalQty: keepCancelled ? batch.totalQty : Math.max(0, Number(batch.totalQty) - changed.reduce((sum, item) => sum + Number(item.qty || 0), 0)),
         orderedCount: Math.max(0, Number(batch.orderedCount) - changed.length),
         cancelledCount: keepCancelled ? Number(batch.cancelledCount || 0) + changed.length : batch.cancelledCount
-      }];
+      };
+      // 明细不分页，撤销后用当前筛选下剩余记录重算，保留列表位置和展开状态。
+      let recordedCostCents = 0;
+      let missingCostCount = 0;
+      detailList.forEach(item => {
+        const amount = this.formatCost(item.costAmount);
+        if (amount === null) missingCostCount += 1;
+        else recordedCostCents += Math.round(Number(amount) * 100);
+      });
+      nextBatch.recordedCostAmount = (recordedCostCents / 100).toFixed(2);
+      nextBatch.missingCostCount = missingCostCount;
+      nextBatch.costSummary = this.formatBatchCost(nextBatch);
+      return [nextBatch];
     });
     this.setData({ batchList });
+  },
+
+  formatCost: function(value) {
+    if (value == null || String(value).trim() === '') return null;
+    const amount = Number(value);
+    return Number.isFinite(amount) && amount >= 0 ? amount.toFixed(2) : null;
+  },
+
+  formatBatchCost: function(batch) {
+    const amount = this.formatCost(batch.recordedCostAmount);
+    const missingCount = batch.missingCostCount == null
+      ? Number(batch.itemCount || 0) : Number(batch.missingCostCount);
+    if (amount === null || missingCount >= Number(batch.itemCount || 0)) return '成本未记录';
+    if (missingCount > 0) return `已记录原报成本 ¥${amount}，另 ${missingCount} 条成本未记录`;
+    return `原报成本合计 ¥${amount}`;
   },
 
   formatDate: function(date) {

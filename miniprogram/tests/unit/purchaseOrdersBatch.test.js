@@ -182,3 +182,49 @@ test('时间范围取消不生效，确认后筛选批次且翻页沿用日期�
   assert.match(requests[2], /page=1/);
   assert.doesNotMatch(requests[2], /startDate|endDate/);
 });
+
+test('报单记录展示留存的单价和小计，混合历史记录时提示成本不完整', async () => {
+  responses.push(
+    Promise.resolve({ content: [
+      { id: '1', itemCount: 2, recordedCostAmount: '59.70', missingCostCount: 1 },
+      { id: '2', itemCount: 1, recordedCostAmount: '12.30', missingCostCount: 0 },
+      { id: '3', itemCount: 1, recordedCostAmount: '0.00', missingCostCount: 1 }
+    ], hasNext: false }),
+    Promise.resolve([
+      { id: '11', status: 'ordered', qty: 3, costPrice: '19.90', costAmount: '59.70' },
+      { id: '12', status: 'ordered', qty: 1, costPrice: null, costAmount: null }
+    ])
+  );
+  const page = createPage();
+  await page.loadBatches();
+  assert.equal(page.data.batchList[0].costSummary, '已记录原报成本 ¥59.70，另 1 条成本未记录');
+  assert.equal(page.data.batchList[1].costSummary, '原报成本合计 ¥12.30');
+  assert.equal(page.data.batchList[2].costSummary, '成本未记录');
+  await page.toggleBatch({ currentTarget: { dataset: { id: '1' } } });
+  assert.equal(page.data.batchList[0].detailList[0].costPriceText, '19.90');
+  assert.equal(page.data.batchList[0].detailList[0].costAmountText, '59.70');
+  assert.equal(page.data.batchList[0].detailList[1].costPriceText, null);
+  assert.equal(page.data.batchList[0].detailList[1].costAmountText, null);
+
+  page.updateCancelledOrders(['12']);
+  assert.equal(page.data.batchList[0].missingCostCount, 0);
+  assert.equal(page.data.batchList[0].costSummary, '原报成本合计 ¥59.70');
+});
+
+test('撤销已报记录后同步扣减成本，全部 tab 保留原报金额，零成本仍有记录', () => {
+  const page = createPage();
+  page.data.batchList = [{ id: '1', itemCount: 3, totalQty: 10, orderedCount: 3, cancelledCount: 0,
+    detailList: [
+      { id: '11', qty: 3, status: 'ordered', costAmount: '59.70' },
+      { id: '12', qty: 7, status: 'ordered', costAmount: '0.70' },
+      { id: '13', qty: 1, status: 'ordered', costAmount: '0.00' }
+    ] }];
+  page.updateCancelledOrders(['11']);
+  assert.equal(page.data.batchList[0].recordedCostAmount, '0.70');
+  assert.equal(page.data.batchList[0].costSummary, '原报成本合计 ¥0.70');
+  page.data.status = 'all';
+  page.updateCancelledOrders(['12']);
+  assert.equal(page.data.batchList[0].recordedCostAmount, '0.70');
+  assert.equal(page.data.batchList[0].detailList[0].status, 'cancelled');
+  assert.equal(page.formatBatchCost({ itemCount: 1, recordedCostAmount: '0.00', missingCostCount: 0 }), '原报成本合计 ¥0.00');
+});

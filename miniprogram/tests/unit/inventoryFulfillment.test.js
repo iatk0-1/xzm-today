@@ -53,6 +53,55 @@ test('没有待报缺口仍可显式追加备货采购', async () => {
   assert.equal(writes[0].payload.items[0].qty, 1);
 });
 
+test('报单弹窗按成本价计算各商品小计，数量增减和手输时同步合计', async () => {
+  const { page } = loadPage('pickingList');
+  page.data.filteredList = [
+    { skuId: '1', selected: true, recommendQty: 3, costPrice: '19.90' },
+    { skuId: '2', selected: true, recommendQty: 7, costPrice: '0.10' },
+    { skuId: '3', selected: false, recommendQty: 10, costPrice: '100.00' }
+  ];
+  await page.createPurchaseOrder();
+  assert.equal(page.data.selectedCount, 2);
+  assert.equal(page.data.totalQty, 10);
+  assert.equal(page.data.orderPreviewList[0].costSubtotal, '59.70');
+  assert.equal(page.data.orderPreviewList[1].costSubtotal, '0.70');
+  assert.equal(page.data.totalCost, '60.40');
+
+  const event = (index, delta) => ({ currentTarget: { dataset: { index, delta } } });
+  page.adjustOrderQty(event(0, 1));
+  assert.equal(page.data.orderPreviewList[0].costSubtotal, '79.60');
+  assert.equal(page.data.totalCost, '80.30');
+  page.adjustOrderQty(event(0, -1));
+  assert.equal(page.data.totalCost, '60.40');
+
+  page.onOrderQtyInput({ ...event(1), detail: { value: '13' } });
+  assert.equal(page.data.orderPreviewList[1].costSubtotal, '1.30');
+  assert.equal(page.data.totalQty, 16);
+  assert.equal(page.data.totalCost, '61.00');
+  page.onOrderQtyInput({ ...event(1), detail: { value: '' } });
+  assert.equal(page.data.totalCost, '59.70');
+  page.normalizeOrderQty(event(1));
+  assert.equal(page.data.orderPreviewList[1].qty, 1);
+  assert.equal(page.data.totalCost, '59.80');
+  page.adjustOrderQty(event(1, -1));
+  assert.equal(page.data.totalCost, '59.80');
+});
+
+test('追加备货弹窗重新计算 SKU 数量和成本，未设置成本时不显示虚假的零元合计', () => {
+  const { page } = loadPage('pickingList');
+  page.data.selectedCount = 5;
+  page.data.recommendList = [{ skuId: '1', recommendQty: 0, costPrice: '12.30' }];
+  page.openStockPurchase({ currentTarget: { dataset: { index: 0 } } });
+  assert.equal(page.data.selectedCount, 1);
+  assert.equal(page.data.totalCost, '12.30');
+  for (const costPrice of [undefined, null, '', '非法成本']) {
+    page.data.filteredList = [{ skuId: '2', selected: true, recommendQty: 2, costPrice }];
+    page.createPurchaseOrder();
+    assert.equal(page.data.orderPreviewList[0].costSubtotal, null);
+    assert.equal(page.data.totalCost, null);
+  }
+});
+
 test('部分解绑确认实际回仓后经过数量操作模块，长订单商品编号保持字符串', async () => {
   const { page, writes } = loadPage('adminOrderDetail');
   page.data.partialUnbindShipment = { id: '99' };

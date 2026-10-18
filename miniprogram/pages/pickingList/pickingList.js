@@ -15,6 +15,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     loading: false,
     selectedCount: 0,
     totalQty: 0,
+    totalCost: '0.00',
     allSelected: false,
     // SKU 筛选
     skuKeyword: '',
@@ -513,22 +514,21 @@ Page(autoSearch.wrap(pageSync.wrap({
       size: i.size,
       qty: Math.max(1, Number(i.recommendQty) || 1),
       recommendQty: Math.max(0, Number(i.recommendQty) || 0),
+      costPrice: i.costPrice,
       imageUrl: i.imageUrl,
       defaultImageUrl: i.defaultImageUrl
     }));
 
-    this.setData({
-      orderPreviewList,
-      totalQty: orderPreviewList.reduce((sum, item) => sum + item.qty, 0),
-      showOrderModal: true
-    });
+    this.updateOrderPreview(orderPreviewList);
+    this.setData({ showOrderModal: true });
   },
 
   // 调整弹窗中的报单数量，不限制上限，最低保留 1 件。
   openStockPurchase(e) {
     const item = this.data.recommendList[Number(e.currentTarget.dataset.index)];
     if (!item) return;
-    this.setData({ orderPreviewList: [{ ...item, qty: 1, recommendQty: Math.max(0, Number(item.recommendQty) || 0), stockPurchase: true }], totalQty: 1, showOrderModal: true });
+    this.updateOrderPreview([{ ...item, qty: 1, recommendQty: Math.max(0, Number(item.recommendQty) || 0), stockPurchase: true }]);
+    this.setData({ showOrderModal: true });
   },
 
   adjustOrderQty: function(e) {
@@ -558,13 +558,33 @@ Page(autoSearch.wrap(pageSync.wrap({
   },
 
   setOrderQty: function(index, qty) {
-    const key = `orderPreviewList[${index}].qty`;
-    this.setData({ [key]: qty }, () => {
-      const totalQty = this.data.orderPreviewList.reduce(
-        (sum, item) => sum + (this.parseOrderQty(item.qty) || 0),
-        0
-      );
-      this.setData({ totalQty });
+    if (!this.data.orderPreviewList[index]) return;
+    this.updateOrderPreview(this.data.orderPreviewList.map((item, itemIndex) =>
+      itemIndex === index ? { ...item, qty } : item));
+  },
+
+  updateOrderPreview: function(items) {
+    let totalQty = 0;
+    let totalCents = 0;
+    let hasMissingCost = false;
+    const orderPreviewList = items.map(item => {
+      const qty = this.parseOrderQty(item.qty);
+      const price = item.costPrice;
+      const numericPrice = Number(price);
+      const hasCost = price != null && String(price).trim() !== ''
+        && Number.isFinite(numericPrice) && numericPrice >= 0;
+      // 成本价先换成整数分再乘数量，避免小数累加出现精度尾差。
+      const costCents = hasCost ? Math.round(numericPrice * 100) * qty : 0;
+      totalQty += qty;
+      totalCents += costCents;
+      hasMissingCost = hasMissingCost || !hasCost;
+      return { ...item, costSubtotal: hasCost ? (costCents / 100).toFixed(2) : null };
+    });
+    this.setData({
+      orderPreviewList,
+      selectedCount: orderPreviewList.length,
+      totalQty,
+      totalCost: hasMissingCost ? null : (totalCents / 100).toFixed(2)
     });
   },
 

@@ -371,6 +371,28 @@ page {
   flex-wrap: wrap;
 }
 
+.batch-cost,
+.order-cost {
+  font-size: 22rpx;
+  line-height: 32rpx;
+  color: #1677c8;
+  word-break: break-all;
+}
+
+.batch-cost {
+  margin-top: 6rpx;
+}
+
+.order-cost {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 16rpx;
+}
+
+.missing-cost {
+  color: #8a929d;
+}
+
 .meta-chip {
   height: 36rpx;
   line-height: 36rpx;

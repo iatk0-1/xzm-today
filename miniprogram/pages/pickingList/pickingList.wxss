@@ -280,11 +280,19 @@ page {
   background: #f7fbff;
 }
 
+.recommend-item.has-checkbox {
+  padding-left: 64rpx;
+}
+
 .item-checkbox {
-  margin-right: 14rpx;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 64rpx;
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  justify-content: center;
 }
 
 .checkbox {
@@ -515,15 +523,28 @@ page {
   white-space: nowrap;
 }
 
-.order-item-qty {
-  font-size: 22rpx;
-  color: #999;
-  margin-top: auto;
+.order-item-controls {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12rpx;
-  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 10rpx;
+  width: 204rpx;
+  flex-shrink: 0;
+}
+
+.order-item-cost {
+  max-width: 100%;
+  font-size: 23rpx;
+  line-height: 32rpx;
+  font-weight: 600;
+  color: #1677c8;
+  text-align: right;
+  word-break: break-all;
+}
+
+.missing-cost {
+  color: #b76a00;
 }
 .refund-modal { width: 700rpx; max-height: 82vh; }
 .refund-modal-subtitle { padding: 14rpx 24rpx; color: #59636f; font-size: 23rpx; border-bottom: 1rpx solid #eee; }
@@ -545,7 +566,10 @@ page {
 .btn-all-refund { background: #d93026; color: #fff; }
 
 .qty-label {
-  flex-shrink: 0;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  line-height: 30rpx;
+  color: #999;
 }
 
 .qty-editor {
@@ -553,7 +577,7 @@ page {
   align-items: center;
   gap: 8rpx;
   width: 204rpx;
-  flex: 0 0 204rpx;
+  flex: 0 0 auto;
   min-width: 204rpx;
 }
 
