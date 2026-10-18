@@ -170,70 +170,95 @@ function splitLastBand(page, value) {
   return page.finishBoundaryEdit();
 }
 
-test('分段利润封顶单独新增，各段填写比例和上限，保存和试算使用同一份配置', async () => {
-  const { page, calls } = setup({ post: async () => ({ price: '234.69', expectedProfit: '30', markup: '34.69' }) });
-  page.newCappedProfitRule();
-  assert.equal(page.data.cappedProfitRule, true);
+test('分段加价封顶单独新增，各段填写比例和上限，保存和试算使用同一份配置', async () => {
+  const { page, calls } = setup({ post: async () => ({ price: '230', markup: '30' }) });
+  page.newCappedMarkupRule();
+  assert.equal(page.data.cappedMarkupRule, true);
   assert.equal(page.data.profitRule, false);
-  assert.equal(page.data.segments[0].maximumProfit, '30');
+  assert.equal(page.data.segments[0].maximumMarkup, '30');
   page.bandInput(bandEvent(0, 'profitPercent', '20'));
   assert.equal(splitLastBand(page, '100'), true);
   assert.equal(page.data.segments[1].profitPercent, '20');
-  assert.equal(page.data.segments[1].maximumProfit, '30');
-  page.bandInput(bandEvent(0, 'maximumProfit', '10'));
+  assert.equal(page.data.segments[1].maximumMarkup, '30');
+  page.bandInput(bandEvent(0, 'maximumMarkup', '10'));
   page.bandInput(bandEvent(1, 'profitPercent', '15.5'));
   page.setData({ trialCost: '200' });
   await page.preview();
-  assert.deepEqual(calls[0].data, { cost: '200.00', profitBands: [
-    { lower: 0, upper: 100, lowerInclusive: false, upperInclusive: true, maximumProfit: '10.00', profitPercent: '20.00' },
-    { lower: 100, upper: null, lowerInclusive: false, upperInclusive: false, maximumProfit: '30.00', profitPercent: '15.50' }
+  assert.deepEqual(calls[0].data, { cost: '200.00', markupBands: [
+    { lower: 0, upper: 100, lowerInclusive: false, upperInclusive: true, maximumMarkup: '10.00', profitPercent: '20.00' },
+    { lower: 100, upper: null, lowerInclusive: false, upperInclusive: false, maximumMarkup: '30.00', profitPercent: '15.50' }
   ] });
-  assert.equal(page.data.trialProfit, '30');
-  assert.equal(page.data.trialPrice, '234.69');
+  assert.equal(page.data.trialProfit, '');
+  assert.equal(page.data.trialMarkup, '30.00');
+  assert.equal(page.data.trialPrice, '230');
   await page.save();
-  assert.deepEqual(calls[1].data.profitBands, calls[0].data.profitBands);
+  assert.deepEqual(calls[1].data.markupBands, calls[0].data.markupBands);
   assert.equal(Object.hasOwn(calls[1].data, 'segments'), false);
   assert.equal(Object.hasOwn(calls[1].data, 'minimumProfit'), false);
 });
 
 test('封顶规则编辑复制保留各段配置，列表显示所有区间及取较小值', async () => {
   const { page, calls } = setup();
-  const profitBands = [
-    { lower: 0, upper: 100, lowerInclusive: false, upperInclusive: true, maximumProfit: '10', profitPercent: '20' },
-    { lower: 100, upper: null, lowerInclusive: false, upperInclusive: false, maximumProfit: '30', profitPercent: '15' }
+  const markupBands = [
+    { lower: 0, upper: 100, lowerInclusive: false, upperInclusive: true, maximumMarkup: '10', profitPercent: '20' },
+    { lower: 100, upper: null, lowerInclusive: false, upperInclusive: false, maximumMarkup: '30', profitPercent: '15' }
   ];
-  const rule = { id: '44', name: '封顶规则', enabled: true, profitBands,
+  const rule = { id: '44', name: '封顶规则', enabled: true, markupBands,
     segments: [{ lower: 0, upper: 50, formula: '(x+0.2*x)/0.98' }, { lower: 50, upper: null, formula: '(x+10)/0.98' }] };
   page.setData({ rules: page.ruleRows([rule]) });
-  assert.match(page.data.rules[0].firstCondition, /分段利润封顶.*2/);
+  assert.match(page.data.rules[0].firstCondition, /分段加价封顶.*2/);
   assert.equal(page.data.rules[0].bandSummaries.length, 2);
-  assert.match(page.data.rules[0].bandSummaries[1].profit, /15%.*30元.*较小值/);
+  assert.match(page.data.rules[0].bandSummaries[1].description, /15%.*总加价.*30元.*较小值.*2%/);
   page.edit({ currentTarget: { dataset: { index: 0 } } });
-  assert.equal(page.data.cappedProfitRule, true);
+  assert.equal(page.data.cappedMarkupRule, true);
   assert.equal(page.data.segments[0].upper, 100);
-  page.bandInput(bandEvent(1, 'maximumProfit', '40'));
+  page.bandInput(bandEvent(1, 'maximumMarkup', '40'));
   await page.save();
   assert.equal(calls[0].method, 'put');
-  assert.equal(calls[0].data.profitBands[1].maximumProfit, '40.00');
+  assert.equal(calls[0].data.markupBands[1].maximumMarkup, '40.00');
   page.setData({ rules: [rule] });
   page.copy({ currentTarget: { dataset: { index: 0 } } });
   assert.equal(page.data.id, '');
-  assert.equal(page.data.cappedProfitRule, true);
-  assert.equal(page.data.segments[1].maximumProfit, '30');
-  page.bandInput(bandEvent(0, 'maximumProfit', '11'));
-  assert.equal(rule.profitBands[0].maximumProfit, '10');
+  assert.equal(page.data.cappedMarkupRule, true);
+  assert.equal(page.data.segments[1].maximumMarkup, '30');
+  page.bandInput(bandEvent(0, 'maximumMarkup', '11'));
+  assert.equal(rule.markupBands[0].maximumMarkup, '10');
   page.newProfitRule();
-  assert.equal(page.data.cappedProfitRule, false);
-  page.newCappedProfitRule();
+  assert.equal(page.data.cappedMarkupRule, false);
+  page.newCappedMarkupRule();
   page.newRule();
-  assert.equal(page.data.cappedProfitRule, false);
+  assert.equal(page.data.cappedMarkupRule, false);
+});
+
+test('上一版利润封顶列表保留原含义，编辑或复制时提示并保存为加价封顶的新配置', async () => {
+  const { page, calls } = setup();
+  const legacy = { id: '45', name: '旧版封顶', enabled: true, profitBands: [
+    { lower: 0, upper: null, lowerInclusive: false, upperInclusive: false, maximumProfit: '30', profitPercent: '20' }
+  ], segments: [{ lower: 0, upper: null, lowerInclusive: false, upperInclusive: false, formula: '(x+30)/0.98' }] };
+  page.setData({ rules: page.ruleRows([legacy]) });
+  assert.match(page.data.rules[0].firstCondition, /旧版利润封顶/);
+  assert.match(page.data.rules[0].bandSummaries[0].description, /预期利润.*30元/);
+  page.edit({ currentTarget: { dataset: { index: 0 } } });
+  assert.equal(page.data.legacyProfitCap, true);
+  assert.equal(page.data.cappedMarkupRule, true);
+  assert.equal(page.data.segments[0].maximumMarkup, '30');
+  await page.save();
+  assert.equal(calls[0].data.markupBands[0].maximumMarkup, '30.00');
+  assert.equal(Object.hasOwn(calls[0].data, 'profitBands'), false);
+  page.setData({ rules: [legacy] });
+  page.copy({ currentTarget: { dataset: { index: 0 } } });
+  assert.equal(page.data.id, '');
+  assert.equal(page.data.legacyProfitCap, true);
+  assert.equal(page.data.segments[0].maximumMarkup, '30');
+  page.newCappedMarkupRule();
+  assert.equal(page.data.legacyProfitCap, false);
 });
 
 test('封顶区间可修改边界归属与分界点，合并保留上一段利润设置', async () => {
   const { page } = setup();
-  page.newCappedProfitRule();
+  page.newCappedMarkupRule();
   splitLastBand(page, '100');
-  page.bandInput(bandEvent(1, 'maximumProfit', '80'));
+  page.bandInput(bandEvent(1, 'maximumMarkup', '80'));
   page.toggle({ currentTarget: { dataset: { index: 0, side: 'right' } } });
   assert.equal(page.data.segments[0].upperInclusive, false);
   assert.equal(page.data.segments[1].lowerInclusive, true);
@@ -245,17 +270,17 @@ test('封顶区间可修改边界归属与分界点，合并保留上一段利�
   await page.merge({ currentTarget: { dataset: { index: 1 } } });
   assert.equal(page.data.segments.length, 1);
   assert.equal(page.data.segments[0].upper, null);
-  assert.equal(page.data.segments[0].maximumProfit, '30');
+  assert.equal(page.data.segments[0].maximumMarkup, '30');
 });
 
 test('逐段校验封顶金额与比例，允许0比例但不允许0上限，非法配置不发请求', async () => {
   for (const [field, values, message] of [
-    ['maximumProfit', ['', '0', '-1', '1.001', '100000000'], /第2段最高预期利润/],
+    ['maximumMarkup', ['', '0', '-1', '1.001', '100000000'], /第2段最高预期加价/],
     ['profitPercent', ['', '-1', '1.001', '100000000'], /第2段利润比例/]
   ]) {
     for (const value of values) {
       const { page, calls } = setup();
-      page.newCappedProfitRule();
+      page.newCappedMarkupRule();
       splitLastBand(page, '100');
       page.bandInput(bandEvent(1, field, value));
       page.setData({ trialCost: '200' });
@@ -267,20 +292,20 @@ test('逐段校验封顶金额与比例，允许0比例但不允许0上限，非
     }
   }
   const { page } = setup();
-  page.newCappedProfitRule();
+  page.newCappedMarkupRule();
   page.bandInput(bandEvent(0, 'profitPercent', '0'));
-  page.bandInput(bandEvent(0, 'maximumProfit', '0.01'));
-  assert.equal(page.pricingSettings().profitBands[0].profitPercent, '0.00');
+  page.bandInput(bandEvent(0, 'maximumMarkup', '0.01'));
+  assert.equal(page.pricingSettings().markupBands[0].profitPercent, '0.00');
   for (let index = 1; index < 50; index++) assert.equal(splitLastBand(page, String(index)), true);
   assert.equal(splitLastBand(page, '50'), false);
   assert.match(page.data.boundaryError, /最多50/);
 });
 
 test('改变封顶设置边界和归属时，旧试算响应不能再显示', async () => {
-  for (const change of ['maximumProfit', 'profitPercent', 'boundary', 'toggle']) {
+  for (const change of ['maximumMarkup', 'profitPercent', 'boundary', 'toggle']) {
     let resolve;
     const { page } = setup({ post: () => new Promise(done => { resolve = done; }) });
-    page.newCappedProfitRule();
+    page.newCappedMarkupRule();
     splitLastBand(page, '100');
     page.setData({ trialCost: '200' });
     const pending = page.preview();

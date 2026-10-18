@@ -10,7 +10,7 @@
 </view>
 <button class="primary" bindtap="newRule">新增计价规则</button>
 <button bindtap="newProfitRule">新增利润保底规则</button>
-<button bindtap="newCappedProfitRule">新增分段利润封顶规则</button>
+<button bindtap="newCappedMarkupRule">新增分段加价封顶规则</button>
 <button wx:if="{{stallId && currentRules.length}}" bindtap="assign" data-id="" disabled="{{assigning || !!ruleBusy}}">解除全部规则</button>
 </view>
 <view class="card" wx:for="{{rules}}" wx:key="id">
@@ -23,7 +23,7 @@
 <view class="rule-preview-line"><text class="rule-preview-label">条件公式</text><text class="rule-preview-value">{{item.firstCondition}}</text></view>
 <view class="rule-preview-line"><text class="rule-preview-label">价格公式</text><text class="rule-preview-value">{{item.firstFormula}}</text></view>
 <view class="capped-band-summary" wx:for="{{item.bandSummaries}}" wx:for-item="band" wx:key="label">
-<view>{{band.label}}</view><view class="muted">预期利润：{{band.profit}}</view>
+<view>{{band.label}}</view><view class="muted">{{band.description}}</view>
 </view>
 </view>
 <view class="rule-actions">
@@ -38,13 +38,15 @@
 <input placeholder="规则名称" value="{{name}}" data-field="name" bindinput="input"/>
 <view class="row">启用<switch checked="{{enabled}}" bindchange="enabled"/>
 </view>
-<view wx:if="{{!profitRule}}" class="muted">覆盖所有大于零的成本。点击符号切换包含关系，点击数字修改边界。将“无上限”改为数字后自动新增下一段，并复制当前{{cappedProfitRule ? '利润设置，最多50段' : '价格公式'}}。</view>
+<view wx:if="{{!profitRule}}" class="muted">覆盖所有大于零的成本。点击符号切换包含关系，点击数字修改边界。将“无上限”改为数字后自动新增下一段，并复制当前{{cappedMarkupRule ? '加价设置，最多50段' : '价格公式'}}。</view>
 </view>
-<view wx:if="{{cappedProfitRule}}" class="card">
-<view class="title">分段利润封顶</view>
-<view class="profit-formula">预期利润 z = min(成本 × 本段利润比例 ÷ 100, 本段最高预期利润)</view>
-<view class="profit-formula">实际售价 = (成本 + z) ÷ 0.98</view>
-<view class="muted">先按每条SKU的成本找到区间，再取比例利润与利润上限中的较小值。比例填0时预期利润为0。售价中的2%沿用原规则，售价保留两位小数。</view>
+<view wx:if="{{cappedMarkupRule}}" class="card">
+<view class="title">分段加价封顶</view>
+<view class="profit-formula">比例加价 = (成本 × 本段利润比例 ÷ 100 + 0.02 × 成本) ÷ 0.98</view>
+<view class="profit-formula">最终加价 = min(比例加价, 本段最高预期加价)</view>
+<view class="profit-formula">实际售价 = 成本 + 最终加价</view>
+<view class="muted">最高预期加价限制售价与成本的差额，已包含原规则的2%预留。比例填0仍先计算2%预留，再受加价上限限制。售价保留两位小数。</view>
+<view wx:if="{{legacyProfitCap}}" class="boundary-error">此规则原版本按利润封顶。当前按相同金额改为总加价封顶，保存后生成新版本；历史版本和已有商品售价保留。</view>
 </view>
 <view wx:if="{{profitRule}}" class="card">
 <view class="field-label">最低预期利润（元）</view>
@@ -77,12 +79,12 @@
 <text wx:else class="boundary-value {{item.upper === null ? 'boundary-unlimited' : ''}}" data-index="{{index}}" data-side="right" bindtap="editBoundary">{{item.upper === null ? '无上限' : item.upper}}</text>
 </view>
 <view wx:if="{{boundaryError && (editingBoundary === index + ':left' || editingBoundary === index + ':right')}}" class="boundary-error">{{boundaryError}}</view>
-<block wx:if="{{cappedProfitRule}}">
+<block wx:if="{{cappedMarkupRule}}">
 <view class="field-label">本段成本利润比例（%）</view>
 <input type="digit" placeholder="例如：20 表示成本的20%" value="{{item.profitPercent}}" data-index="{{index}}" data-field="profitPercent" bindinput="bandInput"/>
-<view class="field-label">本段最高预期利润（元）</view>
-<input type="digit" placeholder="例如：30 表示利润最高30元" value="{{item.maximumProfit}}" data-index="{{index}}" data-field="maximumProfit" bindinput="bandInput"/>
-<view class="muted">预期利润取成本的 {{item.profitPercent || '0'}}% 和 {{item.maximumProfit || '0'}} 元中的较小值。</view>
+<view class="field-label">本段最高预期加价（元）</view>
+<input type="digit" placeholder="例如：30 表示售价最多比成本高30元" value="{{item.maximumMarkup}}" data-index="{{index}}" data-field="maximumMarkup" bindinput="bandInput"/>
+<view class="muted">按 {{item.profitPercent || '0'}}% 利润比例和2%预留计算总加价，再与 {{item.maximumMarkup || '0'}} 元取较小值。</view>
 </block>
 <block wx:else>
 <view class="field-label">价格公式</view>
@@ -97,7 +99,8 @@
 <input type="digit" placeholder="试算成本 x" value="{{trialCost}}" data-field="trialCost" bindinput="input"/>
 <button bindtap="preview">后端试算</button>
 <view class="amount" wx:if="{{trialPrice}}">售价 ¥{{trialPrice}}</view>
-<view wx:if="{{(profitRule || cappedProfitRule) && trialPrice}}" class="muted">预期利润 ¥{{trialProfit}} · 加价 ¥{{trialMarkup}}</view>
+<view wx:if="{{profitRule && trialPrice}}" class="muted">预期利润 ¥{{trialProfit}} · 加价 ¥{{trialMarkup}}</view>
+<view wx:if="{{cappedMarkupRule && trialPrice}}" class="muted">最终加价 ¥{{trialMarkup}}（售价与成本的差额，含2%预留）</view>
 <button class="primary" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存规则版本</button>
 <button bindtap="close">返回列表</button>
 </view>
