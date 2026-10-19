@@ -471,10 +471,18 @@ page {
 }
 
 .order-list {
-  flex: 1;
+  flex: 0 1 auto;
+  height: 500rpx;
+  min-height: 0;
   padding: 10rpx 16rpx;
   max-height: 500rpx;
   box-sizing: border-box;
+}
+
+.modal-order > .modal-title,
+.modal-order > .order-summary,
+.modal-order > .modal-footer {
+  flex-shrink: 0;
 }
 
 .order-item {

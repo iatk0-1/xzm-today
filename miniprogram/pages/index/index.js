@@ -421,6 +421,8 @@ Page(pageSync.wrap({
   closeAllPanel() { 
     this.setData({ showAllPanel: false }); 
   },
+  // 只截住冒泡手势，面板内的 scroll-view 继续处理自身滚动。
+  stopPanelTouchMove() {},
   
   selectStall(e) {
     const stallId = e.currentTarget.dataset.stall;

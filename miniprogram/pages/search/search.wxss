@@ -145,7 +145,7 @@ page {
 
 .filter-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 90; background: rgba(0, 0, 0, 0.25); }
 .all-panel-content { position: fixed; left: 0; width: 100%; padding: 30rpx 0 40rpx; box-sizing: border-box; background: #fff; border-radius: 0 0 32rpx 32rpx; box-shadow: 0 10rpx 20rpx rgba(0, 0, 0, 0.05); z-index: 103; }
-.panel-scroll-area { max-height: 55vh; padding: 0 40rpx; box-sizing: border-box; }
+.panel-scroll-area { height: 55vh; padding: 0 40rpx; box-sizing: border-box; }
 .group-section { margin-bottom: 30rpx; }
 .group-title { margin-bottom: 20rpx; color: #999; font-size: 24rpx; font-weight: 700; }
 .all-panel-grid { display: flex; flex-wrap: wrap; gap: 20rpx; }

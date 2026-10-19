@@ -1,3 +1,4 @@
+<page-meta page-style="{{showAllPanel ? 'overflow: hidden;' : ''}}"></page-meta>
 <view class="container" style="padding-top: {{totalNavHeight}}px;">
 
   <view class="custom-nav-bar" style="padding-top: {{navTop}}px;">
@@ -53,12 +54,12 @@
   </view>
 
   <!-- ================== 新增：展开时的高级大面板 (A-Z版) ================== -->
-  <view class="all-panel-mask {{showAllPanel ? 'fade-in' : ''}}" wx:if="{{showAllPanel}}" catchtap="closeAllPanel" style="top: {{totalNavHeight}}px; margin-top: 88rpx;"></view>
+  <view class="all-panel-mask {{showAllPanel ? 'fade-in' : ''}}" wx:if="{{showAllPanel}}" catchtap="closeAllPanel" catchtouchmove="stopPanelTouchMove" style="top: {{totalNavHeight}}px; margin-top: 88rpx;"></view>
   
-  <view class="all-panel-content {{showAllPanel ? 'slide-down' : ''}}" wx:if="{{showAllPanel}}" style="top: {{totalNavHeight}}px; margin-top: 88rpx;">
+  <view class="all-panel-content {{showAllPanel ? 'slide-down' : ''}}" wx:if="{{showAllPanel}}" catchtouchmove="stopPanelTouchMove" style="top: {{totalNavHeight}}px; margin-top: 88rpx;">
     
     <!-- A-Z 分组面板只展示具体档口。 -->
-      <scroll-view scroll-y class="panel-scroll-area">
+      <scroll-view scroll-y class="panel-scroll-area" catchtouchmove="stopPanelTouchMove">
         <view class="group-section" wx:for="{{groupedStalls}}" wx:key="letter">
           <view class="group-title">{{item.letter}}</view> <!-- A, B, C... 标题 -->
           <view class="all-panel-grid">
@@ -71,9 +72,9 @@
   <!-- 商品瀑布流：整块作为滚动容器，释放时触发下拉刷新（指示器落在导航栏下沿，不会被顶栏盖住） -->
   <scroll-view
     class="list-scroll"
-    scroll-y
+    scroll-y="{{!showAllPanel}}"
     style="height: {{listHeight}}px; margin-top: {{listTop}}px;"
-    refresher-enabled="{{true}}"
+    refresher-enabled="{{!showAllPanel}}"
     refresher-triggered="{{refreshing}}"
     refresher-threshold="60"
     refresher-background="#f6f6f6"

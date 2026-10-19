@@ -1,4 +1,5 @@
 <!-- miniprogram/pages/pickingList/pickingList.wxml -->
+<page-meta page-style="{{showOrderModal || showRefundModal ? 'overflow: hidden;' : ''}}"></page-meta>
 <view class="container">
   <!-- 顶部导航栏 -->
   <view class="header-bar">
@@ -137,12 +138,12 @@
 
   <button class="back-to-top" bindtap="backToTop">回到顶部</button>
 
-  <view class="modal" wx:if="{{showRefundModal}}">
+  <view class="modal" wx:if="{{showRefundModal}}" catchtouchmove="stopModalTouchMove">
     <view class="modal-mask" bindtap="closeRefundModal"></view>
     <view class="modal-content refund-modal">
       <view class="modal-title">待报商品退款</view>
       <view class="refund-modal-subtitle">{{refundSku.productName}} · {{refundSku.spec || '默认规格'}} / {{refundSku.size || '均码'}}</view>
-      <scroll-view class="refund-order-list" scroll-y>
+      <scroll-view class="refund-order-list" scroll-y catchtouchmove="stopModalTouchMove">
         <view class="refund-loading" wx:if="{{refundLoading}}">关联订单加载中...</view>
         <view class="refund-loading" wx:elif="{{refundOrders.length === 0}}">暂无可退的关联订单</view>
         <view class="refund-order-card" wx:for="{{refundOrders}}" wx:key="id">
@@ -176,11 +177,11 @@
   </view>
 
   <!-- 报单详情弹窗 -->
-  <view class="modal" wx:if="{{showOrderModal}}">
+  <view class="modal" wx:if="{{showOrderModal}}" catchtouchmove="stopModalTouchMove">
     <view class="modal-mask" bindtap="hideOrderModal"></view>
     <view class="modal-content modal-order">
       <view class="modal-title">确认报单数量</view>
-      <scroll-view class="order-list" scroll-y>
+      <scroll-view class="order-list" scroll-y catchtouchmove="stopModalTouchMove">
         <view class="order-item" wx:for="{{orderPreviewList}}" wx:key="skuId">
           <image class="order-item-image" src="{{item.imageUrl ? item.imageUrl : item.defaultImageUrl}}" mode="aspectFill" />
           <view class="order-item-info">

@@ -1,3 +1,4 @@
+<page-meta page-style="{{showAllPanel ? 'overflow: hidden;' : ''}}"></page-meta>
 <view class="search-page" style="padding-top: {{totalNavHeight}}px;" bindtap="onPageTap">
   <view class="search-header" style="padding-top: {{navTop}}px;">
   <view class="search-bar" style="height: {{navHeight}}px;">
@@ -43,8 +44,8 @@
     </view>
   </view>
 
-  <view class="all-panel-content" wx:if="{{showAllPanel}}" style="top: {{totalNavHeight}}px; margin-top: 88rpx;">
-    <scroll-view scroll-y class="panel-scroll-area">
+  <view class="all-panel-content" wx:if="{{showAllPanel}}" catchtouchmove="stopPanelTouchMove" style="top: {{totalNavHeight}}px; margin-top: 88rpx;">
+    <scroll-view scroll-y class="panel-scroll-area" catchtouchmove="stopPanelTouchMove">
       <view class="group-section" wx:for="{{groupedStalls}}" wx:key="letter">
         <view class="group-title">{{item.letter}}</view>
         <view class="all-panel-grid">
@@ -70,7 +71,7 @@
   </view>
   </view>
 
-  <view class="filter-mask" wx:if="{{showAllPanel}}" catchtap="hideFilterPanels" style="top: {{totalNavHeight}}px;"></view>
+  <view class="filter-mask" wx:if="{{showAllPanel}}" catchtap="hideFilterPanels" catchtouchmove="stopPanelTouchMove" style="top: {{totalNavHeight}}px;"></view>
 
   <view class="result-box" bindtouchstart="onProductTouchStart">
     <view class="search-input-dismiss-layer" wx:if="{{searchEditing}}" catchtap="onPageTap"></view>

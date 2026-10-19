@@ -75,6 +75,9 @@ Page({
     this.setData({ showAllPanel: false });
   },
 
+  // 面板和遮罩拦住冒泡手势，避免底层页面参与滚动。
+  stopPanelTouchMove() {},
+
   handleMainTabChange: function(e) {
     const tab = e.currentTarget.dataset.tab;
     if (tab !== '上新' && tab !== '销量') return;

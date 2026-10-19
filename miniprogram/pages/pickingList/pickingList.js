@@ -596,6 +596,9 @@ Page(autoSearch.wrap(pageSync.wrap({
     return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0;
   },
 
+  // 在冒泡阶段拦住手势，弹窗内的 scroll-view 保持独立滚动。
+  stopModalTouchMove() {},
+
   // 隐藏报单弹窗
   hideOrderModal: function() {
     this.setData({ showOrderModal: false });
