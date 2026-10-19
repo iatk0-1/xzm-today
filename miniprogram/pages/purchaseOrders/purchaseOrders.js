@@ -3,6 +3,8 @@ const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/purchaseOrders/purchaseOrders.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const quantityOperation = require('../../utils/quantityOperation');
+const pageSync = require('../../utils/pageSync');
 
 Page(autoSearch.wrap({
   data: {
@@ -10,6 +12,9 @@ Page(autoSearch.wrap({
     viewMode: 'records',
     stallList: [], tagList: [], selectedStall: '', selectedTag: '',
     skuList: [],
+    purchaseSelectedCount: 0, purchaseTotalQty: 0, purchaseAllSelected: false,
+    showPurchaseModal: false, purchasePreview: [], purchaseCost: '0.00', purchaseMissingCost: 0,
+    purchaseBusy: false,
     showSkuRecords: false, currentSku: null, relatedBatches: [],
     relatedPage: 1, relatedHasMore: true, relatedLoading: false, relatedError: '',
     batchList: [],
@@ -24,6 +29,165 @@ Page(autoSearch.wrap({
     page: 1,
     pageSize: 20,
     hasMore: true
+  },
+
+  async onShow() {
+    const id = this._purchaseEditedProduct;
+    if (id == null) return;
+    try {
+      const detail = await api.get('/products/' + encodeURIComponent(String(id)) + '?manage=true');
+      const product = detail.product || {};
+      const skus = new Map([...(detail.skus || []), ...(detail.bundleGroups || []).flatMap(group => group.skus || [])]
+        .map(sku => [String(sku.id), sku]));
+      const update = item => {
+        if (String(item.productId) !== String(id)) return item;
+        const sku = skus.get(String(item.skuId));
+        if (!sku) return { ...item, canPurchase: false, purchaseSelected: false };
+        return { ...item, productName: product.name, spec: sku.spec, size: sku.size,
+          imageUrl: sku.imageUrl || '', defaultImageUrl: product.coverUrl || '/images/default-goods-image.png',
+          costPrice: sku.costPrice ?? detail.costPrice ?? null };
+      };
+      this.setData({ skuList: this.data.skuList.map(update) });
+      this.updatePurchaseSelection();
+      if (this.data.showPurchaseModal) this.updatePurchasePreview(this.data.purchasePreview.map(update));
+      this._purchaseEditedProduct = null;
+    } catch (err) {
+      wx.showToast({ title: getErrorMessage(err, '同步商品成本失败，请稍后重试'), icon: 'none' });
+    }
+  },
+
+  parsePurchaseQty(value) {
+    const text = String(value ?? '').trim();
+    const qty = Number(text);
+    return /^\d+$/.test(text) && Number.isSafeInteger(qty) && qty > 0 && qty <= 2147483647 ? qty : 0;
+  },
+
+  updatePurchaseSelection() {
+    const selected = this.data.skuList.filter(item => item.purchaseSelected && item.canPurchase !== false);
+    const selectable = this.data.skuList.filter(item => item.canPurchase !== false);
+    this.setData({ purchaseSelectedCount: selected.length,
+      purchaseTotalQty: selected.reduce((sum, item) => sum + this.parsePurchaseQty(item.purchaseQty), 0),
+      purchaseAllSelected: selectable.length > 0 && selectable.every(item => item.purchaseSelected) });
+  },
+
+  togglePurchaseSelect(e) {
+    if (this.data.purchaseBusy) return;
+    const id = String(e.currentTarget.dataset.skuId);
+    this.setData({ skuList: this.data.skuList.map(item => String(item.skuId) === id && item.canPurchase !== false
+      ? { ...item, purchaseSelected: !item.purchaseSelected } : item) });
+    this.updatePurchaseSelection();
+  },
+
+  togglePurchaseSelectAll() {
+    if (this.data.purchaseBusy) return;
+    const selected = !this.data.purchaseAllSelected;
+    this.setData({ skuList: this.data.skuList.map(item => ({ ...item,
+      purchaseSelected: selected && item.canPurchase !== false })) });
+    this.updatePurchaseSelection();
+  },
+
+  setPurchaseQty(id, qty, preview = false) {
+    if (this.data.purchaseBusy) return;
+    const update = item => String(item.skuId) === String(id) ? { ...item, purchaseQty: qty } : item;
+    this.setData({ skuList: this.data.skuList.map(update) });
+    this.updatePurchaseSelection();
+    if (preview) this.updatePurchasePreview(this.data.purchasePreview.map(update));
+  },
+
+  adjustPurchaseQty(e) {
+    const { skuId, delta, preview } = e.currentTarget.dataset;
+    const rows = preview ? this.data.purchasePreview : this.data.skuList;
+    const item = rows.find(row => String(row.skuId) === String(skuId));
+    if (!item) return;
+    const qty = Math.min(2147483647, Math.max(1, (this.parsePurchaseQty(item.purchaseQty) || 1) + Number(delta)));
+    this.setPurchaseQty(skuId, qty, !!preview);
+  },
+
+  onPurchaseQtyInput(e) {
+    this.setPurchaseQty(e.currentTarget.dataset.skuId, e.detail.value, !!e.currentTarget.dataset.preview);
+  },
+
+  normalizePurchaseQty(e) {
+    const { skuId, preview } = e.currentTarget.dataset;
+    const item = (preview ? this.data.purchasePreview : this.data.skuList).find(row => String(row.skuId) === String(skuId));
+    if (item) this.setPurchaseQty(skuId, this.parsePurchaseQty(item.purchaseQty) || 1, !!preview);
+  },
+
+  updatePurchasePreview(items) {
+    let cents = 0;
+    let missing = 0;
+    const purchasePreview = items.map(item => {
+      const price = this.formatCost(item.costPrice);
+      if (price === null) missing += 1;
+      const subtotal = price === null ? null : Math.round(Number(price) * 100) * this.parsePurchaseQty(item.purchaseQty);
+      cents += subtotal || 0;
+      return { ...item, costSubtotal: subtotal === null ? null : (subtotal / 100).toFixed(2) };
+    });
+    this.setData({ purchasePreview, purchaseCost: (cents / 100).toFixed(2), purchaseMissingCost: missing });
+  },
+
+  openPurchaseModal() {
+    if (this.data.purchaseBusy) return;
+    const items = this.data.skuList.filter(item => item.purchaseSelected && item.canPurchase !== false);
+    if (!items.length) return wx.showToast({ title: '请选择要追加报单的商品', icon: 'none' });
+    if (items.some(item => !this.parsePurchaseQty(item.purchaseQty))) {
+      return wx.showToast({ title: '报单数量须为 1 至 2147483647 的整数', icon: 'none' });
+    }
+    this.updatePurchasePreview(items.map(item => ({ ...item })));
+    this.setData({ showPurchaseModal: true });
+  },
+
+  closePurchaseModal() {
+    if (!this.data.purchaseBusy) this.setData({ showPurchaseModal: false });
+  },
+
+  stopModalTouchMove() {},
+
+  previewPurchaseImage(e) {
+    const item = this.data.purchasePreview.find(row => String(row.skuId) === String(e.currentTarget.dataset.skuId));
+    const url = item && (item.imageUrl || item.defaultImageUrl);
+    if (!url || url.startsWith('/images/')) return wx.showToast({ title: '暂无可预览图片', icon: 'none' });
+    wx.previewImage({ current: url, urls: [url] });
+  },
+
+  editPurchaseProduct(e) {
+    if (this.data.purchaseBusy) return;
+    const item = this.data.purchasePreview.find(row => String(row.skuId) === String(e.currentTarget.dataset.skuId));
+    if (!item || item.productId == null) return wx.showToast({ title: '商品信息不完整，请刷新列表后重试', icon: 'none' });
+    this._purchaseEditedProduct = item.productId;
+    wx.navigateTo({ url: '/pages/admin/admin?editId=' + encodeURIComponent(String(item.productId)) });
+  },
+
+  async confirmPurchase() {
+    if (this.data.purchaseBusy) return;
+    const rows = this.data.purchasePreview;
+    if (!rows.length || rows.some(item => item.canPurchase === false || !this.parsePurchaseQty(item.purchaseQty))) {
+      return wx.showToast({ title: '请核对商品和报单数量，数量须为正整数', icon: 'none' });
+    }
+    this.setData({ purchaseBusy: true });
+    wx.showLoading({ title: '提交中...' });
+    let submitError;
+    try {
+      await quantityOperation.run(api, '/picking-list/order', { purpose: 'stock', items: rows.map(item => ({
+        skuId: item.skuId, qty: this.parsePurchaseQty(item.purchaseQty), note: `报单记录追加，${item.spec || ''} ${item.size || ''}` })) });
+    } catch (err) {
+      submitError = err;
+    } finally {
+      this.setData({ purchaseBusy: false });
+      wx.hideLoading();
+    }
+    if (submitError) {
+      wx.showToast({ title: getErrorMessage(submitError, '追加报单失败'), icon: 'none' });
+      return;
+    }
+    rows.forEach(item => pageSync.publish('picking-skus', item.skuId));
+    const submitted = new Set(rows.map(item => String(item.skuId)));
+    this.setData({ showPurchaseModal: false, skuList: this.data.skuList.map(item => submitted.has(String(item.skuId))
+      ? { ...item, purchaseSelected: false, purchaseQty: 1 } : item) });
+    this.updatePurchaseSelection();
+    wx.showToast({ title: '追加报单成功', icon: 'success' });
+    // 已成功提交后刷新失败只提示列表重试，不把成功报单误报成提交失败。
+    await this.loadSkus(true, true);
   },
 
   onLoad: function() {
@@ -87,13 +251,15 @@ Page(autoSearch.wrap({
       displayTime: this.formatTime(item.createdAt), selected: false };
   },
 
-  async loadSkus(reset = true) {
+  async loadSkus(reset = true, preserveDrafts = false) {
     if (!reset && (this.data.loading || !this.data.hasMore)) return;
     const requestId = (this._batchRequestId || 0) + 1;
     this._batchRequestId = requestId;
+    const drafts = new Map((!reset || preserveDrafts ? this.data.skuList : []).map(item => [String(item.skuId), item]));
     if (reset) {
       this._detailGeneration = (this._detailGeneration || 0) + 1;
       this.setData({ page: 1, skuList: [], batchList: [], hasMore: true });
+      this.updatePurchaseSelection();
     }
     this.setData({ loading: true });
     try {
@@ -102,11 +268,13 @@ Page(autoSearch.wrap({
       const res = await api.get('/picking-list/orders/skus/query?' + this.recordQuery({ page, size: this.data.pageSize }));
       if (requestId !== this._batchRequestId) return;
       const rows = (res.content || []).map(item => ({ ...item,
+        purchaseSelected: item.canPurchase !== false && !!drafts.get(String(item.skuId))?.purchaseSelected,
+        purchaseQty: drafts.get(String(item.skuId))?.purchaseQty ?? 1,
         defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
         costSummary: this.formatBatchCost({ ...item, itemCount: item.recordCount }) }));
       this.setData({ skuList: reset ? rows : [...this.data.skuList, ...rows], page: page + 1,
         hasMore: res.hasNext !== undefined ? res.hasNext : rows.length === this.data.pageSize, loading: false
-      }, () => this.checkLoadMoreAtBottom(requestId));
+      }, () => { this.updatePurchaseSelection(); this.checkLoadMoreAtBottom(requestId); });
     } catch (err) {
       if (requestId !== this._batchRequestId) return;
       this.setData({ loading: false });

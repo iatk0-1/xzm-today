@@ -510,3 +510,26 @@ page {
   padding: 24rpx 0;
   background: transparent;
 }
+
+/* 商品视角的追加数量独立于历史原报数量；勾选列覆盖卡片全高。 */
+.sku-summary-card { position: relative; padding-left: 62rpx; gap: 12rpx; }
+.sku-summary-card.purchase-selected { background: #f7fbff; box-shadow: inset 0 0 0 1rpx #8ec5ff; }
+.purchase-checkbox-column { position: absolute; top: 0; bottom: 0; left: 0; width: 62rpx; display: flex; justify-content: center; align-items: center; }
+.purchase-disabled { background: #eee; border-color: #ddd; }
+.sku-summary-card > .order-image { width: 80rpx; height: 80rpx; }
+.purchase-card-controls { flex: 0 0 224rpx; width: 224rpx; display: flex; flex-direction: column; align-items: flex-end; gap: 10rpx; font-size: 22rpx; }
+.purchase-card-controls .order-cost { justify-content: flex-end; text-align: right; }
+.purchase-qty-label { color: #8a929d; font-size: 22rpx; line-height: 30rpx; }
+.purchase-qty-editor { display: flex; align-items: center; gap: 6rpx; width: 224rpx; }
+.purchase-qty-adjust { flex: 0 0 60rpx; width: 60rpx; min-width: 60rpx; height: 64rpx; line-height: 60rpx; padding: 0; margin: 0; border: 1px solid #d9dee7; border-radius: 6rpx; background: #f7f8fa; color: #344054; font-size: 28rpx; box-sizing: border-box; }
+.purchase-qty-adjust::after, .purchase-submit-btn::after { border: none; }
+.purchase-qty-frame { width: 92rpx; flex: 0 0 92rpx; height: 64rpx; padding: 2rpx 0; border: 1px solid #b8c4d3; border-radius: 6rpx; box-sizing: border-box; }
+.purchase-qty-input { display: block; width: 100%; height: 100%; padding: 0 4rpx; border: none; margin: 0; background: transparent; color: #1677c8; font-size: 24rpx; text-align: center; font-weight: 700; box-sizing: border-box; }
+.purchase-submit-btn { width: 132rpx; flex-shrink: 0; margin: 0; padding: 0; height: 58rpx; line-height: 58rpx; background: #1f2933; color: #fff; border-radius: 10rpx; font-size: 24rpx; }
+.purchase-submit-btn[disabled] { background: #c9ced6; color: #fff; }
+.purchase-modal { width: 710rpx; max-height: 80vh; }
+.purchase-preview-list { flex: 0 1 auto; height: 500rpx; min-height: 0; max-height: 500rpx; padding: 10rpx 16rpx; box-sizing: border-box; }
+.purchase-preview-item { display: flex; align-items: center; gap: 12rpx; padding: 16rpx 0; border-bottom: 1rpx solid #f0f0f0; }
+.purchase-preview-image { width: 86rpx; height: 86rpx; flex-shrink: 0; border-radius: 8rpx; }
+.purchase-summary { padding: 16rpx 22rpx; font-size: 24rpx; line-height: 34rpx; color: #666; border-top: 1rpx solid #eee; background: #f9f9f9; }
+.purchase-modal > .modal-title, .purchase-modal > .purchase-summary, .purchase-modal > .modal-footer { flex-shrink: 0; }

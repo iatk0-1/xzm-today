@@ -50,6 +50,14 @@
         <button class="view-toggle" bindtap="toggleView">{{viewMode === 'records' ? '切换商品视角' : '切换记录视角'}}</button>
       </view>
     </view>
+    <view class="action-bar purchase-action-bar" wx:if="{{viewMode === 'products'}}">
+      <view class="select-all" bindtap="togglePurchaseSelectAll">
+        <view class="checkbox {{purchaseAllSelected ? 'checked' : ''}}"><text wx:if="{{purchaseAllSelected}}">✓</text></view>
+        <text>全选</text>
+      </view>
+      <view class="selected-info {{purchaseSelectedCount === 0 ? 'empty' : ''}}"><text>{{purchaseSelectedCount > 0 ? '已选 ' + purchaseSelectedCount + ' 个 SKU，共 ' + purchaseTotalQty + ' 件' : '未选择商品'}}</text></view>
+      <button class="purchase-submit-btn" bindtap="openPurchaseModal" disabled="{{purchaseSelectedCount === 0 || purchaseBusy}}">去报单</button>
+    </view>
   </view>
 
   <scroll-view class="batch-scroll" scroll-y="true" enable-flex="true" enhanced="true"
@@ -115,7 +123,10 @@
     <view class="empty-state" wx:if="{{batchList.length === 0 && !loading}}">暂无报单批次</view>
     </block>
     <block wx:else>
-      <view class="sku-summary-card" wx:for="{{skuList}}" wx:key="skuId" bindtap="openSkuRecords" data-sku-id="{{item.skuId}}">
+      <view class="sku-summary-card {{item.purchaseSelected ? 'purchase-selected' : ''}}" wx:for="{{skuList}}" wx:key="skuId" bindtap="openSkuRecords" data-sku-id="{{item.skuId}}">
+        <view class="purchase-checkbox-column" catchtap="togglePurchaseSelect" data-sku-id="{{item.skuId}}">
+          <view class="checkbox {{item.purchaseSelected ? 'checked' : ''}} {{item.canPurchase === false ? 'purchase-disabled' : ''}}"><text wx:if="{{item.purchaseSelected}}">✓</text></view>
+        </view>
         <image class="order-image" src="{{item.imageUrl || item.defaultImageUrl}}" mode="aspectFill" />
         <view class="order-info">
           <view class="order-name">{{item.productName || '商品信息已不可用'}}</view>
@@ -124,12 +135,48 @@
           <view class="order-cost">{{item.costSummary}}</view>
           <view class="order-sku">关联 {{item.batchCount}} 次报单 · 点击查看记录</view>
         </view>
+        <view class="purchase-card-controls" catchtap="stopModalTouchMove">
+          <text class="purchase-qty-label">追加数量</text>
+          <view class="purchase-qty-editor" wx:if="{{item.canPurchase !== false}}">
+            <button class="purchase-qty-adjust" catchtap="adjustPurchaseQty" data-sku-id="{{item.skuId}}" data-delta="-1">−</button>
+            <view class="purchase-qty-frame"><input class="purchase-qty-input" type="number" value="{{item.purchaseQty}}" bindinput="onPurchaseQtyInput" bindblur="normalizePurchaseQty" data-sku-id="{{item.skuId}}" /></view>
+            <button class="purchase-qty-adjust" catchtap="adjustPurchaseQty" data-sku-id="{{item.skuId}}" data-delta="1">+</button>
+          </view>
+          <text class="missing-cost" wx:else>商品不可报单</text>
+        </view>
       </view>
       <view class="empty-state" wx:if="{{skuList.length === 0 && !loading}}">暂无商品报单记录</view>
     </block>
     <view class="loading-state {{(viewMode === 'records' ? batchList.length : skuList.length) > 0 ? 'loading-more' : ''}}" wx:if="{{loading}}">加载中...</view>
   </view>
   </scroll-view>
+  <view class="modal" wx:if="{{showPurchaseModal}}" catchtouchmove="stopModalTouchMove">
+    <view class="modal-mask" bindtap="closePurchaseModal"></view>
+    <view class="modal-content purchase-modal">
+      <view class="modal-title">确认报单数量</view>
+      <scroll-view class="purchase-preview-list" scroll-y catchtouchmove="stopModalTouchMove">
+        <view class="purchase-preview-item" wx:for="{{purchasePreview}}" wx:key="skuId">
+          <image class="purchase-preview-image" src="{{item.imageUrl || item.defaultImageUrl}}" mode="aspectFill" catchtap="previewPurchaseImage" data-sku-id="{{item.skuId}}" />
+          <view class="order-info" catchtap="editPurchaseProduct" data-sku-id="{{item.skuId}}">
+            <view class="order-name">{{item.productName}}</view>
+            <view class="order-sku">{{item.spec || '默认规格'}} · {{item.size || '均码'}}</view>
+            <view class="purchase-qty-label">追加报单，不限制待报数量</view>
+          </view>
+          <view class="purchase-card-controls">
+            <view class="order-cost" wx:if="{{item.costSubtotal !== null}}">成本小计 ¥{{item.costSubtotal}}</view>
+            <view class="missing-cost" wx:else>未设置成本价</view>
+            <view class="purchase-qty-editor">
+              <button class="purchase-qty-adjust" bindtap="adjustPurchaseQty" data-sku-id="{{item.skuId}}" data-delta="-1" data-preview="{{true}}" disabled="{{purchaseBusy}}">−</button>
+              <view class="purchase-qty-frame"><input class="purchase-qty-input" type="number" value="{{item.purchaseQty}}" bindinput="onPurchaseQtyInput" bindblur="normalizePurchaseQty" data-sku-id="{{item.skuId}}" data-preview="{{true}}" disabled="{{purchaseBusy}}" /></view>
+              <button class="purchase-qty-adjust" bindtap="adjustPurchaseQty" data-sku-id="{{item.skuId}}" data-delta="1" data-preview="{{true}}" disabled="{{purchaseBusy}}">+</button>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="purchase-summary">共 {{purchasePreview.length}} 个 SKU，总计 {{purchaseTotalQty}} 件，总共 {{purchaseCost}} 元<text class="missing-cost" wx:if="{{purchaseMissingCost > 0}}">，有 {{purchaseMissingCost}} 条成本待完善</text></view>
+      <view class="modal-footer"><button class="modal-cancel" bindtap="closePurchaseModal" disabled="{{purchaseBusy}}">取消</button><button class="modal-confirm" bindtap="confirmPurchase" disabled="{{purchaseBusy}}" loading="{{purchaseBusy}}">确认报单</button></view>
+    </view>
+  </view>
   <view class="modal" wx:if="{{showSkuRecords}}">
     <view class="modal-mask" bindtap="closeSkuRecords"></view>
     <view class="modal-content sku-record-modal">
