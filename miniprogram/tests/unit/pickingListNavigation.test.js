@@ -6,11 +6,15 @@ let pageConfig;
 let responses = [];
 const queries = [];
 let destination;
+let preview;
+let toast;
+let managedProduct;
 
 global.Page = config => { pageConfig = config; };
 global.wx = {
   navigateTo(options) { destination = options.url; },
-  showToast() {}
+  previewImage(options) { preview = options; },
+  showToast(options) { toast = options.title; }
 };
 
 const originalLoad = Module._load;
@@ -18,6 +22,7 @@ Module._load = function(request, ...args) {
   if (request.endsWith('utils/api')) {
     return {
       get: async (url, params) => {
+        if (url.includes('?manage=true')) return managedProduct;
         if (url === '/picking-list/recommend/search/query') {
           queries.push(params);
           return responses.shift();
@@ -58,4 +63,62 @@ test('从关联订单列表返回后保留推荐列表、勾选和已加载页�
   assert.equal(page.data.page, 3);
   assert.equal(page.data.selectedCount, 1);
   assert.deepEqual(queries.map(params => params.page), [1, 2]);
+});
+
+test('报单弹窗按预览列表索引预览图片并打开正确商品编辑页', async () => {
+  const page = { ...pageConfig, data: JSON.parse(JSON.stringify(pageConfig.data)) };
+  page.setData = patch => Object.assign(page.data, patch);
+  page.data.filteredList = [
+    { skuId: '1', productId: '100', selected: false, recommendQty: 2, imageUrl: 'https://example.com/other.jpg' },
+    { skuId: '2', productId: '9007199254740993', selected: true, recommendQty: 3, imageUrl: 'https://example.com/selected.jpg' }
+  ];
+  page.data.recommendList = page.data.filteredList;
+  await page.createPurchaseOrder();
+  const event = { currentTarget: { dataset: { index: 0 } } };
+  page.previewOrderProductImage(event);
+  assert.equal(preview.current, 'https://example.com/selected.jpg');
+  assert.deepEqual(preview.urls, ['https://example.com/selected.jpg']);
+  page.editOrderProduct(event);
+  assert.equal(destination, '/pages/admin/admin?editId=9007199254740993');
+  assert.equal(page.data.showOrderModal, true);
+  page.data.orderPreviewList[0].imageUrl = '';
+  page.data.orderPreviewList[0].defaultImageUrl = 'https://example.com/cover.jpg';
+  page.previewOrderProductImage(event);
+  assert.equal(preview.current, 'https://example.com/cover.jpg');
+  page.data.orderPreviewList[0].defaultImageUrl = '/images/default-goods-image.png';
+  page.previewOrderProductImage(event);
+  assert.equal(toast, '暂无可预览图片');
+});
+
+test('商品编辑保存返回后同步成本和图片，保留弹窗数量及其他商品', async () => {
+  const page = { ...pageConfig, data: JSON.parse(JSON.stringify(pageConfig.data)) };
+  page.setData = (patch, callback) => { Object.assign(page.data, patch); if (callback) callback(); };
+  page.loadFilterOptions = () => {};
+  page.loadRecommendations = () => {};
+  page.onLoad();
+  page.data.recommendList = [
+    { skuId: '11', productId: '101', selected: true, recommendQty: 2, costPrice: null },
+    { skuId: '12', productId: '101', selected: true, recommendQty: 1, costPrice: null },
+    { skuId: '22', productId: '202', selected: true, recommendQty: 1, costPrice: '10.00' }
+  ];
+  page.data.filteredList = page.data.recommendList;
+  await page.createPurchaseOrder();
+  page.setOrderQty(0, '5');
+  managedProduct = { product: { id: '101', name: '修改后的商品', coverUrl: 'https://example.com/new.jpg' },
+    costPrice: '20.00', skus: [{ id: '11', spec: '红', size: 'M', costPrice: '12.50' },
+      { id: '12', spec: '蓝', size: 'L', costPrice: null }] };
+  require('../../utils/pageSync').publish('products', '101');
+  await page.onShow();
+  assert.equal(page.data.orderPreviewList[0].qty, '5');
+  assert.equal(page.data.orderPreviewList[0].costSubtotal, '62.50');
+  assert.equal(page.data.orderPreviewList[1].costSubtotal, '20.00');
+  assert.equal(page.data.orderPreviewList[0].productName, '修改后的商品');
+  assert.equal(page.data.orderPreviewList[0].defaultImageUrl, 'https://example.com/new.jpg');
+  assert.equal(page.data.totalCost, '92.50');
+  assert.equal(page.data.totalQty, 7);
+  assert.equal(page.data.selectedCount, 3);
+  assert.equal(page.data.missingCostCount, 0);
+  assert.equal(page.data.recommendList[0].selected, true);
+  assert.equal(page.data.showOrderModal, true);
+  page.onUnload();
 });

@@ -537,7 +537,7 @@ page {
   justify-content: center;
   align-items: flex-end;
   gap: 10rpx;
-  width: 204rpx;
+  width: 244rpx;
   flex-shrink: 0;
 }
 
@@ -584,18 +584,18 @@ page {
   display: flex;
   align-items: center;
   gap: 8rpx;
-  width: 204rpx;
+  width: 244rpx;
   flex: 0 0 auto;
-  min-width: 204rpx;
+  min-width: 244rpx;
 }
 
 .qty-adjust {
-  width: 48rpx;
-  min-width: 48rpx;
-  max-width: 48rpx;
-  flex: 0 0 48rpx;
-  height: 44rpx;
-  line-height: 40rpx;
+  width: 64rpx;
+  min-width: 64rpx;
+  max-width: 64rpx;
+  flex: 0 0 64rpx;
+  height: 64rpx;
+  line-height: 60rpx;
   margin: 0;
   padding: 0;
   border: 1rpx solid #d9dee7;
@@ -606,15 +606,28 @@ page {
   box-sizing: border-box;
 }
 
-.qty-input {
-  width: 92rpx;
-  min-width: 92rpx;
-  max-width: 92rpx;
-  flex: 0 0 92rpx;
-  height: 44rpx;
-  padding: 0 8rpx;
-  border: 1rpx solid #b8c4d3;
+/* 边框交给普通 view 绘制，避开原生 input 在弹窗滚动层中的细线裁切。 */
+.qty-input-frame {
+  width: 100rpx;
+  min-width: 100rpx;
+  max-width: 100rpx;
+  flex: 0 0 100rpx;
+  height: 64rpx;
+  padding: 2rpx 0;
+  border: 1px solid #b8c4d3;
   border-radius: 6rpx;
+  box-sizing: border-box;
+}
+
+.qty-input {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0 8rpx;
+  border: none;
+  background: transparent;
   color: #1677c8;
   font-size: 24rpx;
   font-weight: 700;

@@ -16,6 +16,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     selectedCount: 0,
     totalQty: 0,
     totalCost: '0.00',
+    missingCostCount: 0,
     allSelected: false,
     // SKU 筛选
     skuKeyword: '',
@@ -62,6 +63,46 @@ Page(autoSearch.wrap(pageSync.wrap({
       return;
     }
     wx.previewImage({ current: url, urls: [url] });
+  },
+
+  previewOrderProductImage(e) {
+    const item = this.data.orderPreviewList[Number(e.currentTarget.dataset.index)];
+    const url = item && (item.imageUrl || item.defaultImageUrl);
+    if (!url || url.startsWith('/images/')) {
+      wx.showToast({ title: '暂无可预览图片', icon: 'none' });
+      return;
+    }
+    wx.previewImage({ current: url, urls: [url] });
+  },
+
+  editOrderProduct(e) {
+    const item = this.data.orderPreviewList[Number(e.currentTarget.dataset.index)];
+    if (!item) return;
+    if (item.productId == null) {
+      wx.showToast({ title: '商品信息不完整，请刷新列表后重试', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({ url: '/pages/admin/admin?editId=' + encodeURIComponent(String(item.productId)) });
+  },
+
+  async refreshOrderProduct(productId) {
+    const matches = item => String(item.productId) === String(productId);
+    if (!this.data.recommendList.some(matches) && !this.data.orderPreviewList.some(matches)) return;
+    const detail = await api.get('/products/' + encodeURIComponent(String(productId)) + '?manage=true');
+    const product = detail.product || {};
+    const skus = new Map([...(detail.skus || []), ...(detail.bundleGroups || []).flatMap(group => group.skus || [])]
+      .map(sku => [String(sku.id), sku]));
+    const update = item => {
+      if (!matches(item)) return item;
+      const sku = skus.get(String(item.skuId));
+      if (!sku) return item;
+      return { ...item, productName: product.name, spec: sku.spec, size: sku.size,
+        imageUrl: sku.imageUrl || '', defaultImageUrl: product.coverUrl || '/images/default-goods-image.png',
+        costPrice: sku.costPrice ?? detail.costPrice ?? null };
+    };
+    const recommendList = this.data.recommendList.map(update);
+    this.setData({ recommendList, filteredList: recommendList });
+    if (this.data.showOrderModal) this.updateOrderPreview(this.data.orderPreviewList.map(update));
   },
 
   async openRefundModal(e) {
@@ -509,6 +550,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     // 准备预览列表
     const orderPreviewList = selectedItems.map(i => ({
       skuId: i.skuId,
+      productId: i.productId,
       productName: i.productName,
       spec: i.spec,
       size: i.size,
@@ -566,7 +608,7 @@ Page(autoSearch.wrap(pageSync.wrap({
   updateOrderPreview: function(items) {
     let totalQty = 0;
     let totalCents = 0;
-    let hasMissingCost = false;
+    let missingCostCount = 0;
     const orderPreviewList = items.map(item => {
       const qty = this.parseOrderQty(item.qty);
       const price = item.costPrice;
@@ -577,14 +619,15 @@ Page(autoSearch.wrap(pageSync.wrap({
       const costCents = hasCost ? Math.round(numericPrice * 100) * qty : 0;
       totalQty += qty;
       totalCents += costCents;
-      hasMissingCost = hasMissingCost || !hasCost;
+      if (!hasCost) missingCostCount += 1;
       return { ...item, costSubtotal: hasCost ? (costCents / 100).toFixed(2) : null };
     });
     this.setData({
       orderPreviewList,
       selectedCount: orderPreviewList.length,
       totalQty,
-      totalCost: hasMissingCost ? null : (totalCents / 100).toFixed(2)
+      totalCost: (totalCents / 100).toFixed(2),
+      missingCostCount
     });
   },
 
@@ -642,12 +685,17 @@ Page(autoSearch.wrap(pageSync.wrap({
     }
   }
 }, async function(changes) {
+  for (const change of changes.filter(item => item.entity === 'products' && !item.removed)) {
+    await this.refreshOrderProduct(change.id);
+  }
   const skuIds = changes.filter(item => item.entity === 'picking-skus').map(item => item.id);
   for (const change of changes.filter(item => item.entity === 'orders')) {
     const order = await api.get('/orders/' + change.id);
     (order.items || []).forEach(item => skuIds.push(item.skuId));
   }
   await this.refreshSkuRecommendations(skuIds);
+  // 返回编辑页后继续显示弹窗中的实际报单数量，不能被列表推荐数量覆盖。
+  if (this.data.showOrderModal) this.updateOrderPreview(this.data.orderPreviewList);
 }), {
   input: 'onSkuKeywordInput',
   submit: 'searchSku',
