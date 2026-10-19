@@ -55,7 +55,7 @@
         <view class="checkbox {{purchaseAllSelected ? 'checked' : ''}}"><text wx:if="{{purchaseAllSelected}}">✓</text></view>
         <text>全选</text>
       </view>
-      <view class="selected-info {{purchaseSelectedCount === 0 ? 'empty' : ''}}"><text>{{purchaseSelectedCount > 0 ? '已选 ' + purchaseSelectedCount + ' 个 SKU，共 ' + purchaseTotalQty + ' 件' : '未选择商品'}}</text></view>
+      <view class="selected-info {{purchaseSelectedCount === 0 ? 'empty' : ''}}"><text>{{purchaseSelectedCount > 0 ? '待报 ' + purchaseSelectedCount + ' 个 SKU，共 ' + purchaseTotalQty + ' 件' : '未选择商品'}}</text></view>
       <button class="purchase-submit-btn" bindtap="openPurchaseModal" disabled="{{purchaseSelectedCount === 0 || purchaseBusy}}">去报单</button>
     </view>
   </view>
@@ -128,8 +128,10 @@
           <view class="checkbox {{item.purchaseSelected ? 'checked' : ''}} {{item.canPurchase === false ? 'purchase-disabled' : ''}}"><text wx:if="{{item.purchaseSelected}}">✓</text></view>
         </view>
         <image class="order-image" src="{{item.imageUrl || item.defaultImageUrl}}" mode="aspectFill" />
+        <view class="purchase-card-body">
+          <view class="order-name purchase-card-name">{{item.productName || '商品信息已不可用'}}</view>
+          <view class="purchase-card-details">
         <view class="order-info">
-          <view class="order-name">{{item.productName || '商品信息已不可用'}}</view>
           <view class="order-sku">{{item.spec || '默认规格'}} · {{item.size || '均码'}}</view>
           <view class="order-meta"><view class="meta-chip">原报 {{item.totalQty}}</view><view class="meta-chip">退款作废 {{item.invalidQty}}</view><view class="meta-chip">有效 {{item.effectiveQty}}</view></view>
           <view class="order-cost">{{item.costSummary}}</view>
@@ -143,6 +145,8 @@
             <button class="purchase-qty-adjust" catchtap="adjustPurchaseQty" data-sku-id="{{item.skuId}}" data-delta="1">+</button>
           </view>
           <text class="missing-cost" wx:else>商品不可报单</text>
+        </view>
+          </view>
         </view>
       </view>
       <view class="empty-state" wx:if="{{skuList.length === 0 && !loading}}">暂无商品报单记录</view>
@@ -173,8 +177,8 @@
           </view>
         </view>
       </scroll-view>
-      <view class="purchase-summary">共 {{purchasePreview.length}} 个 SKU，总计 {{purchaseTotalQty}} 件，总共 {{purchaseCost}} 元<text class="missing-cost" wx:if="{{purchaseMissingCost > 0}}">，有 {{purchaseMissingCost}} 条成本待完善</text></view>
-      <view class="modal-footer"><button class="modal-cancel" bindtap="closePurchaseModal" disabled="{{purchaseBusy}}">取消</button><button class="modal-confirm" bindtap="confirmPurchase" disabled="{{purchaseBusy}}" loading="{{purchaseBusy}}">确认报单</button></view>
+      <view class="purchase-summary">共 {{purchasePreviewCount}} 个 SKU，总计 {{purchaseTotalQty}} 件，总共 {{purchaseCost}} 元<text class="missing-cost" wx:if="{{purchaseMissingCost > 0}}">，有 {{purchaseMissingCost}} 条成本待完善</text></view>
+      <view class="modal-footer"><button class="modal-cancel" bindtap="closePurchaseModal" disabled="{{purchaseBusy}}">取消</button><button class="modal-confirm" bindtap="confirmPurchase" disabled="{{purchaseBusy || purchasePreviewCount === 0}}" loading="{{purchaseBusy}}">确认报单</button></view>
     </view>
   </view>
   <view class="modal" wx:if="{{showSkuRecords}}">

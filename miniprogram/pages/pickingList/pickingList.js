@@ -12,6 +12,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     isStallManager: false,
     filterStatus: 'pending', // 'pending', 'ordered', 'all'
     recommendList: [],
+    pendingOrderList: [],
     loading: false,
     selectedCount: 0,
     totalQty: 0,
@@ -87,7 +88,8 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   async refreshOrderProduct(productId) {
     const matches = item => String(item.productId) === String(productId);
-    if (!this.data.recommendList.some(matches) && !this.data.orderPreviewList.some(matches)) return;
+    if (!this.data.recommendList.some(matches) && !this.data.orderPreviewList.some(matches)
+      && !this.data.pendingOrderList.some(matches)) return;
     const detail = await api.get('/products/' + encodeURIComponent(String(productId)) + '?manage=true');
     const product = detail.product || {};
     const skus = new Map([...(detail.skus || []), ...(detail.bundleGroups || []).flatMap(group => group.skus || [])]
@@ -101,7 +103,7 @@ Page(autoSearch.wrap(pageSync.wrap({
         costPrice: sku.costPrice ?? detail.costPrice ?? null };
     };
     const recommendList = this.data.recommendList.map(update);
-    this.setData({ recommendList, filteredList: recommendList });
+    this.setData({ recommendList, filteredList: recommendList, pendingOrderList: this.data.pendingOrderList.map(update) });
     if (this.data.showOrderModal) this.updateOrderPreview(this.data.orderPreviewList.map(update));
   },
 
@@ -372,7 +374,10 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   // 加载推荐拣货单（分页）
   loadRecommendations: async function(reset = true) {
-    if (this.data.loading) return;
+    if (!reset && (this.data.loading || !this.data.hasMore)) return;
+    const requestId = (this._recommendRequestId || 0) + 1;
+    this._recommendRequestId = requestId;
+    this.updateSelectedInfo();
 
     if (reset) {
       this.setData({
@@ -380,8 +385,6 @@ Page(autoSearch.wrap(pageSync.wrap({
         recommendList: [],
         filteredList: [],
         hasMore: true,
-        selectedCount: 0,
-        totalQty: 0,
         allSelected: false
       });
     }
@@ -389,14 +392,17 @@ Page(autoSearch.wrap(pageSync.wrap({
     if (!this.data.hasMore) return;
     
     this.setData({ loading: true });
+    const params = this.getQueryParams();
     try {
       await auth.ensureAuthenticated({ silent: true });
       // 调用分页搜索接口
-      const res = await api.get('/picking-list/recommend/search/query', this.getQueryParams());
+      const res = await api.get('/picking-list/recommend/search/query', params);
+      if (requestId !== this._recommendRequestId) return;
+      const drafts = new Map(this.data.pendingOrderList.map(item => [String(item.skuId), item]));
       
       const newList = (res.content || []).map(item => ({
         ...item,
-        selected: false,
+        selected: drafts.has(String(item.skuId)),
         imageUrl: item.imageUrl || '',
         defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
         // unshippedQty 是已配现货且未被任务占用的当次可发上限。
@@ -410,14 +416,13 @@ Page(autoSearch.wrap(pageSync.wrap({
       this.setData({
         recommendList: nextList,
         filteredList: nextList,
-        page: this.data.page + 1,
+        page: params.page + 1,
         hasMore: hasMore,
-        selectedCount: reset ? 0 : this.data.selectedCount,
-        totalQty: reset ? 0 : this.data.totalQty,
-        allSelected: false,
         loading: false
       });
+      this.updateSelectedInfo();
     } catch (err) {
+      if (requestId !== this._recommendRequestId) return;
       console.error('加载推荐拣货单失败:', err);
       wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
       this.setData({ loading: false });
@@ -431,7 +436,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       if (!this.data.recommendList.some(item => String(item.skuId) === id)) continue;
       const updated = await api.get(`/picking-list/recommend/skus/${id}`, { status: this.data.filterStatus });
       const recommendList = this.data.recommendList.flatMap(item => String(item.skuId) !== id ? [item] : (updated ? [{
-        ...item, ...updated, selected: item.selected && Number(updated.recommendQty) > 0,
+        ...item, ...updated, selected: item.selected,
         allQty: Number(updated.totalQty ?? updated.unshippedQty) || 0,
         pendingShipQty: Number(updated.unshippedQty) || 0
       }] : []));
@@ -491,6 +496,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     const index = e.currentTarget.dataset.index;
     const item = this.data.filteredList[index];
     
+    if (!item || Number(item.recommendQty) <= 0) return;
     item.selected = !item.selected;
     
     // 重新计算选中数量和总数
@@ -508,7 +514,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     const selectableItems = this.data.filteredList.filter(item => Number(item.recommendQty) > 0);
 
     this.data.filteredList.forEach(item => {
-      item.selected = newAllSelected && Number(item.recommendQty) > 0;
+      if (Number(item.recommendQty) > 0) item.selected = newAllSelected;
     });
     
     this.setData({
@@ -522,12 +528,20 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   // 更新选中信息
   updateSelectedInfo: function() {
-    const selectedCount = this.data.filteredList.filter(i => i.selected).length;
-    const totalQty = this.data.filteredList
-      .filter(i => i.selected)
-      .reduce((sum, i) => sum + (Number(i.recommendQty) || 0), 0);
-    
-    this.setData({ selectedCount, totalQty });
+    // 待报单列表独立于筛选结果；只同步本次可见行，不删除隐藏行。
+    const drafts = new Map(this.data.pendingOrderList.map(item => [String(item.skuId), item]));
+    this.data.filteredList.forEach(item => {
+      const id = String(item.skuId);
+      if (item.selected) {
+        const qty = drafts.get(id)?.qty ?? Math.max(1, Number(item.recommendQty) || 1);
+        drafts.set(id, { ...item, qty });
+      } else drafts.delete(id);
+    });
+    const pendingOrderList = [...drafts.values()];
+    const selectable = this.data.filteredList.filter(item => Number(item.recommendQty) > 0);
+    this.setData({ pendingOrderList, selectedCount: pendingOrderList.length,
+      totalQty: pendingOrderList.reduce((sum, item) => sum + this.parseOrderQty(item.qty), 0),
+      allSelected: selectable.length > 0 && selectable.every(item => item.selected) });
   },
 
   // 图片加载失败处理
@@ -539,8 +553,8 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   // 创建报单（显示详情弹窗）
   createPurchaseOrder: async function() {
-    const selectedItems = this.data.filteredList
-      .filter(i => i.selected && Number(i.recommendQty) > 0);
+    this.updateSelectedInfo();
+    const selectedItems = this.data.pendingOrderList;
 
     if (selectedItems.length === 0) {
       wx.showToast({ title: '请选择商品', icon: 'none' });
@@ -554,7 +568,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       productName: i.productName,
       spec: i.spec,
       size: i.size,
-      qty: Math.max(1, Number(i.recommendQty) || 1),
+      qty: this.parseOrderQty(i.qty) || 1,
       recommendQty: Math.max(0, Number(i.recommendQty) || 0),
       costPrice: i.costPrice,
       imageUrl: i.imageUrl,
@@ -600,7 +614,10 @@ Page(autoSearch.wrap(pageSync.wrap({
   },
 
   setOrderQty: function(index, qty) {
-    if (!this.data.orderPreviewList[index]) return;
+    const current = this.data.orderPreviewList[index];
+    if (!current) return;
+    this.setData({ pendingOrderList: this.data.pendingOrderList.map(item => String(item.skuId) === String(current.skuId)
+      ? { ...item, qty } : item) });
     this.updateOrderPreview(this.data.orderPreviewList.map((item, itemIndex) =>
       itemIndex === index ? { ...item, qty } : item));
   },
@@ -645,7 +662,7 @@ Page(autoSearch.wrap(pageSync.wrap({
   // 隐藏报单弹窗
   hideOrderModal: function() {
     this.setData({ showOrderModal: false });
-    // 取消编辑时，操作栏恢复显示当前勾选商品的推荐数量合计。
+    // 取消弹窗保留已选商品和修改后的数量。
     this.updateSelectedInfo();
   },
 
@@ -675,13 +692,24 @@ Page(autoSearch.wrap(pageSync.wrap({
       wx.hideLoading();
       wx.showToast({ title: '报单成功', icon: 'success' });
 
-      this.setData({ showOrderModal: false });
-
-      await this.refreshSkuRecommendations(selectedItems.map(item => item.skuId));
+      const submitted = new Set(selectedItems.map(item => String(item.skuId)));
+      const recommendList = this.data.recommendList.map(item => submitted.has(String(item.skuId))
+        ? { ...item, selected: false } : item);
+      this.setData({ showOrderModal: false,
+        pendingOrderList: this.data.pendingOrderList.filter(item => !submitted.has(String(item.skuId))),
+        recommendList, filteredList: recommendList });
+      this.updateSelectedInfo();
     } catch (err) {
       wx.hideLoading();
       console.error('报单失败:', err);
       wx.showToast({ title: getErrorMessage(err, '报单失败'), icon: 'none' });
+      return;
+    }
+    try {
+      await this.refreshSkuRecommendations(selectedItems.map(item => item.skuId));
+    } catch (err) {
+      console.error('报单成功后刷新列表失败:', err);
+      wx.showToast({ title: '报单已成功，请刷新列表查看', icon: 'none' });
     }
   }
 }, async function(changes) {

@@ -12,8 +12,9 @@ Page(autoSearch.wrap({
     viewMode: 'records',
     stallList: [], tagList: [], selectedStall: '', selectedTag: '',
     skuList: [],
+    pendingOrderList: [],
     purchaseSelectedCount: 0, purchaseTotalQty: 0, purchaseAllSelected: false,
-    showPurchaseModal: false, purchasePreview: [], purchaseCost: '0.00', purchaseMissingCost: 0,
+    showPurchaseModal: false, purchasePreview: [], purchasePreviewCount: 0, purchaseCost: '0.00', purchaseMissingCost: 0,
     purchaseBusy: false,
     showSkuRecords: false, currentSku: null, relatedBatches: [],
     relatedPage: 1, relatedHasMore: true, relatedLoading: false, relatedError: '',
@@ -47,7 +48,7 @@ Page(autoSearch.wrap({
           imageUrl: sku.imageUrl || '', defaultImageUrl: product.coverUrl || '/images/default-goods-image.png',
           costPrice: sku.costPrice ?? detail.costPrice ?? null };
       };
-      this.setData({ skuList: this.data.skuList.map(update) });
+      this.setData({ skuList: this.data.skuList.map(update), pendingOrderList: this.data.pendingOrderList.map(update) });
       this.updatePurchaseSelection();
       if (this.data.showPurchaseModal) this.updatePurchasePreview(this.data.purchasePreview.map(update));
       this._purchaseEditedProduct = null;
@@ -63,18 +64,28 @@ Page(autoSearch.wrap({
   },
 
   updatePurchaseSelection() {
-    const selected = this.data.skuList.filter(item => item.purchaseSelected && item.canPurchase !== false);
+    // 筛选只替换可见商品，待报单列表按 SKU 独立保留。
+    const drafts = new Map(this.data.pendingOrderList.filter(item => item.canPurchase !== false)
+      .map(item => [String(item.skuId), item]));
+    this.data.skuList.forEach(item => {
+      const id = String(item.skuId);
+      if (item.purchaseSelected && item.canPurchase !== false && this.parsePurchaseQty(item.purchaseQty) > 0) {
+        drafts.set(id, { ...item });
+      } else drafts.delete(id);
+    });
+    const selected = [...drafts.values()];
     const selectable = this.data.skuList.filter(item => item.canPurchase !== false);
-    this.setData({ purchaseSelectedCount: selected.length,
+    this.setData({ pendingOrderList: selected, purchaseSelectedCount: selected.length,
       purchaseTotalQty: selected.reduce((sum, item) => sum + this.parsePurchaseQty(item.purchaseQty), 0),
-      purchaseAllSelected: selectable.length > 0 && selectable.every(item => item.purchaseSelected) });
+      purchaseAllSelected: selectable.length > 0 && selectable.every(item => item.purchaseSelected && this.parsePurchaseQty(item.purchaseQty) > 0) });
   },
 
   togglePurchaseSelect(e) {
     if (this.data.purchaseBusy) return;
     const id = String(e.currentTarget.dataset.skuId);
     this.setData({ skuList: this.data.skuList.map(item => String(item.skuId) === id && item.canPurchase !== false
-      ? { ...item, purchaseSelected: !item.purchaseSelected } : item) });
+      ? { ...item, purchaseSelected: !item.purchaseSelected,
+        purchaseQty: !item.purchaseSelected ? this.parsePurchaseQty(item.purchaseQty) || 1 : item.purchaseQty } : item) });
     this.updatePurchaseSelection();
   },
 
@@ -82,14 +93,20 @@ Page(autoSearch.wrap({
     if (this.data.purchaseBusy) return;
     const selected = !this.data.purchaseAllSelected;
     this.setData({ skuList: this.data.skuList.map(item => ({ ...item,
-      purchaseSelected: selected && item.canPurchase !== false })) });
+      purchaseSelected: selected && item.canPurchase !== false,
+      purchaseQty: selected && item.canPurchase !== false ? this.parsePurchaseQty(item.purchaseQty) || 1 : item.purchaseQty })) });
     this.updatePurchaseSelection();
   },
 
   setPurchaseQty(id, qty, preview = false) {
     if (this.data.purchaseBusy) return;
-    const update = item => String(item.skuId) === String(id) ? { ...item, purchaseQty: qty } : item;
-    this.setData({ skuList: this.data.skuList.map(update) });
+    const update = item => String(item.skuId) === String(id) && item.canPurchase !== false
+      ? { ...item, purchaseQty: qty, purchaseSelected: this.parsePurchaseQty(qty) > 0 } : item;
+    const drafts = new Map(this.data.pendingOrderList.map(item => [String(item.skuId), item]));
+    const source = (preview ? this.data.purchasePreview : this.data.skuList).find(item => String(item.skuId) === String(id));
+    if (source && source.canPurchase !== false && this.parsePurchaseQty(qty) > 0) drafts.set(String(id), update(source));
+    else drafts.delete(String(id));
+    this.setData({ skuList: this.data.skuList.map(update), pendingOrderList: [...drafts.values()] });
     this.updatePurchaseSelection();
     if (preview) this.updatePurchasePreview(this.data.purchasePreview.map(update));
   },
@@ -98,8 +115,8 @@ Page(autoSearch.wrap({
     const { skuId, delta, preview } = e.currentTarget.dataset;
     const rows = preview ? this.data.purchasePreview : this.data.skuList;
     const item = rows.find(row => String(row.skuId) === String(skuId));
-    if (!item) return;
-    const qty = Math.min(2147483647, Math.max(1, (this.parsePurchaseQty(item.purchaseQty) || 1) + Number(delta)));
+    if (!item || item.canPurchase === false) return;
+    const qty = Math.min(2147483647, Math.max(0, this.parsePurchaseQty(item.purchaseQty) + Number(delta)));
     this.setPurchaseQty(skuId, qty, !!preview);
   },
 
@@ -110,25 +127,29 @@ Page(autoSearch.wrap({
   normalizePurchaseQty(e) {
     const { skuId, preview } = e.currentTarget.dataset;
     const item = (preview ? this.data.purchasePreview : this.data.skuList).find(row => String(row.skuId) === String(skuId));
-    if (item) this.setPurchaseQty(skuId, this.parsePurchaseQty(item.purchaseQty) || 1, !!preview);
+    if (item) this.setPurchaseQty(skuId, this.parsePurchaseQty(item.purchaseQty), !!preview);
   },
 
   updatePurchasePreview(items) {
     let cents = 0;
     let missing = 0;
+    let count = 0;
     const purchasePreview = items.map(item => {
+      const qty = item.canPurchase === false ? 0 : this.parsePurchaseQty(item.purchaseQty);
       const price = this.formatCost(item.costPrice);
-      if (price === null) missing += 1;
-      const subtotal = price === null ? null : Math.round(Number(price) * 100) * this.parsePurchaseQty(item.purchaseQty);
+      if (qty > 0) count += 1;
+      if (qty > 0 && price === null) missing += 1;
+      const subtotal = price === null ? null : Math.round(Number(price) * 100) * qty;
       cents += subtotal || 0;
       return { ...item, costSubtotal: subtotal === null ? null : (subtotal / 100).toFixed(2) };
     });
-    this.setData({ purchasePreview, purchaseCost: (cents / 100).toFixed(2), purchaseMissingCost: missing });
+    this.setData({ purchasePreview, purchasePreviewCount: count, purchaseCost: (cents / 100).toFixed(2), purchaseMissingCost: missing });
   },
 
   openPurchaseModal() {
     if (this.data.purchaseBusy) return;
-    const items = this.data.skuList.filter(item => item.purchaseSelected && item.canPurchase !== false);
+    this.updatePurchaseSelection();
+    const items = this.data.pendingOrderList;
     if (!items.length) return wx.showToast({ title: '请选择要追加报单的商品', icon: 'none' });
     if (items.some(item => !this.parsePurchaseQty(item.purchaseQty))) {
       return wx.showToast({ title: '报单数量须为 1 至 2147483647 的整数', icon: 'none' });
@@ -160,8 +181,12 @@ Page(autoSearch.wrap({
 
   async confirmPurchase() {
     if (this.data.purchaseBusy) return;
-    const rows = this.data.purchasePreview;
-    if (!rows.length || rows.some(item => item.canPurchase === false || !this.parsePurchaseQty(item.purchaseQty))) {
+    const preview = this.data.purchasePreview;
+    // 数量为零的行已取消选择；其他非法输入仍需修正，不静默漏报。
+    const invalid = preview.some(item => !this.parsePurchaseQty(item.purchaseQty)
+      && !/^0+$/.test(String(item.purchaseQty ?? '').trim()));
+    const rows = preview.filter(item => this.parsePurchaseQty(item.purchaseQty) > 0);
+    if (invalid || !rows.length || rows.some(item => item.canPurchase === false)) {
       return wx.showToast({ title: '请核对商品和报单数量，数量须为正整数', icon: 'none' });
     }
     this.setData({ purchaseBusy: true });
@@ -182,12 +207,14 @@ Page(autoSearch.wrap({
     }
     rows.forEach(item => pageSync.publish('picking-skus', item.skuId));
     const submitted = new Set(rows.map(item => String(item.skuId)));
-    this.setData({ showPurchaseModal: false, skuList: this.data.skuList.map(item => submitted.has(String(item.skuId))
-      ? { ...item, purchaseSelected: false, purchaseQty: 1 } : item) });
+    this.setData({ showPurchaseModal: false,
+      pendingOrderList: this.data.pendingOrderList.filter(item => !submitted.has(String(item.skuId))),
+      skuList: this.data.skuList.map(item => submitted.has(String(item.skuId))
+      ? { ...item, purchaseSelected: false, purchaseQty: 0 } : item) });
     this.updatePurchaseSelection();
     wx.showToast({ title: '追加报单成功', icon: 'success' });
     // 已成功提交后刷新失败只提示列表重试，不把成功报单误报成提交失败。
-    await this.loadSkus(true, true);
+    await this.loadSkus(true);
   },
 
   onLoad: function() {
@@ -251,11 +278,11 @@ Page(autoSearch.wrap({
       displayTime: this.formatTime(item.createdAt), selected: false };
   },
 
-  async loadSkus(reset = true, preserveDrafts = false) {
+  async loadSkus(reset = true) {
     if (!reset && (this.data.loading || !this.data.hasMore)) return;
     const requestId = (this._batchRequestId || 0) + 1;
     this._batchRequestId = requestId;
-    const drafts = new Map((!reset || preserveDrafts ? this.data.skuList : []).map(item => [String(item.skuId), item]));
+    this.updatePurchaseSelection();
     if (reset) {
       this._detailGeneration = (this._detailGeneration || 0) + 1;
       this.setData({ page: 1, skuList: [], batchList: [], hasMore: true });
@@ -267,9 +294,10 @@ Page(autoSearch.wrap({
       const page = this.data.page;
       const res = await api.get('/picking-list/orders/skus/query?' + this.recordQuery({ page, size: this.data.pageSize }));
       if (requestId !== this._batchRequestId) return;
+      const drafts = new Map(this.data.pendingOrderList.map(item => [String(item.skuId), item]));
       const rows = (res.content || []).map(item => ({ ...item,
         purchaseSelected: item.canPurchase !== false && !!drafts.get(String(item.skuId))?.purchaseSelected,
-        purchaseQty: drafts.get(String(item.skuId))?.purchaseQty ?? 1,
+        purchaseQty: drafts.get(String(item.skuId))?.purchaseQty ?? 0,
         defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
         costSummary: this.formatBatchCost({ ...item, itemCount: item.recordCount }) }));
       this.setData({ skuList: reset ? rows : [...this.data.skuList, ...rows], page: page + 1,

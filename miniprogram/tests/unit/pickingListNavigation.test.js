@@ -122,3 +122,66 @@ test('商品编辑保存返回后同步成本和图片，保留弹窗数量及�
   assert.equal(page.data.showOrderModal, true);
   page.onUnload();
 });
+
+test('待报列表跨档口标签搜索保留待报单，恢复勾选和数量，取消全选只影响可见行', async () => {
+  const page = { ...pageConfig, data: JSON.parse(JSON.stringify(pageConfig.data)) };
+  page.setData = (patch, callback) => { Object.assign(page.data, patch); if (callback) callback(); };
+  responses = [
+    { content: [{ skuId: '9007199254740993', recommendQty: 2, costPrice: 10 }], hasNext: false },
+    { content: [{ skuId: '2', recommendQty: 3, costPrice: 20 }], hasNext: false },
+    { content: [{ skuId: '9007199254740993', recommendQty: 4, costPrice: 15 }], hasNext: false },
+    { content: [], hasNext: false }
+  ];
+  await page.loadRecommendations();
+  page.toggleSelect({ currentTarget: { dataset: { index: 0 } } });
+  await page.createPurchaseOrder();
+  page.setOrderQty(0, '7');
+  page.hideOrderModal();
+  page.setData({ selectedStall: '2', selectedTag: '3', skuKeyword: '棉袄' });
+  await page.loadRecommendations();
+  assert.equal(page.data.selectedCount, 1);
+  assert.equal(page.data.totalQty, 7);
+  assert.equal(page.data.recommendList[0].selected, false);
+  page.toggleSelectAll();
+  assert.equal(page.data.selectedCount, 2);
+  assert.equal(page.data.totalQty, 10);
+  await page.createPurchaseOrder();
+  assert.deepEqual(page.data.orderPreviewList.map(item => [item.skuId, item.qty]), [['9007199254740993', 7], ['2', 3]]);
+  assert.equal(page.data.totalCost, '130.00');
+  page.hideOrderModal();
+  page.setData({ selectedStall: '', selectedTag: '', skuKeyword: '' });
+  await page.loadRecommendations();
+  assert.equal(page.data.recommendList[0].selected, true);
+  assert.equal(page.data.selectedCount, 2);
+  assert.equal(page.data.totalQty, 10, '推荐数量变化不覆盖待报单已编辑的数量');
+  await page.createPurchaseOrder();
+  assert.equal(page.data.totalCost, '165.00', '恢复行使用最新商品成本');
+  page.hideOrderModal();
+  page.toggleSelectAll();
+  assert.deepEqual(page.data.pendingOrderList.map(item => item.skuId), ['2']);
+  await page.loadRecommendations();
+  assert.equal(page.data.recommendList.length, 0);
+  assert.equal(page.data.selectedCount, 1);
+  await page.createPurchaseOrder();
+  assert.equal(page.data.orderPreviewList[0].skuId, '2');
+});
+
+test('快速切换待报筛选仅采用最新响应，已有待报单不被慢响应清空', async () => {
+  const page = { ...pageConfig, data: JSON.parse(JSON.stringify(pageConfig.data)) };
+  page.setData = patch => Object.assign(page.data, patch);
+  page.data.filteredList = [{ skuId: '1', selected: true, recommendQty: 5 }];
+  page.data.recommendList = page.data.filteredList;
+  let finishOld;
+  responses = [new Promise(resolve => { finishOld = resolve; }),
+    { content: [{ skuId: '3', recommendQty: 2 }], hasNext: false }];
+  const oldRequest = page.loadRecommendations();
+  await new Promise(resolve => setImmediate(resolve));
+  page.setData({ selectedTag: '3' });
+  await page.loadRecommendations();
+  finishOld({ content: [{ skuId: '2', recommendQty: 1 }], hasNext: true });
+  await oldRequest;
+  assert.deepEqual(page.data.recommendList.map(item => item.skuId), ['3']);
+  assert.deepEqual(page.data.pendingOrderList.map(item => item.skuId), ['1']);
+  assert.equal(page.data.totalQty, 5);
+  assert.equal(page.data.loading, false);
+});

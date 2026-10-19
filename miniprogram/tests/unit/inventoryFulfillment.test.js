@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function loadPage(name) {
+function loadPage(name, { submit = async () => {} } = {}) {
   let definition;
   const writes = [];
   const context = {
@@ -15,7 +15,7 @@ function loadPage(name) {
       if (name.endsWith('/api')) return { get: async () => ({}), post: async () => ({}) };
       if (name.endsWith('/auth')) return { ensureAuthenticated: async () => {} };
       if (name.endsWith('/error')) return { getErrorMessage: (e, fallback) => e.message || fallback };
-      if (name.endsWith('/quantityOperation')) return { run: async (api, route, payload) => { writes.push({ route, payload }); }, pending: () => null };
+      if (name.endsWith('/quantityOperation')) return { run: async (api, route, payload) => { writes.push({ route, payload }); await submit(); }, pending: () => null };
       if (name.endsWith('/autoSearch') || name.endsWith('/pageSync')) return { wrap: value => value, publish() {} };
       if (name.endsWith('/expressCompany')) return { getExpressName: () => '' };
       return {};
@@ -51,6 +51,45 @@ test('没有待报缺口仍可显式追加备货采购', async () => {
   await page.confirmOrder();
   assert.equal(writes[0].payload.purpose, 'stock');
   assert.equal(writes[0].payload.items[0].qty, 1);
+});
+
+test('跨筛选待报单提交失败保留全部商品，成功后只清除本次提交项，刷新失败不误报提交结果', async () => {
+  let fail = true;
+  const { page, writes } = loadPage('pickingList', { submit: async () => { if (fail) throw new Error('网络失败'); } });
+  page.data.filteredList = [{ skuId: '1', selected: true, recommendQty: 2 }];
+  page.data.recommendList = page.data.filteredList;
+  page.updateSelectedInfo();
+  page.data.filteredList = [{ skuId: '2', selected: true, recommendQty: 3 }];
+  page.data.recommendList = page.data.filteredList;
+  await page.createPurchaseOrder();
+  page.setOrderQty(0, 5);
+  await page.confirmOrder();
+  assert.equal(page.data.showOrderModal, true);
+  assert.equal(page.data.pendingOrderList.length, 2);
+  assert.equal(page.data.pendingOrderList[0].qty, 5);
+  fail = false;
+  page.refreshSkuRecommendations = async () => { throw new Error('刷新失败'); };
+  await page.confirmOrder();
+  assert.equal(JSON.stringify(writes[1].payload.items.map(item => [item.skuId, item.qty])), JSON.stringify([['1', 5], ['2', 3]]));
+  assert.equal(page.data.pendingOrderList.length, 0);
+  assert.equal(page.data.selectedCount, 0);
+  assert.equal(page.data.showOrderModal, false);
+  assert.equal(page.data.filteredList[0].selected, false);
+});
+
+test('单独追加备货成功保留待报单里的其他SKU，关闭弹窗恢复待报合计', async () => {
+  const { page } = loadPage('pickingList');
+  page.data.filteredList = [{ skuId: '1', selected: true, recommendQty: 2 }];
+  page.data.recommendList = page.data.filteredList;
+  page.updateSelectedInfo();
+  page.data.recommendList = [{ skuId: '2', recommendQty: 0 }];
+  page.data.filteredList = page.data.recommendList;
+  page.openStockPurchase({ currentTarget: { dataset: { index: 0 } } });
+  await page.confirmOrder();
+  assert.equal(page.data.pendingOrderList.length, 1);
+  assert.equal(page.data.pendingOrderList[0].skuId, '1');
+  assert.equal(page.data.totalQty, 2);
+  assert.equal(page.data.selectedCount, 1);
 });
 
 test('报单弹窗按成本价计算各商品小计，数量增减和手输时同步合计', async () => {

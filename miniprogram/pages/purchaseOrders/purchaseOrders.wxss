@@ -517,6 +517,9 @@ page {
 .purchase-checkbox-column { position: absolute; top: 0; bottom: 0; left: 0; width: 62rpx; display: flex; justify-content: center; align-items: center; }
 .purchase-disabled { background: #eee; border-color: #ddd; }
 .sku-summary-card > .order-image { width: 80rpx; height: 80rpx; }
+.purchase-card-body { flex: 1; min-width: 0; }
+.purchase-card-name { width: 100%; margin-bottom: 6rpx; }
+.purchase-card-details { display: flex; align-items: center; gap: 12rpx; min-width: 0; }
 .purchase-card-controls { flex: 0 0 224rpx; width: 224rpx; display: flex; flex-direction: column; align-items: flex-end; gap: 10rpx; font-size: 22rpx; }
 .purchase-card-controls .order-cost { justify-content: flex-end; text-align: right; }
 .purchase-qty-label { color: #8a929d; font-size: 22rpx; line-height: 30rpx; }

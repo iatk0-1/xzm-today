@@ -337,14 +337,15 @@ test('弹窗全部明细失败可重试，收起后仍保留当前 SKU', async (
   assert.equal(page.data.relatedBatches[0].detailList[0].id, '11');
 });
 
-test('商品视角默认追加1件，跨页保留已选数量，全选仅选择可报单SKU', async () => {
+test('商品视角默认0件，跨页保留已选数量，全选补齐零数量且仅选择可报单SKU', async () => {
   const page = createPage();
   page.data.viewMode = 'products';
   responses.push(Promise.resolve({ content: [{ skuId: '1', canPurchase: true }], hasNext: true }),
     Promise.resolve({ content: [{ skuId: '2', canPurchase: true }, { skuId: '3', canPurchase: false }], hasNext: false }));
   await page.loadSkus();
-  assert.equal(page.data.skuList[0].purchaseQty, 1);
+  assert.equal(page.data.skuList[0].purchaseQty, 0);
   page.togglePurchaseSelect({ currentTarget: { dataset: { skuId: '1' } } });
+  assert.equal(page.data.skuList[0].purchaseQty, 1);
   page.setPurchaseQty('1', '8');
   await page.loadSkus(false);
   assert.equal(page.data.skuList[0].purchaseQty, '8');
@@ -376,9 +377,10 @@ test('追加报单按当前成本合计并提示缺失条数，弹窗修改同�
   assert.equal(page.data.purchaseTotalQty, 16);
   page.onPurchaseQtyInput({ currentTarget: { dataset: { skuId: '2', preview: true } }, detail: { value: '' } });
   page.normalizePurchaseQty({ currentTarget: { dataset: { skuId: '2', preview: true } } });
-  assert.equal(page.data.purchasePreview[1].purchaseQty, 1);
-  assert.equal(page.data.purchaseTotalQty, 14);
-  assert.equal(page.data.purchaseMissingCost, 1);
+  assert.equal(page.data.purchasePreview[1].purchaseQty, 0);
+  assert.equal(page.data.purchaseTotalQty, 13);
+  assert.equal(page.data.purchasePreviewCount, 1);
+  assert.equal(page.data.purchaseMissingCost, 0);
   page.closePurchaseModal();
   assert.equal(page.data.skuList[0].purchaseQty, 13);
 });
@@ -416,7 +418,7 @@ test('确认追加只提交选中SKU和本次数量，强制stock，提交中拦
   assert.equal(page.data.showPurchaseModal, false);
   assert.equal(page.data.purchaseBusy, false);
   assert.equal(page.data.purchaseSelectedCount, 0);
-  assert.equal(page.data.skuList[0].purchaseQty, 1);
+  assert.equal(page.data.skuList[0].purchaseQty, 0);
   assert.equal(page.data.selectedStall, '3');
   assert.equal(page.data.status, 'cancelled');
   submitPurchase = async () => {};
@@ -460,17 +462,127 @@ test('追加弹窗编辑返回使用最新成本但保留数量，历史成本�
   assert.equal(page.data.skuList[0].recordedCostAmount, 88.88);
 });
 
-test('切换商品筛选后清空旧选择和追加数量，避免对隐藏商品报单', async () => {
+test('商品视角跨筛选累计待报单，弹窗包含隐藏商品并保留修改数量，切回不重复添加', async () => {
   const page = createPage();
   page.data.viewMode = 'products';
   page.data.skuList = [{ skuId: '1', purchaseSelected: true, purchaseQty: 8 }];
   page.updatePurchaseSelection();
   responses.push(Promise.resolve({ content: [{ skuId: '2' }], hasNext: false }));
   await page.selectTag({ currentTarget: { dataset: { tag: '10' } } });
-  assert.equal(page.data.purchaseSelectedCount, 0);
-  assert.equal(page.data.purchaseTotalQty, 0);
+  assert.equal(page.data.purchaseSelectedCount, 1);
+  assert.equal(page.data.purchaseTotalQty, 8);
   assert.equal(page.data.purchaseAllSelected, false);
   assert.equal(page.data.skuList[0].skuId, '2');
-  assert.equal(page.data.skuList[0].purchaseQty, 1);
+  assert.equal(page.data.skuList[0].purchaseQty, 0);
   assert.equal(page.data.skuList[0].purchaseSelected, false);
+  page.setPurchaseQty('2', '3');
+  assert.equal(page.data.purchaseSelectedCount, 2);
+  assert.equal(page.data.purchaseTotalQty, 11);
+  page.openPurchaseModal();
+  assert.deepEqual(page.data.purchasePreview.map(item => String(item.skuId)), ['1', '2']);
+  page.setPurchaseQty('1', '12', true);
+  assert.equal(page.data.purchaseTotalQty, 15);
+  page.closePurchaseModal();
+  responses.push(Promise.resolve({ content: [{ skuId: '1', costPrice: '10.00' }], hasNext: false }));
+  await page.selectTag({ currentTarget: { dataset: { tag: 'all' } } });
+  assert.equal(page.data.skuList[0].purchaseSelected, true);
+  assert.equal(page.data.skuList[0].purchaseQty, '12');
+  assert.equal(page.data.pendingOrderList.length, 2);
+  assert.equal(page.data.purchaseAllSelected, true);
+  page.togglePurchaseSelectAll();
+  assert.deepEqual(page.data.pendingOrderList.map(item => item.skuId), ['2'], '取消全选仅移除当前筛选可见商品');
+  assert.equal(page.data.purchaseTotalQty, 3);
+});
+
+test('隐藏商品在确认弹窗减到零即移出待报单，再加回可恢复，成功提交清理全部已报SKU', async () => {
+  const page = createPage();
+  page.data.viewMode = 'products';
+  page.data.skuList = [{ skuId: '1', purchaseSelected: true, purchaseQty: 2, costPrice: 10 }];
+  page.updatePurchaseSelection();
+  responses.push(Promise.resolve({ content: [{ skuId: '2', costPrice: 20 }], hasNext: false }));
+  await page.selectStall({ currentTarget: { dataset: { stall: '2' } } });
+  page.setPurchaseQty('2', 3);
+  page.openPurchaseModal();
+  page.setPurchaseQty('1', 0, true);
+  assert.deepEqual(page.data.pendingOrderList.map(item => item.skuId), ['2']);
+  page.setPurchaseQty('1', 4, true);
+  assert.equal(page.data.purchaseSelectedCount, 2);
+  assert.equal(page.data.purchaseTotalQty, 7);
+  assert.equal(page.data.purchaseCost, '100.00');
+  purchaseWrites.length = 0;
+  responses.push(Promise.resolve({ content: [], hasNext: false }));
+  await page.confirmPurchase();
+  assert.deepEqual(purchaseWrites[0].payload.items.map(item => [item.skuId, item.qty]), [['1', 4], ['2', 3]]);
+  assert.deepEqual(page.data.pendingOrderList, []);
+  assert.equal(page.data.purchaseSelectedCount, 0);
+});
+
+test('商品视角待报单跨记录视角、时间和状态筛选保留，空结果仍可报单', async () => {
+  const page = createPage();
+  page.data.viewMode = 'products';
+  page.data.skuList = [{ skuId: '1', purchaseSelected: true, purchaseQty: 5 }];
+  page.updatePurchaseSelection();
+  responses.push(Promise.resolve({ content: [], hasNext: false }), Promise.resolve({ content: [], hasNext: false }));
+  await page.toggleView();
+  page.setData({ status: 'all', dateRange: { startDate: '2026-10-01', endDate: '2026-10-19' } });
+  await page.toggleView();
+  assert.equal(page.data.skuList.length, 0);
+  assert.equal(page.data.purchaseSelectedCount, 1);
+  assert.equal(page.data.purchaseTotalQty, 5);
+  page.openPurchaseModal();
+  assert.equal(page.data.purchasePreview[0].skuId, '1');
+});
+
+test('加减及手输正整数自动勾选，减到0或输入0取消，不产生负数', () => {
+  const page = createPage();
+  page.data.skuList = [{ skuId: '1', purchaseQty: 0, purchaseSelected: false }];
+  const event = delta => ({ currentTarget: { dataset: { skuId: '1', delta } } });
+  page.adjustPurchaseQty(event(-1));
+  assert.equal(page.data.skuList[0].purchaseQty, 0);
+  assert.equal(page.data.purchaseSelectedCount, 0);
+  page.adjustPurchaseQty(event(1));
+  assert.equal(page.data.skuList[0].purchaseQty, 1);
+  assert.equal(page.data.purchaseSelectedCount, 1);
+  assert.equal(page.data.purchaseAllSelected, true);
+  page.adjustPurchaseQty(event(-1));
+  assert.equal(page.data.skuList[0].purchaseQty, 0);
+  assert.equal(page.data.skuList[0].purchaseSelected, false);
+  assert.equal(page.data.purchaseTotalQty, 0);
+  assert.equal(page.data.purchaseAllSelected, false);
+  page.onPurchaseQtyInput({ ...event(), detail: { value: '8' } });
+  assert.equal(page.data.skuList[0].purchaseSelected, true);
+  assert.equal(page.data.purchaseTotalQty, 8);
+  page.togglePurchaseSelect(event());
+  assert.equal(page.data.purchaseSelectedCount, 0);
+  page.adjustPurchaseQty(event(-1));
+  assert.equal(page.data.purchaseTotalQty, 7, '取消勾选后再点减也要自动选中');
+  page.onPurchaseQtyInput({ ...event(), detail: { value: '0' } });
+  assert.equal(page.data.purchaseSelectedCount, 0);
+  page.normalizePurchaseQty(event());
+  assert.equal(page.data.skuList[0].purchaseQty, 0, '失焦不回弹到1');
+});
+
+test('弹窗零数量不提交，重新加到1可恢复选择及成本合计', async () => {
+  const page = createPage();
+  purchaseWrites.length = 0;
+  page.data.skuList = [
+    { skuId: '1', purchaseSelected: true, purchaseQty: 1, costPrice: '10.00' },
+    { skuId: '2', purchaseSelected: true, purchaseQty: 2, costPrice: '20.00' }
+  ];
+  page.updatePurchaseSelection();
+  page.openPurchaseModal();
+  const event = delta => ({ currentTarget: { dataset: { skuId: '1', delta, preview: true } } });
+  page.adjustPurchaseQty(event(-1));
+  assert.equal(page.data.skuList[0].purchaseSelected, false);
+  assert.equal(page.data.purchasePreviewCount, 1);
+  assert.equal(page.data.purchaseCost, '40.00');
+  page.adjustPurchaseQty(event(1));
+  assert.equal(page.data.skuList[0].purchaseSelected, true);
+  assert.equal(page.data.purchasePreviewCount, 2);
+  assert.equal(page.data.purchaseCost, '50.00');
+  page.adjustPurchaseQty(event(-1));
+  responses.push(Promise.resolve({ content: [], hasNext: false }));
+  await page.confirmPurchase();
+  assert.equal(purchaseWrites.length, 1);
+  assert.deepEqual(purchaseWrites[0].payload.items.map(item => [item.skuId, item.qty]), [['2', 2]]);
 });
