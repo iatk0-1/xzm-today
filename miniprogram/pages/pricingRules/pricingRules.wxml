@@ -43,9 +43,10 @@
 <view wx:if="{{cappedMarkupRule}}" class="card">
 <view class="title">分段加价封顶</view>
 <view class="profit-formula">比例加价 = (成本 × 本段利润比例 ÷ 100 + 0.02 × 成本) ÷ 0.98</view>
-<view class="profit-formula">最终加价 = min(比例加价, 本段最高预期加价)</view>
+<view class="profit-formula">保底加价 = (本段最低预期利润 + 0.02 × 成本) ÷ 0.98</view>
+<view class="profit-formula">最终加价 = max(min(比例加价, 本段最高预期加价), 保底加价)</view>
 <view class="profit-formula">实际售价 = 成本 + 最终加价</view>
-<view class="muted">最高预期加价限制售价与成本的差额，已包含原规则的2%预留。比例填0仍先计算2%预留，再受加价上限限制。售价保留两位小数。</view>
+<view class="muted">每段最低预期利润默认10元，可修改。先按比例封顶，再保障最低利润；上限不足时自动使用保底加价，允许超过最高预期加价。比例填0仍保障最低利润及2%预留。售价保留两位小数，舍入不足保底时向上补到分。</view>
 <view wx:if="{{legacyProfitCap}}" class="boundary-error">此规则原版本按利润封顶。当前按相同金额改为总加价封顶，保存后生成新版本；历史版本和已有商品售价保留。</view>
 </view>
 <view wx:if="{{profitRule}}" class="card">
@@ -80,11 +81,13 @@
 </view>
 <view wx:if="{{boundaryError && (editingBoundary === index + ':left' || editingBoundary === index + ':right')}}" class="boundary-error">{{boundaryError}}</view>
 <block wx:if="{{cappedMarkupRule}}">
+<view class="field-label">本段最低预期利润（元）</view>
+<input type="digit" placeholder="默认10元，可修改" value="{{item.minimumProfit}}" data-index="{{index}}" data-field="minimumProfit" bindinput="bandInput"/>
 <view class="field-label">本段成本利润比例（%）</view>
 <input type="digit" placeholder="例如：20 表示成本的20%" value="{{item.profitPercent}}" data-index="{{index}}" data-field="profitPercent" bindinput="bandInput"/>
 <view class="field-label">本段最高预期加价（元）</view>
-<input type="digit" placeholder="例如：30 表示售价最多比成本高30元" value="{{item.maximumMarkup}}" data-index="{{index}}" data-field="maximumMarkup" bindinput="bandInput"/>
-<view class="muted">按 {{item.profitPercent || '0'}}% 利润比例和2%预留计算总加价，再与 {{item.maximumMarkup || '0'}} 元取较小值。</view>
+<input type="digit" placeholder="例如：30，最低利润不足时自动突破上限" value="{{item.maximumMarkup}}" data-index="{{index}}" data-field="maximumMarkup" bindinput="bandInput"/>
+<view class="muted">按 {{item.profitPercent || '0'}}% 和2%预留计算加价，先与 {{item.maximumMarkup || '0'}} 元取较小值，再保障本段最低利润 {{item.minimumProfit || '0'}} 元。</view>
 </block>
 <block wx:else>
 <view class="field-label">价格公式</view>

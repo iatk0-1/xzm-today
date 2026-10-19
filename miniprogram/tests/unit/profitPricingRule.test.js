@@ -185,8 +185,8 @@ test('分段加价封顶单独新增，各段填写比例和上限，保存和�
   page.setData({ trialCost: '200' });
   await page.preview();
   assert.deepEqual(calls[0].data, { cost: '200.00', markupBands: [
-    { lower: 0, upper: 100, lowerInclusive: false, upperInclusive: true, maximumMarkup: '10.00', profitPercent: '20.00' },
-    { lower: 100, upper: null, lowerInclusive: false, upperInclusive: false, maximumMarkup: '30.00', profitPercent: '15.50' }
+    { lower: 0, upper: 100, lowerInclusive: false, upperInclusive: true, maximumMarkup: '10.00', profitPercent: '20.00', minimumProfit: '10.00' },
+    { lower: 100, upper: null, lowerInclusive: false, upperInclusive: false, maximumMarkup: '30.00', profitPercent: '15.50', minimumProfit: '10.00' }
   ] });
   assert.equal(page.data.trialProfit, '');
   assert.equal(page.data.trialMarkup, '30.00');
@@ -275,6 +275,7 @@ test('封顶区间可修改边界归属与分界点，合并保留上一段利�
 
 test('逐段校验封顶金额与比例，允许0比例但不允许0上限，非法配置不发请求', async () => {
   for (const [field, values, message] of [
+    ['minimumProfit', ['', '0', '-1', '1.001', '100000000'], /第2段最低预期利润/],
     ['maximumMarkup', ['', '0', '-1', '1.001', '100000000'], /第2段最高预期加价/],
     ['profitPercent', ['', '-1', '1.001', '100000000'], /第2段利润比例/]
   ]) {
@@ -302,7 +303,7 @@ test('逐段校验封顶金额与比例，允许0比例但不允许0上限，非
 });
 
 test('改变封顶设置边界和归属时，旧试算响应不能再显示', async () => {
-  for (const change of ['maximumMarkup', 'profitPercent', 'boundary', 'toggle']) {
+  for (const change of ['maximumMarkup', 'profitPercent', 'minimumProfit', 'boundary', 'toggle']) {
     let resolve;
     const { page } = setup({ post: () => new Promise(done => { resolve = done; }) });
     page.newCappedMarkupRule();
@@ -317,4 +318,41 @@ test('改变封顶设置边界和归属时，旧试算响应不能再显示', as
     assert.equal(page.data.trialPrice, '');
     assert.equal(page.data.trialProfit, '');
   }
+});
+
+test('分段最低利润默认10元可单独改，分段复制与合并保留对应数值，上限低于保底不拦截', async () => {
+  const { page, calls }=setup({ post:async()=>({price:'214.29',markup:'14.29'}) });
+  page.newCappedMarkupRule();
+  assert.equal(page.data.segments[0].minimumProfit,'10');
+  page.bandInput(bandEvent(0,'minimumProfit','20'));
+  splitLastBand(page,'100');
+  assert.equal(page.data.segments[1].minimumProfit,'20');
+  page.bandInput(bandEvent(1,'minimumProfit','10'));
+  page.bandInput(bandEvent(1,'maximumMarkup','5'));
+  page.setData({trialCost:'200'});
+  await page.preview();
+  assert.equal(page.data.trialPrice,'214.29');
+  assert.equal(calls[0].data.markupBands[0].minimumProfit,'20.00');
+  assert.equal(calls[0].data.markupBands[1].minimumProfit,'10.00');
+  await page.merge({currentTarget:{dataset:{index:1}}});
+  assert.equal(page.data.segments[0].minimumProfit,'20');
+});
+
+test('旧加价规则编辑默认补10元，已有最低利润编辑复制保存均保留，各版本列表如实展示', async()=>{
+  const {page,calls}=setup();
+  const old={id:'52',name:'旧加价规则',enabled:true,markupBands:[
+    {lower:0,upper:null,lowerInclusive:false,upperInclusive:false,maximumMarkup:'30',profitPercent:'10'}]};
+  page.setData({rules:page.ruleRows([old])});
+  assert.match(page.data.rules[0].bandSummaries[0].description,/未设最低利润/);
+  page.edit({currentTarget:{dataset:{index:0}}});
+  assert.equal(page.data.segments[0].minimumProfit,'10');
+  page.bandInput(bandEvent(0,'minimumProfit','20.55'));
+  await page.save();
+  assert.equal(calls[0].data.markupBands[0].minimumProfit,'20.55');
+  old.markupBands[0].minimumProfit='20.55';
+  page.setData({rules:page.ruleRows([old])});
+  assert.match(page.data.rules[0].bandSummaries[0].description,/最低利润20.55元优先/);
+  page.copy({currentTarget:{dataset:{index:0}}});
+  assert.equal(page.data.segments[0].minimumProfit,'20.55');
+  assert.equal(page.data.id,'');
 });

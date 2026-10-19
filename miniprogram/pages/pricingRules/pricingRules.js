@@ -12,7 +12,8 @@ function decodeStallName(value) {
 }
 
 function markupBandsForEditing(rule) {
-  return rule.markupBands || (rule.profitBands || []).map(({ maximumProfit, ...band }) => ({ ...band, maximumMarkup: maximumProfit }));
+  const bands=rule.markupBands || (rule.profitBands || []).map(({ maximumProfit, ...band }) => ({ ...band, maximumMarkup: maximumProfit }));
+  return bands.map(band=>({ ...band, minimumProfit: band.minimumProfit == null ? '10' : String(band.minimumProfit) }));
 }
 
 Page({
@@ -65,13 +66,14 @@ Page({
         bandSummaries: bands.map(band => ({ label: band.label + (band.upper == null ? ' 无上限' : ''),
           description: rule.markupBands
             ? '按成本的' + band.profitPercent + '%计算总加价，与' + band.maximumMarkup + '元取较小值（含2%预留）'
+              + (band.minimumProfit == null ? '；此版本未设最低利润' : '；最低利润' + band.minimumProfit + '元优先保障')
             : '预期利润取成本的' + band.profitPercent + '%与' + band.maximumProfit + '元中的较小值' })),
         assigned: assignedIds.includes(String(rule.id)),
         firstCondition: bands.length ? (rule.markupBands ? '分段加价封顶' : '旧版利润封顶') + '，共 ' + bands.length + ' 个成本区间'
           : rule.minimumProfit != null ? '预期利润取 ' + rule.minimumProfit + ' 元与成本的'
           + (rule.profitPercent == null ? 10 : rule.profitPercent) + '%中的较大值'
           : first ? first.label + (first.upper == null ? ' 无上限' : '') : '暂无条件公式',
-        firstFormula: rule.markupBands ? '成本 + min(按原比例计算的总加价, 最高预期加价)'
+        firstFormula: rule.markupBands ? '成本 + 加价（先按比例封顶，再保障本段最低利润）'
           : bands.length || rule.minimumProfit != null ? '(成本 + 预期利润) ÷ 0.98'
           : first ? first.formula : '暂无价格公式'
       };
@@ -153,13 +155,13 @@ Page({
     this.setData({ cappedMarkupRule: true, name: '分段加价封顶规则',
       segments: finance.segmentsWithLabels([{
         lower: 0, upper: null, lowerInclusive: false, upperInclusive: false,
-        maximumMarkup: '30', profitPercent: '10'
+        maximumMarkup: '30', profitPercent: '10', minimumProfit: '10'
       }]) });
   },
 
   bandInput(event) {
     const { index, field } = event.currentTarget.dataset;
-    if (!this.data.cappedMarkupRule || !['maximumMarkup', 'profitPercent'].includes(field)) return;
+    if (!this.data.cappedMarkupRule || !['maximumMarkup', 'profitPercent', 'minimumProfit'].includes(field)) return;
     const segments = this.data.segments.map(segment => ({ ...segment }));
     if (!segments[Number(index)]) return;
     segments[Number(index)][field] = event.detail.value;
@@ -381,7 +383,7 @@ Page({
     const index = Number(event.currentTarget.dataset.index);
     if (index <= 0) return;
     if (!await finance.confirmAction('合并区间', this.data.cappedMarkupRule
-      ? '合并到上一段并保留上一段的利润比例和最高预期加价，请检查后再保存。'
+      ? '合并到上一段并保留上一段的最低利润、利润比例和最高预期加价，请检查后再保存。'
       : '合并到上一段并保留上一段公式，请检查合并后的公式再保存。')) return;
     const segments = this.data.segments.map(segment => ({ ...segment }));
     segments[index - 1].upper = segments[index].upper;
@@ -419,13 +421,15 @@ Page({
     if (this.data.cappedMarkupRule) {
       if (!this.data.segments.length || this.data.segments.length > 50) throw new Error('加价封顶规则需要1至50个成本区间');
       return { markupBands: this.data.segments.map((segment, index) => {
-        let maximumMarkup, profitPercent;
+        let maximumMarkup, profitPercent, minimumProfit;
+        try { minimumProfit = finance.money(segment.minimumProfit); }
+        catch (_) { throw new Error('第' + (index + 1) + '段最低预期利润须大于零，最多两位小数且不超过99999999.99元'); }
         try { maximumMarkup = finance.money(segment.maximumMarkup); }
         catch (_) { throw new Error('第' + (index + 1) + '段最高预期加价须大于零，最多两位小数且不超过99999999.99元'); }
         try { profitPercent = finance.money(segment.profitPercent, true); }
         catch (_) { throw new Error('第' + (index + 1) + '段利润比例须填写非负数字，最多两位小数且不超过99999999.99%'); }
         return { lower: segment.lower, upper: segment.upper, lowerInclusive: segment.lowerInclusive,
-          upperInclusive: segment.upperInclusive, maximumMarkup, profitPercent };
+          upperInclusive: segment.upperInclusive, maximumMarkup, profitPercent, minimumProfit };
       }) };
     }
     if (!this.data.profitRule) return { segments: this.cleanSegments() };
