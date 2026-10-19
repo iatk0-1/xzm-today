@@ -241,9 +241,11 @@
     <!-- 订单列表 -->
     <view class="order-list">
     <view class="order-group" wx:for="{{orderGroups}}" wx:key="orderId" wx:for-item="group" wx:for-index="index">
-      <view class="order-header">
-        <view class="order-checkbox {{group.selected ? 'checked' : ''}}" bindtap="toggleGroupSelect" data-index="{{index}}">
-          <text wx:if="{{group.selected}}">✓</text>
+      <view class="order-header selectable-order-header">
+        <view class="selection-column order-selection-column" catchtap="toggleGroupSelect" data-index="{{index}}">
+          <view class="order-checkbox {{group.selected ? 'checked' : ''}}">
+            <text wx:if="{{group.selected}}">✓</text>
+          </view>
         </view>
         <view class="order-summary" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{group.orderId}}">
           <text class="summary-chip" wx:if="{{group.adminSeqNo}}">序号 {{group.adminSeqNo}}</text>
@@ -269,11 +271,13 @@
         </view>
       </view>
 
-      <view class="order-items">
-        <view class="order-item" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{group.orderId}}" wx:for="{{group.items}}" wx:key="uniqueKey" wx:for-item="item" wx:for-index="itemIndex">
+      <view class="order-items selectable-order-items">
+        <view class="order-item selectable-order-item" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{group.orderId}}" wx:for="{{group.items}}" wx:key="uniqueKey" wx:for-item="item" wx:for-index="itemIndex">
           <!-- 售后占用后无可发数量：不可选、灰色 -->
           <block wx:if="{{!item.canShip}}">
-            <view class="item-checkbox disabled" catchtap="stopPendingShipEvent"></view>
+            <view class="selection-column item-selection-column" catchtap="stopPendingShipEvent">
+              <view class="item-checkbox disabled"></view>
+            </view>
             <image class="item-image refunded" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
             <view class="item-info">
               <view class="item-name"><text user-select="{{true}}">{{item.productName}}</text></view>
@@ -283,8 +287,10 @@
           </block>
           <!-- 正常商品：可选、可编辑数量 -->
           <block wx:else>
-            <view class="item-checkbox {{item.selected ? 'checked' : ''}}" catchtap="toggleItemSelect" data-group-index="{{index}}" data-item-index="{{itemIndex}}">
-              <text wx:if="{{item.selected}}">✓</text>
+            <view class="selection-column item-selection-column" catchtap="toggleItemSelect" data-group-index="{{index}}" data-item-index="{{itemIndex}}">
+              <view class="item-checkbox {{item.selected ? 'checked' : ''}}">
+                <text wx:if="{{item.selected}}">✓</text>
+              </view>
             </view>
             <image class="item-image" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
             <view class="item-info">
