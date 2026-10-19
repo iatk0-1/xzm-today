@@ -228,3 +228,105 @@ test('撤销已报记录后同步扣减成本，全部 tab 保留原报金额，
   assert.equal(page.data.batchList[0].detailList[0].status, 'cancelled');
   assert.equal(page.formatBatchCost({ itemCount: 1, recordedCostAmount: '0.00', missingCostCount: 0 }), '原报成本合计 ¥0.00');
 });
+
+test('默认记录视角，切换商品视角保留筛选并从第一页汇总，明细也带档口和标签', async () => {
+  requests.length = 0;
+  const page = createPage();
+  assert.equal(page.data.viewMode, 'records');
+  page.setData({ selectedStall: '3', selectedTag: '5', appliedKeyword: '棉袄',
+    dateRange: { startDate: '2026-10-01', endDate: '2026-10-19' }, page: 4 });
+  responses.push(Promise.resolve({ content: [{ skuId: '9007199254740993', totalQty: '10',
+    invalidQty: '2', effectiveQty: '8', recordCount: '2', batchCount: '2', recordedCostAmount: '199.00', missingCostCount: '0' }], hasNext: true }),
+  Promise.resolve({ content: [], hasNext: false }), Promise.resolve({ content: [{ id: '1' }], hasNext: false }), Promise.resolve([]));
+  await page.toggleView();
+  assert.equal(page.data.viewMode, 'products');
+  assert.match(requests[0], /\/orders\/skus\/query\?status=ordered&page=1&size=20/);
+  for (const query of ['stallId=3', 'tagId=5', 'startDate=2026-10-01', 'endDate=2026-10-19']) assert.ok(requests[0].includes(query));
+  assert.equal(page.data.skuList[0].effectiveQty, '8');
+  assert.equal(page.data.skuList[0].costSummary, '原报成本合计 ¥199.00');
+  await page.loadBatches(false);
+  assert.match(requests[1], /page=2/);
+  await page.toggleView();
+  assert.equal(page.data.viewMode, 'records');
+  assert.match(requests[2], /\/orders\/batches\/query\?.*page=1/);
+  await page.toggleBatch({ currentTarget: { dataset: { id: '1' } } });
+  assert.match(requests[3], /stallId=3&tagId=5/);
+});
+
+test('商品弹窗按精确 SKU 分页查询关联批次，查看全部可收起且不重复当前记录', async () => {
+  requests.length = 0;
+  const page = createPage();
+  page.setData({ viewMode: 'products', skuList: [{ skuId: '9007199254740993', productName: '棉袄' }],
+    selectedStall: '3', selectedTag: '5', appliedKeyword: '棉袄' });
+  responses.push(Promise.resolve({ content: [{ id: '7', totalQty: 2 }], hasNext: true }),
+    Promise.resolve([{ id: '11', skuId: '9007199254740993', qty: 2, status: 'ordered', costPrice: 10, costAmount: 20 }]),
+    Promise.resolve([
+      { id: '11', skuId: '9007199254740993', qty: 2, status: 'ordered' },
+      { id: '12', skuId: '66', qty: 4, status: 'cancelled' },
+      { id: '13', skuId: '9007199254740993', qty: 1, status: 'cancelled' }
+    ]), Promise.resolve({ content: [{ id: '8' }], hasNext: false }));
+  await page.openSkuRecords({ currentTarget: { dataset: { skuId: '9007199254740993' } } });
+  assert.match(requests[0], /skuId=9007199254740993/);
+  assert.equal(page.data.relatedBatches[0].expanded, false);
+  const event = { currentTarget: { dataset: { id: '7' } } };
+  await page.toggleRelatedBatch(event);
+  assert.match(requests[1], /status=ordered.*stallId=3&tagId=5&skuId=9007199254740993/);
+  assert.equal(page.data.relatedBatches[0].detailList[0].costAmountText, '20.00');
+  await page.toggleAllSkuRecords(event);
+  assert.equal(requests[2], '/picking-list/orders/batches/7/items?status=all');
+  assert.equal(page.data.relatedBatches[0].showAll, true);
+  assert.deepEqual(page.data.relatedBatches[0].extraItems.map(item => item.id), ['12', '13']);
+  await page.toggleAllSkuRecords(event);
+  assert.equal(page.data.relatedBatches[0].showAll, false);
+  assert.equal(page.data.relatedBatches[0].detailList.length, 1);
+  await page.toggleAllSkuRecords(event);
+  assert.equal(requests.length, 3, '重新展开使用当前批次缓存');
+  await page.toggleRelatedBatch(event);
+  await page.toggleRelatedBatch(event);
+  assert.equal(page.data.relatedBatches[0].showAll, false, '重新打开批次默认只展示当前 SKU');
+  await page.loadRelatedBatches();
+  assert.match(requests[3], /page=2.*skuId=9007199254740993/);
+  assert.deepEqual(page.data.relatedBatches.map(item => item.id), ['7', '8']);
+});
+
+test('快速切换视角和关闭商品弹窗后忽略过期响应', async () => {
+  const page = createPage();
+  let finishRecords;
+  let finishModal;
+  responses.push(new Promise(resolve => { finishRecords = resolve; }),
+    Promise.resolve({ content: [{ skuId: '1' }], hasNext: false }),
+    new Promise(resolve => { finishModal = resolve; }));
+  const oldRequest = page.loadBatches();
+  await Promise.resolve();
+  await page.toggleView();
+  finishRecords({ content: [{ id: 'old' }], hasNext: true });
+  await oldRequest;
+  assert.deepEqual(page.data.batchList, []);
+  assert.equal(page.data.hasMore, false);
+  const modalRequest = page.openSkuRecords({ currentTarget: { dataset: { skuId: '1' } } });
+  page.closeSkuRecords();
+  finishModal({ content: [{ id: 'old-modal' }], hasNext: true });
+  await modalRequest;
+  assert.equal(page.data.showSkuRecords, false);
+  assert.deepEqual(page.data.relatedBatches, []);
+});
+
+test('弹窗全部明细失败可重试，收起后仍保留当前 SKU', async () => {
+  const page = createPage();
+  page.data.skuList = [{ skuId: '1' }];
+  responses.push(Promise.resolve({ content: [{ id: '7' }], hasNext: false }),
+    Promise.resolve([{ id: '11', skuId: '1', status: 'ordered' }]), Promise.reject(new Error('网络异常')),
+    Promise.resolve([{ id: '11', skuId: '1' }, { id: '12', skuId: '2' }]));
+  await page.openSkuRecords({ currentTarget: { dataset: { skuId: '1' } } });
+  const event = { currentTarget: { dataset: { id: '7' } } };
+  await page.toggleRelatedBatch(event);
+  await page.toggleAllSkuRecords(event);
+  assert.equal(page.data.relatedBatches[0].allLoaded, false);
+  assert.ok(page.data.relatedBatches[0].allError);
+  await page.retryRelatedDetails({ currentTarget: { dataset: { id: '7', all: true } } });
+  assert.equal(page.data.relatedBatches[0].allLoaded, true);
+  assert.equal(page.data.relatedBatches[0].extraItems[0].id, '12');
+  await page.toggleAllSkuRecords(event);
+  assert.equal(page.data.relatedBatches[0].showAll, false);
+  assert.equal(page.data.relatedBatches[0].detailList[0].id, '11');
+});

@@ -1,3 +1,18 @@
+<template name="related-record-item">
+  <view class="order-item">
+    <image class="order-image" src="{{detail.imageUrl || detail.defaultImageUrl}}" mode="aspectFill" />
+    <view class="order-info">
+      <view class="order-main">
+        <view class="order-name">{{detail.productName || '商品信息已不可用'}}</view>
+        <view class="order-status {{detail.status}}">{{detail.status === 'ordered' ? '已报单' : '已撤销'}}</view>
+      </view>
+      <view class="order-sku">{{detail.spec || '默认规格'}} · {{detail.size || '均码'}}</view>
+      <view class="order-meta"><view class="meta-chip">原报 {{detail.qty}}</view><view class="meta-chip">退款作废 {{detail.invalidQty || 0}}</view><view class="meta-chip">有效 {{detail.status === 'ordered' ? detail.qty - (detail.invalidQty || 0) : 0}}</view></view>
+      <view class="order-cost" wx:if="{{detail.costPriceText !== null && detail.costAmountText !== null}}"><text>成本单价 ¥{{detail.costPriceText}}</text><text>原报成本小计 ¥{{detail.costAmountText}}</text></view>
+      <view class="order-cost missing-cost" wx:else>成本未记录</view>
+    </view>
+  </view>
+</template>
 <view class="container">
   <view class="filter-sticky">
     <view class="filter-bar">
@@ -5,6 +20,22 @@
         <view class="tab-item {{status === 'ordered' ? 'active' : ''}}" bindtap="setStatus" data-status="ordered">已报</view>
         <view class="tab-item {{status === 'cancelled' ? 'active' : ''}}" bindtap="setStatus" data-status="cancelled">已撤</view>
         <view class="tab-item {{status === 'all' ? 'active' : ''}}" bindtap="setStatus" data-status="all">全部</view>
+      </view>
+      <view class="relation-filter-section">
+        <view class="relation-filter-row">
+          <text class="relation-filter-label">档口</text>
+          <view class="relation-filter-fixed relation-filter-tag {{selectedStall === '' ? 'active' : ''}}" bindtap="selectStall" data-stall="all">全部</view>
+          <scroll-view class="relation-filter-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+            <view class="relation-filter-options"><view class="relation-filter-tag {{selectedStall === item.id + '' ? 'active' : ''}}" wx:for="{{stallList}}" wx:key="id" bindtap="selectStall" data-stall="{{item.id}}">{{item.name}}</view></view>
+          </scroll-view>
+        </view>
+        <view class="relation-filter-row">
+          <text class="relation-filter-label">标签</text>
+          <view class="relation-filter-fixed relation-filter-tag {{selectedTag === '' ? 'active' : ''}}" bindtap="selectTag" data-tag="all">全部</view>
+          <scroll-view class="relation-filter-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+            <view class="relation-filter-options"><view class="relation-filter-tag {{selectedTag === item.id + '' ? 'active' : ''}}" wx:for="{{tagList}}" wx:key="id" bindtap="selectTag" data-tag="{{item.id}}">{{item.name}}</view></view>
+          </scroll-view>
+        </view>
       </view>
       <view class="sku-filter">
         <input class="sku-input" placeholder="搜索商品名称" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="search" />
@@ -16,6 +47,7 @@
           <text wx:else>{{dateRange.startDate || '开始'}} - {{dateRange.endDate || '结束'}}</text>
         </view>
         <view class="clear-date" wx:if="{{dateRange.startDate || dateRange.endDate}}" bindtap="clearDateRange">×</view>
+        <button class="view-toggle" bindtap="toggleView">{{viewMode === 'records' ? '切换商品视角' : '切换记录视角'}}</button>
       </view>
     </view>
   </view>
@@ -25,6 +57,7 @@
     refresher-background="#f6f7f9" bindrefresherrefresh="onListPullDownRefresh"
     bindscrolltolower="onListScrollToLower" lower-threshold="200">
   <view class="batch-list">
+    <block wx:if="{{viewMode === 'records'}}">
     <view class="batch-card" wx:for="{{batchList}}" wx:key="id">
       <view class="batch-header" bindtap="toggleBatch" data-id="{{item.id}}">
         <view class="batch-info">
@@ -62,7 +95,7 @@
             <view class="order-meta">
               <view class="meta-chip">原报 {{detail.qty}}</view>
               <view class="meta-chip" wx:if="{{detail.invalidQty > 0}}">退款作废 {{detail.invalidQty}}</view>
-              <view class="meta-chip" wx:if="{{detail.invalidQty > 0}}">有效 {{detail.qty - detail.invalidQty}}</view>
+              <view class="meta-chip" wx:if="{{detail.invalidQty > 0}}">有效 {{detail.status === 'ordered' ? detail.qty - detail.invalidQty : 0}}</view>
             </view>
             <view class="order-cost" wx:if="{{detail.costPriceText !== null && detail.costAmountText !== null}}">
               <text>成本单价 ¥{{detail.costPriceText}}</text>
@@ -80,9 +113,61 @@
     </view>
 
     <view class="empty-state" wx:if="{{batchList.length === 0 && !loading}}">暂无报单批次</view>
-    <view class="loading-state {{batchList.length > 0 ? 'loading-more' : ''}}" wx:if="{{loading}}">加载中...</view>
+    </block>
+    <block wx:else>
+      <view class="sku-summary-card" wx:for="{{skuList}}" wx:key="skuId" bindtap="openSkuRecords" data-sku-id="{{item.skuId}}">
+        <image class="order-image" src="{{item.imageUrl || item.defaultImageUrl}}" mode="aspectFill" />
+        <view class="order-info">
+          <view class="order-name">{{item.productName || '商品信息已不可用'}}</view>
+          <view class="order-sku">{{item.spec || '默认规格'}} · {{item.size || '均码'}}</view>
+          <view class="order-meta"><view class="meta-chip">原报 {{item.totalQty}}</view><view class="meta-chip">退款作废 {{item.invalidQty}}</view><view class="meta-chip">有效 {{item.effectiveQty}}</view></view>
+          <view class="order-cost">{{item.costSummary}}</view>
+          <view class="order-sku">关联 {{item.batchCount}} 次报单 · 点击查看记录</view>
+        </view>
+      </view>
+      <view class="empty-state" wx:if="{{skuList.length === 0 && !loading}}">暂无商品报单记录</view>
+    </block>
+    <view class="loading-state {{(viewMode === 'records' ? batchList.length : skuList.length) > 0 ? 'loading-more' : ''}}" wx:if="{{loading}}">加载中...</view>
   </view>
   </scroll-view>
+  <view class="modal" wx:if="{{showSkuRecords}}">
+    <view class="modal-mask" bindtap="closeSkuRecords"></view>
+    <view class="modal-content sku-record-modal">
+      <view class="modal-title">关联报单记录</view>
+      <view class="sku-record-subtitle">{{currentSku.productName}} · {{currentSku.spec || '默认规格'}} / {{currentSku.size || '均码'}}</view>
+      <scroll-view class="sku-record-scroll" scroll-y bindscrolltolower="loadRelatedBatches" lower-threshold="120">
+        <view class="related-batch" wx:for="{{relatedBatches}}" wx:key="id">
+          <view class="related-batch-header" bindtap="toggleRelatedBatch" data-id="{{item.id}}">
+            <view class="batch-info">
+              <view class="batch-title">报单批次 #{{item.batchNo}}</view>
+              <view class="batch-meta">{{item.displayTime}} · 当前 SKU 原报 {{item.totalQty}} 件</view>
+              <view class="batch-cost">{{item.costSummary}}</view>
+            </view>
+            <text class="related-arrow">{{item.expanded ? '⌃' : '⌄'}}</text>
+          </view>
+          <view wx:if="{{item.expanded}}" class="related-batch-content">
+            <view class="related-detail-toolbar"><text>当前 SKU 报单信息</text><button class="view-all-btn" catchtap="toggleAllSkuRecords" data-id="{{item.id}}">{{item.showAll ? '收起' : '查看全部'}}</button></view>
+            <view class="detail-state" wx:if="{{item.detailLoading}}">明细加载中...</view>
+            <view class="detail-state retry-state" wx:elif="{{item.detailError}}" bindtap="retryRelatedDetails" data-id="{{item.id}}" data-all="{{false}}">{{item.detailError}}，点击重试</view>
+            <template is="related-record-item" wx:for="{{item.detailList}}" wx:for-item="detail" wx:key="id" data="{{detail: detail}}" />
+            <view class="detail-state" wx:if="{{item.detailLoaded && item.detailList.length === 0}}">当前 SKU 暂无匹配记录</view>
+            <view class="related-all-items" wx:if="{{item.showAll}}">
+              <view class="related-all-title">本次报单的其他明细</view>
+              <view class="detail-state" wx:if="{{item.allLoading}}">全部明细加载中...</view>
+              <view class="detail-state retry-state" wx:elif="{{item.allError}}" bindtap="retryRelatedDetails" data-id="{{item.id}}" data-all="{{true}}">{{item.allError}}，点击重试</view>
+              <template is="related-record-item" wx:for="{{item.extraItems}}" wx:for-item="detail" wx:key="id" data="{{detail: detail}}" />
+              <view class="detail-state" wx:if="{{item.allLoaded && item.extraItems.length === 0}}">本次报单没有其他明细</view>
+            </view>
+          </view>
+        </view>
+        <view class="detail-state" wx:if="{{relatedLoading}}">关联报单加载中...</view>
+        <view class="detail-state retry-state" wx:elif="{{relatedError}}" bindtap="loadRelatedBatches">{{relatedError}}，点击重试</view>
+        <view class="detail-state" wx:elif="{{relatedBatches.length === 0}}">暂无关联报单记录</view>
+        <view class="detail-state" wx:elif="{{relatedHasMore}}" bindtap="loadRelatedBatches">加载更多</view>
+      </scroll-view>
+      <button class="sku-record-close" bindtap="closeSkuRecords">关闭</button>
+    </view>
+  </view>
   <view class="modal" wx:if="{{showDateModal}}">
     <view class="modal-mask" bindtap="closeDateModal"></view>
     <view class="modal-content">

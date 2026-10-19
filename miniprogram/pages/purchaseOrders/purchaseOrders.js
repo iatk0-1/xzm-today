@@ -7,6 +7,11 @@ const auth = require('../../utils/auth');
 Page(autoSearch.wrap({
   data: {
     status: 'ordered',
+    viewMode: 'records',
+    stallList: [], tagList: [], selectedStall: '', selectedTag: '',
+    skuList: [],
+    showSkuRecords: false, currentSku: null, relatedBatches: [],
+    relatedPage: 1, relatedHasMore: true, relatedLoading: false, relatedError: '',
     batchList: [],
     loading: false,
     refreshing: false,
@@ -23,7 +28,175 @@ Page(autoSearch.wrap({
 
   onLoad: function() {
     this.setData({ today: this.formatDate(new Date()) });
+    this.loadFilterOptions();
     this.loadBatches();
+  },
+
+  async loadFilterOptions() {
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      const results = await Promise.allSettled([
+        api.get(auth.isStallManager() ? '/stall-managers/stalls/mine' : '/stalls/all'),
+        api.get('/tags/all')
+      ]);
+      this.setData({
+        stallList: results[0].status === 'fulfilled' && Array.isArray(results[0].value) ? results[0].value : [],
+        tagList: results[1].status === 'fulfilled' && Array.isArray(results[1].value) ? results[1].value : []
+      });
+      if (results.some(result => result.status === 'rejected')) throw new Error('部分筛选项加载失败');
+    } catch (err) {
+      wx.showToast({ title: getErrorMessage(err, '加载档口和标签失败'), icon: 'none' });
+    }
+  },
+
+  selectStall(e) {
+    this.setData({ selectedStall: e.currentTarget.dataset.stall === 'all' ? '' : String(e.currentTarget.dataset.stall) });
+    return this.loadBatches(true, true);
+  },
+
+  selectTag(e) {
+    this.setData({ selectedTag: e.currentTarget.dataset.tag === 'all' ? '' : String(e.currentTarget.dataset.tag) });
+    return this.loadBatches(true, true);
+  },
+
+  toggleView() {
+    this.closeSkuRecords();
+    this.setData({ viewMode: this.data.viewMode === 'records' ? 'products' : 'records' });
+    return this.loadBatches(true, true);
+  },
+
+  recordQuery({ page, size, skuId, details = false, all = false } = {}) {
+    const data = this.data;
+    const params = { status: all ? 'all' : data.status };
+    if (page != null) params.page = page;
+    if (size != null) params.size = size;
+    if (!all) {
+      if (data.appliedKeyword) params.keyword = data.appliedKeyword;
+      if (!details && data.dateRange.startDate) params.startDate = data.dateRange.startDate;
+      if (!details && data.dateRange.endDate) params.endDate = data.dateRange.endDate;
+      if (data.selectedStall) params.stallId = data.selectedStall;
+      if (data.selectedTag) params.tagId = data.selectedTag;
+      if (skuId != null) params.skuId = skuId;
+    }
+    return Object.entries(params).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&');
+  },
+
+  formatRecord(item) {
+    return { ...item, costPriceText: this.formatCost(item.costPrice), costAmountText: this.formatCost(item.costAmount),
+      imageUrl: item.imageUrl || '', defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
+      displayTime: this.formatTime(item.createdAt), selected: false };
+  },
+
+  async loadSkus(reset = true) {
+    if (!reset && (this.data.loading || !this.data.hasMore)) return;
+    const requestId = (this._batchRequestId || 0) + 1;
+    this._batchRequestId = requestId;
+    if (reset) {
+      this._detailGeneration = (this._detailGeneration || 0) + 1;
+      this.setData({ page: 1, skuList: [], batchList: [], hasMore: true });
+    }
+    this.setData({ loading: true });
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      const page = this.data.page;
+      const res = await api.get('/picking-list/orders/skus/query?' + this.recordQuery({ page, size: this.data.pageSize }));
+      if (requestId !== this._batchRequestId) return;
+      const rows = (res.content || []).map(item => ({ ...item,
+        defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
+        costSummary: this.formatBatchCost({ ...item, itemCount: item.recordCount }) }));
+      this.setData({ skuList: reset ? rows : [...this.data.skuList, ...rows], page: page + 1,
+        hasMore: res.hasNext !== undefined ? res.hasNext : rows.length === this.data.pageSize, loading: false
+      }, () => this.checkLoadMoreAtBottom(requestId));
+    } catch (err) {
+      if (requestId !== this._batchRequestId) return;
+      this.setData({ loading: false });
+      wx.showToast({ title: getErrorMessage(err, '加载商品报单汇总失败'), icon: 'none' });
+    }
+  },
+
+  openSkuRecords(e) {
+    const sku = this.data.skuList.find(item => String(item.skuId) === String(e.currentTarget.dataset.skuId));
+    if (!sku) return;
+    this._skuModalGeneration = (this._skuModalGeneration || 0) + 1;
+    this.setData({ showSkuRecords: true, currentSku: sku, relatedBatches: [], relatedPage: 1,
+      relatedHasMore: true, relatedLoading: false, relatedError: '' });
+    return this.loadRelatedBatches();
+  },
+
+  closeSkuRecords() {
+    this._skuModalGeneration = (this._skuModalGeneration || 0) + 1;
+    this.setData({ showSkuRecords: false, currentSku: null, relatedBatches: [], relatedLoading: false });
+  },
+
+  async loadRelatedBatches() {
+    if (!this.data.showSkuRecords || this.data.relatedLoading || !this.data.relatedHasMore) return;
+    const generation = this._skuModalGeneration;
+    this.setData({ relatedLoading: true, relatedError: '' });
+    try {
+      const page = this.data.relatedPage;
+      const res = await api.get('/picking-list/orders/batches/query?' + this.recordQuery({
+        page, size: this.data.pageSize, skuId: this.data.currentSku.skuId }));
+      if (generation !== this._skuModalGeneration) return;
+      this.setData({ relatedBatches: [...this.data.relatedBatches, ...(res.content || []).map(item => ({ ...item,
+        displayTime: this.formatTime(item.createdAt), costSummary: this.formatBatchCost(item), expanded: false,
+        detailList: [], detailLoading: false, detailLoaded: false, detailError: '', showAll: false,
+        allItems: [], allLoading: false, allLoaded: false, allError: '' }))],
+        relatedPage: page + 1, relatedHasMore: res.hasNext !== undefined ? res.hasNext : (res.content || []).length === this.data.pageSize,
+        relatedLoading: false });
+    } catch (err) {
+      if (generation !== this._skuModalGeneration) return;
+      this.setData({ relatedLoading: false, relatedError: getErrorMessage(err, '关联报单加载失败，点击重试') });
+    }
+  },
+
+  updateRelatedBatch(id, patch) {
+    this.setData({ relatedBatches: this.data.relatedBatches.map(item => {
+      if (String(item.id) !== String(id)) return item;
+      const next = { ...item, ...patch };
+      const visibleIds = new Set(next.detailList.map(detail => String(detail.id)));
+      next.extraItems = next.allItems.filter(detail => !visibleIds.has(String(detail.id)));
+      return next;
+    }) });
+  },
+
+  async toggleRelatedBatch(e) {
+    const id = e.currentTarget.dataset.id;
+    const batch = this.data.relatedBatches.find(item => String(item.id) === String(id));
+    if (!batch) return;
+    this.updateRelatedBatch(id, { expanded: !batch.expanded, showAll: false });
+    if (!batch.expanded && !batch.detailLoaded && !batch.detailLoading) return this.loadRelatedDetails(id, false);
+  },
+
+  async toggleAllSkuRecords(e) {
+    const id = e.currentTarget.dataset.id;
+    const batch = this.data.relatedBatches.find(item => String(item.id) === String(id));
+    if (!batch) return;
+    const showAll = !batch.showAll;
+    this.updateRelatedBatch(id, { showAll, expanded: true });
+    if (!batch.detailLoaded && !batch.detailLoading) this.loadRelatedDetails(id, false);
+    if (showAll && !batch.allLoaded && !batch.allLoading) return this.loadRelatedDetails(id, true);
+  },
+
+  async loadRelatedDetails(id, all) {
+    const generation = this._skuModalGeneration;
+    const loadingKey = all ? 'allLoading' : 'detailLoading';
+    const errorKey = all ? 'allError' : 'detailError';
+    this.updateRelatedBatch(id, { [loadingKey]: true, [errorKey]: '' });
+    try {
+      const items = await api.get(`/picking-list/orders/batches/${encodeURIComponent(id)}/items?`
+        + this.recordQuery({ skuId: this.data.currentSku.skuId, details: true, all }));
+      if (generation !== this._skuModalGeneration) return;
+      const rows = (items || []).map(item => this.formatRecord(item));
+      this.updateRelatedBatch(id, { [loadingKey]: false, [all ? 'allLoaded' : 'detailLoaded']: true,
+        [all ? 'allItems' : 'detailList']: rows });
+    } catch (err) {
+      if (generation !== this._skuModalGeneration) return;
+      this.updateRelatedBatch(id, { [loadingKey]: false, [errorKey]: getErrorMessage(err, '明细加载失败，请重试') });
+    }
+  },
+
+  retryRelatedDetails(e) {
+    return this.loadRelatedDetails(e.currentTarget.dataset.id, e.currentTarget.dataset.all === true || e.currentTarget.dataset.all === 'true');
   },
 
   showDateRangeSelector: function() {
@@ -126,6 +299,7 @@ Page(autoSearch.wrap({
 
   // 按批次分页，展开时才获取该批次的商品明细。
   loadBatches: async function(reset = true, collapseAll = false) {
+    if (this.data.viewMode === 'products') return this.loadSkus(reset);
     if (!reset && (this.data.loading || !this.data.hasMore)) return;
     const requestId = (this._batchRequestId || 0) + 1;
     this._batchRequestId = requestId;
@@ -146,11 +320,8 @@ Page(autoSearch.wrap({
     this.setData({ loading: true });
     try {
       await auth.ensureAuthenticated({ silent: true });
-      const { page, pageSize, status, appliedKeyword, dateRange } = this.data;
-      const query = `status=${encodeURIComponent(status)}&page=${page}&size=${pageSize}`
-        + (appliedKeyword ? `&keyword=${encodeURIComponent(appliedKeyword)}` : '')
-        + (dateRange.startDate ? `&startDate=${encodeURIComponent(dateRange.startDate)}` : '')
-        + (dateRange.endDate ? `&endDate=${encodeURIComponent(dateRange.endDate)}` : '');
+      const { page, pageSize } = this.data;
+      const query = this.recordQuery({ page, size: pageSize });
       const res = await api.get(`/picking-list/orders/batches/query?${query}`);
       if (requestId !== this._batchRequestId) return;
 
@@ -204,23 +375,13 @@ Page(autoSearch.wrap({
     const generation = this._detailGeneration || 0;
     this.updateBatch(batchId, { detailLoading: true });
     try {
-      const { status, appliedKeyword } = this.data;
-      const query = `status=${encodeURIComponent(status)}`
-        + (appliedKeyword ? `&keyword=${encodeURIComponent(appliedKeyword)}` : '');
+      const query = this.recordQuery({ details: true });
       const items = await api.get(
         `/picking-list/orders/batches/${encodeURIComponent(batchId)}/items?${query}`
       );
       if (generation !== (this._detailGeneration || 0)) return;
       this.updateBatch(batchId, {
-        detailList: (items || []).map(item => ({
-          ...item,
-          costPriceText: this.formatCost(item.costPrice),
-          costAmountText: this.formatCost(item.costAmount),
-          imageUrl: item.imageUrl || '',
-          defaultImageUrl: item.defaultImageUrl || '/images/default-goods-image.png',
-          displayTime: this.formatTime(item.createdAt),
-          selected: false
-        })),
+        detailList: (items || []).map(item => this.formatRecord(item)),
         detailLoading: false,
         selectedCount: 0,
         allSelected: false
