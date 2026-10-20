@@ -295,3 +295,47 @@ page { background-color: #f2f2f2; }
 .batch-progress-meta, .batch-progress-status { color: #666; margin-top: 7rpx; }
 .batch-progress-reason { color: #b3261e; margin-top: 8rpx; white-space: normal; }
 .batch-review-btn { margin-top: 12rpx; font-size: 22rpx; background: #fff5e9; color: #9b5d00; }
+
+/* 后台发货与历史任务 */
+.active-batch-banner { display: flex; justify-content: space-between; align-items: center; gap: 16rpx; padding: 24rpx; margin: 16rpx 20rpx; border: 1rpx solid #c9dfd6; background: #f0f8f4; border-radius: 14rpx; }
+.active-batch-title { font-size: 27rpx; font-weight: 600; color: #27634d; }
+.task-modal { height: 84vh; max-height: 84vh; }
+.task-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 25rpx 26rpx; border-bottom: 1rpx solid #eee; gap: 18rpx; flex-shrink: 0; }
+.task-modal-title { font-size: 31rpx; font-weight: 600; }
+.task-filter-tabs { display: flex; gap: 12rpx; padding: 18rpx 24rpx; flex-shrink: 0; }
+.task-filter { font-size: 25rpx; padding: 12rpx 28rpx; border-radius: 28rpx; color: #666; background: #f3f4f5; }
+.task-filter.active { color: #fff; background: #232b28; }
+.task-scroll { flex: 1; min-height: 0; height: 0; width: 100%; background: #f6f7f8; }
+.task-history-card, .task-package-card { margin: 18rpx; padding: 24rpx; border-radius: 14rpx; background: #fff; font-size: 25rpx; overflow-wrap: anywhere; }
+.task-card-top, .task-card-bottom { display: flex; justify-content: space-between; align-items: center; gap: 14rpx; }
+.task-card-time { font-size: 26rpx; font-weight: 600; }
+.task-status { font-size: 22rpx; color: #686d6a; background: #f1f2f3; padding: 6rpx 12rpx; border-radius: 7rpx; flex-shrink: 0; }
+.task-status.running { color: #28624c; background: #e8f4ec; }
+.task-card-count { font-size: 25rpx; margin-top: 18rpx; color: #414843; }
+.task-progress-track { height: 8rpx; background: #edf0ee; border-radius: 6rpx; overflow: hidden; margin: 18rpx 0 14rpx; }
+.task-progress-fill { height: 100%; background: #398462; border-radius: 6rpx; }
+.task-card-results { display: flex; flex-wrap: wrap; gap: 16rpx; font-size: 23rpx; color: #566159; }
+.task-issue { color: #ad4933; font-size: 23rpx; margin-top: 8rpx; }
+.task-card-bottom { padding-top: 17rpx; margin-top: 18rpx; border-top: 1rpx solid #f0f1f2; }
+.task-id { color: #8b918c; font-size: 21rpx; overflow-wrap: anywhere; }
+.task-empty { text-align: center; color: #999; font-size: 26rpx; padding: 100rpx 20rpx; }
+.task-load-more, .task-loading-hint { text-align: center; color: #818981; font-size: 24rpx; padding: 24rpx; }
+.task-detail-overview { padding: 18rpx 24rpx; border-bottom: 1rpx solid #eee; flex-shrink: 0; }
+.task-detail-overview .batch-progress-meta { font-size: 22rpx; }
+.task-background-tip { font-size: 23rpx; margin-top: 14rpx; color: #28624c; }
+.task-query-error { color: #a45325; background: #fff4e6; padding: 12rpx; font-size: 24rpx; margin-top: 12rpx; }
+.task-package-toggle { padding-bottom: 8rpx; }
+.task-package-recipient { margin-top: 14rpx; color: #3c443f; }
+.task-package-address { margin: 12rpx 0; line-height: 1.5; color: #686f6a; }
+.task-waybill { display: flex; justify-content: space-between; align-items: flex-start; gap: 16rpx; padding: 14rpx 0; color: #434e46; border-top: 1rpx solid #f1f2f3; }
+.task-waybill > text:first-child { flex: 1; min-width: 0; }
+.task-order-card { border-top: 1rpx solid #ecefed; margin-top: 20rpx; padding-top: 18rpx; }
+.task-order-head { display: flex; flex-direction: column; gap: 12rpx; font-size: 23rpx; }
+.task-product { display: flex; gap: 16rpx; padding: 18rpx 0 4rpx; }
+.task-product-image { width: 96rpx; height: 110rpx; border-radius: 8rpx; flex-shrink: 0; background: #f4f4f4; }
+.task-product-content { flex: 1; min-width: 0; }
+.task-product-name { font-size: 25rpx; line-height: 1.5; }
+.task-product-qty { font-size: 24rpx; color: #303d33; margin-top: 10rpx; }
+.task-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; padding: 12rpx 16rpx; border-top: 1rpx solid #eee; font-size: 23rpx; flex-shrink: 0; }
+.task-pagination button { margin: 0; font-size: 23rpx; }
+.task-modal .modal-footer { flex-shrink: 0; }

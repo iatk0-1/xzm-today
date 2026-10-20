@@ -58,6 +58,18 @@ Page({
     showBatchProgress: false,
     showRecentBatchTasks: false,
     recentBatchTasks: [],
+    historyFilter: 'all',
+    historyPage: 0,
+    historyHasMore: true,
+    historyLoading: false,
+    historyError: '',
+    viewingBatchHistory: false,
+    batchGroupPage: 1,
+    batchGroupPages: 1,
+    batchSubmitting: false,
+    batchDetailLoading: false,
+    batchQueryError: '',
+    activeBatchTask: null,
     showFailedWaybills: false,
     failedWaybillGroups: [],
     failedWaybillPage: 0,
@@ -82,7 +94,21 @@ Page({
     this.loadTagList();
     // 空搜索时，自动加载所有未发货商品明细
     this.loadAllPendingItems();
+    this.batchReady = true;
     this.resumeBatchTask();
+  },
+
+  onShow: function() {
+    this.batchPageClosed = false;
+    if (this.batchReady) {
+      if (this.data.showBatchProgress && this.data.batchTask) this.runBatchTask(false);
+      else this.refreshActiveBatchTask();
+    }
+  },
+
+  onHide: function() {
+    this.batchPageClosed = true;
+    this.stopBatchPolling();
   },
 
   importInventoryShipmentItems: function(matches) {
@@ -1334,22 +1360,41 @@ Page({
   },
 
   closePreviewModal: function() {
+    if (this.data.batchSubmitting) return;
     this.setData({ showPreviewModal: false });
     const saved = this.getSavedBatchTask();
-    if (saved && !saved.confirmed) {
+    if (saved && !saved.confirmed && !saved.submissionPending) {
       wx.removeStorageSync(BATCH_TASK_STORAGE);
       this.setData({ batchTask: null });
     }
   },
 
   confirmBatchShip: async function() {
-    if (!this.data.batchTask) return;
+    const task = this.data.batchTask;
     const saved = this.getSavedBatchTask();
-    if (!saved) return;
-    saved.confirmed = true;
+    if (!task || !saved || this.data.batchSubmitting) return;
+    this.setData({ batchSubmitting: true });
+    saved.submissionPending = true;
     wx.setStorageSync(BATCH_TASK_STORAGE, saved);
-    this.setData({ showPreviewModal: false, showBatchProgress: true });
-    this.runBatchTask(false);
+    try {
+      let submitted;
+      try { submitted = await api.post(`/shipments/batch-tasks/${task.id}/submit`, {}); }
+      catch (error) {
+        // 响应丢失时查询原批次；不把本地“已确认”当成后端已接收。
+        submitted = await api.get(`/shipments/batch-tasks/${task.id}`, { groupPage: 1 });
+        if (!submitted.confirmedAt || submitted.executionMode !== 'BACKGROUND') throw error;
+      }
+      saved.confirmed = true;
+      saved.submissionPending = false;
+      wx.setStorageSync(BATCH_TASK_STORAGE, saved);
+      this.setData({ showPreviewModal: false, showBatchProgress: true,
+        viewingBatchHistory: false, batchGroupPage: 1, activeBatchTask: this.decorateBatchTask(submitted) });
+      this.updateBatchProgress(submitted);
+      wx.showToast({ title: '已提交，后台将继续发货', icon: 'none' });
+      this.runBatchTask(false);
+    } catch (err) {
+      wx.showToast({ title: getErrorMessage(err, '提交结果暂不可查，请重试确认原任务'), icon: 'none' });
+    } finally { this.setData({ batchSubmitting: false }); }
   },
 
   getSavedBatchTask: function() {
@@ -1358,6 +1403,8 @@ Page({
   },
 
   isBatchTaskRunning: function(task) {
+    if (task && ['QUEUED', 'RUNNING'].includes(task.status)) return true;
+    if (task && ['DRAFT', 'LEGACY_PAUSED'].includes(task.status)) return false;
     return (task && task.groups || []).some(group =>
       ['WAITING', 'PROCESSING', 'PROCESSING_WECHAT'].includes(group.status));
   },
@@ -1397,14 +1444,17 @@ Page({
 
   createBatchTask: async function(account) {
     const existing = this.getSavedBatchTask();
-    if (existing && existing.confirmed) {
+    if (existing && (existing.confirmed || existing.submissionPending) && !existing.historyOnly) {
       let previousTask;
       try {
-        previousTask = existing.taskId
-          ? await api.get(`/shipments/batch-tasks/${existing.taskId}`)
-          : await api.get(`/shipments/batch-tasks/by-request/${existing.requestId}`);
+        previousTask = existing.requestId
+          ? await api.get(`/shipments/batch-tasks/by-request/${existing.requestId}`)
+          : await api.get(`/shipments/batch-tasks/${existing.taskId}`);
       } catch (err) {
         throw new Error('上次发货任务状态暂不可查，请先查看进度');
+      }
+      if (existing.submissionPending && !previousTask.confirmedAt) {
+        throw new Error('上次提交结果尚未确认，请打开原任务重新确认');
       }
       if (this.isBatchTaskRunning(previousTask)) {
         throw new Error('上次发货任务仍在处理中，请先查看进度');
@@ -1439,24 +1489,59 @@ Page({
     return task;
   },
 
+  refreshActiveBatchTask: async function() {
+    try {
+      const result = await api.get('/shipments/batch-tasks/query', { page: 1, filter: 'running' });
+      if (!this.batchPageClosed) this.setData({ activeBatchTask: result.content && result.content.length
+        ? this.decorateBatchTask(result.content[0]) : null });
+    } catch (err) { console.error('查询后台发货任务失败:', err); }
+  },
+
   resumeBatchTask: async function() {
     const saved = this.getSavedBatchTask();
-    if (!saved || !saved.confirmed) return;
+    if (!saved || (!saved.confirmed && !saved.submissionPending) || saved.historyOnly) {
+      this.refreshActiveBatchTask();
+      return;
+    }
     if (!saved.historyOnly) this.updatePendingShipSummary(saved.items || []);
-    this.setData({ showBatchProgress: true });
     try {
       const task = saved.taskId
-        ? await api.get(`/shipments/batch-tasks/${saved.taskId}`)
+        ? await api.get(`/shipments/batch-tasks/${saved.taskId}`, { groupPage: 1 })
         : await api.get(`/shipments/batch-tasks/by-request/${saved.requestId}`);
       const latest = this.getSavedBatchTask();
-      if (!latest || latest.requestId !== saved.requestId) return;
+      if (this.batchPageClosed || !latest || latest.requestId !== saved.requestId) return;
       saved.taskId = task.id;
       wx.setStorageSync(BATCH_TASK_STORAGE, saved);
+      this.setData({ viewingBatchHistory: false, batchGroupPage: 1, showBatchProgress: true,
+        activeBatchTask: this.isBatchTaskRunning(task) ? this.decorateBatchTask(task) : null });
       this.updateBatchProgress(task);
       this.runBatchTask(false);
     } catch (err) {
-      wx.showToast({ title: '任务状态暂不可查，请稍后重试', icon: 'none' });
+      this.setData({ batchQueryError: '任务状态暂不可查，请稍后刷新；后台任务会继续处理' });
+      this.refreshActiveBatchTask();
     }
+  },
+
+  decorateBatchTask: function(task) {
+    const groups = task.groups || [];
+    const summary = task.summary || {
+      total: groups.length,
+      completed: groups.filter(g => !['WAITING', 'PROCESSING', 'PROCESSING_WECHAT'].includes(g.status)).length,
+      success: groups.filter(g => ['SUCCESS', 'SHIPMENT_CREATED_WECHAT_FAILED'].includes(g.status)).length,
+      failed: groups.filter(g => ['FAILED', 'BLOCKED', 'NEEDS_REVIEW'].includes(g.status)).length,
+      review: groups.filter(g => g.status === 'NEEDS_REVIEW').length,
+      wechatPending: groups.filter(g => g.status === 'SHIPMENT_CREATED_WECHAT_FAILED').length,
+      orders: new Set(groups.flatMap(g => (g.orderIds || []).map(String))).size,
+      quantity: groups.flatMap(g => g.items || []).reduce((sum, i) => sum + Number(i.shipQty || 0), 0)
+    };
+    const labels = { DRAFT: '未提交', QUEUED: '排队中', RUNNING: '发货中',
+      LEGACY_PAUSED: '旧任务待继续', COMPLETED: '全部完成', COMPLETED_WITH_ISSUES: '已结束，有异常' };
+    return { ...task, summary, statusText: labels[task.status] || '历史任务',
+      createdAtText: this.formatDate(task.createdAt) || '时间未记录',
+      confirmedAtText: this.formatDate(task.confirmedAt),
+      startedAtText: this.formatDate(task.startedAt), finishedAtText: this.formatDate(task.finishedAt),
+      progressPercent: summary.total ? Math.round(summary.completed * 100 / summary.total) : 0,
+      isRunning: this.isBatchTaskRunning(task) && task.status !== 'LEGACY_PAUSED' };
   },
 
   updateBatchProgress: function(task) {
@@ -1473,30 +1558,43 @@ Page({
       WECHAT_REPORT: '上报微信', MANUALLY_VERIFIED: '人工核查完成',
       WECHAT_REVIEWED: '微信上报已核查'
     };
-    const groups = (task.groups || []).map(group => ({
-      ...group,
-      statusText: labels[group.status] || group.status,
-      stageText: stageLabels[group.stage] || group.stage || '',
-      orderText: (group.orderIds || []).join('、'),
-      canReview: group.status === 'NEEDS_REVIEW' && !group.shipmentId,
-      canReviewWechat: group.status === 'NEEDS_REVIEW' && !!group.shipmentId,
-      // 快递单已创建时，微信同步失败只记结果，不再引导重复补报。
-      canRetryWechat: false
-    }));
-    this.setData({
-      batchTask: this.sanitizeBatchTask(task),
-      batchProgress: {
-        total: groups.length,
-        completed: groups.filter(group => !['WAITING', 'PROCESSING', 'PROCESSING_WECHAT'].includes(group.status)).length,
-        success: groups.filter(group => ['SUCCESS', 'SHIPMENT_CREATED_WECHAT_FAILED'].includes(group.status)).length,
-        failed: groups.filter(group => ['FAILED', 'BLOCKED', 'NEEDS_REVIEW'].includes(group.status)).length,
-        canRetry: groups.some(group => ['FAILED', 'BLOCKED'].includes(group.status)),
-        hasPendingReview: groups.some(group => group.status === 'NEEDS_REVIEW'),
-        groups
+    const expanded = new Set((this.data.batchProgress?.groups || []).filter(g => g.expanded).map(g => String(g.id)));
+    const groups = (task.groups || []).map(group => {
+      const orders = new Map();
+      for (const item of group.items || []) {
+        const key = String(item.orderId);
+        if (!orders.has(key)) orders.set(key, { orderId: item.orderId,
+          orderNo: item.orderNo || key, adminSeqNo: item.adminSeqNo,
+          createdAtText: this.formatDate(item.orderCreatedAt), items: [] });
+        orders.get(key).items.push({ ...item, productName: item.productName || '历史商品信息未记录' });
       }
+      // 缺少历史快照时仍可进入关联订单。
+      for (const id of group.orderIds || []) {
+        if (!orders.has(String(id))) orders.set(String(id), { orderId: id, orderNo: String(id), items: [] });
+      }
+      return { ...group,
+        statusText: labels[group.status] || group.status,
+        stageText: stageLabels[group.stage] || group.stage || '',
+        orderText: (group.orderIds || []).join('、'),
+        startedAtText: this.formatDate(group.startedAt), finishedAtText: this.formatDate(group.finishedAt),
+        totalQty: (group.items || []).reduce((sum, item) => sum + Number(item.shipQty || 0), 0),
+        orders: Array.from(orders.values()), expanded: expanded.has(String(group.id)),
+        canReview: group.status === 'NEEDS_REVIEW' && !group.shipmentId,
+        canReviewWechat: group.status === 'NEEDS_REVIEW' && !!group.shipmentId,
+        canRetryWechat: false
+      };
+    });
+    const decorated = this.decorateBatchTask(task);
+    this.setData({
+      batchTask: decorated,
+      batchGroupPages: Math.max(1, Math.ceil(decorated.summary.total / 30)),
+      batchProgress: { ...decorated.summary,
+        canRetry: !decorated.isRunning && decorated.summary.failed > decorated.summary.review,
+        hasPendingReview: decorated.summary.review > 0, groups }
     });
     const saved = this.getSavedBatchTask();
-    if (saved && saved.taskId === task.id && !saved.historyOnly) {
+    if (saved && String(saved.taskId) === String(task.id) && !saved.historyOnly) {
+      if (task.confirmedAt) { saved.confirmed = true; saved.submissionPending = false; }
       const successOrderIds = new Set(groups.filter(group =>
         ['SUCCESS', 'SHIPMENT_CREATED_WECHAT_FAILED'].includes(group.status))
         .flatMap(group => group.orderIds.map(String)));
@@ -1507,59 +1605,97 @@ Page({
     }
   },
 
-  runBatchTask: async function(retryFailed) {
-    if (this.batchTaskRunning) return;
+  stopBatchPolling: function() {
+    this.batchRunToken = (this.batchRunToken || 0) + 1;
+    this.batchTaskRunning = false;
+    if (this.batchPollTimer) clearTimeout(this.batchPollTimer);
+    if (this.batchPollResolve) this.batchPollResolve();
+    this.batchPollResolve = null;
+  },
+
+  runBatchTask: async function() {
+    if (this.batchTaskRunning || this.batchPageClosed || !this.data.showBatchProgress) return;
+    const taskId = this.data.batchTask?.id || this.getSavedBatchTask()?.taskId;
+    if (!taskId) return;
     this.batchTaskRunning = true;
-    const runToken = (this.batchRunToken || 0) + 1;
-    this.batchRunToken = runToken;
-    this.setData({ showBatchProgress: true });
+    const token = (this.batchRunToken || 0) + 1;
+    this.batchRunToken = token;
+    const current = () => this.batchRunToken === token && !this.batchPageClosed && this.data.showBatchProgress;
     try {
-      const saved = this.getSavedBatchTask();
-      if (!saved || !saved.taskId) return;
-      const isCurrentRun = () => this.batchRunToken === runToken
-        && this.getSavedBatchTask()?.taskId === saved.taskId;
-      let task = await api.get(`/shipments/batch-tasks/${saved.taskId}`);
-      if (!isCurrentRun()) return;
-      const retryIds = new Set(retryFailed && !saved.historyOnly
-        ? task.groups.filter(item => ['FAILED', 'BLOCKED'].includes(item.status)).map(item => String(item.id)) : []);
-      while (!this.batchPageClosed && isCurrentRun()) {
+      while (current()) {
+        const task = await api.get(`/shipments/batch-tasks/${taskId}`, { groupPage: this.data.batchGroupPage });
+        if (!current()) return;
         this.updateBatchProgress(task);
-        const group = task.groups.find(item => ['PROCESSING', 'PROCESSING_WECHAT'].includes(item.status))
-          || task.groups.find(item => (!saved.historyOnly && item.status === 'WAITING')
-            || (['FAILED', 'BLOCKED'].includes(item.status) && retryIds.has(String(item.id))));
-        if (!group) break;
-        if (!['PROCESSING', 'PROCESSING_WECHAT'].includes(group.status)) {
-          retryIds.delete(String(group.id));
-          // 启动响应丢失也只查询原组状态，不另建任务或更换组号。
-          try { await api.post(`/shipments/batch-tasks/${task.id}/groups/${group.id}/start`, {}); }
-          catch (err) {
-            task = await api.get(`/shipments/batch-tasks/${task.id}`);
-            if (task.groups.find(item => item.id === group.id)?.status === 'WAITING') throw err;
+        this.setData({ batchQueryError: '' });
+        if (!this.isBatchTaskRunning(task)) {
+          if (!this.data.viewingBatchHistory) {
+            this.setData({ activeBatchTask: null });
+            this.reloadPendingItems();
           }
+          break;
         }
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        if (!isCurrentRun()) return;
-        task = await api.get(`/shipments/batch-tasks/${task.id}`);
-        if (!isCurrentRun()) return;
-      }
-      if (!isCurrentRun()) return;
-      this.updateBatchProgress(task);
-      if (this.data.batchProgress && this.data.batchProgress.failed === 0
-          && this.data.batchProgress.completed === this.data.batchProgress.total) {
-        if (!isCurrentRun()) return;
-        wx.removeStorageSync(BATCH_TASK_STORAGE);
-        this.reloadPendingItems();
+        await new Promise(resolve => {
+          this.batchPollResolve = resolve;
+          this.batchPollTimer = setTimeout(resolve, 2500);
+        });
       }
     } catch (err) {
-      console.error('查询发货任务进度失败:', err);
-      wx.showToast({ title: '进度查询中断，重新打开页面可恢复', icon: 'none' });
+      if (current()) this.setData({ batchQueryError: '进度暂不可查，点击刷新重试；后台发货会继续处理' });
     } finally {
-      if (this.batchRunToken === runToken) this.batchTaskRunning = false;
+      if (this.batchRunToken === token) this.batchTaskRunning = false;
     }
   },
 
-  retryBatchFailedGroups: function() {
-    this.runBatchTask(true);
+  retryBatchFailedGroups: async function() {
+    const task = this.data.batchTask;
+    if (!task || this.data.batchSubmitting) return;
+    this.setData({ batchSubmitting: true });
+    this.stopBatchPolling();
+    try {
+      const updated = await api.post(`/shipments/batch-tasks/${task.id}/retry-failed`, {});
+      this.setData({ batchGroupPage: 1 });
+      this.updateBatchProgress(updated);
+      wx.showToast({ title: '失败包裹已交后台重试', icon: 'none' });
+      this.runBatchTask();
+    } catch (err) {
+      wx.showToast({ title: getErrorMessage(err, '重试结果暂不可查，请刷新原任务确认'), icon: 'none' });
+      this.runBatchTask();
+    } finally { this.setData({ batchSubmitting: false }); }
+  },
+
+  continueLegacyBatchTask: function() {
+    const task = this.data.batchTask;
+    if (!task) return;
+    wx.showModal({ title: '继续后台发货', content: '确认后将按原任务的收货信息、商品和数量处理尚未执行的包裹，请先核对详情。',
+      success: async result => {
+        if (!result.confirm || this.data.batchSubmitting) return;
+        this.setData({ batchSubmitting: true });
+        try {
+          this.setData({ batchGroupPage: 1 });
+          this.updateBatchProgress(await api.post(`/shipments/batch-tasks/${task.id}/submit`, {}));
+          this.runBatchTask();
+        } catch (err) { wx.showToast({ title: getErrorMessage(err, '提交结果暂不可查，请刷新确认'), icon: 'none' }); }
+        finally { this.setData({ batchSubmitting: false }); }
+      }
+    });
+  },
+
+  toggleBatchPackage: function(event) {
+    const id = String(event.currentTarget.dataset.groupId);
+    const groups = this.data.batchProgress.groups.map(g => String(g.id) === id ? { ...g, expanded: !g.expanded } : g);
+    this.setData({ 'batchProgress': { ...this.data.batchProgress, groups } });
+  },
+
+  changeBatchGroupPage: async function(event) {
+    const next = this.data.batchGroupPage + Number(event.currentTarget.dataset.step);
+    if (next < 1 || next > this.data.batchGroupPages || this.data.batchDetailLoading) return;
+    this.stopBatchPolling();
+    this.setData({ batchGroupPage: next });
+    this.runBatchTask();
+  },
+
+  copyBatchExpressNo: function(event) {
+    clipboard.copyText(event.currentTarget.dataset.expressNo, '运单号');
   },
 
   reviewBatchGroup: function(event) {
@@ -1576,6 +1712,7 @@ Page({
         try {
           const updated = await api.post(`/shipments/batch-tasks/${task.id}/groups/${groupId}/confirm-no-shipment`,
             { note: result.content });
+          this.setData({ batchGroupPage: 1 });
           this.updateBatchProgress(updated);
         } catch (err) {
           wx.showToast({ title: getErrorMessage(err, '人工核查确认失败'), icon: 'none' });
@@ -1606,6 +1743,7 @@ Page({
               const updated = await api.post(
                 `/shipments/batch-tasks/${task.id}/groups/${groupId}/resolve-wechat-review`,
                 { failedOrderIds, note: noteResult.content });
+              this.setData({ batchGroupPage: 1 });
               this.updateBatchProgress(updated);
             } catch (err) {
               wx.showToast({ title: getErrorMessage(err, '微信上报核查保存失败'), icon: 'none' });
@@ -1622,6 +1760,7 @@ Page({
     const groupId = event.currentTarget.dataset.groupId;
     try {
       const updated = await api.post(`/shipments/batch-tasks/${task.id}/groups/${groupId}/retry-wechat`, {});
+      this.setData({ batchGroupPage: 1 });
       this.updateBatchProgress(updated);
       this.runBatchTask(false);
     } catch (err) {
@@ -1630,65 +1769,106 @@ Page({
   },
 
   closeBatchProgress: function() {
-    if (this.getSavedBatchTask()?.historyOnly) {
-      this.batchRunToken = (this.batchRunToken || 0) + 1;
-      this.batchTaskRunning = false;
-      wx.removeStorageSync(BATCH_TASK_STORAGE);
-      this.setData({ showBatchProgress: false, batchTask: null, batchProgress: null });
-      return;
-    }
-    this.setData({ showBatchProgress: false });
+    this.stopBatchPolling();
+    const history = this.data.viewingBatchHistory;
+    const saved = this.getSavedBatchTask();
+    // 兼容旧版本遗留的历史缓存，不影响当前真正提交的任务。
+    if (saved?.historyOnly) wx.removeStorageSync(BATCH_TASK_STORAGE);
+    this.setData({ showBatchProgress: false, viewingBatchHistory: false, batchQueryError: '',
+      showRecentBatchTasks: history });
+    if (history) this.loadBatchTaskHistory(true);
+    this.refreshActiveBatchTask();
   },
 
-  finishBatchTask: function() {
+  finishBatchTask: async function() {
     const progress = this.data.batchProgress;
     if (!progress || progress.completed !== progress.total) return;
-    this.retainRetryableBatchItems(this.data.batchTask || progress, this.getSavedBatchTask());
-    wx.removeStorageSync(BATCH_TASK_STORAGE);
-    this.setData({ showBatchProgress: false, batchTask: null, batchProgress: null });
-  },
-
-  openBatchProgress: function() {
-    this.setData({ showBatchProgress: true });
-    this.resumeBatchTask();
-  },
-
-  openRecentBatchTasks: async function() {
-    if (this.getSavedBatchTask()?.confirmed) {
-      this.openBatchProgress();
-      return;
-    }
-    try {
-      const tasks = await api.get('/shipments/batch-tasks');
-      if (!tasks.length) {
-        wx.showToast({ title: '暂无历史发货任务', icon: 'none' });
-        return;
+    const saved = this.getSavedBatchTask();
+    if (!this.data.viewingBatchHistory && saved && String(saved.taskId) === String(this.data.batchTask?.id)) {
+      let outcome = this.data.batchTask || progress;
+      if (saved.requestId && outcome.groups.length < progress.total) {
+        try { outcome = await api.get(`/shipments/batch-tasks/by-request/${saved.requestId}`); }
+        catch (err) {
+          wx.showToast({ title: '结果暂不可查，请稍后再收起任务', icon: 'none' });
+          return;
+        }
+        if (String(this.getSavedBatchTask()?.taskId) !== String(saved.taskId)) return;
       }
-      this.setData({ recentBatchTasks: tasks, showRecentBatchTasks: true });
-    } catch (err) {
-      wx.showToast({ title: getErrorMessage(err, '查询历史任务失败'), icon: 'none' });
+      this.retainRetryableBatchItems(outcome, saved);
+      wx.removeStorageSync(BATCH_TASK_STORAGE);
     }
+    this.closeBatchProgress();
+  },
+
+  openBatchProgress: async function() {
+    const taskId = this.data.activeBatchTask?.id || this.getSavedBatchTask()?.taskId;
+    if (!taskId) return;
+    await this.openBatchTaskDetail(taskId, false);
+  },
+
+  openRecentBatchTasks: function() {
+    this.setData({ showRecentBatchTasks: true });
+    return this.loadBatchTaskHistory(true);
+  },
+
+  loadBatchTaskHistory: async function(reset = false) {
+    if (this.data.historyLoading || (!reset && !this.data.historyHasMore)) return;
+    const filter = this.data.historyFilter;
+    const page = reset ? 1 : this.data.historyPage + 1;
+    this.setData({ historyLoading: true, historyError: '',
+      ...(reset ? { recentBatchTasks: [], historyPage: 0, historyHasMore: true } : {}) });
+    try {
+      const result = await api.get('/shipments/batch-tasks/query', { page, filter });
+      if (filter !== this.data.historyFilter || !this.data.showRecentBatchTasks) return;
+      const tasks = (result.content || []).map(task => this.decorateBatchTask(task));
+      this.setData({ recentBatchTasks: reset ? tasks : this.data.recentBatchTasks.concat(tasks),
+        historyPage: page, historyHasMore: result.hasNext });
+    } catch (err) {
+      this.setData({ historyError: getErrorMessage(err, '历史任务加载失败，请重试') });
+    } finally { this.setData({ historyLoading: false }); }
+  },
+
+  loadMoreBatchTaskHistory: function() { return this.loadBatchTaskHistory(false); },
+  refreshBatchTaskHistory: function() { return this.loadBatchTaskHistory(true); },
+
+  changeBatchHistoryFilter: function(event) {
+    if (this.data.historyLoading) return;
+    this.setData({ historyFilter: event.currentTarget.dataset.filter });
+    this.loadBatchTaskHistory(true);
   },
 
   selectRecentBatchTask: function(event) {
     const task = this.data.recentBatchTasks[event.currentTarget.dataset.index];
-    if (!task) return;
-    wx.setStorageSync(BATCH_TASK_STORAGE,
-      { taskId: task.id, requestId: task.clientRequestId, confirmed: true,
-        historyOnly: true, items: [] });
-    this.updateBatchProgress(task);
-    this.setData({ showRecentBatchTasks: false, showBatchProgress: true });
+    if (task) return this.openBatchTaskDetail(task.id, true);
+  },
+
+  openBatchTaskDetail: async function(taskId, history) {
+    if (this.data.batchDetailLoading) return;
+    this.stopBatchPolling();
+    const request = (this.batchDetailRequest || 0) + 1;
+    this.batchDetailRequest = request;
+    this.setData({ batchDetailLoading: true, batchGroupPage: 1, batchQueryError: '' });
+    try {
+      const task = await api.get(`/shipments/batch-tasks/${taskId}`, { groupPage: 1 });
+      if (this.batchPageClosed || request !== this.batchDetailRequest) return;
+      this.updateBatchProgress(task);
+      this.setData({ showRecentBatchTasks: false, viewingBatchHistory: history, showBatchProgress: true });
+      this.runBatchTask();
+    } catch (err) {
+      wx.showToast({ title: getErrorMessage(err, '任务详情加载失败，请重试'), icon: 'none' });
+    } finally { this.setData({ batchDetailLoading: false }); }
   },
 
   closeRecentBatchTasks: function() {
-    this.setData({ showRecentBatchTasks: false });
+    this.batchDetailRequest = (this.batchDetailRequest || 0) + 1;
+    this.setData({ showRecentBatchTasks: false, batchDetailLoading: false });
   },
 
   onUnload: function() {
     if (this.searchTimer) clearTimeout(this.searchTimer);
     this.searchRequestVersion = (this.searchRequestVersion || 0) + 1;
     this.batchPageClosed = true;
-    this.batchRunToken = (this.batchRunToken || 0) + 1;
+    this.stopBatchPolling();
   },
 
   // ==================== 工具函数 ====================
