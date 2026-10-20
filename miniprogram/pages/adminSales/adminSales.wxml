@@ -24,9 +24,11 @@
           <text class="stat-label">退款金额</text>
         </view>
       </view>
+      <view class="stat-row" wx:if="{{managerView}}"><view class="stat-item"><text class="stat-val">¥{{overview.salesCommission || 0}}</text><text class="stat-label">销售佣金</text></view></view>
       <text class="pending-review-tag" wx:if="{{overview.pendingReviewQty > 0}}">待审核 {{overview.pendingReviewQty}} 件</text>
     </block>
   </view>
+  <view class="commission-note" wx:if="{{managerView}}">销售佣金按订单佣金账本统计，已扣除退款扣回金额，包含待完成订单佣金，不代表当前可提现金额。</view>
   <!-- 筛选区 -->
   <view class="filter-bar">
     <view class="search-row">
@@ -88,6 +90,7 @@
           <text class="stat-label">退款金额</text>
         </view>
       </view>
+      <view class="stat-row" wx:if="{{managerView}}"><view class="stat-item"><text class="stat-val">¥{{filteredOverview.salesCommission || 0}}</text><text class="stat-label">销售佣金</text></view></view>
       <text class="pending-review-tag" wx:if="{{filteredOverview.pendingReviewQty > 0}}">待审核 {{filteredOverview.pendingReviewQty}} 件</text>
     </block>
   </view>
@@ -103,6 +106,7 @@
           <text class="product-qty">售出 {{item.soldQty || 0}} 件</text>
           <text class="product-amount">¥{{item.totalAmount || 0}}</text>
         </view>
+        <text class="product-qty" wx:if="{{managerView}}">销售佣金 ¥{{item.salesCommission || 0}}</text>
         <text class="pending-review-tag" wx:if="{{item.pendingReviewQty > 0}}">待审核 {{item.pendingReviewQty}} 件</text>
       </view>
       <view class="product-arrow">></view>

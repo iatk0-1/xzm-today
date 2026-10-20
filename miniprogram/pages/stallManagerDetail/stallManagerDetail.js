@@ -124,7 +124,10 @@ Page({
       this.restoreAdminWithdrawal();
       if (this.data.pendingAdminRequest) await this.recoverAdminWithdrawal();
       await this.loadStallPreviews();
-      if (this.data.tab !== 'profile') await this.loadList(true);
+      if (this.data.tab === 'sales') {
+        const sales = this.selectComponent('#manager-sales');
+        if (sales) await sales.refreshSales();
+      } else if (this.data.tab !== 'profile') await this.loadList(true);
     } catch (error) {
       if (sequence === this._refreshSequence) this.fail(error);
     }
@@ -136,6 +139,11 @@ Page({
   },
 
   onReachBottom() {
+    if (this.data.tab === 'sales') {
+      const sales = this.selectComponent('#manager-sales');
+      if (sales) return sales.loadMore();
+      return;
+    }
     if (this.data.hasNext) this.loadList(false);
   },
 

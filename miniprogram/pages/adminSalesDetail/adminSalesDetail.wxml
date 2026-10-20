@@ -29,6 +29,7 @@
         <text class="stat-label">退款金额</text>
       </view>
     </view>
+    <view class="stat-row" wx:if="{{managerId}}"><view class="stat-item"><text class="stat-val">¥{{overview.salesCommission || 0}}</text><text class="stat-label">销售佣金</text></view></view>
     <text class="pending-review-tag" wx:if="{{overview.pendingReviewQty > 0}}">待审核 {{overview.pendingReviewQty}} 件</text>
   </view>
 

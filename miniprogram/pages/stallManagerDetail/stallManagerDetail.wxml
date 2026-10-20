@@ -59,6 +59,7 @@
   </view>
   <scroll-view class="tabs" scroll-x scroll-with-animation scroll-into-view="manager-tab-{{tab}}">
     <view id="manager-tab-profile" class="tab {{tab === 'profile' ? 'active' : ''}}" data-tab="profile" bindtap="changeTab">档口与状态</view>
+    <view id="manager-tab-sales" class="tab {{tab === 'sales' ? 'active' : ''}}" data-tab="sales" bindtap="changeTab">销售数据</view>
     <view id="manager-tab-products" class="tab {{tab === 'products' ? 'active' : ''}}" data-tab="products" bindtap="changeTab">商品佣金</view>
     <view id="manager-tab-records" class="tab {{tab === 'records' ? 'active' : ''}}" data-tab="records" bindtap="changeTab">收入与线下付款</view>
     <view id="manager-tab-history" class="tab {{tab === 'history' ? 'active' : ''}}" data-tab="history" bindtap="changeTab">历史核对</view>
@@ -69,6 +70,8 @@
     <view id="manager-tab-audit" class="tab {{tab === 'audit' ? 'active' : ''}}" data-tab="audit" bindtap="changeTab">财务审计</view>
   </scroll-view>
   <view class="error" wx:if="{{error}}">{{error}}</view>
+
+  <manager-sales wx:if="{{tab === 'sales' && profile}}" id="manager-sales" manager-id="{{userId}}" />
 
   <view class="card" wx:if="{{tab === 'profile'}}">
     <view class="section-heading">
@@ -284,7 +287,7 @@
       <view class="order-ids" wx:if="{{item.referenceId}}">关联业务编号 {{item.referenceId}}</view>
     </view>
   </view>
-  <view class="muted" wx:if="{{tab !== 'profile'}}">{{listLoading ? '加载中...' : (rows.length ? (hasNext ? '上拉加载更多' : '已加载全部') : '暂无记录')}}</view>
+  <view class="muted" wx:if="{{tab !== 'profile' && tab !== 'sales'}}">{{listLoading ? '加载中...' : (rows.length ? (hasNext ? '上拉加载更多' : '已加载全部') : '暂无记录')}}</view>
 
 
   <view class="overlay" wx:if="{{paymentVisible}}" catchtouchmove="noop">

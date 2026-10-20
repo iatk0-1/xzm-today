@@ -6,6 +6,7 @@ const auth = require('../../utils/auth');
 Page({
   data: {
     productId: null,
+    managerId: '',
     productName: '',
     // 统计概览
     overview: { soldItems: 0, soldQty: 0, totalAmount: 0, afterSaleCount: 0,
@@ -38,7 +39,7 @@ Page({
     const startDate = options.startDate || '';
     const endDate = options.endDate || '';
 
-    this.setData({ productId, productName, startDate, endDate, today: this.formatDate(new Date()) });
+    this.setData({ productId, productName, startDate, endDate, managerId: options.managerId || '', today: this.formatDate(new Date()) });
 
     wx.setNavigationBarTitle({ title: productName || '商品销售详情' });
 
@@ -56,19 +57,24 @@ Page({
     this.loadOrders(true);
   },
 
+  salesUrl(suffix) {
+    return '/admin/sales' + (this.data.managerId ? '/managers/' + encodeURIComponent(this.data.managerId) : '') + suffix;
+  },
+
   loadOverview() {
     this.setData({ overviewError: '' });
     const params = {};
     if (this.data.startDate) params.startDate = this.data.startDate;
     if (this.data.endDate) params.endDate = this.data.endDate;
-    api.get('/admin/sales/products/' + this.data.productId + '/overview', params).then(res => {
+    return api.get(this.salesUrl('/products/' + this.data.productId + '/overview'), params).then(res => {
       this.setData({ overview: {
         soldItems: res.soldItems || 0,
         soldQty: res.soldQty || 0,
         totalAmount: res.totalAmount || 0,
         afterSaleCount: res.afterSaleCount || 0,
         afterSaleAmount: res.afterSaleAmount || 0,
-        pendingReviewQty: res.pendingReviewQty || 0
+        pendingReviewQty: res.pendingReviewQty || 0,
+        ...(this.data.managerId ? { salesCommission: res.salesCommission || 0 } : {})
       }});
     }).catch(err => { console.error('加载概览失败:', err); this.setData({ overviewError: getErrorMessage(err, '加载概览失败') }); });
   },
@@ -78,7 +84,7 @@ Page({
     const params = { page: 1, size: 100 };
     if (this.data.startDate) params.startDate = this.data.startDate;
     if (this.data.endDate) params.endDate = this.data.endDate;
-    api.get('/admin/sales/query/products/' + this.data.productId + '/skus', params).then(res => {
+    return api.get(this.salesUrl('/query/products/' + this.data.productId + '/skus'), params).then(res => {
       this.setData({ skus: res.content || [], skuTotal: res.totalElements || 0 });
     }).catch(err => { console.error('加载SKU列表失败:', err); this.setData({ skuError: getErrorMessage(err, '加载SKU列表失败') }); });
   },
@@ -91,7 +97,7 @@ Page({
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
 
-    api.get('/admin/sales/query/products/' + this.data.productId + '/orders', params).then(res => {
+    return api.get(this.salesUrl('/query/products/' + this.data.productId + '/orders'), params).then(res => {
       const items = (res.content || []).map(r => ({
         ...r,
         createdAtDisplay: this.formatTime(r.createdAt),
