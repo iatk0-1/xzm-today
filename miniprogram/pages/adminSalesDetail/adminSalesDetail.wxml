@@ -75,7 +75,11 @@
     <view class="order-card" wx:for="{{orders}}" wx:key="orderId">
       <view class="order-header">
         <text class="order-no">{{item.outTradeNo || item.orderId}}</text>
-        <text class="order-status">{{item.statusDisplay}}</text>
+        <view class="order-status-tags">
+          <text class="order-status">{{item.statusDisplay}}</text>
+          <text class="order-status order-after-sale-pending" wx:if="{{item.hasPendingReview}}">待审核</text>
+          <text class="order-status order-after-sale-approved" wx:if="{{item.hasAfterSale}}">已售后</text>
+        </view>
       </view>
       <!-- 订单内各明细项 -->
       <view class="order-items-list">
