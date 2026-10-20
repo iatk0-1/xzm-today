@@ -16,7 +16,7 @@ function harness(get) {
     requests.push({ url, params });
     if (get) return get(url, params);
     if (url.endsWith('/stalls')) return [{ id: '2', name: '二号档口' }];
-    if (url === '/tags/all') return [{ id: '3', name: '秋装' }];
+    if (url === base + '/tags') return [{ id: '3', name: '秋装' }];
     if (url.endsWith('/query/products')) return { content: [], totalElements: 0 };
     return { soldQty: 8, salesCommission: '12.34', refundedCommission: '2.10' };
   } };
@@ -39,6 +39,7 @@ test('负责人销售默认当天，列表和两组统计均查询指定负责�
   assert.equal(page.data.overview.refundedCommission, '2.10');
   assert.equal(page.data.filteredOverview.refundedCommission, '2.10');
   assert.ok(requests.some(r => r.url === base + '/stalls'));
+  assert.ok(requests.some(r => r.url === base + '/tags'));
   assert.ok(requests.some(r => r.url === base + '/overview'));
   assert.ok(requests.some(r => r.url === base + '/query/overview'));
   assert.ok(requests.some(r => r.url === base + '/query/products'));

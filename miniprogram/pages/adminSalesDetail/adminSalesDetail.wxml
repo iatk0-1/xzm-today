@@ -1,6 +1,6 @@
 <view class="page-wrapper">
   <view wx:if="{{orderError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="retryOrders">{{orderError}} · 点击重试</view>
-  <view wx:if="{{skuError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="loadSkus">{{skuError}} · 点击重试</view>
+  <view wx:if="{{skuError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="retrySkus">{{skuError}} · 点击重试</view>
   <view wx:if="{{overviewError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="loadOverview">{{overviewError}} · 点击重试</view>
   <!-- 商品名称 -->
   <view class="product-header">
@@ -25,8 +25,8 @@
     </view>
     <view class="stat-row">
       <view class="stat-item">
-        <text class="stat-val">{{overview.afterSaleCount || 0}}</text>
-        <text class="stat-label">售后数</text>
+        <text class="stat-val">{{overview.afterSaleQty || 0}}</text>
+        <text class="stat-label">售后件数</text>
       </view>
       <view class="stat-item">
         <text class="stat-val">¥{{overview.afterSaleAmount || 0}}</text>
@@ -64,7 +64,9 @@
       </view>
       <text class="sku-commission" wx:if="{{managerId}}">¥{{item.salesCommission || 0}}</text>
     </view>
-    <view class="empty-inner" wx:if="{{skus.length === 0}}">暂无 SKU 数据</view>
+    <view class="load-more" wx:if="{{skuLoading}}">正在加载 SKU...</view>
+    <view class="load-more" wx:elif="{{skuHasMore}}" bindtap="loadMoreSkus">加载更多 SKU</view>
+    <view class="empty-inner" wx:elif="{{skus.length === 0 && !skuError}}">暂无 SKU 数据</view>
   </view>
 
   <!-- 关联订单 -->
@@ -95,10 +97,11 @@
       </view>
       <view class="order-footer">
         <text class="order-time">{{item.createdAtDisplay}}</text>
-        <text class="order-total">订单金额 ¥{{item.payAmount || 0}}</text>
+        <text class="order-total">整单实付 ¥{{item.payAmount || 0}}</text>
       </view>
     </view>
-    <view class="load-more" wx:if="{{orders.length < orderTotal}}" bindtap="loadMoreOrders">加载更多</view>
+    <view class="load-more" wx:if="{{orderLoading}}">正在加载订单...</view>
+    <view class="load-more" wx:elif="{{orders.length < orderTotal}}" bindtap="loadMoreOrders">加载更多</view>
     <view class="empty-inner" wx:if="{{orders.length === 0}}">暂无关联订单</view>
   </view>
   <view class="modal" wx:if="{{showDateModal}}">

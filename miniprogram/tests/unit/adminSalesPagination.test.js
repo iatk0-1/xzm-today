@@ -157,7 +157,7 @@ test('销售页最近 1 天只查询当天，取消编辑不改已生效范围',
   assert.deepEqual(overviewRequests[0], { startDate: today, endDate: today });
   assert.deepEqual(filteredOverviewRequests[0], { startDate: today, endDate: today });
   assert.deepEqual(page.data.overview, {
-    soldQty: 25, totalAmount: 3316.25, afterSaleCount: 1, afterSaleAmount: 132.65,
+    soldQty: 25, totalAmount: 3316.25, afterSaleCount: 1, afterSaleQty: 1, afterSaleAmount: 132.65,
     pendingReviewQty: 0
   });
 });

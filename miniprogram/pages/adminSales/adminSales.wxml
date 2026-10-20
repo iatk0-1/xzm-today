@@ -20,8 +20,8 @@
       </view>
       <view class="stat-row">
         <view class="stat-item">
-          <text class="stat-val">{{overview.afterSaleCount || 0}}</text>
-          <text class="stat-label">售后数</text>
+          <text class="stat-val">{{overview.afterSaleQty || 0}}</text>
+          <text class="stat-label">售后件数</text>
         </view>
         <view class="stat-item">
           <text class="stat-val">¥{{overview.afterSaleAmount || 0}}</text>
@@ -35,7 +35,7 @@
       <text class="pending-review-tag" wx:if="{{overview.pendingReviewQty > 0}}">待审核 {{overview.pendingReviewQty}} 件</text>
     </block>
   </view>
-  <view class="commission-note" wx:if="{{managerView}}">销售佣金为扣除退还佣金后的金额；退还佣金为因退款已扣回的佣金。均按所选订单下单时间统计，包含待完成订单，不代表当前可提现金额。</view>
+  <view class="commission-note" wx:if="{{managerView}}">按下单时间统计已付款订单，包含已删除商品。售后审核通过即扣减销售净额和佣金；待审核仅单独提示，退还佣金不必等待退款成功，不代表当前可提现金额。</view>
   <!-- 筛选区 -->
   <view class="filter-bar">
     <view class="search-row">
@@ -93,8 +93,8 @@
       </view>
       <view class="stat-row">
         <view class="stat-item">
-          <text class="stat-val">{{filteredOverview.afterSaleCount || 0}}</text>
-          <text class="stat-label">售后数</text>
+          <text class="stat-val">{{filteredOverview.afterSaleQty || 0}}</text>
+          <text class="stat-label">售后件数</text>
         </view>
         <view class="stat-item">
           <text class="stat-val">¥{{filteredOverview.afterSaleAmount || 0}}</text>

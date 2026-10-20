@@ -12,10 +12,10 @@ return autoSearch.wrap({
     loading: false,
     loadError: false,
     isRefreshing: false,
-    overview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleAmount: 0, pendingReviewQty: 0 },
+    overview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleQty: 0, afterSaleAmount: 0, pendingReviewQty: 0 },
     overviewLoading: false,
     overviewError: false,
-    filteredOverview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleAmount: 0, pendingReviewQty: 0 },
+    filteredOverview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleQty: 0, afterSaleAmount: 0, pendingReviewQty: 0 },
     filteredOverviewLoading: false,
     filteredOverviewError: false,
     // 筛选
@@ -57,7 +57,7 @@ return autoSearch.wrap({
   },
 
   loadStallList() {
-    return api.get(managerView ? this.salesUrl('/stalls') : (this.data.isStallManager ? '/stall-managers/stalls/mine' : '/stalls/all')).then(stalls => {
+    return api.get(managerView ? this.salesUrl('/stalls') : '/admin/sales/filter-options/stalls').then(stalls => {
       const list = Array.isArray(stalls) ? stalls : [];
       const selectedStall = (managerView || this.data.isStallManager) && this.data.selectedStall
         && !list.some(item => String(item.id) === String(this.data.selectedStall))
@@ -67,7 +67,7 @@ return autoSearch.wrap({
   },
 
   loadTagList() {
-    return api.get('/tags/all').then(tags => {
+    return api.get(managerView ? this.salesUrl('/tags') : '/admin/sales/filter-options/tags').then(tags => {
       this.setData({ tagList: Array.isArray(tags) ? tags : [] });
     }).catch(err => console.error('加载标签列表失败:', err));
   },
@@ -108,7 +108,8 @@ return autoSearch.wrap({
       this.setData({ overview: {
         soldQty: res.soldQty || 0,
         totalAmount: res.totalAmount || 0,
-        afterSaleCount: res.afterSaleCount || 0,
+        afterSaleCount: res.afterSaleQty != null ? res.afterSaleQty : (res.afterSaleCount || 0),
+        afterSaleQty: res.afterSaleQty != null ? res.afterSaleQty : (res.afterSaleCount || 0),
         afterSaleAmount: res.afterSaleAmount || 0,
         pendingReviewQty: res.pendingReviewQty || 0,
         ...(managerView ? { salesCommission: res.salesCommission || 0, refundedCommission: res.refundedCommission || 0 } : {})
@@ -131,7 +132,8 @@ return autoSearch.wrap({
       this.setData({ filteredOverview: {
         soldQty: res.soldQty || 0,
         totalAmount: res.totalAmount || 0,
-        afterSaleCount: res.afterSaleCount || 0,
+        afterSaleCount: res.afterSaleQty != null ? res.afterSaleQty : (res.afterSaleCount || 0),
+        afterSaleQty: res.afterSaleQty != null ? res.afterSaleQty : (res.afterSaleCount || 0),
         afterSaleAmount: res.afterSaleAmount || 0,
         pendingReviewQty: res.pendingReviewQty || 0,
         ...(managerView ? { salesCommission: res.salesCommission || 0, refundedCommission: res.refundedCommission || 0 } : {})

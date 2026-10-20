@@ -15,7 +15,7 @@ Module._load = function(request, ...args) {
   if (request.endsWith('utils/api')) return {
     get: async (url, params) => {
       requests.push({ url, params });
-      if (url === '/stall-managers/stalls/mine') return [
+      if (url === '/stall-managers/stalls/mine' || url === '/admin/sales/filter-options/stalls') return [
         { id: '2', name: '二号档口' }, { id: '3', name: '三号档口' }
       ];
       if (url === '/products/query' || url === '/admin/sales/query/products') {
@@ -50,11 +50,13 @@ test('负责人商品管理只请求自己的商品和已分配档口', async ()
   assert.deepEqual(page.data.stallList.map(item => item.id), ['2', '3']);
 });
 
-test('负责人销售数据默认汇总所有已分配档口，且不请求全站概览', async () => {
+test('负责人销售数据使用历史档口筛选且不请求全站概览', async () => {
   requests.length = 0;
   const page = createPage('../../pages/adminSales/adminSales.js');
   await page.onLoad();
   assert.equal(requests.some(item => item.url === '/admin/sales/overview'), false);
+  assert.ok(requests.some(item => item.url === '/admin/sales/filter-options/stalls'));
+  assert.ok(requests.some(item => item.url === '/admin/sales/filter-options/tags'));
   assert.ok(requests.some(item => item.url === '/admin/sales/query/products' && !item.params.stallId));
   assert.ok(requests.some(item => item.url === '/admin/sales/query/overview' && !item.params.stallId));
 });
