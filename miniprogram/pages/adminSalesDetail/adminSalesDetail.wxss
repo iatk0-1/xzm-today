@@ -69,3 +69,14 @@ page { background-color: #f5f5f5; }
 .modal-cancel, .modal-confirm { flex: 1; height: 88rpx; line-height: 88rpx; font-size: 28rpx; border-radius: 0; padding: 0; border: none; }
 .modal-cancel { background: #f5f5f5; color: #666; border-right: 1rpx solid #f0f0f0; }
 .modal-confirm { background: #1a1a1a; color: #fff; }
+
+/* 负责人汇总固定为两行三列，长金额在本列换行。 */
+.commission-overview .stat-item { flex: 1 1 0; min-width: 0; padding: 0 6rpx; box-sizing: border-box; }
+.commission-overview .stat-val { font-size: 32rpx; overflow-wrap: anywhere; }
+
+.sku-with-commission .sku-info, .sku-table-heading .sku-info { flex: 1; min-width: 0; padding-right: 12rpx; overflow-wrap: anywhere; }
+.sku-with-commission .sku-stats, .sku-table-heading .sku-stats { flex: 0 0 240rpx; min-width: 0; gap: 8rpx; align-items: center; }
+.sku-with-commission .sku-qty, .sku-table-heading .sku-qty { flex: 0 0 64rpx; text-align: right; overflow-wrap: anywhere; }
+.sku-with-commission .sku-amount, .sku-table-heading .sku-amount { flex: 1; min-width: 0; text-align: right; font-size: 26rpx; overflow-wrap: anywhere; }
+.sku-commission { flex: 0 0 142rpx; min-width: 0; margin-left: 12rpx; text-align: right; font-size: 26rpx; font-weight: 600; color: #1a1a1a; overflow-wrap: anywhere; }
+.sku-table-heading .sku-info, .sku-table-heading .sku-qty, .sku-table-heading .sku-amount, .sku-table-heading .sku-commission { font-size: 23rpx; color: #999; font-weight: 400; }

@@ -67,3 +67,7 @@ page { background-color: #f5f5f5; }
 .modal-confirm { background: #1a1a1a; color: #fff; }
 
 .commission-note { padding: 0 12rpx 20rpx; font-size: 24rpx; color: #888; line-height: 1.6; }
+
+/* 负责人汇总固定为两行三列，长金额在本列换行。 */
+.commission-overview .stat-item { flex: 1 1 0; min-width: 0; padding: 0 6rpx; box-sizing: border-box; }
+.commission-overview .stat-val { font-size: 32rpx; overflow-wrap: anywhere; }

@@ -111,7 +111,7 @@ return autoSearch.wrap({
         afterSaleCount: res.afterSaleCount || 0,
         afterSaleAmount: res.afterSaleAmount || 0,
         pendingReviewQty: res.pendingReviewQty || 0,
-        ...(managerView ? { salesCommission: res.salesCommission || 0 } : {})
+        ...(managerView ? { salesCommission: res.salesCommission || 0, refundedCommission: res.refundedCommission || 0 } : {})
       } });
     }).catch(err => {
       if (requestId !== this.overviewRequestId) return;
@@ -134,7 +134,7 @@ return autoSearch.wrap({
         afterSaleCount: res.afterSaleCount || 0,
         afterSaleAmount: res.afterSaleAmount || 0,
         pendingReviewQty: res.pendingReviewQty || 0,
-        ...(managerView ? { salesCommission: res.salesCommission || 0 } : {})
+        ...(managerView ? { salesCommission: res.salesCommission || 0, refundedCommission: res.refundedCommission || 0 } : {})
       } });
     }).catch(err => {
       if (requestId !== this.filteredOverviewRequestId) return;

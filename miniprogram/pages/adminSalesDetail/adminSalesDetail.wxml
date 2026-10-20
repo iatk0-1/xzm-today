@@ -8,7 +8,7 @@
   </view>
 
   <!-- 统计卡片 -->
-  <view class="overview-card">
+  <view class="overview-card {{managerId ? 'commission-overview' : ''}}">
     <view class="stat-row">
       <view class="stat-item">
         <text class="stat-val">{{overview.soldQty || 0}}</text>
@@ -17,6 +17,10 @@
       <view class="stat-item">
         <text class="stat-val">¥{{overview.totalAmount || 0}}</text>
         <text class="stat-label">售出金额</text>
+      </view>
+      <view class="stat-item" wx:if="{{managerId}}">
+        <text class="stat-val">¥{{overview.salesCommission || 0}}</text>
+        <text class="stat-label">销售佣金</text>
       </view>
     </view>
     <view class="stat-row">
@@ -28,8 +32,11 @@
         <text class="stat-val">¥{{overview.afterSaleAmount || 0}}</text>
         <text class="stat-label">退款金额</text>
       </view>
+      <view class="stat-item" wx:if="{{managerId}}">
+        <text class="stat-val">¥{{overview.refundedCommission || 0}}</text>
+        <text class="stat-label">退还佣金</text>
+      </view>
     </view>
-    <view class="stat-row" wx:if="{{managerId}}"><view class="stat-item"><text class="stat-val">¥{{overview.salesCommission || 0}}</text><text class="stat-label">销售佣金</text></view></view>
     <text class="pending-review-tag" wx:if="{{overview.pendingReviewQty > 0}}">待审核 {{overview.pendingReviewQty}} 件</text>
   </view>
 
@@ -45,7 +52,8 @@
   <!-- SKU 售出明细 -->
   <view class="section-card">
     <view class="section-title">SKU 售出明细 ({{skuTotal}})</view>
-    <view class="sku-row" wx:for="{{skus}}" wx:key="skuSpec">
+    <view class="sku-row sku-table-heading" wx:if="{{managerId}}"><text class="sku-info">规格 / 尺码</text><view class="sku-stats"><text class="sku-qty">数量</text><text class="sku-amount">金额</text></view><text class="sku-commission">佣金</text></view>
+    <view class="sku-row {{managerId ? 'sku-with-commission' : ''}}" wx:for="{{skus}}" wx:key="skuKey">
       <view class="sku-info">
         <text class="sku-spec">{{item.skuSpec || '默认'}} / {{item.skuSize || '均码'}}</text>
         <text class="pending-review-tag" wx:if="{{item.pendingReviewQty > 0}}">待审核 {{item.pendingReviewQty}} 件</text>
@@ -54,6 +62,7 @@
         <text class="sku-qty">x{{item.soldQty || 0}}</text>
         <text class="sku-amount">¥{{item.totalAmount || 0}}</text>
       </view>
+      <text class="sku-commission" wx:if="{{managerId}}">¥{{item.salesCommission || 0}}</text>
     </view>
     <view class="empty-inner" wx:if="{{skus.length === 0}}">暂无 SKU 数据</view>
   </view>

@@ -18,7 +18,7 @@ function harness(get) {
     if (url.endsWith('/stalls')) return [{ id: '2', name: '二号档口' }];
     if (url === '/tags/all') return [{ id: '3', name: '秋装' }];
     if (url.endsWith('/query/products')) return { content: [], totalElements: 0 };
-    return { soldQty: 8, salesCommission: '12.34' };
+    return { soldQty: 8, salesCommission: '12.34', refundedCommission: '2.10' };
   } };
   const auth = { ensureAuthenticated: async () => {}, isStallManager: () => false };
   global.wx = { showToast() {}, stopPullDownRefresh() {}, navigateTo: data => routes.push(data.url) };
@@ -36,6 +36,8 @@ test('负责人销售默认当天，列表和两组统计均查询指定负责�
   assert.equal(page.data.endDate, today);
   assert.equal(page.data.overview.salesCommission, '12.34');
   assert.equal(page.data.filteredOverview.salesCommission, '12.34');
+  assert.equal(page.data.overview.refundedCommission, '2.10');
+  assert.equal(page.data.filteredOverview.refundedCommission, '2.10');
   assert.ok(requests.some(r => r.url === base + '/stalls'));
   assert.ok(requests.some(r => r.url === base + '/overview'));
   assert.ok(requests.some(r => r.url === base + '/query/overview'));
@@ -74,7 +76,11 @@ test('商品详情的概览、SKU和订单均保留负责人范围', async () =>
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../pages/adminSalesDetail/adminSalesDetail.js'), 'utf8'), {
     Page: value => { config = value; }, console,
     require: name => name.endsWith('/error') ? { getErrorMessage } : name.endsWith('/api') ? {
-      get: async (url, params) => { requests.push({ url, params }); return { salesCommission: '9.90', content: [] }; }
+      get: async (url, params) => {
+        requests.push({ url, params });
+        return url.endsWith('/skus') ? { content: [{ skuSpec: '红色', skuSize: 'M', salesCommission: '4.95' }], totalElements: 1 }
+          : { salesCommission: '9.90', refundedCommission: '1.10', content: [] };
+      }
     } : {}, wx: {}
   });
   const page = { ...config, data: { ...structuredClone(config.data), managerId, productId: '7', startDate: '2026-10-01' } };
@@ -83,6 +89,8 @@ test('商品详情的概览、SKU和订单均保留负责人范围', async () =>
   assert.deepEqual(requests.map(r => r.url), [base + '/products/7/overview', base + '/query/products/7/skus', base + '/query/products/7/orders']);
   assert.ok(requests.every(r => r.params.startDate === '2026-10-01'));
   assert.equal(page.data.overview.salesCommission, '9.90');
+  assert.equal(page.data.overview.refundedCommission, '1.10');
+  assert.equal(page.data.skus[0].salesCommission, '4.95');
 });
 
 test('详情页销售tab的触底事件交给销售组件，切换tab不调用佣金列表接口', async () => {

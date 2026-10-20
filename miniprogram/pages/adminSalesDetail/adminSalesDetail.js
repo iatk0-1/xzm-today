@@ -74,7 +74,7 @@ Page({
         afterSaleCount: res.afterSaleCount || 0,
         afterSaleAmount: res.afterSaleAmount || 0,
         pendingReviewQty: res.pendingReviewQty || 0,
-        ...(this.data.managerId ? { salesCommission: res.salesCommission || 0 } : {})
+        ...(this.data.managerId ? { salesCommission: res.salesCommission || 0, refundedCommission: res.refundedCommission || 0 } : {})
       }});
     }).catch(err => { console.error('加载概览失败:', err); this.setData({ overviewError: getErrorMessage(err, '加载概览失败') }); });
   },
@@ -85,7 +85,7 @@ Page({
     if (this.data.startDate) params.startDate = this.data.startDate;
     if (this.data.endDate) params.endDate = this.data.endDate;
     return api.get(this.salesUrl('/query/products/' + this.data.productId + '/skus'), params).then(res => {
-      this.setData({ skus: res.content || [], skuTotal: res.totalElements || 0 });
+      this.setData({ skus: (res.content || []).map(item => ({ ...item, skuKey: JSON.stringify([item.skuSpec, item.skuSize]) })), skuTotal: res.totalElements || 0 });
     }).catch(err => { console.error('加载SKU列表失败:', err); this.setData({ skuError: getErrorMessage(err, '加载SKU列表失败') }); });
   },
 
