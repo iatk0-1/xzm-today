@@ -29,6 +29,12 @@ Page(pageSync.wrap({
     partialUnbindShipment: null,
     partialUnbindItems: [],
     showPartialUnbindPanel: false,
+    showUnbindPreview: false,
+    unbindPreview: null,
+    unbindStockConfirmed: false,
+    unbindLoading: false,
+    unbindSaving: false,
+    pendingShipmentUnbind: null,
     adminRemarkPanel: null
     ,adminRemarkValue: ''
   },
@@ -40,6 +46,10 @@ Page(pageSync.wrap({
     }
     this.setData({ orderId: options.id });
     this.loadOrderDetail();
+  },
+
+  onShow() {
+    this.syncPendingShipmentUnbind();
   },
 
   async retryShippingRefund() {
@@ -89,6 +99,7 @@ Page(pageSync.wrap({
       console.error('load order detail failed:', err);
     } finally {
       wx.hideLoading();
+      this.syncPendingShipmentUnbind();
     }
   },
 
@@ -163,6 +174,8 @@ Page(pageSync.wrap({
       }
     } catch (err) {
       console.error('load shipments failed:', err);
+    } finally {
+      this.syncPendingShipmentUnbind();
     }
   },
 
@@ -221,32 +234,96 @@ Page(pageSync.wrap({
     });
   },
 
-  cancelWaybill(e) {
-    const shipmentId = e.currentTarget.dataset.shipmentId;
-    const orderNo = e.currentTarget.dataset.orderNo || '';
-    wx.showModal({
-      title: '完全解绑快递单号',
-      content: `请确认 ${orderNo} 的实物尚未出库，或已经实际回仓。\n\n仅取消电子面单不能返库存；确认后解绑包裹、返还实际扣过的库存并重算订单。`,
-      confirmText: '确认解绑',
-      confirmColor: '#d93026',
-      success: async res => {
-        if (!res.confirm) return;
-        wx.showLoading({ title: '解绑中...' });
-        try {
-          await quantityOperation.run(api, `/admin/orders-manage/orders/shipments/${shipmentId}/unbind`, { stockReturned: true, note: '管理员确认未出库或已回仓' });
-          pageSync.publish('orders', this.data.orderId);
-          wx.showToast({ title: '已解绑', icon: 'success' });
-          this.loadOrderDetail();
-        } catch (err) {
-          wx.showModal({ title: '解绑失败', content: getErrorMessage(err, '解绑快递单号失败'), showCancel: false });
-        } finally {
-          wx.hideLoading();
-        }
-      }
-    });
+  async cancelWaybill(e) {
+    if (this.data.unbindLoading || this.data.unbindSaving) return;
+    this.setData({ unbindLoading: true });
+    try {
+      const preview = await api.get(`/admin/orders-manage/orders/shipments/${e.currentTarget.dataset.shipmentId}/unbind-preview`);
+      const orders = (preview.orders || []).map(order => ({ ...order,
+        orderNo: order.orderNo || String(order.orderId), statusText: this.getOrderStatusDisplay(order.status),
+        current: String(order.orderId) === String(this.data.orderId),
+        items: (order.items || []).map(item => ({ ...item, productName: item.productName || '历史商品' })) }));
+      this.setData({ showUnbindPreview: true, unbindPreview: { ...preview, orders }, unbindStockConfirmed: false });
+    } catch (err) {
+      wx.showToast({ title: getErrorMessage(err, '整包解绑范围加载失败，请重试'), icon: 'none' });
+    } finally { this.setData({ unbindLoading: false }); }
+  },
+
+  closeUnbindPreview() {
+    if (!this.data.unbindSaving) this.setData({ showUnbindPreview: false, unbindPreview: null, unbindStockConfirmed: false });
+  },
+
+  onUnbindStockConfirmed(e) {
+    this.setData({ unbindStockConfirmed: (e.detail.value || []).includes('confirmed') });
+  },
+
+  async confirmFullUnbind() {
+    const preview = this.data.unbindPreview;
+    if (!preview || !this.data.unbindStockConfirmed || this.data.unbindSaving) return;
+    this.setData({ unbindSaving: true });
+    wx.showLoading({ title: '解绑中...', mask: true });
+    try {
+      await quantityOperation.run(api, `/admin/orders-manage/orders/shipments/${preview.shipmentId}/unbind`,
+        { stockReturned: true, note: '管理员确认整个包裹实物未出库或已回仓', previewToken: preview.previewToken },
+        { orderId: this.data.orderId });
+      this.setData({ showUnbindPreview: false, unbindPreview: null, unbindStockConfirmed: false });
+      wx.showToast({ title: '整个包裹已解绑', icon: 'success' });
+      await this.loadOrderDetail();
+    } catch (err) {
+      wx.showModal({ title: '解绑未完成', content: getErrorMessage(err, '请先核查原解绑结果再操作'), showCancel: false });
+    } finally {
+      wx.hideLoading();
+      this.setData({ unbindSaving: false });
+      this.syncPendingShipmentUnbind();
+    }
+  },
+
+  syncPendingShipmentUnbind() {
+    const pending = quantityOperation.pending();
+    const match = pending && pending.path.match(/^\/admin\/orders-manage\/orders\/shipments\/([^/]+)\/(partial-)?unbind$/);
+    const sameOrder = pending?.context?.orderId
+      ? String(pending.context.orderId) === String(this.data.orderId)
+      : match && (this.data.shipments || []).some(s => String(s.id) === match[1]);
+    this.setData({ pendingShipmentUnbind: match && sameOrder ? { shipmentId: match[1], requestId: pending.payload.requestId } : null });
+  },
+
+  async retryShipmentUnbind() {
+    if (this.data.unbindSaving || !this.data.pendingShipmentUnbind) return;
+    this.setData({ unbindSaving: true });
+    try {
+      await quantityOperation.retry(api);
+      this.setData({ showUnbindPreview: false });
+      await this.loadOrderDetail();
+      wx.showToast({ title: '原解绑操作已完成', icon: 'success' });
+    } catch (err) {
+      wx.showModal({ title: '解绑待核查', content: getErrorMessage(err, '请核查面单状态，再沿用原请求续办'), showCancel: false });
+    } finally { this.setData({ unbindSaving: false }); this.syncPendingShipmentUnbind(); }
+  },
+
+  async reviewShipmentUnbindWaybill() {
+    const pending = this.data.pendingShipmentUnbind;
+    if (!pending || this.data.unbindSaving) return;
+    const confirmed = await new Promise(resolve => wx.showModal({ title: '核查面单处理结果',
+      content: '请先在原物流平台确认面单已取消，或核实是无需本系统取消的手工单；同时确认实物未出库或已回仓。请填写核查依据。',
+      confirmText: '已核实', success: r => resolve(r.confirm), fail: () => resolve(false) }));
+    if (!confirmed || this.data.unbindSaving) return;
+    const note = await new Promise(resolve => wx.showModal({ title: '填写核查依据', editable: true, content: '',
+      placeholderText: '平台取消记录或手工单核查依据', success: r => resolve(r.confirm ? (r.content || '').trim() : ''), fail: () => resolve('') }));
+    if (!note || this.data.unbindSaving) return;
+    this.setData({ unbindSaving: true });
+    try {
+      await api.post(`/admin/orders-manage/orders/shipments/${pending.shipmentId}/unbind/${encodeURIComponent(pending.requestId)}/confirm-waybill-cancelled`, { note });
+      await quantityOperation.retry(api);
+      this.setData({ showUnbindPreview: false });
+      await this.loadOrderDetail();
+      wx.showToast({ title: '核查后原解绑已完成', icon: 'success' });
+    } catch (err) {
+      wx.showModal({ title: '原解绑未完成', content: getErrorMessage(err, '请保留原请求，核查后重试'), showCancel: false });
+    } finally { this.setData({ unbindSaving: false }); this.syncPendingShipmentUnbind(); }
   },
 
   openPartialUnbindPanel(e) {
+    if (this.data.unbindSaving || this.data.unbindLoading) return;
     const shipmentIndex = e.currentTarget.dataset.shipmentIndex;
     const shipment = this.data.shipments[shipmentIndex];
     if (!shipment) return;
@@ -265,6 +342,7 @@ Page(pageSync.wrap({
   },
 
   closePartialUnbindPanel() {
+    if (this.data.unbindSaving) return;
     this.setData({
       partialUnbindShipment: null,
       partialUnbindItems: [],
@@ -279,6 +357,7 @@ Page(pageSync.wrap({
   },
 
   async submitPartialUnbind() {
+    if (this.data.unbindSaving) return;
     const shipment = this.data.partialUnbindShipment;
     if (this.data.partialUnbindItems.some(item => item.unbindQty !== '' && (!Number.isSafeInteger(Number(item.unbindQty)) || Number(item.unbindQty) < 0))) {
       wx.showToast({ title: '解绑数量必须是非负整数', icon: 'none' }); return;
@@ -300,20 +379,23 @@ Page(pageSync.wrap({
       return;
     }
     const confirmed = await new Promise(resolve => wx.showModal({ title: '确认实物状态', content: '所选数量必须尚未实际出库或已经回仓；电子面单取消本身不能返库存。确认所选实物状态符合？', success: r => resolve(r.confirm), fail: () => resolve(false) }));
-    if (!confirmed) return;
-    wx.showLoading({ title: '解绑中...' });
+    if (!confirmed || this.data.unbindSaving) return;
+    this.setData({ unbindSaving: true });
+    wx.showLoading({ title: '解绑中...', mask: true });
     try {
       await quantityOperation.run(api, `/admin/orders-manage/orders/shipments/${shipment.id}/partial-unbind`, {
         items: items.map(item => ({ orderItemId: item.orderItemId, qty: item.qty })), stockReturned: true, note: '管理员确认所选实物未出库或已回仓'
-      });
+      }, { orderId: this.data.orderId });
       pageSync.publish('orders', this.data.orderId);
       wx.showToast({ title: '已部分解绑', icon: 'success' });
-      this.closePartialUnbindPanel();
-      this.loadOrderDetail();
+      this.setData({ partialUnbindShipment: null, partialUnbindItems: [], showPartialUnbindPanel: false });
+      await this.loadOrderDetail();
     } catch (err) {
       wx.showModal({ title: '解绑失败', content: getErrorMessage(err, '部分解绑失败'), showCancel: false });
     } finally {
       wx.hideLoading();
+      this.setData({ unbindSaving: false });
+      this.syncPendingShipmentUnbind();
     }
   },
 

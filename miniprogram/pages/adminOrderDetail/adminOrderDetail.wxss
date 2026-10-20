@@ -315,3 +315,21 @@ page { background-color: #f2f2f2; }
 
 /* 保留文字原有行内排版，商品标题继续由外层控制两行省略。 */
 .copyable-text { display: inline; }
+
+.unbind-pending-banner { margin: 24rpx; padding: 24rpx; border-radius: 14rpx; background: #fff4e7; color: #7b4c21; font-size: 24rpx; line-height: 1.7; overflow-wrap: anywhere; }
+.unbind-pending-actions { display: flex; gap: 16rpx; margin-top: 16rpx; }
+.unbind-pending-actions button { flex: 1; margin: 0; font-size: 23rpx; }
+.unbind-preview-panel { max-height: 84vh; }
+.unbind-preview-panel .panel-body { width: 100%; padding: 0; }
+.unbind-preview-content { padding: 0 28rpx; }
+.unbind-preview-title { font-size: 29rpx; font-weight: 600; color: #333; }
+.unbind-preview-waybill, .unbind-preview-order-no { margin-top: 12rpx; font-size: 24rpx; color: #666; overflow-wrap: anywhere; }
+.unbind-preview-tip { padding: 18rpx; margin-top: 16rpx; font-size: 24rpx; line-height: 1.6; color: #8b4c25; background: #fff5e9; border-radius: 10rpx; }
+.unbind-preview-order { margin-top: 24rpx; padding: 22rpx 0; border-top: 1rpx solid #eee; }
+.unbind-preview-order-head { display: flex; justify-content: space-between; gap: 16rpx; font-size: 25rpx; font-weight: 600; }
+.unbind-preview-goods { display: flex; gap: 18rpx; padding-top: 20rpx; font-size: 25rpx; line-height: 1.6; }
+.unbind-preview-goods image { width: 100rpx; height: 112rpx; border-radius: 8rpx; flex-shrink: 0; }
+.unbind-preview-goods-info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.unbind-preview-spec { font-size: 23rpx; color: #777; }
+.unbind-stock-confirm { display: flex; align-items: flex-start; margin: 22rpx 0 12rpx; font-size: 25rpx; line-height: 1.6; }
+.unbind-stock-confirm checkbox { flex-shrink: 0; margin-right: 10rpx; }

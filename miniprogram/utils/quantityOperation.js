@@ -17,14 +17,15 @@ async function send(api, operation) {
     throw err;
   } finally { busy = false; }
 }
-async function run(api, path, payload) {
+async function run(api, path, payload, context) {
   const signature = JSON.stringify({ path, payload });
   let operation = pending();
   if (operation && operation.signature !== signature) {
-    throw new Error('上次数量操作结果待确认，请先到库存页重试原操作');
+    const page = /\/shipments\/[^/]+\/(partial-)?unbind$/.test(operation.path) ? '原订单页' : '库存页';
+    throw new Error('上次数量操作结果待确认，请先到' + page + '重试原操作');
   }
   if (!operation) {
-    operation = { path, payload: { ...payload, requestId: requestId() }, signature };
+    operation = { path, payload: { ...payload, requestId: requestId() }, signature, context };
     save(operation);
   }
   return send(api, operation);

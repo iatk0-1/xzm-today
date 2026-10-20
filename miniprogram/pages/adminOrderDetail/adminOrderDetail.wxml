@@ -1,4 +1,13 @@
 <view class="admin-detail-wrapper" wx:if="{{!isLoading && order}}">
+  <view class="unbind-pending-banner" wx:if="{{pendingShipmentUnbind}}">
+    <view class="unbind-preview-title">有发货解绑等待确认</view>
+    <view>原请求 {{pendingShipmentUnbind.requestId}}</view>
+    <view>请保留原请求核查，避免重新办理另一笔解绑。</view>
+    <view class="unbind-pending-actions">
+      <button size="mini" bindtap="retryShipmentUnbind" disabled="{{unbindSaving}}">重试原解绑</button>
+      <button size="mini" bindtap="reviewShipmentUnbindWaybill" disabled="{{unbindSaving}}">核查面单后续办</button>
+    </view>
+  </view>
   <view class="status-header">
     <view class="status-title">{{order.statusDisplay}}</view>
     <view class="status-desc" wx:if="{{order.status === 'pending'}}">待支付</view>
@@ -132,8 +141,8 @@
 
         <view class="waybill-actions" wx:if="{{(order.status === 'paid' || order.status === 'shipped' || order.status === 'partial_shipped') && item.expressNo}}">
           <button class="btn-preview" bindtap="previewWaybill" data-url="{{item.pdfShowUrl}}" wx:if="{{item.pdfShowUrl}}">预览面单</button>
-          <button class="btn-partial-unbind" bindtap="openPartialUnbindPanel" data-shipment-index="{{shipmentIndex}}">部分解绑</button>
-          <button class="btn-cancel-waybill" bindtap="cancelWaybill" data-shipment-id="{{item.id}}" data-order-no="{{item.expressNo}}">完全解绑</button>
+          <button class="btn-partial-unbind" bindtap="openPartialUnbindPanel" data-shipment-index="{{shipmentIndex}}" disabled="{{unbindSaving}}">解绑本单商品</button>
+          <button class="btn-cancel-waybill" bindtap="cancelWaybill" data-shipment-id="{{item.id}}" disabled="{{unbindLoading || unbindSaving}}">解绑整个包裹</button>
         </view>
 
         <view class="logistics-trace" wx:if="{{logisticsTraceMap[item.id] && logisticsTraceMap[item.id].nodes && logisticsTraceMap[item.id].nodes.length > 0}}">
@@ -235,10 +244,11 @@
 <view class="panel-mask" wx:if="{{showPartialUnbindPanel}}" catchtap="closePartialUnbindPanel"></view>
 <view class="bottom-panel" wx:if="{{showPartialUnbindPanel}}">
   <view class="panel-header">
-    <text class="panel-title">部分解绑</text>
+    <text class="panel-title">解绑当前订单商品</text>
     <text class="panel-close" bindtap="closePartialUnbindPanel">关闭</text>
   </view>
   <scroll-view class="panel-body" scroll-y>
+    <view class="unbind-preview-tip">只处理本订单所选数量，保留同包其他订单。已有退货退款售后的商品请通过售后验收处理。</view>
     <view class="refund-row" wx:for="{{partialUnbindItems}}" wx:for-item="unbindItem" wx:for-index="unbindIndex" wx:key="orderItemId">
       <view class="refund-main">
         <text class="refund-title">{{unbindItem.productName}}</text>
@@ -252,6 +262,38 @@
   </scroll-view>
   <view class="panel-actions">
     <button class="panel-btn secondary" bindtap="closePartialUnbindPanel">取消</button>
-    <button class="panel-btn danger" bindtap="submitPartialUnbind">确认解绑</button>
+    <button class="panel-btn danger" bindtap="submitPartialUnbind" disabled="{{unbindSaving}}" loading="{{unbindSaving}}">确认所选商品解绑</button>
+  </view>
+</view>
+
+<view class="panel-mask" wx:if="{{showUnbindPreview}}" catchtap="closeUnbindPreview"></view>
+<view class="bottom-panel unbind-preview-panel" wx:if="{{showUnbindPreview && unbindPreview}}">
+  <view class="panel-header">
+    <text class="panel-title">核对整个包裹解绑范围</text>
+    <text class="panel-close" bindtap="closeUnbindPreview">关闭</text>
+  </view>
+  <scroll-view class="panel-body" scroll-y>
+    <view class="unbind-preview-content">
+    <view class="unbind-preview-title">{{unbindPreview.orders.length}} 笔订单 · {{unbindPreview.totalQty}} 件商品</view>
+    <view class="unbind-preview-waybill" user-select="{{true}}">运单 {{unbindPreview.expressNo}}</view>
+    <view class="unbind-preview-tip">以下订单商品会一并解绑，并按实际扣库来源返还库存。仅取消电子面单不能返库存，必须先确认实物状态。</view>
+    <view class="unbind-preview-tip" wx:if="{{unbindPreview.orders.length > 1}}">这是合单包裹，操作范围包含其他订单；只处理当前订单时，请关闭后选择“解绑本单商品”。</view>
+    <view class="unbind-preview-tip" wx:if="{{unbindPreview.waybillNeedsReview}}">该历史面单需要核实来源，若无法自动确认，请先核查原物流平台的面单状态。</view>
+    <view class="unbind-preview-order" wx:for="{{unbindPreview.orders}}" wx:key="orderId" wx:for-item="affectedOrder">
+      <view class="unbind-preview-order-head"><text>{{affectedOrder.current ? '当前订单' : '关联订单'}} · {{affectedOrder.statusText}}</text><text wx:if="{{affectedOrder.adminSeqNo}}">序号 {{affectedOrder.adminSeqNo}}</text></view>
+      <view class="unbind-preview-order-no" user-select="{{true}}">{{affectedOrder.orderNo}}</view>
+      <view class="unbind-preview-goods" wx:for="{{affectedOrder.items}}" wx:key="orderItemId" wx:for-item="goods">
+        <image src="{{goods.productImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
+        <view class="unbind-preview-goods-info"><view user-select="{{true}}">{{goods.productName}}</view><view class="unbind-preview-spec">{{goods.spec}} {{goods.size}}</view><view>本包数量 × {{goods.qty}}</view></view>
+      </view>
+    </view>
+    <checkbox-group bindchange="onUnbindStockConfirmed">
+      <label class="unbind-stock-confirm"><checkbox value="confirmed" checked="{{unbindStockConfirmed}}" disabled="{{unbindSaving}}" color="#d93026" /><text>我已确认上述全部商品尚未实际出库，或已经全部实际回仓。</text></label>
+    </checkbox-group>
+    </view>
+  </scroll-view>
+  <view class="panel-actions">
+    <button class="panel-btn secondary" bindtap="closeUnbindPreview" disabled="{{unbindSaving}}">取消</button>
+    <button class="panel-btn danger" bindtap="confirmFullUnbind" disabled="{{!unbindStockConfirmed || unbindSaving || unbindPreview.totalQty <= 0}}" loading="{{unbindSaving}}">解绑整包 {{unbindPreview.totalQty}} 件</button>
   </view>
 </view>
