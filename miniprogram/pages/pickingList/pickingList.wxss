@@ -554,6 +554,18 @@ page {
 .missing-cost {
   color: #b76a00;
 }
+
+.cost-modal { z-index: 1100; }
+.cost-modal-body { padding: 28rpx; }
+.cost-product-name { font-size: 27rpx; line-height: 38rpx; font-weight: 600; color: #1f2933; word-break: break-all; }
+.cost-product-spec { margin-top: 8rpx; font-size: 23rpx; color: #7b8490; }
+.cost-input-label { margin-top: 30rpx; margin-bottom: 14rpx; font-size: 25rpx; color: #344054; }
+.cost-input-frame { display: flex; align-items: center; height: 84rpx; padding: 0 20rpx; border: 1px solid #b8c4d3; border-radius: 8rpx; box-sizing: border-box; }
+.cost-currency { margin-right: 14rpx; color: #344054; font-size: 30rpx; }
+.cost-price-input { flex: 1; min-width: 0; height: 100%; color: #1677c8; font-size: 30rpx; }
+.cost-modal-hint, .cost-load-error { margin-top: 16rpx; font-size: 22rpx; line-height: 32rpx; color: #7b8490; }
+.cost-load-error { color: #d93026; }
+.cost-modal .btn-confirm[disabled] { background: #a0a6ad; color: #fff; }
 .refund-modal { width: 700rpx; max-height: 82vh; }
 .refund-modal-subtitle { padding: 14rpx 24rpx; color: #59636f; font-size: 23rpx; border-bottom: 1rpx solid #eee; }
 .refund-order-list { flex: 1; min-height: 0; max-height: 60vh; padding: 14rpx 18rpx; box-sizing: border-box; }

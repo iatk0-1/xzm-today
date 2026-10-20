@@ -190,8 +190,8 @@
             <view class="qty-label">报单数量（待报 {{item.recommendQty}}，超出部分记备货）</view>
           </view>
           <view class="order-item-controls">
-            <view class="order-item-cost" wx:if="{{item.costSubtotal !== null}}">成本小计 ¥{{item.costSubtotal}}</view>
-            <view class="order-item-cost missing-cost" wx:else>未设置成本价</view>
+            <view class="order-item-cost" wx:if="{{item.costSubtotal !== null}}" catchtap="openCostModal" data-index="{{index}}">成本小计 ¥{{item.costSubtotal}}</view>
+            <view class="order-item-cost missing-cost" wx:else catchtap="openCostModal" data-index="{{index}}">未设置成本价</view>
             <view class="qty-editor">
               <button class="qty-adjust" bindtap="adjustOrderQty" data-index="{{index}}" data-delta="-1">−</button>
               <view class="qty-input-frame">
@@ -217,6 +217,29 @@
       <view class="modal-footer">
         <button class="btn-cancel" bindtap="hideOrderModal">取消</button>
         <button class="btn-confirm" bindtap="confirmOrder">确认报单</button>
+      </view>
+    </view>
+  </view>
+  <!-- 成本编辑叠加在报单弹窗上，取消后继续保留报单内容。 -->
+  <view class="modal cost-modal" wx:if="{{showCostModal}}" catchtouchmove="stopModalTouchMove">
+    <view class="modal-mask" bindtap="closeCostModal"></view>
+    <view class="modal-content">
+      <view class="modal-title">修改成本价</view>
+      <view class="cost-modal-body">
+        <view class="cost-product-name">{{costEditingItem.productName}}</view>
+        <view class="cost-product-spec">{{costEditingItem.spec}} {{costEditingItem.size}}</view>
+        <view class="cost-input-label">成本单价（元 / 件）</view>
+        <view class="cost-input-frame">
+          <text class="cost-currency">¥</text>
+          <input class="cost-price-input" type="digit" value="{{costPriceInput}}" placeholder="请输入成本单价" disabled="{{costLoading || costSaving || costLoadError}}" bindinput="onCostPriceInput" bindconfirm="saveOrderCost" adjust-position="{{true}}" cursor-spacing="100" />
+        </view>
+        <view class="cost-modal-hint" wx:if="{{costLoading}}">正在加载当前成本…</view>
+        <view class="cost-load-error" wx:elif="{{costLoadError}}" bindtap="loadEditingCost">{{costLoadError}}，点击重试</view>
+        <view class="cost-modal-hint" wx:else>保存后按报单数量自动更新成本小计</view>
+      </view>
+      <view class="modal-footer">
+        <button class="btn-cancel" bindtap="closeCostModal" disabled="{{costSaving}}">取消</button>
+        <button class="btn-confirm" bindtap="saveOrderCost" loading="{{costSaving}}" disabled="{{costLoading || costSaving || costLoadError}}">保存</button>
       </view>
     </view>
   </view>

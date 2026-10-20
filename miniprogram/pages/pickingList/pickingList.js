@@ -33,6 +33,12 @@ Page(autoSearch.wrap(pageSync.wrap({
     // 报单详情弹窗
     showOrderModal: false,
     orderPreviewList: [],
+    showCostModal: false,
+    costEditingItem: null,
+    costPriceInput: '',
+    costLoading: false,
+    costSaving: false,
+    costLoadError: '',
     showRefundModal: false,
     refundSku: null,
     refundOrders: [],
@@ -105,6 +111,77 @@ Page(autoSearch.wrap(pageSync.wrap({
     const recommendList = this.data.recommendList.map(update);
     this.setData({ recommendList, filteredList: recommendList, pendingOrderList: this.data.pendingOrderList.map(update) });
     if (this.data.showOrderModal) this.updateOrderPreview(this.data.orderPreviewList.map(update));
+  },
+
+  openCostModal(e) {
+    if (this.data.showCostModal) return;
+    const item = this.data.orderPreviewList[Number(e.currentTarget.dataset.index)];
+    if (!item || item.skuId == null) return;
+    this.setData({ showCostModal: true, costEditingItem: { ...item },
+      costPriceInput: item.costPrice == null ? '' : String(item.costPrice), costLoadError: '' });
+    return this.loadEditingCost();
+  },
+
+  async loadEditingCost() {
+    if (this.data.costLoading || !this.data.costEditingItem) return;
+    const item = this.data.costEditingItem;
+    this.setData({ costLoading: true, costLoadError: '' });
+    try {
+      const result = await api.get('/picking-list/skus/' + encodeURIComponent(String(item.skuId)) + '/cost');
+      if (!this.data.showCostModal || this.data.costEditingItem !== item) return;
+      this.setData({ costPriceInput: result.costPrice == null ? '' : String(result.costPrice) });
+    } catch (err) {
+      if (this.data.showCostModal && this.data.costEditingItem === item) {
+        this.setData({ costLoadError: getErrorMessage(err, '成本加载失败，请重试') });
+      }
+    } finally {
+      if (this.data.costEditingItem === item) this.setData({ costLoading: false });
+    }
+  },
+
+  onCostPriceInput(e) {
+    if (this.data.costLoading || this.data.costSaving) return;
+    this.setData({ costPriceInput: e.detail.value });
+  },
+
+  closeCostModal() {
+    if (this.data.costSaving) return;
+    this.setData({ showCostModal: false, costEditingItem: null, costPriceInput: '',
+      costLoading: false, costLoadError: '' });
+  },
+
+  async saveOrderCost() {
+    if (this.data.costLoading || this.data.costSaving || this.data.costLoadError) return;
+    const item = this.data.costEditingItem;
+    if (!item) return;
+    const value = String(this.data.costPriceInput).trim();
+    const costPrice = Number(value);
+    if (!/^\d+(\.\d{1,2})?$/.test(value) || !Number.isFinite(costPrice)
+        || costPrice <= 0 || costPrice > 99999999.99) {
+      wx.showToast({ title: '成本须大于0，最多两位小数', icon: 'none' });
+      return;
+    }
+    this.setData({ costSaving: true });
+    try {
+      const result = await api.put('/picking-list/skus/' + encodeURIComponent(String(item.skuId)) + '/cost',
+        { costPrice: costPrice.toFixed(2) });
+      const update = row => String(row.skuId) === String(item.skuId)
+        ? { ...row, costPrice: result.costPrice } : row;
+      const recommendList = this.data.recommendList.map(update);
+      const byId = new Map(recommendList.map(row => [String(row.skuId), row]));
+      this.setData({ recommendList,
+        filteredList: this.data.filteredList.map(row => byId.get(String(row.skuId)) || update(row)),
+        pendingOrderList: this.data.pendingOrderList.map(update) });
+      this.updateOrderPreview(this.data.orderPreviewList.map(update));
+      pageSync.publish('products', result.productId || item.productId);
+      this.setData({ costSaving: false });
+      this.closeCostModal();
+      wx.showToast({ title: '成本已保存', icon: 'success' });
+    } catch (err) {
+      wx.showToast({ title: getErrorMessage(err, '成本保存失败，请重试'), icon: 'none' });
+    } finally {
+      this.setData({ costSaving: false });
+    }
   },
 
   async openRefundModal(e) {
@@ -661,6 +738,7 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   // 隐藏报单弹窗
   hideOrderModal: function() {
+    if (this.data.showCostModal) return;
     this.setData({ showOrderModal: false });
     // 取消弹窗保留已选商品和修改后的数量。
     this.updateSelectedInfo();
@@ -668,6 +746,7 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   // 确认报单
   confirmOrder: async function() {
+    if (this.data.showCostModal) return;
     const selectedItems = this.data.orderPreviewList.map(item => ({
       ...item,
       qty: this.parseOrderQty(item.qty)
