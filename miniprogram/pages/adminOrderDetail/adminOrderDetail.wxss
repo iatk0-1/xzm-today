@@ -333,3 +333,21 @@ page { background-color: #f2f2f2; }
 .unbind-preview-spec { font-size: 23rpx; color: #777; }
 .unbind-stock-confirm { display: flex; align-items: flex-start; margin: 22rpx 0 12rpx; font-size: 25rpx; line-height: 1.6; }
 .unbind-stock-confirm checkbox { flex-shrink: 0; margin-right: 10rpx; }
+
+.peer-order-tag { display: inline-block; padding: 8rpx 16rpx; margin-top: 16rpx; background: #fff2da; color: #8a5314; border-radius: 10rpx; font-size: 24rpx; }
+.price-panel { padding-bottom: calc(24rpx + env(safe-area-inset-bottom)); }
+.price-panel-scroll { height: 64vh; }
+.price-form-row { display: flex; align-items: center; gap: 16rpx; padding: 22rpx 0; border-bottom: 1rpx solid #eee; font-size: 27rpx; }
+.price-form-row > text { flex-shrink: 0; }
+.price-form-row input { flex: 1; min-width: 0; text-align: right; font-size: 27rpx; }
+.price-form-row switch { margin-left: auto; }
+.price-form-row button { flex-shrink: 0; margin: 0; }
+.price-totals { background: #f6f7f9; border-radius: 12rpx; padding: 20rpx; margin-top: 20rpx; line-height: 1.9; font-size: 27rpx; }
+.pricing-hint { color: #777; font-size: 24rpx; line-height: 1.7; margin-top: 16rpx; }
+.price-error { color: #b23a2e; margin-top: 18rpx; font-size: 26rpx; }
+.price-item-line { display: flex; justify-content: space-between; gap: 20rpx; padding: 15rpx 0; font-size: 26rpx; }
+.price-history { border-top: 1rpx solid #eee; margin-top: 20rpx; padding-top: 16rpx; font-size: 24rpx; color: #666; line-height: 1.8; overflow-wrap: anywhere; }
+
+.price-panel .panel-title { padding: 26rpx 28rpx 8rpx; font-size: 32rpx; font-weight: 600; }
+.price-panel-scroll { padding: 0 28rpx; box-sizing: border-box; }
+.price-panel .panel-actions button { flex: 1; font-size: 28rpx; }

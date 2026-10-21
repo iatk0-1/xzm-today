@@ -58,7 +58,7 @@
             已售后占用 {{item.reservedQty}}件 / ¥{{item.reservedAmount}}
           </view>
           <view class="goods-price-row">
-            <text class="price">¥ {{item.salePrice}}</text>
+            <text class="price">{{item.repriced ? '参考单价 ' : ''}}¥ {{item.salePriceDisplay || item.salePrice}}</text>
             <text class="max-refund">最多可退 ¥ {{item.maxRefundAmount}}</text>
           </view>
           <view class="refund-edit-row" wx:if="{{item.selected}}" catchtap="noop">

@@ -4,6 +4,7 @@ const autoSearch = require('../../utils/autoSearch');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/pickingList/pickingList.js
 const api = require('../../utils/api');
+const orderPricing = require('../../utils/orderPricing');
 const auth = require('../../utils/auth');
 const config = require('../../utils/config');
 
@@ -260,7 +261,7 @@ Page(autoSearch.wrap(pageSync.wrap({
         throw new Error(`订单 ${entry.order.outTradeNo || orderId} 可退数量不足，请刷新后重试`);
       }
       const amount = Math.min(
-        Math.round(Number(available.salePrice) * related.pendingQty * 100),
+        Math.round(orderPricing.refundQtyAmount(available, related.pendingQty) * 100),
         Math.round(Number(available.availableRefundAmount) * 100),
         remainingAmount
       );

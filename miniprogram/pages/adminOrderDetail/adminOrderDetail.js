@@ -1,5 +1,6 @@
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 const api = require('../../utils/api');
+const orderPricing = require('../../utils/orderPricing');
 const quantityOperation = require('../../utils/quantityOperation');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
@@ -14,6 +15,12 @@ Page(pageSync.wrap({
   onOrderTouchCancel: orderNavigation.onTouchCancel,
 
   data: {
+    showPricePanel: false,
+    priceSaving: false,
+    pricing: null,
+    priceDraft: {},
+    pricePreview: {},
+    refundPayments: [],
     orderId: null,
     order: null,
     isLoading: true,
@@ -44,12 +51,100 @@ Page(pageSync.wrap({
       wx.showToast({ title: '订单参数丢失', icon: 'none' });
       return;
     }
+    this._openPricingOnLoad = options.pricing === '1';
     this.setData({ orderId: options.id });
     this.loadOrderDetail();
   },
 
   onShow() {
     this.syncPendingShipmentUnbind();
+  },
+
+  async loadPricing() {
+    try {
+      const pricing = await api.get(`/admin/orders-manage/orders/${this.data.orderId}/pricing`);
+      pricing.history = (pricing.history || []).map(row => ({ ...row, timeDisplay: this.formatTime(row.createdAt) }));
+      const refundPayments = Number(pricing.offlineAmount) > 0
+        ? await api.get(`/admin/orders-manage/orders/${this.data.orderId}/refund-payments`) : [];
+      this.setData({ pricing, refundPayments });
+      return pricing;
+    } catch (error) {
+      wx.showToast({ title: getErrorMessage(error, '金额明细加载失败，请重试'), icon: 'none' });
+      return null;
+    }
+  },
+  async openPricePanel() {
+    if (this.data.priceSaving || this._priceOpening) return;
+    this._priceOpening = true;
+    try {
+      const pricing = await this.loadPricing();
+      if (!pricing) return;
+      const priceDraft = {
+        revision: pricing.revision,
+        peerOrder: !!pricing.peerOrder,
+        onlineAmount: Number(pricing.onlineAmount).toFixed(2),
+        offlineAmount: Number(pricing.offlineAmount).toFixed(2),
+        shippingFee: Number(pricing.shippingFee).toFixed(2),
+        offlineMethod: pricing.offlineMethod || '', offlineNote: pricing.offlineNote || '',
+        offlineConfirmed: false, reason: ''
+      };
+      this._lastShippingCents = orderPricing.cents(priceDraft.shippingFee);
+      this.setData({ showPricePanel: true, priceDraft,
+        pricePreview: orderPricing.preview(priceDraft, pricing.costAmount, pricing.costComplete) });
+    } finally { this._priceOpening = false; }
+  },
+  closePricePanel() { if (!this.data.priceSaving) this.setData({ showPricePanel: false }); },
+  onPriceInput(e) {
+    const field = e.currentTarget.dataset.field;
+    if (!['onlineAmount', 'offlineAmount', 'shippingFee', 'offlineMethod', 'offlineNote', 'reason'].includes(field)) return;
+    if (field === 'shippingFee') { this.changePriceShipping(e.detail.value); return; }
+    this.updatePriceDraft({ [field]: e.detail.value });
+  },
+  onPeerOrderChange(e) {
+    if (this.data.pricing.peerOrder && !e.detail.value) return;
+    this.updatePriceDraft({ peerOrder: !!e.detail.value });
+  },
+  onOfflineConfirmedChange(e) { this.updatePriceDraft({ offlineConfirmed: !!e.detail.value }); },
+  waivePriceShipping() { this.changePriceShipping('0.00'); },
+  changePriceShipping(value) {
+    if (this.data.priceSaving) return;
+    const before = orderPricing.cents(this.data.priceDraft.shippingFee);
+    const previous = before == null ? this._lastShippingCents : before;
+    const next = orderPricing.cents(value);
+    const online = orderPricing.cents(this.data.priceDraft.onlineAmount);
+    const patch = { shippingFee: value };
+    if (next != null && previous != null && online != null) {
+      const adjusted = online + next - previous;
+      patch.onlineAmount = adjusted >= 1 && adjusted <= 999999999 ? orderPricing.amount(adjusted) : '';
+      if (adjusted < 1) wx.showToast({ title: '请核对线上应付与线下实收，线下收款不会自动变动', icon: 'none' });
+    }
+    if (next != null) this._lastShippingCents = next;
+    else if (before != null) this._lastShippingCents = before;
+    this.updatePriceDraft(patch);
+  },
+  updatePriceDraft(patch) {
+    if (this.data.priceSaving) return;
+    const priceDraft = { ...this.data.priceDraft, ...patch };
+    const pricing = this.data.pricing;
+    this.setData({ priceDraft, pricePreview: orderPricing.preview(priceDraft, pricing.costAmount, pricing.costComplete) });
+  },
+  async savePrice() {
+    if (this.data.priceSaving) return;
+    const draft = this.data.priceDraft;
+    const check = orderPricing.preview(draft, this.data.pricing.costAmount, this.data.pricing.costComplete);
+    if (!check.valid) { wx.showToast({ title: check.error, icon: 'none' }); return; }
+    this.setData({ priceSaving: true });
+    try {
+      await api.patch(`/admin/orders-manage/orders/${this.data.orderId}/pricing`, {
+        ...draft, onlineAmount: Number(draft.onlineAmount), offlineAmount: Number(draft.offlineAmount),
+        shippingFee: Number(draft.shippingFee), reason: draft.reason.trim()
+      });
+      this.setData({ showPricePanel: false });
+      await this.loadOrderDetail();
+      wx.showToast({ title: '改价成功，请用户刷新后支付', icon: 'none' });
+    } catch (error) {
+      wx.showModal({ title: '改价未完成', content: getErrorMessage(error, '请刷新订单核对后重试'), showCancel: false });
+    } finally { this.setData({ priceSaving: false }); }
   },
 
   async retryShippingRefund() {
@@ -67,6 +162,7 @@ Page(pageSync.wrap({
     try {
       await auth.ensureAuthenticated({ silent: true });
       const order = await api.get(`/admin/orders-manage/orders/${this.data.orderId}`);
+      order.settlementTotalDisplay = orderPricing.total(order);
       order.statusDisplay = this.getOrderStatusDisplay(order.status);
       order.createdAtDisplay = this.formatTime(order.createdAt);
       if (order.items) {
@@ -85,6 +181,12 @@ Page(pageSync.wrap({
         shipments: [],
         logisticsTraceMap: {}
       });
+      if (Number(order.priceRevision) > 0) await this.loadPricing();
+      else this.setData({ pricing: null, refundPayments: [] });
+      if (this._openPricingOnLoad && order.status === 'pending') {
+        this._openPricingOnLoad = false;
+        await this.openPricePanel();
+      }
       this.loadAfterSaleRecords(this.data.orderId);
       if (['shipped', 'paid', 'partial_shipped', 'completed'].includes(order.status)) {
         this.loadShipmentInfo(this.data.orderId);
@@ -442,7 +544,7 @@ Page(pageSync.wrap({
     const maxQty = Math.max(0, Number(item.availableQty) || 0);
     const cappedQty = Math.min(maxQty, Math.max(0, Number(nextQty) || 0));
     const amountLimit = Math.min(
-      Number(item.salePrice) * cappedQty,
+      orderPricing.refundQtyAmount(item, cappedQty),
       Number(item.availableRefundAmount) || 0
     );
     const nextAmount = cappedQty <= 0

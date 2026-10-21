@@ -75,6 +75,17 @@ Page({
         return;
       }
 
+      const pricing = Number(res.priceRevision) > 0 ? await api.get(`/orders/${orderId}/pricing`) : null;
+      const pricingByItem = {};
+      if (pricing) (pricing.items || []).forEach(row => { pricingByItem[String(row.orderItemId)] = row; });
+      res.items.forEach(item => {
+        const row = pricingByItem[String(item.id)];
+        if (row) {
+          item.originalSalePrice = item.salePrice;
+          item.settlementAmount = Number(row.settlementAmount);
+          item.salePrice = item.settlementAmount / item.qty;
+        }
+      });
       let afterSaleRes;
       try {
         afterSaleRes = await api.get('/after-sales', {
@@ -99,6 +110,9 @@ Page({
         const totalQty = item.qty;
         const unshippedQty = totalQty - shippedQty;
         const limits = afterSaleLimits[String(item.id)] || {};
+        const lineCents = Math.round((item.settlementAmount == null ? Number(item.salePrice) * totalQty : item.settlementAmount) * 100);
+        const shippedAmount = Math.floor(lineCents * shippedQty / totalQty) / 100;
+        const unshippedAmount = lineCents / 100 - shippedAmount;
 
         // 已发货部分 → 只能选退货退款
         if (shippedQty > 0) {
@@ -106,8 +120,8 @@ Page({
           const availableQty = Math.max(0, shippedQty - reservedQty);
           const reservedAmount = Number(limits.shippedAmount) || 0;
           const maxRefundAmount = Math.max(0, Math.min(
-            Number(item.salePrice) * availableQty,
-            Number((Number(item.salePrice) * shippedQty - reservedAmount).toFixed(2))
+            Math.ceil(Number(item.salePrice) * availableQty * 100 - 0.000001) / 100,
+            Number((shippedAmount - reservedAmount).toFixed(2))
           ));
 
           if (availableQty > 0 && maxRefundAmount > 0) {
@@ -122,6 +136,8 @@ Page({
               bundleProductName: item.bundleProductName || null,
               bundleGroupName: item.bundleGroupName || null,
               salePrice: item.salePrice,
+              salePriceDisplay: Number(item.salePrice).toFixed(2),
+              repriced: item.settlementAmount != null,
               qty: availableQty,
               shippedQty: availableQty,
               unshippedQty: 0,
@@ -146,8 +162,8 @@ Page({
           const availableQty = Math.max(0, unshippedQty - reservedQty);
           const reservedAmount = Number(limits.unshippedAmount) || 0;
           const maxRefundAmount = Math.max(0, Math.min(
-            Number(item.salePrice) * availableQty,
-            Number((Number(item.salePrice) * unshippedQty - reservedAmount).toFixed(2))
+            Math.ceil(Number(item.salePrice) * availableQty * 100 - 0.000001) / 100,
+            Number((unshippedAmount - reservedAmount).toFixed(2))
           ));
 
           if (availableQty <= 0 || maxRefundAmount <= 0) {
@@ -165,6 +181,8 @@ Page({
             bundleProductName: item.bundleProductName || null,
             bundleGroupName: item.bundleGroupName || null,
             salePrice: item.salePrice,
+            salePriceDisplay: Number(item.salePrice).toFixed(2),
+            repriced: item.settlementAmount != null,
             qty: availableQty,
             shippedQty: 0,
             unshippedQty: availableQty,
@@ -324,7 +342,7 @@ Page({
     const qty = Math.min(maxQty, Math.max(1, Number(nextQty) || 1));
     const amountLimit = Math.min(
       item.maxRefundAmount,
-      Number(item.salePrice) * qty
+      Math.ceil(Number(item.salePrice) * qty * 100 - 0.000001) / 100
     );
     // 数量变化时按商品单价重新计算，不沿用之前手动输入的金额比例。
     const amount = amountLimit.toFixed(2);
@@ -352,7 +370,7 @@ Page({
     const selectedQty = Math.max(1, Number(item && item.selectedQty) || 1);
     const amountLimit = Math.min(
       Number(item && item.maxRefundAmount) || 0,
-      (Number(item && item.salePrice) || 0) * selectedQty
+      Math.ceil((Number(item && item.salePrice) || 0) * selectedQty * 100 - 0.000001) / 100
     );
     const rawValue = e.detail.value;
     const numericValue = Number(rawValue);
@@ -473,7 +491,7 @@ Page({
         );
         const maxQty = Number(sourceItem && sourceItem.qty) || 0;
         const maxAmount = Number(sourceItem && sourceItem.maxRefundAmount) || 0;
-        const maxAmountByQty = Number(sourceItem && sourceItem.salePrice) * item.qty;
+        const maxAmountByQty = Math.ceil(Number(sourceItem && sourceItem.salePrice) * item.qty * 100 - 0.000001) / 100;
         return !Number.isInteger(item.qty) || item.qty < 1 || item.qty > maxQty
           || !Number.isFinite(item.refundAmount) || item.refundAmount <= 0
           || item.refundAmount > maxAmount

@@ -67,10 +67,17 @@
         <text class="money-val">¥ {{order.shippingFee}}</text>
       </view>
       <view class="money-row total">
-        <text class="money-label">实付款</text>
+        <text class="money-label">{{order.status === 'pending' ? '线上待付' : '线上实付'}}</text>
         <text class="money-val final">¥ {{order.payAmount}}</text>
       </view>
     </view>
+  </view>
+
+  <view class="info-card" wx:if="{{pricing}}">
+    <view class="section-title">{{pricing.peerOrder ? '同行订单' : '订单改价明细'}}</view>
+    <view class="info-row"><text class="info-label">线下已收</text><text>¥ {{pricing.offlineAmount}}</text></view>
+    <view class="info-row"><text class="info-label">成交总额</text><text>¥ {{pricing.settlementTotal}}</text></view>
+    <view class="info-row" wx:for="{{pricing.items}}" wx:key="orderItemId"><text class="info-label">{{item.productName || '商品'}} × {{item.qty}}</text><text>¥ {{item.settlementAmount}}</text></view>
   </view>
 
   <view class="info-card order-info-card">
@@ -182,7 +189,7 @@
       send-message-img="{{customerServiceCard.image}}"
       send-message-path="/pages/orderDetail/orderDetail?id={{order.id}}&fromCustomerService=1">联系客服</button>
 
-    <view class="btn-solid" wx:if="{{order.status === 'pending'}}" bindtap="payOrder">立即支付</view>
+    <view class="btn-solid" wx:if="{{order.status === 'pending'}}" bindtap="payOrder">支付 ¥{{order.payAmount}}</view>
     <view id="cancel-order-btn" class="btn-ghost" wx:if="{{order.status === 'pending'}}" bindtap="cancelOrder">取消订单</view>
 
     <view class="btn-solid" wx:if="{{order.canConfirmReceipt}}" bindtap="confirmReceipt">确认收货</view>

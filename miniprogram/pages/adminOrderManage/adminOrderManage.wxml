@@ -162,13 +162,14 @@
             <text class="order-date" wx:if="{{item.latestShippedAtDisplay}}">最新发货时间：{{item.latestShippedAtDisplay}}</text>
           </view>
           <view class="payment-summary">
-            <text class="total-label">实付款</text>
-            <text class="total-price">¥ {{item.payAmount}}</text>
+            <text class="total-label">{{item.peerOrder ? '同行订单 · 不计佣金' : (item.status === 'pending' ? '应付金额' : '成交总额')}}</text>
+            <text class="total-price">¥ {{item.settlementTotalDisplay || item.payAmount}}</text>
           </view>
         </view>
 
         <view class="action-row" wx:if="{{!pickingSkuId}}">
           <!-- 待付款 -->
+          <view class="btn-ghost" wx:if="{{item.status === 'pending'}}" catchtap="editOrderPrice" data-id="{{item.id}}">改价</view>
           <view class="btn-ghost" wx:if="{{item.status === 'pending'}}" catchtap="cancelOrder" data-id="{{item.id}}">关闭订单</view>
 
           <!-- 备货中 -->

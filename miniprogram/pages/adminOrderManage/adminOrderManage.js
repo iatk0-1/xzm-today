@@ -3,6 +3,7 @@ const autoSearch = require('../../utils/autoSearch');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/adminOrderManage/adminOrderManage.js
 const api = require('../../utils/api');
+const orderPricing = require('../../utils/orderPricing');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const orderNavigation = require('../../utils/orderNavigation');
@@ -112,6 +113,10 @@ Page(autoSearch.wrap(pageSync.wrap({
     wx.navigateTo({
       url: `/pages/adminOrderDetail/adminOrderDetail?id=${id}`
     });
+  },
+
+  editOrderPrice: function(e) {
+    wx.navigateTo({ url: `/pages/adminOrderDetail/adminOrderDetail?id=${e.currentTarget.dataset.id}&pricing=1` });
   },
 
   copyOrderNo: function(e) {
@@ -266,6 +271,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       const orders = list.map(order => ({
         ...order,
         outTradeNo: order.outTradeNo || order.id,
+        settlementTotalDisplay: orderPricing.total(order),
         createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt),
         items: (order.items || []).map(item => ({
           ...item,
@@ -311,6 +317,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       normalize: order => ({
         ...order,
         outTradeNo: order.outTradeNo || order.id,
+        settlementTotalDisplay: orderPricing.total(order),
         createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt),
         items: (order.items || []).map(item => ({ ...item, skuImageUrl: item.productImage || '' }))
       }),

@@ -97,7 +97,7 @@
           <view class="order-times"><text class="order-time" wx:if="{{item.createdAtDisplay}}">下单时间：{{item.createdAtDisplay}}</text>
             <text class="order-time" wx:if="{{item.latestShippedAtDisplay}}">最新发货时间：{{item.latestShippedAtDisplay}}</text></view>
           <view class="payment-summary">
-            <text class="total-label">实付款</text>
+            <text class="total-label">{{item.peerOrder ? '同行订单 · ' : ''}}{{item.status === 'pending' ? '线上待付' : '线上实付'}}</text>
             <text class="total-price">¥ {{item.payAmount}}</text>
           </view>
         </view>

@@ -2,6 +2,7 @@ const quantityOperation = require('../../utils/quantityOperation');
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 // miniprogram/pages/adminAfterSaleDetail/adminAfterSaleDetail.js
 const api = require('../../utils/api');
+const orderPricing = require('../../utils/orderPricing');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const afterSaleFulfillment = require('../../utils/afterSaleFulfillment');
@@ -322,7 +323,7 @@ Page({
           reviewRefundQtyLimit: this.getReviewQtyLimit(item, 'refund'),
           reviewReturnQtyLimit: this.getReviewQtyLimit(item, 'return_refund'),
           reviewAmount: Math.min(Number(item.requestedRefundAmount || item.refundAmount || 0),
-            Number(item.salePrice || 0) * reviewQty).toFixed(2),
+            orderPricing.refundQtyAmount(item, reviewQty)).toFixed(2),
           reviewType: item.afterSaleType
         };
       });
@@ -370,9 +371,8 @@ Page({
     }
     const qty = Math.min(maxQty, Math.max(1, Number(nextQty) || 1));
     const requestedAmount = Number(item.requestedRefundAmount || item.refundAmount || 0);
-    const unitSalePrice = Number(item.salePrice || 0);
-    // 数量变化时按商品单价重新计算，不沿用管理员之前手动调整的退款比例。
-    const amountBySalePrice = unitSalePrice * qty;
+    // 改价订单按成交分摊计算数量上限。
+    const amountBySalePrice = orderPricing.refundQtyAmount(item, qty);
     const reviewAmount = Math.min(requestedAmount, amountBySalePrice).toFixed(2);
     this.setData({
       [`reviewItems[${index}].reviewQty`]: String(qty),
@@ -441,7 +441,7 @@ Page({
         const invalid = this.data.reviewItems.find(item => {
           const qty = Number(item.reviewQty);
           const amount = Number(item.reviewAmount);
-          const amountByQty = Number(item.salePrice || 0) * qty;
+          const amountByQty = orderPricing.refundQtyAmount(item, qty);
           return !item.selected
             ? false
             : !Number.isInteger(qty) || qty < 1 || qty > Number(item.reviewQtyLimit || item.requestedQty || item.qty)

@@ -19,6 +19,7 @@ Page(pageSync.wrap({
   onOrderTouchCancel: orderNavigation.onTouchCancel,
 
   data: {
+    pricing: null,
     order: null,
     isLoading: true,
     countdownText: '',
@@ -33,13 +34,8 @@ Page(pageSync.wrap({
   onLoad: function(options) {
     this.fromCustomerService = options.fromCustomerService === '1';
     if (options.outTradeNo) {
-      // 微信通知跳转：outTradeNo 即订单 ID
-      var orderId = options.outTradeNo;
-      if (orderId) {
-        this.orderId = orderId;
-        this.loadOrderDetail(orderId);
-        return;
-      }
+      this.loadPaymentOrder(options.outTradeNo);
+      return;
     }
     if (options.id) {
       this.orderId = options.id;
@@ -47,6 +43,15 @@ Page(pageSync.wrap({
     } else {
       wx.showToast({ title: '订单参数丢失', icon: 'none' });
     }
+  },
+
+  loadPaymentOrder: async function(outTradeNo) {
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      const result = await api.get('/orders/payment-order', { outTradeNo });
+      this.orderId = result.orderId;
+      await this.loadOrderDetail(result.orderId);
+    } catch (error) { wx.showToast({ title: getErrorMessage(error, '支付订单加载失败，请从订单列表进入'), icon: 'none' }); }
   },
 
   onUnload: function() {
@@ -70,6 +75,7 @@ Page(pageSync.wrap({
       }
       const res = await api.get(`/orders/${orderId}`);
       wx.hideLoading();
+      const pricing = Number(res.priceRevision) > 0 ? await api.get(`/orders/${orderId}/pricing`) : null;
       // 附加格式化字段
       res.statusDisplay = this.getOrderStatusDisplay(res.status);
       res.createdAtDisplay = this.formatTime(res.createdAt);
@@ -86,7 +92,7 @@ Page(pageSync.wrap({
         });
       }
       
-      this.setData({ order: res, customerServiceCard: customerServiceOrder.orderCard(res), isLoading: false });
+      this.setData({ pricing, order: res, customerServiceCard: customerServiceOrder.orderCard(res), isLoading: false });
 
       // 加载售后记录
       this.loadAfterSaleRecords(orderId);

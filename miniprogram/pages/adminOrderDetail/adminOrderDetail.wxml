@@ -10,6 +10,8 @@
   </view>
   <view class="status-header">
     <view class="status-title">{{order.statusDisplay}}</view>
+    <view class="peer-order-tag" wx:if="{{order.peerOrder}}">同行订单 · 不参与佣金</view>
+    <button class="btn-admin-refund" wx:if="{{order.status === 'pending'}}" bindtap="openPricePanel">修改价格</button>
     <view class="status-desc" wx:if="{{order.status === 'pending'}}">待支付</view>
     <view class="status-desc" wx:if="{{order.status === 'stocking'}}">备货中</view>
     <view class="status-desc" wx:if="{{order.status === 'paid'}}">待发货</view>
@@ -84,11 +86,35 @@
         <text class="money-val">¥ {{order.shippingFee}}</text>
       </view>
       <view class="money-row total">
-        <text class="money-label">实付款</text>
+        <text class="money-label">{{order.status === 'pending' ? '线上待付' : '线上实付'}}</text>
         <text class="money-val final">¥ {{order.payAmount}}</text>
       </view>
+      <view class="money-row" wx:if="{{order.peerOrder || order.priceRevision > 0}}"><text class="money-label">线下已收</text><text class="money-val">¥ {{order.offlinePaidAmount}}</text></view>
+      <view class="money-row" wx:if="{{order.peerOrder || order.priceRevision > 0}}"><text class="money-label">成交总额</text><text class="money-val final">¥ {{order.settlementTotalDisplay}}</text></view>
       <button size="mini" wx:if="{{order.shippingRefundStatus === 'failed'}}" bindtap="retryShippingRefund">重试运费退款</button>
     </view>
+  </view>
+
+  <view class="info-card pricing-details" wx:if="{{pricing && pricing.revision > 0}}">
+    <view class="section-title">实际成交分摊</view>
+    <view class="price-item-line" wx:for="{{pricing.items}}" wx:key="orderItemId">
+      <text>{{item.productName || '商品'}} × {{item.qty}}</text><text>¥ {{item.settlementAmount}}</text>
+    </view>
+    <view class="pricing-hint">按成本占比分摊商品成交额，运费单独计入订单。</view>
+    <view class="price-history" wx:for="{{pricing.history}}" wx:key="revision">
+      <view>第 {{item.revision}} 次改价 · {{item.timeDisplay}}</view>
+      <view>线上 ¥{{item.beforeOnlineAmount}} → ¥{{item.onlineAmount}}；线下 ¥{{item.beforeOfflineAmount}} → ¥{{item.offlineAmount}}</view>
+      <view>运费 ¥{{item.beforeShippingFee}} → ¥{{item.shippingFee}}</view>
+      <view>原因：{{item.reason}} · 操作人 {{item.operatorId}}</view>
+    </view>
+  </view>
+  <view class="info-card" wx:if="{{refundPayments.length}}">
+    <view class="section-title">退款收款渠道明细</view>
+    <view class="price-history" wx:for="{{refundPayments}}" wx:key="outRefundNo">
+      <view>线上 ¥{{item.onlineAmount}} · 线下 ¥{{item.offlineAmount}}</view>
+      <view>线上状态：{{item.onlineStatus === 'SUCCESS' ? '已退款' : '处理中或待核对'}}</view>
+    </view>
+    <view class="pricing-hint">线下退款自行处理；线上退款成功后，系统按整笔退款完成。</view>
   </view>
 
   <view class="info-card order-info-card">
@@ -296,4 +322,29 @@
     <button class="panel-btn secondary" bindtap="closeUnbindPreview" disabled="{{unbindSaving}}">取消</button>
     <button class="panel-btn danger" bindtap="confirmFullUnbind" disabled="{{!unbindStockConfirmed || unbindSaving || unbindPreview.totalQty <= 0}}" loading="{{unbindSaving}}">解绑整包 {{unbindPreview.totalQty}} 件</button>
   </view>
+</view>
+
+<view class="panel-mask" wx:if="{{showPricePanel}}" catchtap="closePricePanel"></view>
+<view class="bottom-panel price-panel" wx:if="{{showPricePanel}}">
+  <view class="panel-title">修改订单价格</view>
+  <scroll-view scroll-y="{{true}}" class="price-panel-scroll">
+    <view class="price-form-row"><text>同行订单（不计佣金）</text><switch checked="{{priceDraft.peerOrder}}" disabled="{{pricing.peerOrder || priceSaving}}" bindchange="onPeerOrderChange" /></view>
+    <view class="price-form-row"><text>线上应付（含运费）</text><input type="digit" value="{{priceDraft.onlineAmount}}" data-field="onlineAmount" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
+    <view class="price-form-row"><text>线下实收（元）</text><input type="digit" value="{{priceDraft.offlineAmount}}" data-field="offlineAmount" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
+    <view class="price-form-row"><text>运费（元）</text><input type="digit" value="{{priceDraft.shippingFee}}" data-field="shippingFee" bindinput="onPriceInput" disabled="{{priceSaving}}" /><button size="mini" bindtap="waivePriceShipping" disabled="{{priceSaving}}">免运费</button></view>
+    <block wx:if="{{priceDraft.offlineAmount > 0}}">
+      <view class="price-form-row"><text>线下收款方式</text><input placeholder="如微信转账、现金" maxlength="100" value="{{priceDraft.offlineMethod}}" data-field="offlineMethod" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
+      <view class="price-form-row"><text>收款备注</text><input placeholder="选填" maxlength="500" value="{{priceDraft.offlineNote}}" data-field="offlineNote" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
+      <view class="price-form-row"><text>已核实线下款到账</text><switch checked="{{priceDraft.offlineConfirmed}}" bindchange="onOfflineConfirmedChange" disabled="{{priceSaving}}" /></view>
+    </block>
+    <view class="price-form-row"><text>改价原因</text><input placeholder="必填，最多500字" maxlength="500" value="{{priceDraft.reason}}" data-field="reason" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
+    <view class="price-totals">
+      <view>商品成本总额：¥ {{pricing.costAmount}}{{pricing.costComplete ? '' : '（成本未补齐）'}}</view>
+      <view>商品成交额：¥ {{pricePreview.goods}}</view>
+      <view>成交总额：¥ {{pricePreview.total}}</view>
+    </view>
+    <view class="pricing-hint">成交总额＝线上应付＋线下实收；扣除运费后不能低于商品成本。修改运费会同步调整线上应付，线下实收不自动改动。线上应付最低0.01元，运费可设为0。</view>
+    <view class="price-error" wx:if="{{pricePreview.error}}">{{pricePreview.error}}</view>
+  </scroll-view>
+  <view class="panel-actions"><button bindtap="closePricePanel" disabled="{{priceSaving}}">取消</button><button type="primary" bindtap="savePrice" loading="{{priceSaving}}" disabled="{{priceSaving || !pricePreview.valid}}">确认改价</button></view>
 </view>
