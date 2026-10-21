@@ -98,9 +98,13 @@
   <view class="info-card pricing-details" wx:if="{{pricing && pricing.revision > 0}}">
     <view class="section-title">实际成交分摊</view>
     <view class="price-item-line" wx:for="{{pricing.items}}" wx:key="orderItemId">
-      <text>{{item.productName || '商品'}} × {{item.qty}}</text><text>¥ {{item.settlementAmount}}</text>
+      <view class="price-item-info">
+        <text>{{item.productName || '商品'}}</text>
+        <view class="price-item-spec"><text wx:if="{{item.spec || item.size}}">{{item.spec}}{{item.spec && item.size ? ' / ' : ''}}{{item.size}} · </text>× {{item.qty}}</view>
+      </view>
+      <text>¥ {{item.settlementAmount}}</text>
     </view>
-    <view class="pricing-hint">按成本占比分摊商品成交额，运费单独计入订单。</view>
+    <view class="pricing-hint">按各SKU成本小计占比分摊成交额，运费单独计入订单。</view>
     <view class="price-history" wx:for="{{pricing.history}}" wx:key="revision">
       <view>第 {{item.revision}} 次改价 · {{item.timeDisplay}}</view>
       <view>线上 ¥{{item.beforeOnlineAmount}} → ¥{{item.onlineAmount}}；线下 ¥{{item.beforeOfflineAmount}} → ¥{{item.offlineAmount}}</view>

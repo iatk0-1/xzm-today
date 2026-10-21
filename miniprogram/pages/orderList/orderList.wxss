@@ -88,6 +88,7 @@ page { background-color: #f7f8fa; }
 .status-wrapper { display: flex; align-items: center; gap: 12rpx; flex-shrink: 0; }
 .order-status { font-size: 26rpx; color: #1a1a1a; font-weight: bold; }
 .order-status.highlight { color: #d32f2f; }
+.peer-order-tag { display: inline-block; margin-bottom: 16rpx; padding: 4rpx 12rpx; border-radius: 6rpx; background: #f5f7fa; color: #576b95; font-size: 22rpx; }
 .order-after-sale-summary {
   display: flex;
   align-items: flex-start;

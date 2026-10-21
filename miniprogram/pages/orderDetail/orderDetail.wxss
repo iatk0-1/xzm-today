@@ -79,6 +79,10 @@ page { background-color: #f7f8fa; padding-bottom: calc(118rpx + env(safe-area-in
 .info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24rpx; }
 .info-row:last-child { margin-bottom: 0; }
 .info-label { font-size: 24rpx; color: #999; }
+.pricing-item { align-items: flex-start; gap: 24rpx; }
+.pricing-item-info { flex: 1; min-width: 0; word-break: break-all; }
+.pricing-item-spec { margin-top: 8rpx; font-size: 22rpx; color: #999; }
+.pricing-item-amount { flex-shrink: 0; }
 .info-val-box { display: flex; align-items: center; }
 .info-val { font-size: 24rpx; color: #333; font-family: -apple-system, sans-serif; }
 .btn-copy { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box; min-height: 36rpx; line-height: 1.4; white-space: nowrap; font-size: 20rpx; color: #1a1a1a; border: 1rpx solid #1a1a1a; padding: 4rpx 12rpx; border-radius: 6rpx; margin-left: 16rpx; }
