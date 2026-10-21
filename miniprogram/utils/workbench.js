@@ -13,7 +13,7 @@ const entries = [
   { id: 'managers', label: '档口负责人管理', url: '/pages/stallManagers/stallManagers', roles: ['admin'] },
   { id: 'pricing', label: '计价规则管理', url: '/pages/pricingRules/pricingRules', roles: ['admin'] },
   { id: 'commission', label: '佣金配置', url: '/pages/commissionConfigs/commissionConfigs', roles: ['admin'] },
-  { id: 'income', label: '我的收入与提现', url: '/pages/managerIncome/managerIncome', roles: ['stall_manager'] },
+  { id: 'income', label: '我的佣金与结算', url: '/pages/managerIncome/managerIncome', roles: ['stall_manager'] },
   { id: 'applications', label: '用户申请审批管理', url: '/pages/adminChangeRequestManage/adminChangeRequestManage', roles: ['admin'] },
   { id: 'shippingTemplates', label: '快递运费模板', url: '/pages/shippingTemplates/shippingTemplates', roles: ['admin'] },
   { id: 'productDrafts', label: '商品草稿', url: '/pages/productDrafts/index', roles: ['admin', 'stall_manager'] }

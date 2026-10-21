@@ -1,1 +1,1 @@
-{"navigationBarTitleText":"我的收入与提现","enablePullDownRefresh":true}
+{"navigationBarTitleText":"我的佣金与结算","enablePullDownRefresh":true,"usingComponents":{"commission-rules":"/components/commissionRules/index"}}

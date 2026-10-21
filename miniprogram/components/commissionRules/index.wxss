@@ -1,0 +1,6 @@
+.rules { padding:24rpx; margin-bottom:20rpx; border-radius:18rpx; background:#fff; color:#434d48; font-size:26rpx; line-height:1.8; word-break:break-all; }
+.rules-title { color:#173e33; font-size:32rpx; font-weight:600; }
+.rules-status { padding:12rpx 16rpx; margin:16rpx 0 8rpx; border-radius:10rpx; background:#edf5f0; color:#285642; }
+.rule { padding-top:18rpx; }
+.rule-title { margin-bottom:6rpx; color:#222; font-size:28rpx; font-weight:600; }
+.rule view + view { margin-top:6rpx; }

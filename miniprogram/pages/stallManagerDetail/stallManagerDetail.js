@@ -55,6 +55,8 @@ Page({
       await auth.ensureAuthenticated({ silent: true });
       if (!auth.isAdmin()) throw new Error('仅管理员可管理负责人');
       this._authorized = true;
+      const account = auth.getUserInfo() || {};
+      this._adminOwner = String(account.userId || account.id || '');
       this.setData({ userId: finance.requireText(options.id, '负责人ID') });
       await this.refresh();
     } catch (error) {
@@ -68,6 +70,11 @@ Page({
   },
 
   onShow() {
+    const account = auth.getUserInfo() || {};
+    if (this._authorized && (!auth.isAdmin() || (this._adminOwner && this._adminOwner !== String(account.userId || account.id || '')))) {
+      this.fail({ statusCode: 403, message: '管理员账号或操作身份已变化，请以管理员身份重新进入' });
+      return;
+    }
     if (this._refreshOnShow && this._authorized) {
       this._refreshOnShow = false;
       this.refresh();
@@ -108,6 +115,9 @@ Page({
 
   async refresh() {
     if (!this._authorized) return;
+    if (!auth.isAdmin()) { this.fail({ statusCode: 403, message: '仅管理员可管理负责人' }); return; }
+    const account = auth.getUserInfo() || {};
+    const expectedAdmin = String(account.userId || account.id || '');
     const sequence = (this._refreshSequence || 0) + 1;
     this._refreshSequence = sequence;
     try {
@@ -116,6 +126,11 @@ Page({
         api.get(this.base('profit-sharing/receiver'))
       ]);
       if (sequence !== this._refreshSequence) return;
+      const current = auth.getUserInfo() || {};
+      if (!auth.isAdmin() || String(current.userId || current.id || '') !== expectedAdmin) {
+        this.fail({ statusCode: 403, message: '管理员账号或操作身份已变化，请重新进入' });
+        return;
+      }
       this.applyProfile(results[0], (results[2] || []).filter(stall => !stall.deletedAt && !stall.deleted));
       this.applyReceiver(results[3]);
       this.setData({
@@ -1019,7 +1034,18 @@ Page({
     }
   },
 
+  goToUser() { wx.switchTab({ url: '/pages/user/user' }); },
   fail(error) {
+    if ([401, 403].includes(error.statusCode)) {
+      this._authorized = false;
+      this._refreshSequence = (this._refreshSequence || 0) + 1;
+      this._listSequence = (this._listSequence || 0) + 1;
+      this._previewSequence = (this._previewSequence || 0) + 1;
+      this.setData({ profile: null, income: {}, rows: [], assignedStalls: [], paymentVisible: false,
+        assignmentVisible: false, receiverVisible: false, currentWithdrawal: null, reconciliation: null,
+        error: getErrorMessage(error, '当前账户无权管理负责人，请重新进入') });
+      return;
+    }
     this.setData({ [this.data.commissionEdit ? 'commissionError' : this.data.receiverVisible ? 'receiverError' : 'error']: getErrorMessage(error, '操作失败') });
   }
 });

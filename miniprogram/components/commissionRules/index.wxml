@@ -1,0 +1,37 @@
+<view class="rules">
+  <view class="rules-title">佣金结算与提现规则</view>
+  <view class="rules-status">{{income.selfWithdrawalEnabled === true ? '负责人自助提现已开启' : '负责人自助提现已关闭，由管理员办理结算'}}</view>
+  <view wx:if="{{!income.profitSharingEnabled}}">微信分账通道当前未开启，暂不能新发起微信分账；已有记录仍可查询，线下结算请联系管理员。</view>
+  <view class="rule">
+    <view class="rule-title">适用对象与结算方式</view>
+    <view>仅供平台授权的档口合作负责人结算本人订单佣金。管理员可通过微信支付分账办理，或实际线下付款后登记结算记录；登记记录本身不会转账。</view>
+  </view>
+  <view class="rule">
+    <view class="rule-title">可提现额度</view>
+    <view>当前符合微信分账条件的金额为 ¥{{income.manualWithdrawalAvailable || '0.00'}}。金额由系统按已完成订单计算，扣除已支付、处理中占用、退款调整、售后暂缓及应抵扣款项，并核对原支付交易剩余分账额度和期限；提交时将再次核对可结算金额。</view>
+    <view>{{administrator ? '管理员每次可选择1至100笔合格订单，按所选订单佣金结算。' : '自助提现开启后，每次申请全部当前合格未付佣金，不支持填写任意金额或更换收款账号。'}}待完成佣金及暂不符合分账条件的金额不能直接微信提现，可核对明细后联系管理员处理。</view>
+  </view>
+  <view class="rule">
+    <view class="rule-title">每日提现次数</view>
+    <view wx:if="{{!income.profitSharingEnabled}}">微信分账通道当前未开启，当前可新发起微信分账次数为0。已有申请仍可查询，由管理员核对处理。</view>
+    <view wx:elif="{{administrator}}">平台不额外设置管理员每日发起次数上限；同一负责人已有处理中申请时，不可重复发起。自助开关仅控制负责人新申请，不影响管理员办理及已提交申请的查询处理。</view>
+    <view wx:elif="{{income.selfWithdrawalEnabled === true}}">平台不额外设置每日申请次数上限；已有处理中申请时，不可重复发起。提交结果不明确时，应查询原申请，不要重新申请。</view>
+    <view wx:else>当前不开放负责人自行申请提现，当前可自行申请次数为0；由管理员核对办理。已提交的申请继续处理并可查询。</view>
+  </view>
+  <view class="rule">
+    <view class="rule-title">申请时间与办理时间</view>
+    <view wx:if="{{!income.profitSharingEnabled}}">当前不能提交微信分账申请；通道开启后，平台不额外限制申请时段。具体订单仍须满足微信支付的分账条件及期限。线下办理时间请与管理员确认。</view>
+    <view wx:elif="{{administrator}}">平台不额外限制发起时段，可全天操作；具体订单仍须满足微信支付的分账条件及期限。线下付款按与负责人约定的安排办理。</view>
+    <view wx:elif="{{income.selfWithdrawalEnabled === true}}">可全天（00:00—24:00，北京时间）提交申请，无额外申请时段限制；具体订单仍须满足微信支付的分账条件及期限。可随时查看处理进度。</view>
+    <view wx:else>可全天查看佣金及结算记录，当前无自助提现申请时段。管理员办理不设固定时段，具体结算安排请联系管理员确认。</view>
+  </view>
+  <view class="rule">
+    <view class="rule-title">到账时间与收款账户</view>
+    <view>微信分账申请记录后进入处理流程；向微信支付发起后，实际到账时间取决于微信支付处理、原交易结算及收款账户状态，平台不承诺固定到账时长。款项分账至该负责人本人微信零钱，以接收方分账成功结果及本人微信账单为准，申请已提交或处理中均不代表已到账。</view>
+    <view>线下转账的付款与到账时间由管理员与负责人确认，以实际收款记录为准。微信分账超过可分账期限或失败的佣金保留记录，由管理员核对后另行办理，避免重复付款。</view>
+  </view>
+  <view class="rule">
+    <view class="rule-title">进度查询与异常处理</view>
+    <view>请在申请记录中区分等待处理、微信处理中、已到账及未付款原因。{{administrator ? '金额有异议、长期未到账或收款异常时，请核对原申请、逐单分账结果及实际付款凭证，并与负责人确认。' : '金额有异议、长期未到账或收款异常时，请通过本页“咨询佣金结算”客服入口联系管理员核对。'}}结果未明确前请保留原申请编号，不重复提交。</view>
+  </view>
+</view>

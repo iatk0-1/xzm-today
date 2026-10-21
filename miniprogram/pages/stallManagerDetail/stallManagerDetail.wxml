@@ -1,4 +1,10 @@
 <view class="page">
+  <view class="card" wx:if="{{!profile}}">
+    <view class="title">{{error ? '暂时无法访问' : '正在验证管理权限'}}</view>
+    <view class="muted">{{error || '管理员身份及负责人资料验证完成后展示管理内容。'}}</view>
+    <button wx:if="{{error}}" bindtap="goToUser">返回个人中心</button>
+  </view>
+  <block wx:else>
   <view class="card" wx:if="{{profile}}">
     <view class="profile-heading">
       <view class="title profile-name">{{profile.nickname || '未设置昵称'}}</view>
@@ -178,6 +184,7 @@
       <view class="muted">默认关闭；开关只控制新申请，已提交的提现继续处理。</view>
       <view class="payment-entry-actions"><button class="primary" disabled="{{busy}}" data-mode="OFFLINE" bindtap="openSettlement">登记线下付款</button><button disabled="{{busy || !income.profitSharingEnabled || pendingAdminRequest}}" data-mode="WECHAT" bindtap="openSettlement">微信分账提现</button></view>
     </view>
+    <commission-rules income="{{income}}" administrator="{{true}}" />
     <view class="card">
       <view class="title">佣金明细</view>
       <view class="record-toolbar">
@@ -295,6 +302,7 @@
       <view class="settlement-dialog-header"><view class="title">{{settlementMode === 'OFFLINE' ? '登记线下付款' : '微信分账提现'}}</view><button disabled="{{busy}}" class="settlement-dialog-close" bindtap="closeSettlement" aria-label="关闭弹窗">×</button></view>
       <scroll-view class="settlement-dialog-body" scroll-y bindscrolltolower="loadMoreSettlementOrders">
         <view class="error" wx:if="{{error}}">{{error}}</view>
+        <commission-rules income="{{income}}" administrator="{{true}}" />
         <view class="muted">只选择已完成、无待处理售后的订单，单次最多100笔。{{settlementMode === 'WECHAT' ? '微信剩余分账额度核验通过才能勾选，提交时会再核对。' : '仅登记已实际支付的款项，系统不会转账。'}}</view>
         <view class="payment-time-row"><picker mode="date" disabled="{{busy || settlementLoading}}" value="{{settlementStartDate}}" data-field="settlementStartDate" bindchange="settlementFilterChange"><view class="payment-picker">{{settlementStartDate || '下单开始日期'}}</view></picker><picker mode="date" disabled="{{busy || settlementLoading}}" value="{{settlementEndDate}}" data-field="settlementEndDate" bindchange="settlementFilterChange"><view class="payment-picker">{{settlementEndDate || '下单结束日期'}}</view></picker></view>
         <picker wx:if="{{settlementStallOptions.length > 2}}" disabled="{{busy || settlementLoading}}" range="{{settlementStallOptions}}" range-key="label" value="{{settlementStallIndex}}" data-field="settlementStallIndex" bindchange="settlementFilterChange"><view class="payment-picker">{{settlementStallOptions[settlementStallIndex].label}}</view></picker>
@@ -383,4 +391,5 @@
       <button bindtap="closeReconciliation">关闭</button>
     </scroll-view>
   </view>
+  </block>
 </view>

@@ -15,7 +15,7 @@ function harness(name, { get, put } = {}) {
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, `../../pages/${name}/${name}.js`), 'utf8'), {
     Page: config => { definition = config; },
     require: module => module.endsWith('/error') ? require('../../utils/error') : module.endsWith('/api') ? api : module.endsWith('/auth')
-      ? { ensureAuthenticated: async () => {}, isAdmin: () => true }
+      ? { ensureAuthenticated: async () => {}, isAdmin: () => true, getUserInfo: () => ({ userId: '7' }) }
       : module.endsWith('/autoSearch') ? { wrap: config => config } : finance,
     wx: { showToast() {}, stopPullDownRefresh() {}, navigateTo: ({ url }) => navigations.push(url) },
     console

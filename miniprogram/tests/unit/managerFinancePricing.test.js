@@ -6,6 +6,7 @@ const vm = require('node:vm');
 const finance = require('../../utils/managerFinance');
 
 function pageHarness(file, { get, post, put, del, upload, manager = false } = {}) {
+  const managerIncomePage = file.includes('/managerIncome/');
   let definition;
   const calls = [];
   const api = {
@@ -23,7 +24,7 @@ function pageHarness(file, { get, post, put, del, upload, manager = false } = {}
     getStorageSync(key) { return storage.get(key); }, setStorageSync(key, value) { storage.set(key, value); }, removeStorageSync(key) { storage.delete(key); }, disableAlertBeforeUnload() {}, enableAlertBeforeUnload() {}
   };
   const auth = {
-    ensureAuthenticated: async () => {}, isAdmin: () => !manager, isStallManager: () => manager,
+    ensureAuthenticated: async () => {}, isAdmin: () => !manager, isStallManager: () => manager || managerIncomePage,
     getUserInfo: () => ({ userId: '42' })
   };
   const cache = new Map();
@@ -78,6 +79,13 @@ function pageHarness(file, { get, post, put, del, upload, manager = false } = {}
     }
   };
   page._authorized = true;
+  // 财务交互专项从已验证账户开始；真实生命周期及拒绝访问由 managerIncomeAccess 专项验证。
+  if (managerIncomePage) {
+    page._authorizedOwner = '42';
+    page._accessVersion = 1;
+    page._visible = true;
+    page.data.accessState = 'ready';
+  }
   // 本组只验证价格构造，商品提交事务由 multipleProductDrafts 专项验证。
   if (page.submitDraftProduct) page.submitDraftProduct = data => {
     const live = file.includes('liveRoomPublish');
@@ -2449,7 +2457,7 @@ test('本地申请仅profile.userId字符串scope，切账号不承接另一用�
   page.rememberRequest('mw_owner42_key_123456789');
   auth.getUserInfo = () => ({ userId: '43' });
   await page.withdrawAll(); assert.equal(calls.length, 0);
-  assert.match(page.data.error, /账号已经变化/);
+  assert.match(page.data.error, /账号或操作身份已变化/);
   page.setData({ profile: { userId: '43' } }); page.restoreRequestPointer();
   assert.equal(page.data.pendingRequestKey, '');
   assert.equal(storage.get('managerWithdrawalRequest:42').requestKey, 'mw_owner42_key_123456789');
