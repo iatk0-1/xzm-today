@@ -336,12 +336,19 @@ page { background-color: #f2f2f2; }
 
 .peer-order-tag { display: inline-block; padding: 8rpx 16rpx; margin-top: 16rpx; background: #fff2da; color: #8a5314; border-radius: 10rpx; font-size: 24rpx; }
 .price-panel { padding-bottom: calc(24rpx + env(safe-area-inset-bottom)); }
-.price-panel-scroll { height: 64vh; }
+.price-panel-scroll { height: 64vh; min-height: 0; width: 100%; }
+.price-panel-content { padding: 0 44rpx 24rpx 28rpx; box-sizing: border-box; }
 .price-form-row { display: flex; align-items: center; gap: 16rpx; padding: 22rpx 0; border-bottom: 1rpx solid #eee; font-size: 27rpx; }
 .price-form-row > text { flex-shrink: 0; }
 .price-form-row input { flex: 1; min-width: 0; text-align: right; font-size: 27rpx; }
 .price-form-row switch { margin-left: auto; }
 .price-form-row button { flex-shrink: 0; margin: 0; }
+.price-shipping-label { display: flex; align-items: center; gap: 12rpx; flex-shrink: 0; }
+.price-shipping-label .price-waive-shipping { height: 48rpx; line-height: 48rpx; padding: 0 14rpx; font-size: 22rpx; border-radius: 8rpx; background: #f5f6f8; color: #333; }
+.price-waive-shipping::after { border: none; }
+.price-method-picker { flex: 1; min-width: 0; }
+.price-method-value { display: flex; align-items: center; justify-content: flex-end; min-height: 56rpx; gap: 16rpx; }
+.price-method-arrow { width: 10rpx; height: 10rpx; margin-right: 4rpx; border-right: 2rpx solid #888; border-bottom: 2rpx solid #888; transform: rotate(45deg); flex-shrink: 0; }
 .price-totals { background: #f6f7f9; border-radius: 12rpx; padding: 20rpx; margin-top: 20rpx; line-height: 1.9; font-size: 27rpx; }
 .pricing-hint { color: #777; font-size: 24rpx; line-height: 1.7; margin-top: 16rpx; }
 .price-error { color: #b23a2e; margin-top: 18rpx; font-size: 26rpx; }
@@ -352,5 +359,4 @@ page { background-color: #f2f2f2; }
 .price-history { border-top: 1rpx solid #eee; margin-top: 20rpx; padding-top: 16rpx; font-size: 24rpx; color: #666; line-height: 1.8; overflow-wrap: anywhere; }
 
 .price-panel .panel-title { padding: 26rpx 28rpx 8rpx; font-size: 32rpx; font-weight: 600; }
-.price-panel-scroll { padding: 0 28rpx; box-sizing: border-box; }
 .price-panel .panel-actions button { flex: 1; font-size: 28rpx; }

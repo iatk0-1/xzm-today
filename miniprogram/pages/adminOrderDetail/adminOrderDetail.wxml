@@ -332,24 +332,34 @@
 <view class="bottom-panel price-panel" wx:if="{{showPricePanel}}">
   <view class="panel-title">修改订单价格</view>
   <scroll-view scroll-y="{{true}}" class="price-panel-scroll">
-    <view class="price-form-row"><text>同行订单（不计佣金）</text><switch checked="{{priceDraft.peerOrder}}" disabled="{{pricing.peerOrder || priceSaving}}" bindchange="onPeerOrderChange" /></view>
-    <view class="pricing-hint">开启同行订单后，自动将线上应付设为0.01元加运费，其余金额填入线下实收；金额仍可手动调整。</view>
-    <view class="price-form-row"><text>线上应付（含运费）</text><input type="digit" value="{{priceDraft.onlineAmount}}" data-field="onlineAmount" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
-    <view class="price-form-row"><text>线下实收（元）</text><input type="digit" value="{{priceDraft.offlineAmount}}" data-field="offlineAmount" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
-    <view class="price-form-row"><text>运费（元）</text><input type="digit" value="{{priceDraft.shippingFee}}" data-field="shippingFee" bindinput="onPriceInput" disabled="{{priceSaving}}" /><button size="mini" bindtap="waivePriceShipping" disabled="{{priceSaving}}">免运费</button></view>
-    <block wx:if="{{priceDraft.offlineAmount > 0}}">
-      <view class="price-form-row"><text>线下收款方式</text><input placeholder="如微信转账、现金" maxlength="100" value="{{priceDraft.offlineMethod}}" data-field="offlineMethod" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
-      <view class="price-form-row"><text>收款备注</text><input placeholder="选填" maxlength="500" value="{{priceDraft.offlineNote}}" data-field="offlineNote" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
-      <view class="price-form-row"><text>已核实线下款到账</text><switch checked="{{priceDraft.offlineConfirmed}}" bindchange="onOfflineConfirmedChange" disabled="{{priceSaving}}" /></view>
-    </block>
-    <view class="price-form-row"><text>改价原因</text><input placeholder="必填，最多500字" maxlength="500" value="{{priceDraft.reason}}" data-field="reason" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
-    <view class="price-totals">
-      <view>商品成本总额：¥ {{pricing.costAmount}}{{pricing.costComplete ? '' : '（成本未补齐）'}}</view>
-      <view>商品成交额：¥ {{pricePreview.goods}}</view>
-      <view>成交总额：¥ {{pricePreview.total}}</view>
+    <view class="price-panel-content">
+      <view class="price-form-row"><text>同行订单（不计佣金）</text><switch checked="{{priceDraft.peerOrder}}" disabled="{{pricing.peerOrder || priceSaving}}" bindchange="onPeerOrderChange" /></view>
+      <view class="pricing-hint">开启同行订单后，自动将线上应付设为0.01元加运费，其余金额填入线下实收；金额仍可手动调整。</view>
+      <view class="price-form-row"><text>线上应付（含运费）</text><input type="digit" value="{{priceDraft.onlineAmount}}" data-field="onlineAmount" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
+      <view class="price-form-row"><text>线下实收（元）</text><input type="digit" value="{{priceDraft.offlineAmount}}" data-field="offlineAmount" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
+      <view class="price-form-row">
+        <view class="price-shipping-label"><text>运费（元）</text><button class="price-waive-shipping" size="mini" bindtap="waivePriceShipping" disabled="{{priceSaving}}">免运费</button></view>
+        <input type="digit" value="{{priceDraft.shippingFee}}" data-field="shippingFee" bindinput="onPriceInput" disabled="{{priceSaving}}" />
+      </view>
+      <block wx:if="{{priceDraft.offlineAmount > 0}}">
+        <view class="price-form-row">
+          <text>线下收款方式</text>
+          <picker class="price-method-picker" mode="selector" range="{{offlineMethodOptions}}" value="{{offlineMethodIndex}}" bindchange="onOfflineMethodChange" disabled="{{priceSaving}}">
+            <view class="price-method-value"><text>{{priceDraft.offlineMethod}}</text><view class="price-method-arrow"></view></view>
+          </picker>
+        </view>
+        <view class="price-form-row"><text>收款备注</text><input placeholder="选填" maxlength="500" value="{{priceDraft.offlineNote}}" data-field="offlineNote" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
+        <view class="price-form-row"><text>已核实线下款到账</text><switch checked="{{priceDraft.offlineConfirmed}}" bindchange="onOfflineConfirmedChange" disabled="{{priceSaving}}" /></view>
+      </block>
+      <view class="price-form-row"><text>改价原因</text><input placeholder="必填，最多500字" maxlength="500" value="{{priceDraft.reason}}" data-field="reason" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
+      <view class="price-totals">
+        <view>商品成本总额：¥ {{pricing.costAmount}}{{pricing.costComplete ? '' : '（成本未补齐）'}}</view>
+        <view>商品成交额：¥ {{pricePreview.goods}}</view>
+        <view>成交总额：¥ {{pricePreview.total}}</view>
+      </view>
+      <view class="pricing-hint">成交总额＝线上应付＋线下实收；扣除运费后不能低于商品成本。修改运费会同步调整线上应付，线下实收不自动改动。线上应付最低0.01元，运费可设为0。</view>
+      <view class="price-error" wx:if="{{pricePreview.error}}">{{pricePreview.error}}</view>
     </view>
-    <view class="pricing-hint">成交总额＝线上应付＋线下实收；扣除运费后不能低于商品成本。修改运费会同步调整线上应付，线下实收不自动改动。线上应付最低0.01元，运费可设为0。</view>
-    <view class="price-error" wx:if="{{pricePreview.error}}">{{pricePreview.error}}</view>
   </scroll-view>
   <view class="panel-actions"><button bindtap="closePricePanel" disabled="{{priceSaving}}">取消</button><button type="primary" bindtap="savePrice" loading="{{priceSaving}}" disabled="{{priceSaving || !pricePreview.valid}}">确认改价</button></view>
 </view>

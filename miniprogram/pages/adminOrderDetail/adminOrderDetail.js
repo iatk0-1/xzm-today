@@ -20,6 +20,8 @@ Page(pageSync.wrap({
     pricing: null,
     priceDraft: {},
     pricePreview: {},
+    offlineMethodOptions: ['微信转账', '支付宝转账', '银行转账', '其他'],
+    offlineMethodIndex: 0,
     refundPayments: [],
     orderId: null,
     order: null,
@@ -79,26 +81,37 @@ Page(pageSync.wrap({
     try {
       const pricing = await this.loadPricing();
       if (!pricing) return;
+      const methods = this.data.offlineMethodOptions;
+      const savedMethodIndex = methods.indexOf(pricing.offlineMethod);
+      const offlineMethodIndex = savedMethodIndex >= 0 ? savedMethodIndex : (pricing.offlineMethod ? 3 : 0);
       const priceDraft = {
         revision: pricing.revision,
         peerOrder: !!pricing.peerOrder,
         onlineAmount: Number(pricing.onlineAmount).toFixed(2),
         offlineAmount: Number(pricing.offlineAmount).toFixed(2),
         shippingFee: Number(pricing.shippingFee).toFixed(2),
-        offlineMethod: pricing.offlineMethod || '', offlineNote: pricing.offlineNote || '',
+        offlineMethod: methods[offlineMethodIndex], offlineNote: pricing.offlineNote || '',
         offlineConfirmed: false, reason: ''
       };
       this._lastShippingCents = orderPricing.cents(priceDraft.shippingFee);
-      this.setData({ showPricePanel: true, priceDraft,
+      this.setData({ showPricePanel: true, priceDraft, offlineMethodIndex,
         pricePreview: orderPricing.preview(priceDraft, pricing.costAmount, pricing.costComplete) });
     } finally { this._priceOpening = false; }
   },
   closePricePanel() { if (!this.data.priceSaving) this.setData({ showPricePanel: false }); },
   onPriceInput(e) {
     const field = e.currentTarget.dataset.field;
-    if (!['onlineAmount', 'offlineAmount', 'shippingFee', 'offlineMethod', 'offlineNote', 'reason'].includes(field)) return;
+    if (!['onlineAmount', 'offlineAmount', 'shippingFee', 'offlineNote', 'reason'].includes(field)) return;
     if (field === 'shippingFee') { this.changePriceShipping(e.detail.value); return; }
     this.updatePriceDraft({ [field]: e.detail.value });
+  },
+  onOfflineMethodChange(e) {
+    if (this.data.priceSaving) return;
+    const index = Number(e.detail.value);
+    const methods = this.data.offlineMethodOptions;
+    if (!Number.isInteger(index) || index < 0 || index >= methods.length) return;
+    this.setData({ offlineMethodIndex: index });
+    this.updatePriceDraft({ offlineMethod: methods[index] });
   },
   onPeerOrderChange(e) {
     if (this.data.priceSaving) return;
