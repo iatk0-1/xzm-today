@@ -4,6 +4,7 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const orderNavigation = require('../../utils/orderNavigation');
+const { getExpressName } = require('../../utils/expressCompany');
 const BATCH_TASK_STORAGE = 'admin_order_active_batch_task';
 
 Page({
@@ -1573,6 +1574,7 @@ Page({
         if (!orders.has(String(id))) orders.set(String(id), { orderId: id, orderNo: String(id), items: [] });
       }
       return { ...group,
+        expressName: getExpressName(group.expressCode),
         statusText: labels[group.status] || group.status,
         stageText: stageLabels[group.stage] || group.stage || '',
         orderText: (group.orderIds || []).join('、'),

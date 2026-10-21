@@ -480,7 +480,7 @@
             <view class="batch-progress-meta">{{group.orders.length}} 笔订单</view>
           </view>
           <view class="task-waybill" wx:if="{{group.expressNo}}">
-            <text user-select="{{true}}">{{group.expressCode}} {{group.expressNo}}</text><text class="copy-link" catchtap="copyBatchExpressNo" data-express-no="{{group.expressNo}}">复制</text>
+            <text user-select="{{true}}">{{group.expressName}} {{group.expressNo}}</text><text class="copy-link" catchtap="copyBatchExpressNo" data-express-no="{{group.expressNo}}">复制</text>
           </view>
           <view class="task-issue" wx:if="{{group.shipmentDeleted}}">该发货单已解绑，此处保留历史运单记录</view>
           <view class="batch-progress-reason" wx:if="{{group.reason}}">{{group.reason}}</view>
