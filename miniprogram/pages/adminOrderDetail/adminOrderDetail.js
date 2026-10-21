@@ -101,8 +101,21 @@ Page(pageSync.wrap({
     this.updatePriceDraft({ [field]: e.detail.value });
   },
   onPeerOrderChange(e) {
-    if (this.data.pricing.peerOrder && !e.detail.value) return;
-    this.updatePriceDraft({ peerOrder: !!e.detail.value });
+    if (this.data.priceSaving) return;
+    const enabled = !!e.detail.value;
+    if (this.data.pricing.peerOrder && !enabled) return;
+    if (enabled === !!this.data.priceDraft.peerOrder) return;
+    if (enabled) {
+      const defaults = orderPricing.peerDefaults(this.data.priceDraft);
+      if (defaults.error) {
+        this.updatePriceDraft({ peerOrder: false });
+        wx.showToast({ title: defaults.error, icon: 'none' });
+        return;
+      }
+      this.updatePriceDraft(defaults.patch);
+      return;
+    }
+    this.updatePriceDraft({ peerOrder: false });
   },
   onOfflineConfirmedChange(e) { this.updatePriceDraft({ offlineConfirmed: !!e.detail.value }); },
   waivePriceShipping() { this.changePriceShipping('0.00'); },

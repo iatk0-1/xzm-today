@@ -99,3 +99,61 @@ test('运费输入暂时清空后仍正确扣减；不足扣减时要求重填�
   assert.equal(value.data.priceDraft.offlineAmount, '109.99');
   assert.equal(value.data.pricePreview.valid, false);
 });
+
+test('开启同行默认线上收一分钱加运费，线下补足实际成交总额，原因填线下开单', () => {
+  const value = pricing.peerDefaults(draft({ peerOrder: false, onlineAmount: '110.00', offlineAmount: '0', shippingFee: '10', reason: '', offlineConfirmed: true }));
+  assert.deepEqual(value.patch, { peerOrder: true, onlineAmount: '10.01', offlineAmount: '99.99', reason: '线下开单', offlineConfirmed: false });
+});
+test('零运费和已有混合收款均保持当前成交总额，不使用成本价代替成交价', () => {
+  assert.equal(pricing.peerDefaults(draft({ onlineAmount: '100', offlineAmount: '0', shippingFee: '0' })).patch.offlineAmount, '99.99');
+  assert.deepEqual(pricing.peerDefaults(draft({ onlineAmount: '60', offlineAmount: '40', shippingFee: '5' })).patch,
+    { peerOrder: true, onlineAmount: '5.01', offlineAmount: '94.99', reason: '线下开单', offlineConfirmed: false });
+  assert.equal(pricing.peerDefaults(draft({ onlineAmount: '120', offlineAmount: '0', shippingFee: '10' })).patch.offlineAmount, '109.99');
+});
+test('拆分用整数分保留尾差，不能生成负的线下实收', () => {
+  const value = pricing.peerDefaults(draft({ onlineAmount: '10.01', offlineAmount: '0', shippingFee: '10' }));
+  assert.equal(value.patch.onlineAmount, '10.01');assert.equal(value.patch.offlineAmount, '0.00');
+  assert.match(pricing.peerDefaults(draft({ onlineAmount: '10', offlineAmount: '0', shippingFee: '10' })).error, /成交总额/);
+  assert.match(pricing.peerDefaults(draft({ onlineAmount: '', offlineAmount: '0' })).error, /有效/);
+});
+test('同行开关一次填好金额和原因，重新核实线下到账，同时保留已填收款方式', () => {
+  const value = page();
+  value.data.priceDraft = draft({ peerOrder: false, onlineAmount: '110', offlineAmount: '0', shippingFee: '10', reason: '旧原因', offlineMethod: '现金' });
+  value.onPeerOrderChange({ detail: { value: true } });
+  assert.equal(value.data.priceDraft.onlineAmount, '10.01');
+  assert.equal(value.data.priceDraft.offlineAmount, '99.99');
+  assert.equal(value.data.priceDraft.reason, '线下开单');
+  assert.equal(value.data.priceDraft.offlineMethod, '现金');
+  assert.equal(value.data.priceDraft.offlineConfirmed, false);
+  assert.equal(value.data.pricePreview.total, '110.00');
+});
+test('开启同行后仍可手工改成全线上收款，重复开关事件和保存期间不覆盖修改', () => {
+  const value = page();
+  value.data.priceDraft = draft({ peerOrder: false, onlineAmount: '100', offlineAmount: '0', reason: '' });
+  value.onPeerOrderChange({ detail: { value: true } });
+  value.updatePriceDraft({ onlineAmount: '100', offlineAmount: '0', reason: '同行线上付款' });
+  value.onPeerOrderChange({ detail: { value: true } });
+  assert.equal(value.data.priceDraft.onlineAmount, '100');assert.equal(value.data.priceDraft.reason, '同行线上付款');
+  value.data.priceSaving = true;
+  value.onPeerOrderChange({ detail: { value: false } });
+  assert.equal(value.data.priceDraft.peerOrder, true);
+});
+test('同行默认拆分后免运费线上回到一分钱，线下实收不自动改变', () => {
+  const value = page();
+  value.data.priceDraft = draft({ peerOrder: false, onlineAmount: '110', offlineAmount: '0', shippingFee: '10' });
+  value.onPeerOrderChange({ detail: { value: true } });
+  value.waivePriceShipping();
+  assert.equal(value.data.priceDraft.onlineAmount, '0.01');
+  assert.equal(value.data.priceDraft.offlineAmount, '99.99');
+  assert.equal(value.data.pricePreview.total, '100.00');
+});
+test('金额无效时拒绝开启同行，保留原输入；已保存同行订单不能取消标记', () => {
+  const value = page();
+  value.data.priceDraft = draft({ peerOrder: false, onlineAmount: '', offlineAmount: '0' });
+  value.onPeerOrderChange({ detail: { value: true } });
+  assert.equal(value.data.priceDraft.peerOrder, false);
+  assert.equal(value.data.priceDraft.onlineAmount, '');
+  value.data.pricing.peerOrder = true;value.data.priceDraft = draft();
+  value.onPeerOrderChange({ detail: { value: false } });
+  assert.equal(value.data.priceDraft.peerOrder, true);
+});

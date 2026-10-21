@@ -27,10 +27,28 @@ function preview(draft, costAmount, costComplete) {
   };
 }
 function total(order) { return (Number(order.payAmount || 0) + Number(order.offlinePaidAmount || 0)).toFixed(2); }
+function peerDefaults(draft) {
+  const online = cents(draft.onlineAmount), offline = cents(draft.offlineAmount), shipping = cents(draft.shippingFee);
+  if (online == null || offline == null || shipping == null) {
+    return { error: '请先填写有效的线上应付、线下实收和运费' };
+  }
+  const actualTotal = online + offline;
+  const nextOnline = shipping + 1;
+  if (actualTotal > 999999999 || nextOnline > 999999999 || actualTotal < nextOnline) {
+    return { error: '成交总额须至少包含0.01元商品金额和运费，请先调整金额' };
+  }
+  return { patch: {
+    peerOrder: true,
+    onlineAmount: amount(nextOnline),
+    offlineAmount: amount(actualTotal - nextOnline),
+    reason: '线下开单',
+    offlineConfirmed: false
+  } };
+}
 function refundQtyAmount(item, qty) {
   if (item && item.settlementAmount != null && Number(item.orderQty) > 0) {
     return Math.ceil(Math.round(Number(item.settlementAmount) * 100) * qty / Number(item.orderQty)) / 100;
   }
   return Number(item && item.salePrice || 0) * qty;
 }
-module.exports = { cents, amount, preview, total, refundQtyAmount };
+module.exports = { cents, amount, preview, total, peerDefaults, refundQtyAmount };

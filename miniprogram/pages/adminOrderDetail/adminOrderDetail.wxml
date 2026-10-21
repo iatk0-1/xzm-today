@@ -329,6 +329,7 @@
   <view class="panel-title">修改订单价格</view>
   <scroll-view scroll-y="{{true}}" class="price-panel-scroll">
     <view class="price-form-row"><text>同行订单（不计佣金）</text><switch checked="{{priceDraft.peerOrder}}" disabled="{{pricing.peerOrder || priceSaving}}" bindchange="onPeerOrderChange" /></view>
+    <view class="pricing-hint">开启同行订单后，自动将线上应付设为0.01元加运费，其余金额填入线下实收；金额仍可手动调整。</view>
     <view class="price-form-row"><text>线上应付（含运费）</text><input type="digit" value="{{priceDraft.onlineAmount}}" data-field="onlineAmount" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
     <view class="price-form-row"><text>线下实收（元）</text><input type="digit" value="{{priceDraft.offlineAmount}}" data-field="offlineAmount" bindinput="onPriceInput" disabled="{{priceSaving}}" /></view>
     <view class="price-form-row"><text>运费（元）</text><input type="digit" value="{{priceDraft.shippingFee}}" data-field="shippingFee" bindinput="onPriceInput" disabled="{{priceSaving}}" /><button size="mini" bindtap="waivePriceShipping" disabled="{{priceSaving}}">免运费</button></view>
