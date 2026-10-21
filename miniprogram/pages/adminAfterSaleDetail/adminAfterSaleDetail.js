@@ -4,6 +4,7 @@ const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/erro
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const afterSaleFulfillment = require('../../utils/afterSaleFulfillment');
 
 Page({
   data: {
@@ -80,6 +81,7 @@ Page({
         ? Math.max(0, Math.min(Number(orderItem.qty), Number(orderItem.shippedQty))) : null;
       return {
         ...item,
+        ...afterSaleFulfillment.format(item),
         currentShippedQty,
         currentUnshippedQty: shipmentKnown ? Number(orderItem.qty) - currentShippedQty : null,
         displayImage: item.productImage || item.skuImageUrl || orderItem.skuImageUrl || orderItem.productImage || '',

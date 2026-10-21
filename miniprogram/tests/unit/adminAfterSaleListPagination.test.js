@@ -101,6 +101,15 @@ test('售后列表格式化订单状态、售后申请时间和下单时间', { 
   assert.equal(page.data.afterSales[0].orderCreatedAtDisplay, '2026-09-20 08:09:10');
 });
 
+test('售后列表使用本次申请匹配，不用整单已发货状态替代', async () => {
+  responses.push({ page: 1, total: 1, items: [{ id: 'fulfillment', orderStatus: 'partial_shipped', items: [
+    { id: 'item', qty: 2, fulfillment: { unreportedQty: 1, transitQty: 1, stockQty: 0, shippedQty: 0 } }
+  ] }] });
+  const page = createPage();
+  await page.loadAfterSales(true);
+  assert.match(page.data.afterSales[0].items[0].fulfillmentText, /未报单 1 件.*已备货未发 1 件.*已发货 0 件/);
+});
+
 test('切换售后状态 Tab 时传递对应的后端状态参数', { concurrency: false }, () => {
   const page = createPage();
   const statuses = [];

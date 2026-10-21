@@ -22,6 +22,18 @@ require('../../pages/afterSaleApply/afterSaleApply.js');
 const applyConfig = captured;
 Module._load = originalLoad;
 
+test('售后详情和审核弹窗保留申请匹配，整单三件发一件不混进本次两件', () => {
+  const detail = page(reviewConfig);
+  const formatted = detail.formatAfterSaleDetail({ status: 'pending', items: [
+    { id: 'a', orderItemId: 'b', qty: 2, afterSaleType: 'refund', status: 'pending',
+      fulfillment: { unreportedQty: 1, transitQty: 1, stockQty: 0, shippedQty: 0 } }
+  ], orderDetail: { status: 'partial_shipped', items: [{ id: 'b', qty: 3, shippedQty: 1 }] } });
+  detail.data.afterSale = formatted;
+  detail.showReviewModal();
+  assert.match(formatted.items[0].fulfillmentText, /未报单 1 件.*已备货未发 1 件.*已发货 0 件/);
+  assert.equal(detail.data.reviewItems[0].fulfillmentText, formatted.items[0].fulfillmentText);
+});
+
 function page(config) {
   const value = { ...config, data: JSON.parse(JSON.stringify(config.data)) };
   value.setData = (patch, callback) => {

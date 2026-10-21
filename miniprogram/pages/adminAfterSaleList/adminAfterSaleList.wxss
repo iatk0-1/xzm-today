@@ -475,3 +475,6 @@
   font-size: 24rpx;
   color: #ccc;
 }
+.fulfillment-summary { margin-top: 10rpx; color: #8a5a22; font-size: 22rpx; line-height: 1.6; white-space: normal; }
+.fulfillment-summary.unknown { color: #8c8c8c; }
+.fulfillment-detail { margin-top: 4rpx; color: #777; font-size: 22rpx; line-height: 1.6; }

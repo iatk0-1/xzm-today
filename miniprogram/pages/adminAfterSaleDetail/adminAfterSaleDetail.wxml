@@ -107,6 +107,9 @@
             <text class="item-type {{item.afterSaleType}}">{{item.afterSaleType === 'refund' ? '仅退款' : '退货退款'}}</text>
             <text class="item-status {{item.status}}" wx:if="{{item.status}}">{{item.statusDisplay}}</text>
           </view>
+          <view class="fulfillment-summary {{item.fulfillmentKnown ? '' : 'unknown'}}">{{item.fulfillmentText}}</view>
+          <view class="fulfillment-detail" wx:if="{{item.fulfillmentKnown}}">{{item.fulfillmentStockText}}</view>
+          <view class="fulfillment-detail" wx:if="{{item.applicationFulfillmentText}}">{{item.applicationFulfillmentText}}</view>
         </view>
         <view class="item-refund">¥ {{item.refundAmount}}</view>
       </view>
@@ -263,6 +266,9 @@
               <text class="review-item-name">{{item.productName}}</text>
               <text class="review-item-spec">{{item.skuSpec}} / {{item.skuSize}}</text>
               <text class="review-item-limit">用户申请 {{item.requestedQty || item.qty}} 件，¥ {{item.requestedRefundAmount || item.refundAmount}}</text>
+              <text class="review-item-limit fulfillment-summary">{{item.fulfillmentText}}</text>
+              <text class="review-item-limit" wx:if="{{item.fulfillmentKnown}}">{{item.fulfillmentStockText}}</text>
+              <text class="review-item-limit" wx:if="{{item.applicationFulfillmentText}}">{{item.applicationFulfillmentText}}</text>
               <text class="review-item-limit" wx:if="{{item.currentShippedQty !== null}}">当前已发 {{item.currentShippedQty}} 件 · 未发 {{item.currentUnshippedQty}} 件</text>
             </view>
           </view>

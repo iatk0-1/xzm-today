@@ -104,6 +104,8 @@
                 <text>×{{product.qty}}</text>
                 <text class="product-type">{{product.afterSaleType === 'refund' ? '仅退款' : '退货退款'}}</text>
               </view>
+              <view class="fulfillment-summary {{product.fulfillmentKnown ? '' : 'unknown'}}">{{product.fulfillmentText}}</view>
+              <view class="fulfillment-detail" wx:if="{{product.fulfillmentKnown}}">{{product.fulfillmentStockText}}</view>
             </view>
             <view class="product-refund">¥ {{product.refundAmount}}</view>
           </view>

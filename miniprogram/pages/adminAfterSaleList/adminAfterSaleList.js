@@ -4,6 +4,7 @@ const autoSearch = require('../../utils/autoSearch');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const afterSaleFulfillment = require('../../utils/afterSaleFulfillment');
 
 // 状态映射
 const STATUS_MAP = {
@@ -210,6 +211,7 @@ Page(autoSearch.wrap(pageSync.wrap({
         this.setData({
           afterSales: newList.map(item => ({
             ...item,
+            items: (item.items || []).map(product => ({ ...product, ...afterSaleFulfillment.format(product) })),
             statusDisplay: item.status === 'cancelled' && item.rejectReason ? '已关闭' : (STATUS_DISPLAY[item.status] || item.status),
             orderStatusDisplay: ORDER_STATUS_DISPLAY[item.orderStatus] || item.orderStatus || '-',
             typeDisplay: TYPE_DISPLAY[item.type] || item.type,
@@ -276,6 +278,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     entity: 'after-sales', field: 'afterSales', url: id => '/after-sales/' + id,
     normalize: item => ({
       ...item,
+      items: (item.items || []).map(product => ({ ...product, ...afterSaleFulfillment.format(product) })),
       orderStatus: item.orderDetail && item.orderDetail.status,
       orderStatusDisplay: ORDER_STATUS_DISPLAY[item.orderDetail && item.orderDetail.status] || '-',
       statusDisplay: item.status === 'cancelled' && item.rejectReason ? '已关闭' : (STATUS_DISPLAY[item.status] || item.status),
