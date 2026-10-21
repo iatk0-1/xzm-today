@@ -5,6 +5,7 @@ const Module = require('node:module');
 let pageConfig;
 const storage = {};
 const calls = [];
+const copied = [];
 const pages = [];
 let postHandler = async () => ({});
 let getHandler = async () => ({});
@@ -22,7 +23,7 @@ Module._load = function(request, ...args) {
     get: async (url, params) => { calls.push(['GET', url, params]); return getHandler(url, params); }
   };
   if (request.endsWith('utils/auth')) return {};
-  if (request.endsWith('utils/clipboard')) return {};
+  if (request.endsWith('utils/clipboard')) return { copyText: (value, label) => copied.push({ value, label }) };
   return originalLoad.call(this, request, ...args);
 };
 require('../../pages/adminOrder/adminOrder.js');
@@ -401,4 +402,95 @@ test('结束分页任务时按完整批次保留失败商品，不能只按当�
   await p.finishBatchTask();
   assert.deepEqual(p.data.pendingShipItems.map(i => i.orderId), ['2']);
   assert.equal(storage.admin_order_active_batch_task, undefined);
+});
+
+test('包裹默认只显示最新物流，展开收缩独立且进度刷新不重复查询', { concurrency: false }, async () => {
+  const p = page();
+  calls.length = 0;
+  const task = { id: 'trace-task', groups: [
+    { id: 'g1', orderIds: ['1', '2'], shipmentId: 's1', expressNo: 'no1' },
+    { id: 'g2', orderIds: ['3'], shipmentId: 's2', expressNo: 'no2' },
+    { id: 'g3', orderIds: ['4'], shipmentId: 's1', expressNo: 'no1' },
+    { id: 'deleted', orderIds: ['5'], shipmentId: 's3', expressNo: 'no3', shipmentDeleted: true },
+    { id: 'waiting', orderIds: ['6'] }
+  ] };
+  getHandler = async url => ({ nodes: [
+    { time: '2026-10-21T15:00:00+08:00', description: '已签收 ' + url },
+    { time: '2026-10-21T10:00:00+08:00', description: '运输中' },
+    { time: '', description: '已揽收' }
+  ] });
+  p.updateBatchProgress(task);
+  await p.batchTracePromise;
+  assert.equal(calls.length, 2);
+  assert.equal(p.data.batchTraceMap.s1.visibleNodes.length, 1);
+  assert.match(p.data.batchTraceMap.s1.visibleNodes[0].description, /已签收/);
+  const event = { currentTarget: { dataset: { shipmentId: 's1' } } };
+  p.toggleBatchShipmentTrace(event);
+  assert.equal(p.data.batchTraceMap.s1.visibleNodes.length, 3);
+  assert.equal(p.data.batchTraceMap.s2.visibleNodes.length, 1);
+  p.updateBatchProgress(task);
+  await p.batchTracePromise;
+  assert.equal(p.data.batchTraceMap.s1.expanded, true);
+  assert.equal(calls.length, 2);
+  p.toggleBatchShipmentTrace(event);
+  assert.equal(p.data.batchTraceMap.s1.visibleNodes.length, 1);
+});
+
+test('切换任务丢弃旧物流响应并停止排队查询，最多同时请求三个包裹', { concurrency: false }, async () => {
+  const p = page();
+  calls.length = 0;
+  const pending = [];
+  getHandler = async url => new Promise(resolve => pending.push({ url, resolve }));
+  p.updateBatchProgress({ id: 'old', groups: Array.from({ length: 6 }, (_, i) => ({ id: 'g' + i, orderIds: ['1'], shipmentId: 'old' + i, expressNo: 'no' + i })) });
+  const previous = p.batchTracePromise;
+  assert.equal(pending.length, 3);
+  p.updateBatchProgress({ id: 'new', groups: [{ id: 'newg', orderIds: ['2'], shipmentId: 'new', expressNo: 'new-no' }] });
+  const latest = p.batchTracePromise;
+  pending.filter(q => q.url.includes('old')).forEach(q => q.resolve({ nodes: [{ description: '旧任务' }] }));
+  await previous;
+  assert.equal(calls.length, 4);
+  pending.find(q => q.url.includes('/new/')).resolve({ nodes: [{ description: '新任务最新物流' }] });
+  await latest;
+  assert.deepEqual(Object.keys(p.data.batchTraceMap), ['new']);
+  assert.equal(p.data.batchTraceMap.new.visibleNodes[0].description, '新任务最新物流');
+});
+
+test('单包裹物流失败可独立重试，空轨迹与离开页面正确处理', { concurrency: false }, async () => {
+  const p = page();
+  getHandler = async url => {
+    if (url.includes('/broken/')) throw new Error('物流服务暂不可用');
+    return { nodes: [] };
+  };
+  const task = { id: 'retry', groups: ['broken', 'empty'].map(id => ({ id, orderIds: ['1'], shipmentId: id, expressNo: 'no-' + id })) };
+  p.updateBatchProgress(task);
+  await p.batchTracePromise;
+  assert.match(p.data.batchTraceMap.broken.error, /物流服务暂不可用/);
+  assert.equal(p.data.batchTraceMap.empty.error, undefined);
+  assert.deepEqual(p.data.batchTraceMap.empty.visibleNodes, []);
+  calls.length = 0;
+  getHandler = async () => ({ nodes: [{ time: '承运商未提供时间', description: '已揽收' }] });
+  await p.retryBatchShipmentTrace({ currentTarget: { dataset: { shipmentId: 'broken' } } });
+  assert.equal(calls.length, 1);
+  assert.equal(p.data.batchTraceMap.broken.visibleNodes[0].timeDisplay, '承运商未提供时间');
+  let finish;
+  getHandler = async () => new Promise(resolve => { finish = resolve; });
+  p.resetBatchTraces();
+  p.updateBatchProgress({ id: 'leaving', groups: [task.groups[0]] });
+  const loading = p.batchTracePromise;
+  p.onHide();
+  finish({ nodes: [{ description: '迟到的物流' }] });
+  await loading;
+  assert.deepEqual(p.data.batchTraceMap, {});
+});
+
+test('订单编号一键复制原编号，商品短按跳订单且长按复制不跳转', { concurrency: false }, () => {
+  const p = page();
+  copied.length = 0;
+  p.copyOrderNo({ currentTarget: { dataset: { orderNo: '371109080435003392' } } });
+  assert.deepEqual(copied, [{ value: '371109080435003392', label: '订单号' }]);
+  const template = require('node:fs').readFileSync(require('node:path').join(__dirname, '../../pages/adminOrder/adminOrder.wxml'), 'utf8');
+  const detail = template.slice(template.indexOf('{{showBatchProgress && batchProgress}}'));
+  assert.doesNotMatch(detail, /查看订单/);
+  assert.match(detail, /class="task-product"[^>]*bindtap="goToOrderDetail"[^>]*data-order-id="{{order.orderId}}"/);
+  assert.match(detail, /catchtap="copyOrderNo" data-order-no="{{order.orderNo}}"/);
 });

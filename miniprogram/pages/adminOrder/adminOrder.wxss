@@ -331,6 +331,18 @@ page { background-color: #f2f2f2; }
 .task-waybill > text:first-child { flex: 1; min-width: 0; }
 .task-order-card { border-top: 1rpx solid #ecefed; margin-top: 20rpx; padding-top: 18rpx; }
 .task-order-head { display: flex; flex-direction: column; gap: 12rpx; font-size: 23rpx; }
+.task-order-number { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12rpx; }
+.task-order-number .copy-link { flex-shrink: 0; }
+.task-logistics-trace { margin-top: 12rpx; padding-top: 16rpx; border-top: 1rpx solid #eee; }
+.task-trace-header { display: flex; align-items: center; gap: 20rpx; margin-bottom: 12rpx; }
+.task-trace-title { font-size: 24rpx; font-weight: 600; color: #666; }
+.task-trace-list { display: flex; flex-direction: column; gap: 18rpx; }
+.task-trace-node { display: flex; flex-direction: column; gap: 6rpx; border-left: 3rpx solid #dbe5df; padding-left: 16rpx; }
+.task-trace-content { font-size: 24rpx; color: #333; line-height: 1.6; word-break: break-all; }
+.task-trace-time { font-size: 22rpx; color: #999; line-height: 1.6; }
+.task-trace-empty { font-size: 23rpx; color: #888; line-height: 1.6; }
+.task-trace-empty .copy-link, .task-query-error .copy-link { margin-left: 16rpx; }
+.task-product-missing { color: #747d77; font-size: 23rpx; }
 .task-product { display: flex; gap: 16rpx; padding: 18rpx 0 4rpx; }
 .task-product-image { width: 96rpx; height: 110rpx; border-radius: 8rpx; flex-shrink: 0; background: #f4f4f4; }
 .task-product-content { flex: 1; min-width: 0; }

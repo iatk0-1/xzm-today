@@ -70,6 +70,7 @@ Page({
     batchSubmitting: false,
     batchDetailLoading: false,
     batchQueryError: '',
+    batchTraceMap: {},
     activeBatchTask: null,
     showFailedWaybills: false,
     failedWaybillGroups: [],
@@ -110,6 +111,7 @@ Page({
   onHide: function() {
     this.batchPageClosed = true;
     this.stopBatchPolling();
+    this.resetBatchTraces();
   },
 
   importInventoryShipmentItems: function(matches) {
@@ -1605,6 +1607,67 @@ Page({
       wx.setStorageSync(BATCH_TASK_STORAGE, saved);
       this.updatePendingShipSummary(remaining);
     }
+    this.batchTracePromise = this.loadBatchTraces(groups);
+  },
+
+  resetBatchTraces: function() {
+    this.batchTraceVersion = (this.batchTraceVersion || 0) + 1;
+    this.batchTraceScope = '';
+    this.setData({ batchTraceMap: {} });
+  },
+
+  loadBatchTraces: async function(groups) {
+    if (this.batchPageClosed) return;
+    const scope = `${this.data.batchTask.id}:${this.data.batchGroupPage}`;
+    if (scope !== this.batchTraceScope) {
+      this.resetBatchTraces();
+      this.batchTraceScope = scope;
+    }
+    const version = this.batchTraceVersion;
+    const current = () => !this.batchPageClosed && version === this.batchTraceVersion;
+    const ids = [...new Set(groups.filter(g => g.shipmentId && g.expressNo && !g.shipmentDeleted).map(g => String(g.shipmentId)))];
+    const pending = ids.filter(id => !this.data.batchTraceMap[id]);
+    if (!pending.length) return;
+    const traceMap = { ...this.data.batchTraceMap };
+    pending.forEach(id => { traceMap[id] = { loading: true, nodes: [], visibleNodes: [], expanded: false }; });
+    this.setData({ batchTraceMap: traceMap });
+    const worker = async () => {
+      while (pending.length && current()) {
+        const id = pending.shift();
+        let result;
+        try {
+          const trace = await api.get(`/shipments/${id}/trace`);
+          const nodes = (trace.nodes || []).map((node, index) => ({ ...node, index,
+            timeDisplay: node.time && Number.isFinite(new Date(node.time).getTime()) ? this.formatDate(node.time) : node.time || '' }));
+          result = { loading: false, expanded: false, nodes, visibleNodes: nodes.slice(0, 1) };
+        } catch (err) {
+          result = { loading: false, expanded: false, nodes: [], visibleNodes: [],
+            error: getErrorMessage(err, '物流加载失败，请重试') };
+        }
+        if (current()) this.setData({ batchTraceMap: { ...this.data.batchTraceMap, [id]: result } });
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(3, pending.length) }, worker));
+  },
+
+  toggleBatchShipmentTrace: function(event) {
+    const id = event.currentTarget.dataset.shipmentId;
+    const trace = this.data.batchTraceMap[id];
+    if (!trace || trace.nodes.length <= 1) return;
+    const expanded = !trace.expanded;
+    this.setData({ batchTraceMap: { ...this.data.batchTraceMap, [id]: {
+      ...trace, expanded, visibleNodes: expanded ? trace.nodes : trace.nodes.slice(0, 1)
+    } } });
+  },
+
+  retryBatchShipmentTrace: function(event) {
+    const id = event.currentTarget.dataset.shipmentId;
+    if (!this.data.batchTraceMap[id]?.error) return;
+    const traceMap = { ...this.data.batchTraceMap };
+    delete traceMap[id];
+    this.setData({ batchTraceMap: traceMap });
+    this.batchTracePromise = this.loadBatchTraces(this.data.batchProgress.groups);
+    return this.batchTracePromise;
   },
 
   stopBatchPolling: function() {
@@ -1772,6 +1835,7 @@ Page({
 
   closeBatchProgress: function() {
     this.stopBatchPolling();
+    this.resetBatchTraces();
     const history = this.data.viewingBatchHistory;
     const saved = this.getSavedBatchTask();
     // 兼容旧版本遗留的历史缓存，不影响当前真正提交的任务。
@@ -1847,6 +1911,7 @@ Page({
   openBatchTaskDetail: async function(taskId, history) {
     if (this.data.batchDetailLoading) return;
     this.stopBatchPolling();
+    this.resetBatchTraces();
     const request = (this.batchDetailRequest || 0) + 1;
     this.batchDetailRequest = request;
     this.setData({ batchDetailLoading: true, batchGroupPage: 1, batchQueryError: '' });
@@ -1871,6 +1936,7 @@ Page({
     this.searchRequestVersion = (this.searchRequestVersion || 0) + 1;
     this.batchPageClosed = true;
     this.stopBatchPolling();
+    this.resetBatchTraces();
   },
 
   // ==================== 工具函数 ====================
