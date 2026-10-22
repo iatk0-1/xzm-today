@@ -521,7 +521,7 @@
       <view class="task-pagination" wx:if="{{batchGroupPages > 1}}"><button size="mini" disabled="{{batchGroupPage <= 1}}" bindtap="changeBatchGroupPage" data-step="-1">上一页</button><text user-select="{{true}}">包裹 {{batchGroupPage}}/{{batchGroupPages}} 页</text><button size="mini" disabled="{{batchGroupPage >= batchGroupPages}}" bindtap="changeBatchGroupPage" data-step="1">下一页</button></view>
       <view class="modal-footer">
         <button class="modal-cancel" bindtap="closeBatchProgress">{{viewingBatchHistory ? '返回列表' : '收起进度'}}</button>
-        <button class="modal-confirm" wx:if="{{batchTask.status === 'DRAFT' || batchTask.status === 'LEGACY_PAUSED'}}" bindtap="continueLegacyBatchTask" disabled="{{batchSubmitting}}">确认继续发货</button>
+        <button class="modal-confirm" wx:if="{{batchTask.canOperate !== false && (batchTask.status === 'DRAFT' || batchTask.status === 'LEGACY_PAUSED')}}" bindtap="continueLegacyBatchTask" disabled="{{batchSubmitting}}">确认继续发货</button>
         <button class="modal-confirm" wx:elif="{{batchProgress.canRetry}}" bindtap="retryBatchFailedGroups" disabled="{{batchSubmitting}}" loading="{{batchSubmitting}}">重试失败包裹</button>
         <button class="modal-confirm" wx:elif="{{batchProgress.completed === batchProgress.total && !viewingBatchHistory}}" bindtap="finishBatchTask">完成并收起</button>
       </view>

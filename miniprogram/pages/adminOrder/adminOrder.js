@@ -1024,6 +1024,7 @@ Page({
   // ==================== 待发货列表 ====================
 
   updatePendingShipSummary: function(pendingShipItems) {
+    this.pendingShipRevision = (this.pendingShipRevision || 0) + 1;
     const orderIds = {};
     const groupsMap = new Map();
     pendingShipItems.forEach((item, index) => {
@@ -1376,6 +1377,7 @@ Page({
     const task = this.data.batchTask;
     const saved = this.getSavedBatchTask();
     if (!task || !saved || this.data.batchSubmitting) return;
+    const selectionRevision = this.pendingShipRevision || 0;
     this.setData({ batchSubmitting: true });
     saved.submissionPending = true;
     wx.setStorageSync(BATCH_TASK_STORAGE, saved);
@@ -1390,6 +1392,7 @@ Page({
       saved.confirmed = true;
       saved.submissionPending = false;
       wx.setStorageSync(BATCH_TASK_STORAGE, saved);
+      this.removeSubmittedSelection(saved.items || [], selectionRevision);
       this.setData({ showPreviewModal: false, showBatchProgress: true,
         viewingBatchHistory: false, batchGroupPage: 1, activeBatchTask: this.decorateBatchTask(submitted) });
       this.updateBatchProgress(submitted);
@@ -1412,22 +1415,15 @@ Page({
       ['WAITING', 'PROCESSING', 'PROCESSING_WECHAT'].includes(group.status));
   },
 
-  retainRetryableBatchItems: function(task, saved) {
-    const taskItems = saved && saved.items || [];
+  removeSubmittedSelection: function(taskItems, selectionRevision) {
+    // 仅在本次确认成功时移出已提交选择，不影响请求期间新编辑的另一批商品。
+    if ((this.pendingShipRevision || 0) !== selectionRevision) return;
     const taskKeys = new Set(taskItems.map(item => this.getPendingItemKey(item)));
     if (taskKeys.size === 0) return;
-    const retryableOrderIds = new Set((task && task.groups || [])
-      .filter(group => group.status === 'FAILED')
-      .flatMap(group => (group.orderIds || []).map(String)));
-    const retryableKeys = new Set(taskItems
-      .filter(item => retryableOrderIds.has(String(item.orderId)))
-      .map(item => this.getPendingItemKey(item)));
-    const removedKeys = new Set([...taskKeys].filter(key => !retryableKeys.has(key)));
-    if (removedKeys.size === 0) return;
 
     const orderGroups = this.data.orderGroups.map(group => {
       const items = group.items.map(item =>
-        removedKeys.has(this.getPendingItemKey(item)) ? { ...item, selected: false } : item);
+        taskKeys.has(this.getPendingItemKey(item)) ? { ...item, selected: false } : item);
       const selectableItems = items.filter(item => item.canShip);
       return {
         ...group,
@@ -1436,7 +1432,7 @@ Page({
       };
     });
     const pendingShipItems = this.data.pendingShipItems.filter(item =>
-      !removedKeys.has(this.getPendingItemKey(item)));
+      !taskKeys.has(this.getPendingItemKey(item)));
     this.setData({
       orderGroups,
       selectedItems: this.collectSelectedItems(orderGroups),
@@ -1462,7 +1458,6 @@ Page({
       if (this.isBatchTaskRunning(previousTask)) {
         throw new Error('上次发货任务仍在处理中，请先查看进度');
       }
-      this.retainRetryableBatchItems(previousTask, existing);
       wx.removeStorageSync(BATCH_TASK_STORAGE);
       this.setData({ batchTask: null, batchProgress: null, showBatchProgress: false });
     }
@@ -1506,19 +1501,20 @@ Page({
       this.refreshActiveBatchTask();
       return;
     }
-    if (!saved.historyOnly) this.updatePendingShipSummary(saved.items || []);
     try {
       const task = saved.taskId
         ? await api.get(`/shipments/batch-tasks/${saved.taskId}`, { groupPage: 1 })
         : await api.get(`/shipments/batch-tasks/by-request/${saved.requestId}`);
       const latest = this.getSavedBatchTask();
-      if (this.batchPageClosed || !latest || latest.requestId !== saved.requestId) return;
+      if (this.batchPageClosed || !latest || (saved.requestId
+        ? latest.requestId !== saved.requestId : String(latest.taskId) !== String(saved.taskId))) return;
       saved.taskId = task.id;
-      wx.setStorageSync(BATCH_TASK_STORAGE, saved);
-      this.setData({ viewingBatchHistory: false, batchGroupPage: 1, showBatchProgress: true,
-        activeBatchTask: this.isBatchTaskRunning(task) ? this.decorateBatchTask(task) : null });
-      this.updateBatchProgress(task);
-      this.runBatchTask(false);
+      if (task.confirmedAt) { saved.confirmed = true; saved.submissionPending = false; }
+      const running = this.isBatchTaskRunning(task);
+      if (task.confirmedAt && !running) wx.removeStorageSync(BATCH_TASK_STORAGE);
+      else wx.setStorageSync(BATCH_TASK_STORAGE, saved);
+      // 进入页面只更新独立的任务提示，不能覆盖当前选择或强制弹出旧任务。
+      this.setData({ activeBatchTask: running || saved.submissionPending ? this.decorateBatchTask(task) : null });
     } catch (err) {
       this.setData({ batchQueryError: '任务状态暂不可查，请稍后刷新；后台任务会继续处理' });
       this.refreshActiveBatchTask();
@@ -1583,8 +1579,8 @@ Page({
         startedAtText: this.formatDate(group.startedAt), finishedAtText: this.formatDate(group.finishedAt),
         totalQty: (group.items || []).reduce((sum, item) => sum + Number(item.shipQty || 0), 0),
         orders: Array.from(orders.values()), expanded: expanded.has(String(group.id)),
-        canReview: group.status === 'NEEDS_REVIEW' && !group.shipmentId,
-        canReviewWechat: group.status === 'NEEDS_REVIEW' && !!group.shipmentId,
+        canReview: task.canOperate !== false && group.status === 'NEEDS_REVIEW' && !group.shipmentId,
+        canReviewWechat: task.canOperate !== false && group.status === 'NEEDS_REVIEW' && !!group.shipmentId,
         canRetryWechat: false
       };
     });
@@ -1593,19 +1589,13 @@ Page({
       batchTask: decorated,
       batchGroupPages: Math.max(1, Math.ceil(decorated.summary.total / 30)),
       batchProgress: { ...decorated.summary,
-        canRetry: !decorated.isRunning && decorated.summary.failed > decorated.summary.review,
+        canRetry: task.canOperate !== false && !decorated.isRunning && decorated.summary.failed > decorated.summary.review,
         hasPendingReview: decorated.summary.review > 0, groups }
     });
     const saved = this.getSavedBatchTask();
     if (saved && String(saved.taskId) === String(task.id) && !saved.historyOnly) {
       if (task.confirmedAt) { saved.confirmed = true; saved.submissionPending = false; }
-      const successOrderIds = new Set(groups.filter(group =>
-        ['SUCCESS', 'SHIPMENT_CREATED_WECHAT_FAILED'].includes(group.status))
-        .flatMap(group => group.orderIds.map(String)));
-      const remaining = (saved.items || []).filter(item => !successOrderIds.has(String(item.orderId)));
-      saved.items = remaining;
       wx.setStorageSync(BATCH_TASK_STORAGE, saved);
-      this.updatePendingShipSummary(remaining);
     }
     this.batchTracePromise = this.loadBatchTraces(groups);
   },
@@ -1713,7 +1703,7 @@ Page({
 
   retryBatchFailedGroups: async function() {
     const task = this.data.batchTask;
-    if (!task || this.data.batchSubmitting) return;
+    if (!task || task.canOperate === false || this.data.batchSubmitting) return;
     this.setData({ batchSubmitting: true });
     this.stopBatchPolling();
     try {
@@ -1730,7 +1720,7 @@ Page({
 
   continueLegacyBatchTask: function() {
     const task = this.data.batchTask;
-    if (!task) return;
+    if (!task || task.canOperate === false) return;
     wx.showModal({ title: '继续后台发货', content: '确认后将按原任务的收货信息、商品和数量处理尚未执行的包裹，请先核对详情。',
       success: async result => {
         if (!result.confirm || this.data.batchSubmitting) return;
@@ -1766,7 +1756,7 @@ Page({
   reviewBatchGroup: function(event) {
     const groupId = event.currentTarget.dataset.groupId;
     const task = this.data.batchTask;
-    if (!task) return;
+    if (!task || task.canOperate === false) return;
     wx.showModal({
       title: '人工核查确认',
       content: '请先在物流平台确认未取得面单，并在后台确认未创建发货单。确认后才可解除占用。',
@@ -1789,7 +1779,7 @@ Page({
   reviewBatchWechat: function(event) {
     const groupId = event.currentTarget.dataset.groupId;
     const task = this.data.batchTask;
-    if (!task) return;
+    if (!task || task.canOperate === false) return;
     wx.showModal({
       title: '核查微信上报',
       content: '请先核对微信后台。填写仍需补报的订单 ID，多个用逗号隔开；全部已上报则留空。',
@@ -1821,7 +1811,7 @@ Page({
 
   retryBatchWechat: async function(event) {
     const task = this.data.batchTask;
-    if (!task) return;
+    if (!task || task.canOperate === false) return;
     const groupId = event.currentTarget.dataset.groupId;
     try {
       const updated = await api.post(`/shipments/batch-tasks/${task.id}/groups/${groupId}/retry-wechat`, {});
@@ -1851,16 +1841,6 @@ Page({
     if (!progress || progress.completed !== progress.total) return;
     const saved = this.getSavedBatchTask();
     if (!this.data.viewingBatchHistory && saved && String(saved.taskId) === String(this.data.batchTask?.id)) {
-      let outcome = this.data.batchTask || progress;
-      if (saved.requestId && outcome.groups.length < progress.total) {
-        try { outcome = await api.get(`/shipments/batch-tasks/by-request/${saved.requestId}`); }
-        catch (err) {
-          wx.showToast({ title: '结果暂不可查，请稍后再收起任务', icon: 'none' });
-          return;
-        }
-        if (String(this.getSavedBatchTask()?.taskId) !== String(saved.taskId)) return;
-      }
-      this.retainRetryableBatchItems(outcome, saved);
       wx.removeStorageSync(BATCH_TASK_STORAGE);
     }
     this.closeBatchProgress();

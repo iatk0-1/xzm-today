@@ -6,6 +6,7 @@ let pageConfig;
 const storage = {};
 const calls = [];
 const copied = [];
+const modals = [];
 const pages = [];
 let postHandler = async () => ({});
 let getHandler = async () => ({});
@@ -14,7 +15,8 @@ global.wx = {
   getStorageSync: key => storage[key],
   setStorageSync: (key, value) => { storage[key] = value; },
   removeStorageSync: key => { delete storage[key]; },
-  showToast() {}
+  showToast() {},
+  showModal: modal => modals.push(modal)
 };
 const originalLoad = Module._load;
 Module._load = function(request, ...args) {
@@ -22,7 +24,7 @@ Module._load = function(request, ...args) {
     post: async (url, body) => { calls.push(['POST', url, body]); return postHandler(url, body); },
     get: async (url, params) => { calls.push(['GET', url, params]); return getHandler(url, params); }
   };
-  if (request.endsWith('utils/auth')) return {};
+  if (request.endsWith('utils/auth')) return { ensureAuthenticated: async () => {} };
   if (request.endsWith('utils/clipboard')) return { copyText: (value, label) => copied.push({ value, label }) };
   return originalLoad.call(this, request, ...args);
 };
@@ -40,6 +42,8 @@ function page() {
 
 test.afterEach(() => {
   for (const p of pages.splice(0)) p.stopBatchPolling();
+  for (const key of Object.keys(storage)) delete storage[key];
+  modals.length = 0;
 });
 
 test('创建响应丢失后按请求号找回原任务', { concurrency: false }, async () => {
@@ -57,8 +61,9 @@ test('创建响应丢失后按请求号找回原任务', { concurrency: false },
   delete storage.admin_order_active_batch_task;
 });
 
-test('成功组移出待发货列表，失败和待核查组保留', { concurrency: false }, () => {
+test('任务结果只更新进度，不能把旧成功失败和待核查项写入当前选择', { concurrency: false }, () => {
   const p = page();
+  p.updatePendingShipSummary([{ orderId: 'new', orderItemId: 'new-item', shipQty: 1 }]);
   storage.admin_order_active_batch_task = { taskId: '99', confirmed: true, items: [
     { orderId: '1', orderItemId: '11', shipQty: 1 },
     { orderId: '2', orderItemId: '22', shipQty: 1 },
@@ -70,7 +75,8 @@ test('成功组移出待发货列表，失败和待核查组保留', { concurren
     { id: 'c', orderIds: ['3'], status: 'NEEDS_REVIEW', reason: '面单结果未知' }
   ] });
 
-  assert.deepEqual(p.data.pendingShipItems.map(item => item.orderId), ['2', '3']);
+  assert.deepEqual(p.data.pendingShipItems.map(item => item.orderId), ['new']);
+  assert.deepEqual(storage.admin_order_active_batch_task.items.map(item => item.orderId), ['1', '2', '3']);
   assert.equal(p.data.batchProgress.success, 1);
   assert.equal(p.data.batchProgress.failed, 2);
   assert.equal(p.data.batchProgress.groups[1].reason, '库存不足');
@@ -127,11 +133,11 @@ test('面单已创建但微信同步失败时按发货完成处理', { concurren
   assert.equal(progress.groups[0].canRetryWechat, false);
 });
 
-test('结束任务时只保留明确未创建面单的失败订单用于重发', { concurrency: false }, () => {
+test('结束旧任务不自动带入失败订单，也不移除当前编辑的商品', { concurrency: false }, () => {
   const p = page();
   const failedItem = { orderId: '1', orderItemId: '11', skuId: '111', shipQty: 1 };
   const reviewItem = { orderId: '2', orderItemId: '22', skuId: '222', shipQty: 1 };
-  p.data.pendingShipItems = [failedItem, reviewItem];
+  p.data.pendingShipItems = [{ orderId: 'new', orderItemId: 'new-item', skuId: 'new-sku', shipQty: 1 }];
   storage.admin_order_active_batch_task = {
     taskId: '99', confirmed: true, items: [failedItem, reviewItem]
   };
@@ -143,7 +149,7 @@ test('结束任务时只保留明确未创建面单的失败订单用于重发',
 
   p.finishBatchTask();
 
-  assert.deepEqual(p.data.pendingShipItems.map(item => item.orderId), ['1']);
+  assert.deepEqual(p.data.pendingShipItems.map(item => item.orderId), ['new']);
   assert.equal(storage.admin_order_active_batch_task, undefined);
 });
 
@@ -387,7 +393,7 @@ test('提交结果未知时保留原任务，禁止另建一批绕过待确认�
   delete storage.admin_order_active_batch_task;
 });
 
-test('结束分页任务时按完整批次保留失败商品，不能只按当前页清理', { concurrency: false }, async () => {
+test('结束分页任务不再按旧任务结果过滤当前选择，也无需查询整批商品', { concurrency: false }, async () => {
   const p = page();
   const items = [{ orderId: '1', orderItemId: '11', shipQty: 1 }, { orderId: '2', orderItemId: '22', shipQty: 2 }];
   p.updatePendingShipSummary(items);
@@ -395,12 +401,9 @@ test('结束分页任务时按完整批次保留失败商品，不能只按当�
   p.updateBatchProgress({ id: '100', status: 'COMPLETED_WITH_ISSUES',
     summary: { total: 31, completed: 31, success: 30, failed: 1, review: 0, orders: 31, quantity: 32 },
     groups: [{ id: 'a', orderIds: ['1'], status: 'SUCCESS' }] });
-  getHandler = async url => {
-    assert.equal(url, '/shipments/batch-tasks/by-request/whole');
-    return { id: '100', groups: [{ id: 'a', orderIds: ['1'], status: 'SUCCESS' }, { id: 'b', orderIds: ['2'], status: 'FAILED' }] };
-  };
+  getHandler = async () => { throw new Error('结束任务不应查询并回填旧商品'); };
   await p.finishBatchTask();
-  assert.deepEqual(p.data.pendingShipItems.map(i => i.orderId), ['2']);
+  assert.deepEqual(p.data.pendingShipItems.map(i => i.orderId), ['1', '2']);
   assert.equal(storage.admin_order_active_batch_task, undefined);
 });
 
@@ -493,4 +496,155 @@ test('订单编号一键复制原编号，商品短按跳订单且长按复制�
   assert.doesNotMatch(detail, /查看订单/);
   assert.match(detail, /class="task-product"[^>]*bindtap="goToOrderDetail"[^>]*data-order-id="{{order.orderId}}"/);
   assert.match(detail, /catchtap="copyOrderNo" data-order-no="{{order.orderNo}}"/);
+});
+
+test('库存入口导入后旧失败任务才返回，仍只保留本次库存选择且不弹任务详情', { concurrency: false }, async () => {
+  const p = page();
+  let listener, finish;
+  p.getOpenerEventChannel = () => ({ on: (name, callback) => { listener = callback; } });
+  for (const name of ['loadLogisticsAccounts', 'loadStallList', 'loadTagList', 'loadAllPendingItems']) p[name] = () => {};
+  storage.admin_order_active_batch_task = { taskId: 'old', requestId: 'old-request', confirmed: true,
+    items: [{ orderId: 'old-failed', orderItemId: 'old-item', skuId: 'old-sku', shipQty: 1 }] };
+  getHandler = async () => new Promise(resolve => { finish = resolve; });
+  const opening = p.onLoad({ fromInventory: '1' });
+  listener({ items: [{ item: { orderId: 'inventory-order', orderItemId: 'inventory-item', skuId: 'inventory-sku', unshippedQty: 2 }, shipQty: 2 }] });
+  await opening;
+  finish({ id: 'old', confirmedAt: '2026-10-22 10:00:00', status: 'COMPLETED_WITH_ISSUES', groups: [{ id: 'old-group', status: 'FAILED', orderIds: ['old-failed'] }] });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(p.data.pendingShipItems.map(i => i.orderId), ['inventory-order']);
+  assert.equal(p.data.pendingTotalQty, 2);
+  assert.equal(p.data.showPendingShipList, true);
+  assert.equal(p.data.showBatchProgress, false);
+  assert.equal(p.data.batchTask, null);
+  assert.equal(storage.admin_order_active_batch_task, undefined);
+});
+
+test('普通入口只恢复运行提示，旧任务结束后失败项仍不自动加入', { concurrency: false }, async () => {
+  const p = page();
+  storage.admin_order_active_batch_task = { taskId: 'old', requestId: 'old-request', confirmed: true, items: [{ orderId: 'old', shipQty: 1 }] };
+  getHandler = async () => ({ id: 'old', confirmedAt: '2026-10-22 10:00:00', status: 'RUNNING', groups: [{ id: 'g', status: 'PROCESSING', orderIds: ['old'] }] });
+  await p.resumeBatchTask();
+  assert.equal(p.data.activeBatchTask.id, 'old');
+  assert.equal(p.data.showBatchProgress, false);
+  assert.deepEqual(p.data.pendingShipItems, []);
+  getHandler = async () => ({ id: 'old', confirmedAt: '2026-10-22 10:00:00', status: 'COMPLETED_WITH_ISSUES', groups: [{ id: 'g', status: 'FAILED', orderIds: ['old'] }] });
+  await p.resumeBatchTask();
+  assert.deepEqual(p.data.pendingShipItems, []);
+  assert.equal(p.data.activeBatchTask, null);
+  assert.equal(storage.admin_order_active_batch_task, undefined);
+});
+
+test('查看缓存中同一个旧任务也不修改新一批库存选择', { concurrency: false }, async () => {
+  const p = page();
+  const selected = [{ orderId: 'new', orderItemId: 'new-item', skuId: 'new-sku', shipQty: 2 }];
+  storage.admin_order_active_batch_task = { taskId: 'old', requestId: 'old-request', confirmed: true, items: [{ orderId: 'old', shipQty: 1 }] };
+  p.updatePendingShipSummary(selected);
+  p.data.showPendingShipList = true;
+  getHandler = async () => ({ id: 'old', status: 'COMPLETED_WITH_ISSUES', groups: [{ id: 'g', status: 'FAILED', orderIds: ['old'] }] });
+  await p.openBatchTaskDetail('old', true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(p.data.pendingShipItems, selected);
+  assert.equal(p.data.pendingTotalQty, 2);
+  p.closeBatchProgress();
+  assert.deepEqual(p.data.pendingShipItems, selected);
+});
+
+test('上一批执行中或查询失败时阻止新建，但不覆盖库存选择', { concurrency: false }, async () => {
+  const p = page();
+  const selected = [{ orderId: 'new', orderItemId: 'new-item', skuId: 'new-sku', shipQty: 1 }];
+  p.updatePendingShipSummary(selected);
+  storage.admin_order_active_batch_task = { taskId: 'old', requestId: 'old-request', confirmed: true, items: [] };
+  calls.length = 0;
+  getHandler = async () => ({ id: 'old', status: 'RUNNING', groups: [] });
+  await assert.rejects(p.createBatchTask({ bizId: 'biz', deliveryId: 'YUNDA' }), /仍在处理中/);
+  getHandler = async () => { throw new Error('连接中断'); };
+  await assert.rejects(p.createBatchTask({ bizId: 'biz', deliveryId: 'YUNDA' }), /状态暂不可查/);
+  assert.deepEqual(p.data.pendingShipItems, selected);
+  assert.equal(calls.filter(c => c[0] === 'POST').length, 0);
+});
+
+test('提交结果未知时静默恢复原请求并保留防重检查', { concurrency: false }, async () => {
+  const p = page();
+  p.updatePendingShipSummary([{ orderId: 'new', shipQty: 1 }]);
+  storage.admin_order_active_batch_task = { taskId: 'old', requestId: 'old-request', confirmed: false, submissionPending: true, items: [{ orderId: 'old', shipQty: 1 }] };
+  getHandler = async () => ({ id: 'old', status: 'DRAFT', groups: [] });
+  await p.resumeBatchTask();
+  assert.equal(p.data.showBatchProgress, false);
+  assert.equal(p.data.activeBatchTask.id, 'old');
+  assert.equal(storage.admin_order_active_batch_task.submissionPending, true);
+  assert.deepEqual(p.data.pendingShipItems.map(i => i.orderId), ['new']);
+  await assert.rejects(p.createBatchTask({ bizId: 'biz', deliveryId: 'YUNDA' }), /原任务重新确认/);
+});
+
+test('确认成功才移出本次提交选择，失败结果不再自动回填', { concurrency: false }, async () => {
+  const p = page();
+  p.runBatchTask = () => {};
+  const selected = [{ orderId: '1', orderItemId: '11', skuId: '111', shipQty: 1 }];
+  p.updatePendingShipSummary(selected);
+  p.data.batchTask = { id: '100' };
+  storage.admin_order_active_batch_task = { taskId: '100', confirmed: false, items: selected };
+  let finish;
+  postHandler = async () => new Promise(resolve => { finish = resolve; });
+  const confirming = p.confirmBatchShip();
+  assert.deepEqual(p.data.pendingShipItems, selected);
+  finish({ id: '100', confirmedAt: '2026-10-22 10:00:00', status: 'QUEUED', groups: [] });
+  await confirming;
+  assert.deepEqual(p.data.pendingShipItems, []);
+  p.updateBatchProgress({ id: '100', status: 'COMPLETED_WITH_ISSUES', groups: [{ id: 'g', orderIds: ['1'], status: 'FAILED' }] });
+  assert.deepEqual(p.data.pendingShipItems, []);
+});
+
+test('确认请求期间新导入的库存选择不会在旧响应返回后被清空', { concurrency: false }, async () => {
+  const p = page();
+  p.runBatchTask = () => {};
+  const selected = [{ orderId: '1', orderItemId: '11', skuId: '111', shipQty: 1 }];
+  p.updatePendingShipSummary(selected);
+  p.data.batchTask = { id: '100' };
+  storage.admin_order_active_batch_task = { taskId: '100', confirmed: false, items: selected };
+  let finish;
+  postHandler = async () => new Promise(resolve => { finish = resolve; });
+  const confirming = p.confirmBatchShip();
+  p.importInventoryShipmentItems([{ item: { ...selected[0], unshippedQty: 2 }, shipQty: 2 }]);
+  finish({ id: '100', confirmedAt: '2026-10-22 10:00:00', status: 'QUEUED', groups: [] });
+  await confirming;
+  assert.equal(p.data.pendingShipItems.length, 1);
+  assert.equal(p.data.pendingTotalQty, 2);
+});
+
+test('其他管理员任务可看详情，但不提供提交重试和核查操作', { concurrency: false }, async () => {
+  const p = page();
+  p.updateBatchProgress({ id: 'other-admin', canOperate: false, status: 'COMPLETED_WITH_ISSUES', groups: [
+    { id: 'failed', orderIds: ['1'], status: 'FAILED' },
+    { id: 'review', orderIds: ['2'], status: 'NEEDS_REVIEW' },
+    { id: 'wechat-review', orderIds: ['3'], status: 'NEEDS_REVIEW', shipmentId: 's' }
+  ] });
+  assert.equal(p.data.batchProgress.canRetry, false);
+  assert.ok(p.data.batchProgress.groups.every(g => !g.canReview && !g.canReviewWechat));
+  calls.length = 0;
+  await p.retryBatchFailedGroups();
+  p.continueLegacyBatchTask();
+  p.reviewBatchGroup({ currentTarget: { dataset: { groupId: 'review' } } });
+  p.reviewBatchWechat({ currentTarget: { dataset: { groupId: 'wechat-review' } } });
+  await p.retryBatchWechat({ currentTarget: { dataset: { groupId: 'wechat-review' } } });
+  assert.equal(modals.length, 0);
+  assert.equal(calls.length, 0);
+});
+
+test('任务详情和失败列表完整展示物流与微信接口的具体业务原因和错误码', { concurrency: false }, async () => {
+  const p = page();
+  const carrierReason = '获取运单号失败：delivery logic fail（微信错误码：9300501）；快递公司：该地址无法配送（快递错误码：-700）';
+  const wechatReason = '订单 123：微信发货信息上报失败：invalid order state（微信错误码：10060020）';
+  p.updateBatchProgress({ id: 'reason-task', groups: [
+    { id: 'carrier', orderIds: ['1'], status: 'FAILED', reason: carrierReason },
+    { id: 'wechat', orderIds: ['2'], status: 'SHIPMENT_CREATED_WECHAT_FAILED', reason: wechatReason }
+  ] });
+  assert.equal(p.data.batchProgress.groups[0].reason, carrierReason);
+  assert.equal(p.data.batchProgress.groups[1].reason, wechatReason);
+  getHandler = async () => ({ hasNext: false, content: [{ groupId: 'carrier', taskId: 'reason-task', reason: carrierReason,
+    shippableItemIds: ['11'], items: [{ orderId: '1', orderItemId: '11', skuId: '111', unshippedQty: 1 }] }] });
+  await p.openFailedWaybills();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(p.data.failedWaybillGroups[0].reason, carrierReason);
+  const { getErrorMessage } = require('../../utils/error');
+  assert.equal(getErrorMessage({ code: 'WECHAT_SERVICE_ERROR', message: wechatReason }), wechatReason);
 });
