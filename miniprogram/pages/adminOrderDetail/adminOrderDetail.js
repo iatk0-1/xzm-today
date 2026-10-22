@@ -342,7 +342,7 @@ Page(pageSync.wrap({
 
   copyOrderSn() {
     const order = this.data.order || {};
-    clipboard.copyText(order.outTradeNo || order.id, '订单号');
+    clipboard.copyText(order.id, '订单号');
   },
 
   copyExpressNo(e) {
@@ -368,7 +368,7 @@ Page(pageSync.wrap({
     try {
       const preview = await api.get(`/admin/orders-manage/orders/shipments/${e.currentTarget.dataset.shipmentId}/unbind-preview`);
       const orders = (preview.orders || []).map(order => ({ ...order,
-        orderNo: order.orderNo || String(order.orderId), statusText: this.getOrderStatusDisplay(order.status),
+        orderNo: String(order.orderId), statusText: this.getOrderStatusDisplay(order.status),
         current: String(order.orderId) === String(this.data.orderId),
         items: (order.items || []).map(item => ({ ...item, productName: item.productName || '历史商品' })) }));
       this.setData({ showUnbindPreview: true, unbindPreview: { ...preview, orders }, unbindStockConfirmed: false });

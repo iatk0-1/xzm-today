@@ -316,7 +316,7 @@ Page(pageSync.wrap({
   // 一键复制订单号
   copyOrderSn: function() {
     var order = this.data.order || {};
-    clipboard.copyText(order.outTradeNo || order.id, '订单号');
+    clipboard.copyText(order.id, '订单号');
   },
 
   copyExpressNo: function(e) {

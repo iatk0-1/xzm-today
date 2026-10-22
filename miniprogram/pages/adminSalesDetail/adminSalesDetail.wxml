@@ -74,7 +74,7 @@
     <view class="section-title">关联订单 ({{orderTotal}})</view>
     <view class="order-card" wx:for="{{orders}}" wx:key="orderId">
       <view class="order-header">
-        <text class="order-no">{{item.outTradeNo || item.orderId}}</text>
+        <text class="order-no">{{item.orderId}}</text>
         <view class="order-status-tags">
           <text class="order-status">{{item.statusDisplay}}</text>
           <text class="order-status order-after-sale-pending" wx:if="{{item.hasPendingReview}}">待审核</text>

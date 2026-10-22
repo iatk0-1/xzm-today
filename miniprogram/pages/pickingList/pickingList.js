@@ -258,14 +258,14 @@ Page(autoSearch.wrap(pageSync.wrap({
       if (related.pendingQty <= 0) continue;
       const available = availableById.get(String(related.orderItemId));
       if (!available || Number(available.availableQty) < related.pendingQty) {
-        throw new Error(`订单 ${entry.order.outTradeNo || orderId} 可退数量不足，请刷新后重试`);
+        throw new Error(`订单 ${orderId} 可退数量不足，请刷新后重试`);
       }
       const amount = Math.min(
         Math.round(orderPricing.refundQtyAmount(available, related.pendingQty) * 100),
         Math.round(Number(available.availableRefundAmount) * 100),
         remainingAmount
       );
-      if (amount <= 0) throw new Error(`订单 ${entry.order.outTradeNo || orderId} 可退金额不足`);
+      if (amount <= 0) throw new Error(`订单 ${orderId} 可退金额不足`);
       items.push({ orderItemId: related.orderItemId, qty: related.pendingQty,
         refundAmount: (amount / 100).toFixed(2) });
       remainingAmount -= amount;
@@ -315,7 +315,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     const entry = this.data.refundOrders[Number(e.currentTarget.dataset.index)];
     if (!entry) return;
     const confirmed = await this.confirmRefund('确认退款',
-      `订单 ${entry.order.outTradeNo || entry.order.id} 的待报商品共 ${entry.pendingQty} 件，确认退款？`);
+      `订单 ${entry.order.id} 的待报商品共 ${entry.pendingQty} 件，确认退款？`);
     if (!confirmed) return;
     this.setData({ refundBusy: true });
     try {
@@ -384,7 +384,7 @@ Page(autoSearch.wrap(pageSync.wrap({
           processing += Number(entry.pendingQty || 0);
         } else if (result.status === 'unknown') {
           unknown += Number(entry.pendingQty || 0);
-          message = `订单 ${entry.order.outTradeNo || entry.order.id}：${getBusinessFailureMessage(result.errorMessage, '退款结果待核对，请查询原退款单')}`;
+          message = `订单 ${entry.order.id}：${getBusinessFailureMessage(result.errorMessage, '退款结果待核对，请查询原退款单')}`;
           break;
         } else if (result.status === 'not_submitted') {
           message = getBusinessFailureMessage(result.errorMessage, '退款结果待核对，请查询原退款单');

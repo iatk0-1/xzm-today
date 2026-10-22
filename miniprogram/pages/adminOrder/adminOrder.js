@@ -760,7 +760,7 @@ Page({
         groupsMap.set(key, {
           orderId: item.orderId,
           adminSeqNo: item.adminSeqNo || '',
-          orderNo: item.orderNo || item.orderId,
+          orderNo: String(item.orderId),
           createdAt: this.formatDate(item.orderCreatedAt),
           orderCreatedAt: item.orderCreatedAt,
           recipientName: item.recipientName,
@@ -1033,7 +1033,7 @@ Page({
         groupsMap.set(item.orderId, {
           orderId: item.orderId,
           adminSeqNo: item.adminSeqNo || '',
-          orderNo: item.orderNo || item.orderId,
+          orderNo: String(item.orderId),
           createdAt: item.createdAt || '',
           orderCreatedAt: item.orderCreatedAt || '',
           recipientName: item.recipientName || '',
@@ -1094,7 +1094,7 @@ Page({
         (group.items || []).forEach(item => {
           const key = String(item.orderId);
           if (!orderMap.has(key)) orderMap.set(key, {
-            orderId: item.orderId, orderNo: item.orderNo || item.orderId,
+            orderId: item.orderId, orderNo: String(item.orderId),
             adminSeqNo: item.adminSeqNo || '', createdAt: this.formatDate(item.orderCreatedAt),
             recipientName: item.recipientName, recipientPhone: item.recipientPhone,
             recipientAddress: item.recipientAddress, items: []
@@ -1563,7 +1563,7 @@ Page({
       for (const item of group.items || []) {
         const key = String(item.orderId);
         if (!orders.has(key)) orders.set(key, { orderId: item.orderId,
-          orderNo: item.orderNo || key, adminSeqNo: item.adminSeqNo,
+          orderNo: key, adminSeqNo: item.adminSeqNo,
           createdAtText: this.formatDate(item.orderCreatedAt), items: [] });
         orders.get(key).items.push({ ...item, productName: item.productName || '历史商品信息未记录' });
       }

@@ -393,7 +393,7 @@ Page({
 
   copyOrderNo: function() {
     const afterSale = this.data.afterSale || {};
-    clipboard.copyText(afterSale.outTradeNo, '订单号');
+    clipboard.copyText(afterSale.orderId, '订单号');
   },
 
   copyRecipientInfo: function() {

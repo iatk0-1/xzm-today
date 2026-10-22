@@ -165,7 +165,7 @@ Page({
             ...item,
             id: item.id,  // 订单项 ID
             orderId: orderId,
-            orderNo: detail.outTradeNo || orderId,
+            orderNo: String(orderId),
             maxShipQty: item.qty - (item.shippedQty || 0),  // 可发货数量 = 总数量 - 已发数量
             shipQty: 0,  // 本次发货数量，默认 0
             shippedQty: item.shippedQty || 0,  // 已发货数量
@@ -177,7 +177,7 @@ Page({
         this.setData({ items: allItems, orderIds: orderIds });
       } else if (this.data.shipmentId) {
         // 合并发货且有发货单 ID
-        const orderIds = this.data.orderIds.map(id => parseInt(id));
+        const orderIds = this.data.orderIds.map(id => String(id));
 
         // 获取所有订单的商品（从订单详情读取，以保证 shippedQty 正确）
         for (const orderId of orderIds) {
@@ -187,7 +187,7 @@ Page({
             ...item,
             id: item.id,
             orderId: orderId,
-            orderNo: detail.outTradeNo || orderId,
+            orderNo: String(orderId),
             maxShipQty: item.qty - (item.shippedQty || 0),
             shipQty: 0,
             shippedQty: item.shippedQty || 0,
@@ -208,7 +208,7 @@ Page({
             ...item,
             id: item.orderItemId,
             orderId: this.data.orderId,
-            orderNo: detail.outTradeNo || this.data.orderId,
+            orderNo: String(this.data.orderId),
             maxShipQty: item.canShipQty,
             shipQty: 0,
             shippedQty: item.shippedQty,
@@ -221,7 +221,7 @@ Page({
             ...item,
             id: item.id,
             orderId: this.data.orderId,
-            orderNo: detail.outTradeNo || this.data.orderId,
+            orderNo: String(this.data.orderId),
             maxShipQty: item.qty - (item.shippedQty || 0),
             shipQty: 0,
             shippedQty: item.shippedQty || 0,
@@ -279,7 +279,7 @@ Page({
       const allItems = orders.map(item => ({
         id: item.itemId,
         orderId: item.orderId,
-        orderNo: item.outTradeNo || item.orderId,
+        orderNo: String(item.orderId),
         skuId: item.skuId,
         maxShipQty: item.canShipQty,
         shipQty: 0,  // 默认不勾选，由管理员手动输入

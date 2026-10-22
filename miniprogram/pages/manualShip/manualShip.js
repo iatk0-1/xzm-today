@@ -176,7 +176,7 @@ Page({
       const unshippedQty = totalQty - shippedQty;
 
       this.setData({
-        orderNo: order.outTradeNo || '',
+        orderNo: order.id || this.data.orderId,
         recipientName: order.recipientName || '',
         recipientPhone: order.recipientPhone || '',
         recipientAddress: order.recipientAddress || '',
@@ -298,7 +298,7 @@ Page({
         }
 
         if (res && res.used) {
-          const orderNos = res.usages.map(u => u.outTradeNo).join('、');
+          const orderNos = res.usages.map(u => u.orderId).join('、');
           this.setData({
             expressNoUsed: true,
             expressNoUsageInfo: `该运单号已用于订单 ${orderNos}，请确认无误后再提交`

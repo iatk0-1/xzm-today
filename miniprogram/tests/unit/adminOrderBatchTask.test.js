@@ -303,7 +303,7 @@ test('查看历史详情不覆盖正在发货的本地任务，并按包裹组�
   const group = p.data.batchProgress.groups[0];
   assert.equal(group.totalQty, 5);
   assert.equal(group.orders[0].items[0].productName, '棉袄');
-  assert.equal(group.orders[1].orderNo, 'ORDER2');
+  assert.equal(group.orders[1].orderNo, '2');
   p.toggleBatchPackage({ currentTarget: { dataset: { groupId: 'g' } } });
   assert.equal(p.data.batchProgress.groups[0].expanded, true);
   p.closeBatchProgress();

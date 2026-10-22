@@ -46,7 +46,7 @@
     <view class="section-title">关联订单 ({{orderTotal}})</view>
     <view class="order-card" wx:for="{{orders}}" wx:key="orderId" bindtap="goToOrder" data-id="{{item.orderId}}">
       <view class="order-header">
-        <text class="order-no">{{item.outTradeNo || item.orderId}}</text>
+        <text class="order-no">{{item.orderId}}</text>
         <text class="order-status">{{item.statusDisplay}}</text>
       </view>
       <view class="order-items-list">

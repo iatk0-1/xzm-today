@@ -148,7 +148,7 @@
         <view class="refund-loading" wx:elif="{{refundOrders.length === 0}}">暂无可退的关联订单</view>
         <view class="refund-order-card" wx:for="{{refundOrders}}" wx:key="id">
           <view class="refund-order-head">
-            <view class="refund-order-no">订单号：{{item.order.outTradeNo || item.order.id}}</view>
+            <view class="refund-order-no">订单号：{{item.order.id}}</view>
             <text class="refund-order-status">{{item.order.statusDisplay}}</text>
           </view>
           <view class="refund-order-time">{{item.order.createdAt}}</view>

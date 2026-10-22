@@ -49,7 +49,7 @@ Page({
 
   copyOrderNo: function() {
     const order = this.data.order || {};
-    clipboard.copyText(order.outTradeNo, '订单号');
+    clipboard.copyText(order.id, '订单号');
   },
 
   // 加载订单详情并拆分商品
