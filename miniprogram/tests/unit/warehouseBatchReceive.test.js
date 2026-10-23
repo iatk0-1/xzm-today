@@ -189,6 +189,27 @@ test('卡片单规格自动勾选，总控按各自数量加减，减到0移出�
   assert.equal(inventory.data.pendingReceiveItems.length, 0);
 });
 
+test('收缩时总控只增减可见规格，展开操作全部，收缩保留已填数量和批量预览', () => {
+  const inventory = page();
+  inventory.data.inventoryTab = 'shortage';
+  inventory.data.productList[0].skus[1].shortageQty = 0;
+  inventory.updateProductSelection();
+  inventory.adjustCardReceiveQty(cardEvent('1', undefined, undefined, 1));
+  assert.deepEqual(inventory.data.productList[0].skus.map(sku => sku.receiveQty), [1, 0]);
+  assert.deepEqual(inventory.data.productList[0].visibleSkus.map(sku => sku.id), ['11']);
+  inventory.toggleProductSkus({ currentTarget: { dataset: { id: '1' } } });
+  inventory.adjustCardReceiveQty(cardEvent('1', undefined, undefined, 1));
+  assert.deepEqual(inventory.data.productList[0].visibleSkus.map(sku => sku.receiveQty), [2, 1]);
+  inventory.onCardReceiveQtyInput(cardEvent('1', '12', '4'));
+  inventory.toggleProductSkus({ currentTarget: { dataset: { id: '1' } } });
+  inventory.adjustCardReceiveQty(cardEvent('1', undefined, undefined, -1));
+  assert.deepEqual(inventory.data.productList[0].skus.map(sku => sku.receiveQty), [1, '4']);
+  inventory.openBatchReceiveModal();
+  assert.deepEqual(inventory.data.batchReceiveItems.map(item => [item.skuId, item.qty]), [['11', 1], ['12', 4]]);
+  inventory.toggleProductSkus({ currentTarget: { dataset: { id: '1' } } });
+  assert.deepEqual(inventory.data.productList[0].visibleSkus.map(sku => sku.receiveQty), [1, '4']);
+});
+
 test('成功清理本批包括弹窗中减到0的商品，未提交的取消选择草稿仍保留', async () => {
   const inventory = page();prepareBatch(inventory);
   inventory.setBatchReceiveQty(2, 0);

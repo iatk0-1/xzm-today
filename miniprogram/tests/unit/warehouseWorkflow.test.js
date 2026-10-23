@@ -174,6 +174,73 @@ test('库存修改后同步数量并移出已不符合欠货筛选的商品', as
   assert.equal(requests.at(-1).url, '/sku-inventory/11');
 });
 
+test('各库存页只展示对应正数量规格，单个商品可独立展开收缩且不额外请求', async () => {
+  const rows = [
+    { productId: '1', skuId: '11', shortageQty: 3, qty: 0, abnormalQty: 0 },
+    { productId: '1', skuId: '12', shortageQty: 0, qty: 4, abnormalQty: 0 },
+    { productId: '1', skuId: '13', shortageQty: 0, qty: 2, abnormalQty: 2 },
+    { productId: '1', skuId: '14', shortageQty: 0, qty: 0, abnormalQty: 0 },
+    { productId: '2', skuId: '21', shortageQty: 1, qty: 1, abnormalQty: 1 },
+    { productId: '2', skuId: '22', shortageQty: 0, qty: 0, abnormalQty: 0 }
+  ];
+  handler = () => ({ content: rows, hasNext: false });
+  for (const [tab, expected] of Object.entries({ all: ['11', '12', '13', '14'], shortage: ['11'], stock: ['12', '13'], abnormal: ['13'] })) {
+    const inventory = page(inventoryConfig);
+    inventory.data.inventoryTab = tab;
+    await inventory.loadProducts();
+    const first = () => inventory.data.productList[0];
+    assert.deepEqual(first().visibleSkus.map(sku => sku.id), expected);
+    assert.equal(first().hasHiddenSkus, tab !== 'all');
+    assert.equal(first().skus.length, 4);
+    if (tab === 'all') continue;
+    const requestCount = requests.length;
+    inventory.toggleProductSkus({ currentTarget: { dataset: { id: '1' } } });
+    assert.equal(first().skusExpanded, true);
+    assert.deepEqual(first().visibleSkus.map(sku => sku.id), ['11', '12', '13', '14']);
+    assert.deepEqual(inventory.data.productList[1].visibleSkus.map(sku => sku.id), ['21']);
+    inventory.toggleProductSkus({ currentTarget: { dataset: { id: '1' } } });
+    assert.equal(first().skusExpanded, false);
+    assert.deepEqual(first().visibleSkus.map(sku => sku.id), expected);
+    assert.equal(requests.length, requestCount);
+  }
+});
+
+test('翻页保留已展开商品，切换库存页恢复默认收缩，全部命中的商品不显示展开入口', async () => {
+  handler = (url, query) => ({ content: query.page === 1 ? [
+    { productId: '1', skuId: '11', qty: 2, shortageQty: 3 },
+    { productId: '1', skuId: '12', qty: 0, shortageQty: 0 }
+  ] : [{ productId: '2', skuId: '21', qty: 1, shortageQty: 1 }], hasNext: query.page === 1 });
+  const inventory = page(inventoryConfig);
+  inventory.data.inventoryTab = 'shortage';
+  await inventory.loadProducts();
+  inventory.toggleProductSkus({ currentTarget: { dataset: { id: '1' } } });
+  await inventory.loadProducts(false);
+  assert.equal(inventory.data.productList[0].skusExpanded, true);
+  assert.equal(inventory.data.productList[0].visibleSkus.length, 2);
+  assert.equal(inventory.data.productList[1].hasHiddenSkus, false);
+  inventory.changeInventoryTab({ currentTarget: { dataset: { tab: 'stock' } } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(inventory.data.productList[0].skusExpanded, false);
+  assert.deepEqual(inventory.data.productList[0].visibleSkus.map(sku => sku.id), ['11']);
+});
+
+test('详情返回同步库存时更新可见规格，隐藏规格的数据仍完整保留', async () => {
+  handler = url => url.endsWith('/query') ? { content: [
+    { productId: '1', skuId: '11', shortageQty: 3 },
+    { productId: '1', skuId: '12', shortageQty: 0 }
+  ], hasNext: false } : { shortageQty: url.endsWith('/12') ? 2 : 0 };
+  const inventory = page(inventoryConfig);
+  inventory.data.inventoryTab = 'shortage';
+  await inventory.loadProducts();
+  await inventory.refreshSku('12');
+  assert.deepEqual(inventory.data.productList[0].visibleSkus.map(sku => sku.id), ['11', '12']);
+  assert.equal(inventory.data.productList[0].hasHiddenSkus, false);
+  await inventory.refreshSku('11');
+  assert.deepEqual(inventory.data.productList[0].visibleSkus.map(sku => sku.id), ['12']);
+  assert.equal(inventory.data.productList[0].skus.length, 2);
+  assert.equal(inventory.data.productList[0].hasHiddenSkus, true);
+});
+
 test('铅笔进入商品库存详情，详情变更通过事件通知返回列表同步', async () => {
   const inventory = page(inventoryConfig);
   let navigation;

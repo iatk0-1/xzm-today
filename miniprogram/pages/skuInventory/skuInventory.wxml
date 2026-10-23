@@ -59,10 +59,11 @@
           <button class="card-qty-adjust" catchtap="adjustCardReceiveQty" data-product-id="{{item.id}}" data-delta="-1" disabled="{{batchReceiveSaving || batchRetryPending}}">−</button>
           <button class="card-qty-adjust" catchtap="adjustCardReceiveQty" data-product-id="{{item.id}}" data-delta="1" disabled="{{batchReceiveSaving || batchRetryPending}}">+</button>
         </view>
+        <button class="sku-expand-btn" wx:if="{{item.hasHiddenSkus}}" catchtap="toggleProductSkus" data-id="{{item.id}}">{{item.skusExpanded ? '收缩' : '展开全部'}}</button>
       </view>
       <view class="product-info">
         <view class="product-name">{{item.name}}</view>
-        <view class="sku-summary" wx:for="{{item.skus}}" wx:for-item="sku" wx:key="id">
+        <view class="sku-summary" wx:for="{{item.visibleSkus}}" wx:for-item="sku" wx:key="id">
           <view class="sku-heading">
             <view class="sku-title">{{sku.spec}} {{sku.size}}</view>
             <view class="card-sku-editor" catchtap="stopCardTap">

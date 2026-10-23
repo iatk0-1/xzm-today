@@ -4,6 +4,7 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const quantityOperation = require('../../utils/quantityOperation');
 const { beijingParts } = require('../../utils/productSchedule');
+const inventoryTabFields = { shortage: 'shortageQty', stock: 'availableQty', abnormal: 'abnormalQty' };
 
 function normalizeSku(row) {
   return {
@@ -200,6 +201,22 @@ Page(autoSearch.wrap({
     this.setData({ inventoryTab });
     this.loadProducts();
   },
+  inventoryProductView(product) {
+    const field = inventoryTabFields[this.data.inventoryTab];
+    const matchingSkus = field ? product.skus.filter(sku => sku[field] > 0) : product.skus;
+    const skusExpanded = Boolean(field && product.skusExpanded);
+    return { ...product, skusExpanded, hasHiddenSkus: matchingSkus.length < product.skus.length,
+      visibleSkus: skusExpanded ? product.skus : matchingSkus };
+  },
+  toggleProductSkus(e) {
+    const id = e.currentTarget.dataset.id;
+    this.setData({ productList: this.data.productList.map(product => this.inventoryProductView(
+      String(product.id) === String(id) ? { ...product, skusExpanded: !product.skusExpanded } : product)) });
+  },
+  cardReceiveTargets(product, skuId) {
+    return skuId == null ? this.inventoryProductView(product).visibleSkus
+      : product.skus.filter(sku => String(sku.id) === String(skuId));
+  },
   selectStall(e) {
     const value = e.currentTarget.dataset.stall;
     const selectedStall = value === 'all' ? '' : value;
@@ -253,6 +270,7 @@ Page(autoSearch.wrap({
     const pendingReceiveItems = selected.flatMap(product => product.skus
       .filter(sku => batchQuantity(sku.receiveQty) > 0).map(sku => this.receiveItem(product, sku)));
     this.setData({
+      productList: this.data.productList.map(product => this.inventoryProductView(product)),
       selectedCount: selected.length,
       allSelected: selectable.length > 0 && selectable.every(product => product.selected),
       pendingReceiveItems,
@@ -277,8 +295,9 @@ Page(autoSearch.wrap({
     if (this.data.batchReceiveSaving || this.data.batchRetryPending) return;
     this.setData({ productList: this.data.productList.map(product => {
       if (String(product.id) !== String(productId)) return product;
-      if (skuId != null && !product.skus.some(sku => String(sku.id) === String(skuId))) return product;
-      const skus = product.skus.map(sku => skuId == null || String(sku.id) === String(skuId)
+      const targets = new Set(this.cardReceiveTargets(product, skuId).map(sku => String(sku.id)));
+      if (!targets.size) return product;
+      const skus = product.skus.map(sku => targets.has(String(sku.id))
         ? { ...sku, receiveQty: qty } : sku);
       return { ...product, skus, selected: skus.length > 0 };
     }) });
@@ -290,7 +309,7 @@ Page(autoSearch.wrap({
     if (![1, -1].includes(Number(delta))) return;
     const product = this.data.productList.find(item => String(item.id) === String(productId));
     if (!product) return;
-    const targets = product.skus.filter(sku => skuId == null || String(sku.id) === String(skuId));
+    const targets = this.cardReceiveTargets(product, skuId);
     if (!targets.length) return;
     if (targets.some(sku => batchQuantity(sku.receiveQty) === null)) {
       wx.showToast({ title: '请先把入库数量改为非负整数', icon: 'none' }); return;
@@ -298,9 +317,10 @@ Page(autoSearch.wrap({
     if (targets.some(sku => batchQuantity(Math.max(0, batchQuantity(sku.receiveQty) + Number(delta))) === null)) {
       wx.showToast({ title: '入库数量不能超过2147483647', icon: 'none' }); return;
     }
+    const targetIds = new Set(targets.map(sku => String(sku.id)));
     this.setData({ productList: this.data.productList.map(item => {
       if (String(item.id) !== String(productId)) return item;
-      const skus = item.skus.map(sku => skuId == null || String(sku.id) === String(skuId)
+      const skus = item.skus.map(sku => targetIds.has(String(sku.id))
         ? { ...sku, receiveQty: Math.max(0, batchQuantity(sku.receiveQty) + Number(delta)) } : sku);
       return { ...item, skus, selected: true };
     }) });
@@ -512,7 +532,7 @@ Page(autoSearch.wrap({
     require('../../utils/pageSync').publish('picking-skus', skuId);
   },
   matchesTab(product) {
-    const field = { shortage: 'shortageQty', stock: 'availableQty', abnormal: 'abnormalQty' }[this.data.inventoryTab];
+    const field = inventoryTabFields[this.data.inventoryTab];
     return !field || product.skus.some(sku => sku[field] > 0);
   },
   async openShippingModal() {
