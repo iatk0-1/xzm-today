@@ -12,7 +12,9 @@ Page({
     functionId: 'normal', operation: inventory.functions.operate[0], lossCategory: 'normal', backfillMode: 'existing', note: '',
     exchangeProducts: [], outgoingTotal: 0, incomingTotal: 0, invalidQty: false, quantityPending: false,
     receipts: [], flows: [], exchanges: [], inspections: [], reports: [], visibleReports: [],
-    showRecordPicker: false, pickerType: '', pickerSkuLabel: '', pickerLoading: false, pickerError: '', pickerItems: []
+    showRecordPicker: false, pickerType: '', pickerSkuLabel: '', pickerLoading: false, pickerError: '', pickerItems: [],
+    showCorrection: false, correctionLoading: false, correctionError: '', correctionContext: null,
+    correctionReceipt: null, correctionQty: '0', correctionNote: '', correctionPreview: null
   },
   onLoad(options) {
     this.setData({ productId: options.id || '' });
@@ -22,7 +24,7 @@ Page({
     return this.loadDetail();
   },
   onShow() { this.syncPending(); },
-  onUnload() { this._disposed = true; this._detailVersion = (this._detailVersion || 0) + 1; this._pickerVersion = (this._pickerVersion || 0) + 1; },
+  onUnload() { this._disposed = true; this._detailVersion = (this._detailVersion || 0) + 1; this._pickerVersion = (this._pickerVersion || 0) + 1; this._correctionVersion = (this._correctionVersion || 0) + 1; },
   async onPullDownRefresh() {
     try { if (!this.data.saving) await this.loadDetail(); } finally { wx.stopPullDownRefresh(); }
   },
@@ -199,8 +201,9 @@ Page({
       const result = await quantityOperation.retry(api);
       if (result) {
         const payload = result.operation.payload;
-        this.notifyChanged([...(payload.items || []), ...(payload.targets || []), ...(payload.skuId ? [{ skuId: payload.skuId }] : [])].filter(item => item.skuId).map(item => item.skuId));
+        this.notifyChanged([...(payload.items || []), ...(payload.targets || []), ...(payload.skuId ? [{ skuId: payload.skuId }] : [])].filter(item => item.skuId).map(item => item.skuId).concat(result.operation.context && result.operation.context.skuIds || []));
       }
+      this.setData({ showCorrection: false });
       await this.loadDetail(true); wx.showToast({ title: '原操作已确认', icon: 'success' });
     } catch (err) { wx.showToast({ title: getErrorMessage(err, '原操作结果待确认'), icon: 'none' }); }
     finally { this.setData({ saving: false }); this.syncPending(); }
@@ -214,6 +217,86 @@ Page({
     if (!item || !item.canRevoke || this.data.saving) return;
     const confirmed = await this.confirm('撤销入库', item.skuLabel + '，撤销 ' + item.qty + ' 件入库？对应报单待到货会恢复。');
     if (confirmed) return this.writeRecord('/sku-inventory/' + item.skuId + '/receipts/' + item.id + '/revoke', { note: '管理员撤销入库' }, [item.skuId]);
+  },
+  async openReceiptCorrection(e) {
+    if (this.data.saving || this.data.quantityPending) return;
+    const receipt = this.data.receipts[Number(e.currentTarget.dataset.index)];
+    if (!receipt || receipt.revoked) return;
+    this.setData({ showCorrection: true, correctionReceipt: receipt, correctionContext: null, correctionPreview: null,
+      correctionError: '', correctionNote: '', correctionQty: String(receipt.effectiveQty == null ? receipt.qty : receipt.effectiveQty) });
+    return this.loadCorrectionContext();
+  },
+  async loadCorrectionContext() {
+    const receipt = this.data.correctionReceipt;
+    if (!receipt || !this.data.showCorrection || this.data.saving) return;
+    const version = (this._correctionVersion || 0) + 1; this._correctionVersion = version;
+    this.setData({ correctionLoading: true, correctionError: '', correctionPreview: null });
+    try {
+      const context = await api.get('/sku-inventory/' + receipt.skuId + '/receipts/' + receipt.id + '/correction');
+      if (this._disposed || version !== this._correctionVersion || !this.data.showCorrection) return;
+      this.setData({ correctionContext: { ...context, losses: (context.losses || []).map(loss => ({ ...loss, selected: false,
+        timeText: this.formatTime(loss.createdAt) })), history: (context.history || []).map(item => ({ ...item, timeText: this.formatTime(item.createdAt) })) },
+      correctionQty: String(context.effectiveQty) });
+    } catch (err) {
+      if (version === this._correctionVersion) this.setData({ correctionError: getErrorMessage(err, '加载更正信息失败') });
+    } finally { if (version === this._correctionVersion) this.setData({ correctionLoading: false }); }
+  },
+  closeReceiptCorrection() {
+    if (this.data.saving) return;
+    this._correctionVersion = (this._correctionVersion || 0) + 1;
+    this.setData({ showCorrection: false, correctionLoading: false, correctionPreview: null });
+  },
+  correctionQtyChange(e) {
+    if (this.data.saving || this.data.correctionLoading) return;
+    const delta = e.currentTarget.dataset.delta, context = this.data.correctionContext;
+    this.setData({ correctionQty: delta == null ? e.detail.value : String(Math.min(inventory.LIMIT,
+      Math.max(context ? context.shippedQty : 0, (inventory.quantity(this.data.correctionQty) || 0) + Number(delta)))), correctionPreview: null });
+  },
+  onCorrectionNoteInput(e) { if (!this.data.saving) this.setData({ correctionNote: e.detail.value }); },
+  toggleCorrectionLoss(e) {
+    if (this.data.saving || this.data.correctionLoading || !this.data.correctionContext) return;
+    const id = e.currentTarget.dataset.id;
+    this.setData({ correctionPreview: null, correctionContext: { ...this.data.correctionContext,
+      losses: this.data.correctionContext.losses.map(loss => String(loss.ledgerId) === String(id) ? { ...loss, selected: !loss.selected } : loss) } });
+  },
+  correctionInput() {
+    const qty = inventory.quantity(this.data.correctionQty), context = this.data.correctionContext;
+    if (!context) throw new Error('请先加载更正信息');
+    if (context.blockedReason) throw new Error(context.blockedReason);
+    if (qty == null) throw new Error('正确实收数量请输入非负整数');
+    if (qty < context.shippedQty) throw new Error('正确实收数量不能低于本次已发货的 ' + context.shippedQty + ' 件');
+    if (qty === context.effectiveQty) throw new Error('数量没有变化，无需更正');
+    return { qty, version: context.version, lossLedgerIds: context.losses.filter(loss => loss.selected).map(loss => loss.ledgerId) };
+  },
+  async previewReceiptCorrection() {
+    if (this.data.saving || this.data.correctionLoading || this.data.quantityPending) return;
+    let input;
+    try { input = this.correctionInput(); } catch (err) { wx.showToast({ title: err.message, icon: 'none' }); return; }
+    const receipt = this.data.correctionReceipt, version = (this._correctionVersion || 0) + 1;
+    this._correctionVersion = version; this.setData({ correctionLoading: true, correctionPreview: null, correctionError: '' });
+    try {
+      const preview = await api.post('/sku-inventory/' + receipt.skuId + '/receipts/' + receipt.id + '/correction-preview', input);
+      if (!this._disposed && version === this._correctionVersion && this.data.showCorrection) this.setData({ correctionPreview: preview });
+    } catch (err) { if (version === this._correctionVersion) this.setData({ correctionError: getErrorMessage(err, '预览失败，请刷新更正信息后重试') }); }
+    finally { if (version === this._correctionVersion) this.setData({ correctionLoading: false }); }
+  },
+  async submitReceiptCorrection() {
+    if (this.data.saving || this.data.correctionLoading || this.data.quantityPending || this._correctionConfirming) return;
+    let input;
+    try { input = this.correctionInput(); } catch (err) { wx.showToast({ title: err.message, icon: 'none' }); return; }
+    const receipt = this.data.correctionReceipt, preview = this.data.correctionPreview, note = this.data.correctionNote.trim();
+    if (!preview) { wx.showToast({ title: '请先预览更正结果', icon: 'none' }); return; }
+    if (!note) { wx.showToast({ title: '请填写更正原因', icon: 'none' }); return; }
+    this._correctionConfirming = true;
+    try {
+      if (!await this.confirm('确认入库数量更正', '将本次有效实收数量从 ' + preview.beforeQty + ' 件更正为 ' + preview.afterQty + ' 件，已发货记录保留。确认关联的盘亏用于修正本次录入错误。')) return;
+      // 确认弹窗期间如果数量被编辑，必须重新预览。
+      if (this.data.correctionPreview !== preview) return;
+      const success = await this.writeRecord('/sku-inventory/' + receipt.skuId + '/receipts/' + receipt.id + '/correct',
+        { correction: input, previewToken: preview.previewToken, note }, [receipt.skuId]);
+      if (success) this.setData({ showCorrection: false });
+      else this.setData({ correctionPreview: null });
+    } finally { this._correctionConfirming = false; }
   },
   confirm(title, content) { return new Promise(resolve => wx.showModal({ title, content, success: result => resolve(result.confirm), fail: () => resolve(false) })); },
   recordQtyChange(e) {
@@ -262,7 +345,7 @@ Page({
     if (this.data.saving) return false;
     this.setData({ saving: true });
     try {
-      await quantityOperation.run(api, path, payload);
+      await quantityOperation.run(api, path, payload, { skuIds: ids });
       this.notifyChanged(ids); await this.loadDetail(); wx.showToast({ title: '操作成功', icon: 'success' }); return true;
     } catch (err) { wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' }); return false; }
     finally { this.setData({ saving: false }); this.syncPending(); }

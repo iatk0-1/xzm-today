@@ -69,7 +69,15 @@
 
     <block wx:if="{{activeTab === 'ledger'}}">
       <block wx:if="{{functionId === 'receipts'}}">
-        <view class="record-card {{item.revoked ? 'revoked' : ''}}" wx:for="{{receipts}}" wx:key="id"><view class="record-title">{{item.skuLabel}} · {{item.sourceText}} · {{item.qty}} 件{{item.revoked ? '（已撤销）' : ''}}</view><view class="muted">{{item.timeText}} · 入库编号 {{item.id}}</view><view class="record-note" wx:if="{{item.note}}">{{item.note}}</view><view class="muted" wx:for="{{item.allocations}}" wx:for-item="allocation" wx:key="purchaseOrderId">报单 {{allocation.batchNo || allocation.purchaseOrderId}} · {{allocation.qty}} 件</view><button wx:if="{{item.canRevoke}}" class="record-button danger-button" bindtap="revokeReceipt" data-index="{{index}}" disabled="{{saving || quantityPending}}">撤销本次入库</button></view>
+        <view class="record-card {{item.revoked ? 'revoked' : ''}}" wx:for="{{receipts}}" wx:key="id">
+          <view class="record-title">{{item.skuLabel}} · {{item.sourceText}} · 原录入 {{item.qty}} 件{{item.revoked ? '（已撤销）' : ''}}</view>
+          <view wx:if="{{item.effectiveQty != null}}">有效实收 {{item.effectiveQty}} 件 · 本次已发 {{item.shippedQty || 0}} 件</view>
+          <view class="muted">{{item.timeText}} · 入库编号 {{item.id}}</view><view class="record-note" wx:if="{{item.note}}">{{item.note}}</view>
+          <view class="muted" wx:for="{{item.allocations}}" wx:for-item="allocation" wx:key="purchaseOrderId">报单 {{allocation.batchNo || allocation.purchaseOrderId}} · {{allocation.qty}} 件</view>
+          <button wx:if="{{!item.revoked && (item.source === 'normal' || item.source === 'history')}}" class="record-button" bindtap="openReceiptCorrection" data-index="{{index}}" disabled="{{saving || quantityPending}}">更正入库数量 / 查看更正记录</button>
+          <button wx:if="{{!item.revoked}}" class="record-button danger-button" bindtap="revokeReceipt" data-index="{{index}}" disabled="{{saving || quantityPending || !item.canRevoke}}">撤销本次入库</button>
+          <view class="record-note" wx:if="{{!item.revoked && !item.canRevoke}}">{{item.revokeBlockedReason || '此记录暂不可整笔撤销，请核查后续业务'}}</view>
+        </view>
         <view class="empty" wx:if="{{!receipts.length && !loading}}">暂无入库记录（每个规格显示最近 100 条）</view>
       </block>
       <block wx:else><view class="record-card" wx:for="{{flows}}" wx:key="id"><view class="record-title">{{item.skuLabel}} · {{item.changeText}} · {{item.changeQty > 0 ? '+' : ''}}{{item.changeQty}} 件</view><view class="muted">{{item.beforeQty}} → {{item.afterQty}} · {{item.timeText}}</view><view class="record-note">{{item.note}}</view></view><view class="empty" wx:if="{{!flows.length && !loading}}">暂无库存流水</view></block>
@@ -95,4 +103,41 @@
   </scroll-view><view class="picker-footer"><button bindtap="closeRecordPicker">取消</button><button wx:if="{{pickerType === 'report'}}" bindtap="clearReport">不关联，独立换货</button></view></view></view>
 
   <view class="record-picker" wx:if="{{showSupplyEditor}}"><view class="picker-mask" bindtap="closeSupplyEditor"></view><view class="picker-panel supply-panel"><view class="picker-title">取消供应商未到供货</view><view class="picker-tip">{{supplyReport.skuLabel}} · 当前待到 {{supplyReport.shortageQty}} 件。只填写供应商确认取消/短交的数量，不减少已入库实物。</view><view class="supply-content"><view class="quantity-stepper record-stepper"><button data-delta="-1" bindtap="supplyQtyChange" disabled="{{saving || supplyQty <= 0}}">−</button><input type="number" value="{{supplyQty}}" bindinput="supplyQtyChange" disabled="{{saving}}" /><button data-delta="1" bindtap="supplyQtyChange" disabled="{{saving}}">＋</button></view><textarea value="{{supplyNote}}" bindinput="onSupplyNoteInput" placeholder="填写供应商取消或短交确认依据（必填）" disabled="{{saving}}" /></view><view class="picker-footer"><button bindtap="closeSupplyEditor" disabled="{{saving}}">取消</button><button bindtap="submitSupplyAdjustment" loading="{{saving}}" disabled="{{saving || quantityPending}}">确认调整</button></view></view></view>
+  <view class="record-picker" wx:if="{{showCorrection}}">
+    <view class="picker-mask" bindtap="closeReceiptCorrection"></view>
+    <view class="picker-panel correction-panel">
+      <view class="picker-title">入库数量更正 · {{correctionReceipt.skuLabel}}</view>
+      <scroll-view class="correction-content" scroll-y="true">
+        <view class="picker-tip">填写本次真正收到的总件数。已发货记录保留，普通订单占用会重新分配；更正原录入错误，实际丢失请使用盘亏。</view>
+        <view class="state" wx:if="{{correctionLoading}}">正在核对入库与报单...</view>
+        <view class="state error" wx:if="{{correctionError}}">{{correctionError}}<button bindtap="loadCorrectionContext" disabled="{{saving || correctionLoading}}">刷新更正信息</button></view>
+        <block wx:if="{{correctionContext}}">
+          <view class="correction-summary">原录入 {{correctionReceipt.qty}} 件 · 当前有效实收 {{correctionContext.effectiveQty}} 件<view>本批次累计已发 {{correctionContext.shippedQty}} 件，更正后不得低于此数量。</view></view>
+          <view class="correction-blocked" wx:if="{{correctionContext.blockedReason}}">{{correctionContext.blockedReason}}</view>
+          <block wx:else>
+            <view class="correction-fields">
+              <view>正确实收数量</view>
+              <view class="quantity-stepper record-stepper"><button data-delta="-1" bindtap="correctionQtyChange" disabled="{{saving || correctionLoading || correctionQty <= correctionContext.shippedQty}}">−</button><input type="number" value="{{correctionQty}}" bindinput="correctionQtyChange" disabled="{{saving || correctionLoading}}" /><button data-delta="1" bindtap="correctionQtyChange" disabled="{{saving || correctionLoading}}">＋</button></view>
+              <block wx:if="{{correctionContext.losses.length}}">
+                <view>关联已用于纠错的盘亏</view><view class="muted">只勾选确实用于修正这次误录的记录，已扣过的部分不会重复扣减。实际丢失的货不要勾选。</view>
+                <view class="correction-loss {{item.selected ? 'selected' : ''}}" wx:for="{{correctionContext.losses}}" wx:key="ledgerId" data-id="{{item.ledgerId}}" bindtap="toggleCorrectionLoss">
+                  <view>{{item.selected ? '☑' : '☐'}} 正常 {{item.normalQty}} 件 · 异常 {{item.abnormalQty}} 件</view><view class="muted">{{item.timeText}} · 流水 {{item.ledgerId}}</view><view class="record-note">{{item.note}}</view>
+                </view>
+              </block>
+              <view>更正原因（必填）</view><textarea value="{{correctionNote}}" bindinput="onCorrectionNoteInput" maxlength="500" placeholder="填写收货数量录错及核实依据" disabled="{{saving || correctionLoading}}" />
+            </view>
+            <view class="correction-result" wx:if="{{correctionPreview}}">
+              <view>有效实收：{{correctionPreview.beforeQty}} → {{correctionPreview.afterQty}} 件</view>
+              <view>更正后本次正常到货 {{correctionPreview.normalQty}} 件 · 超收异常 {{correctionPreview.abnormalQty}} 件</view>
+              <view>正常实存变动 {{correctionPreview.normalStockChange}} 件 · 异常实存变动 {{correctionPreview.abnormalStockChange}} 件</view>
+              <view>已关联盘亏 {{correctionPreview.creditedLossQty}} 件，避免重复扣减</view>
+              <view wx:for="{{correctionPreview.supplies}}" wx:key="purchaseOrderId">报单 {{item.purchaseOrderId}}：已到货 {{item.beforeReceivedQty}} → {{item.afterReceivedQty}} 件，剩余待到货 {{item.afterPendingQty}} 件</view>
+            </view>
+          </block>
+          <view class="correction-history" wx:if="{{correctionContext.history.length}}"><view class="section-title">更正记录</view><view class="picker-item" wx:for="{{correctionContext.history}}" wx:key="id"><view>{{item.beforeQty}} → {{item.afterQty}} 件 · 实存变动 {{item.stockChange}} 件</view><view class="muted">{{item.timeText}} · 操作人 {{item.operator}}</view><view>{{item.note}}</view></view></view>
+        </block>
+      </scroll-view>
+      <view class="picker-footer"><button bindtap="closeReceiptCorrection" disabled="{{saving}}">关闭</button><button wx:if="{{!correctionPreview}}" bindtap="previewReceiptCorrection" loading="{{correctionLoading}}" disabled="{{saving || correctionLoading || quantityPending || !correctionContext || correctionContext.blockedReason}}">预览更正</button><button wx:else bindtap="submitReceiptCorrection" loading="{{saving}}" disabled="{{saving || correctionLoading || quantityPending || !correctionNote}}">确认更正</button></view>
+    </view>
+  </view>
 </view>

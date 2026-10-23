@@ -13,7 +13,10 @@ function load(name, options = {}) {
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../pages', name, name + '.js'), 'utf8'), {
     console, wx, Page: value => { config = value; },
     require: module => {
-      if (module.endsWith('/api')) return { get: async (route, query) => { requests.push({ route, query }); return options.get ? options.get(route, query) : {}; } };
+      if (module.endsWith('/api')) return {
+        get: async (route, query) => { requests.push({ route, query }); return options.get ? options.get(route, query) : {}; },
+        post: async (route, payload) => { requests.push({ route, payload }); return options.post ? options.post(route, payload) : {}; }
+      };
       if (module.endsWith('/auth')) return { ensureAuthenticated: async () => {} };
       if (module.endsWith('/quantityOperation')) return { pending: () => null, run: async (api, route, payload) => { writes.push({ route, payload }); if (options.write) return options.write(route, payload); } };
       if (module.endsWith('/autoSearch')) return { wrap: value => value };
@@ -40,6 +43,78 @@ test('详情由商品编号独立加载全部规格，导航标题为商品名�
   assert.equal(page.data.skus[0].qty, 5); assert.equal(page.data.skus[0].readyToShipQty, 2);
   assert.equal(page.data.skus[0].operationQty, '0'); assert.equal(page.data.skus[1].qty, 0);
   assert.equal(page.data.outgoingTotal, 0);
+});
+
+function correctionContext() { return { effectiveQty: 11, version: 0, shippedQty: 4, blockedReason: '',
+  losses: [{ ledgerId: '9007199254740999', normalQty: 0, abnormalQty: 1, note: '异常误录已盘亏' }], history: [] }; }
+function correctionDetail() { const result = detail(); result.records = [{ skuId: result.skus[0].skuId,
+  receipts: [{ id: '9007199254740998', qty: 11, effectiveQty: 11, source: 'normal', canRevoke: false }] }]; return result; }
+
+test('从原入库打开更正，保留长编号并展示本批已发下限', async () => {
+  const { page, requests } = load('inventoryDetail', { get: async route => route.endsWith('/correction') ? correctionContext() : correctionDetail() });
+  await page.onLoad({ id: '1' }); await page.openReceiptCorrection(event({ index: 0 }));
+  assert.equal(requests.at(-1).route, '/sku-inventory/9007199254740995/receipts/9007199254740998/correction');
+  assert.equal(page.data.correctionContext.shippedQty, 4); assert.equal(page.data.correctionQty, '11');
+  assert.equal(page.data.correctionContext.losses[0].selected, false);
+});
+
+test('更正手输低于已发4件会拦截，步进最小4且非法数量不能预览', async () => {
+  const { page, requests, toasts } = load('inventoryDetail', { get: async route => route.endsWith('/correction') ? correctionContext() : correctionDetail() });
+  await page.onLoad({ id: '1' }); await page.openReceiptCorrection(event({ index: 0 }));
+  page.correctionQtyChange({ ...event({}), detail: { value: '3' } }); await page.previewReceiptCorrection();
+  assert.match(toasts.at(-1), /不能低于.*4/); assert.equal(requests.filter(r => r.payload).length, 0);
+  page.correctionQtyChange(event({ delta: -1 })); assert.equal(page.data.correctionQty, '4');
+  page.correctionQtyChange({ ...event({}), detail: { value: '1.5' } }); await page.previewReceiptCorrection();
+  assert.match(toasts.at(-1), /非负整数/); assert.equal(requests.filter(r => r.payload).length, 0);
+});
+
+test('更正关联已经盘亏的异常后预览并提交，成功通知库存刷新', async () => {
+  const { page, requests, writes, emitted } = load('inventoryDetail', {
+    get: async route => route.endsWith('/correction') ? correctionContext() : correctionDetail(),
+    post: async () => ({ beforeQty: 11, afterQty: 8, previewToken: 'checked-version', normalStockChange: -2, abnormalStockChange: 0 })
+  });
+  await page.onLoad({ id: '1' }); await page.openReceiptCorrection(event({ index: 0 }));
+  page.correctionQtyChange({ ...event({}), detail: { value: '8' } });
+  page.toggleCorrectionLoss(event({ id: '9007199254740999' }));
+  await page.previewReceiptCorrection();
+  assert.equal(requests.at(-1).payload.qty, 8); assert.equal(requests.at(-1).payload.lossLedgerIds[0], '9007199254740999');
+  page.onCorrectionNoteInput({ detail: { value: ' 实际只收8件，异常1件已处理 ' } });
+  page.confirm = async () => true; await page.submitReceiptCorrection();
+  assert.equal(writes.length, 1); assert.match(writes[0].route, /9007199254740998\/correct$/);
+  assert.equal(writes[0].payload.correction.qty, 8); assert.equal(writes[0].payload.previewToken, 'checked-version');
+  assert.equal(writes[0].payload.note, '实际只收8件，异常1件已处理'); assert.equal(page.data.showCorrection, false);
+  assert.equal(emitted.at(-1)[1].skuIds[0], '9007199254740995');
+});
+
+test('修改更正数量或盘亏选择会清除旧预览，缺原因不可提交', async () => {
+  const { page, writes, toasts } = load('inventoryDetail', { get: async route => route.endsWith('/correction') ? correctionContext() : correctionDetail(),
+    post: async () => ({ beforeQty: 11, afterQty: 8, previewToken: 'old-preview' }) });
+  await page.onLoad({ id: '1' }); await page.openReceiptCorrection(event({ index: 0 }));
+  page.correctionQtyChange({ ...event({}), detail: { value: '8' } }); await page.previewReceiptCorrection();
+  await page.submitReceiptCorrection(); assert.match(toasts.at(-1), /更正原因/); assert.equal(writes.length, 0);
+  page.correctionQtyChange(event({ delta: 1 })); assert.equal(page.data.correctionPreview, null);
+  await page.previewReceiptCorrection(); page.toggleCorrectionLoss(event({ id: '9007199254740999' }));
+  assert.equal(page.data.correctionPreview, null);
+});
+
+test('发货任务阻塞时显示原因且不调用预览，关闭后的迟到响应不重开窗口', async () => {
+  const { page, toasts } = load('inventoryDetail', { get: async route => route.endsWith('/correction') ? { ...correctionContext(), blockedReason: '发货任务处理中' } : correctionDetail() });
+  await page.onLoad({ id: '1' }); await page.openReceiptCorrection(event({ index: 0 }));
+  await page.previewReceiptCorrection(); assert.match(toasts.at(-1), /发货任务处理中/);
+  let finish; const late = load('inventoryDetail', { get: async route => route.endsWith('/correction') ? new Promise(resolve => { finish = resolve; }) : correctionDetail() });
+  await late.page.onLoad({ id: '1' }); const pending = late.page.openReceiptCorrection(event({ index: 0 }));
+  late.page.closeReceiptCorrection(); finish(correctionContext()); await pending;
+  assert.equal(late.page.data.showCorrection, false); assert.equal(late.page.data.correctionContext, null);
+});
+
+test('更正失败清除预览并保留输入，不会显示成功或关闭面板', async () => {
+  const { page, toasts } = load('inventoryDetail', { get: async route => route.endsWith('/correction') ? correctionContext() : correctionDetail(),
+    post: async () => ({ beforeQty: 11, afterQty: 8, previewToken: 'stale' }), write: async () => { throw new Error('请重新预览后确认更正'); } });
+  await page.onLoad({ id: '1' }); await page.openReceiptCorrection(event({ index: 0 }));
+  page.correctionQtyChange({ ...event({}), detail: { value: '8' } }); await page.previewReceiptCorrection();
+  page.onCorrectionNoteInput({ detail: { value: '录错' } }); page.confirm = async () => true; await page.submitReceiptCorrection();
+  assert.equal(page.data.showCorrection, true); assert.equal(page.data.correctionPreview, null); assert.equal(page.data.correctionQty, '8');
+  assert.match(toasts.at(-1), /重新预览/);
 });
 test('主Tab与功能Tab切换保留各主Tab选择，重新选择操作清零出库草稿', async () => {
   const { page } = load('inventoryDetail', { get: async () => detail() });

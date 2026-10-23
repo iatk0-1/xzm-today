@@ -35,7 +35,7 @@ function row(item, previous = {}) {
 }
 function receiptChoice(item) {
   const linked = (item.allocations || []).reduce((sum, entry) => sum + Number(entry.qty || 0), 0);
-  const remaining = Math.max(0, Number(item.qty) - linked);
+  const remaining = Math.max(0, Number(item.effectiveQty == null ? item.qty : item.effectiveQty) - linked);
   const allowed = ['normal', 'history', 'stocktake_gain'].includes(item.source);
   return { ...item, choiceId: item.id, remaining, disabled: !!item.revoked || !allowed || !remaining,
     reason: item.revoked ? '已撤销' : !allowed ? '此来源不支持补录' : !remaining ? '已全部关联报单' : '' };
@@ -48,7 +48,7 @@ function changeText(type) {
   return { arrival: '报单到货入库', history_in: '历史库存入库', shipment: '发货出库', return_inspection: '退货验收入库',
     stocktake_gain: '盘盈', stocktake_loss: '盘亏', abnormal_keep: '异常保留补报', abnormal_exchange_out: '换货出库',
     history_confirm: '历史/盘盈转正常', receipt_backfill: '既有收货来源补录', exchange_in: '换回入库',
-    abnormal_return_out: '异常退供应商', receipt_revoke: '撤销入库', shipment_cancel: '发货解绑返还' }[type] || type;
+    abnormal_return_out: '异常退供应商', receipt_revoke: '撤销入库', receipt_correct: '入库数量更正', shipment_cancel: '发货解绑返还' }[type] || type;
 }
 function buildOperation(data) {
   const operation = functions.operate.find(item => item.id === data.functionId);
