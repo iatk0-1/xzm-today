@@ -5,10 +5,13 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const { getLinkedProductIds, productPlaceholder, loadLinkedProducts } = require('../../utils/wishProducts');
 const { createShareImage } = require('../../utils/shareImage');
+const { imagePreloadMethods } = require('../../utils/detailImagePreload');
 
 Page(pageSync.wrap({
+  ...imagePreloadMethods,
   data: {
     wish: { images: [] },
+    imagePaths: {},
     wishId: null,
     likeAnimation: '',
     productSheetVisible: false,
@@ -117,6 +120,7 @@ Page(pageSync.wrap({
   },
 
   onUnload: function() {
+    this.stopImagePreload();
     this.cancelFloatTouch();
     this.pauseWishVideo();
     this._wishRequestVersion = (this._wishRequestVersion || 0) + 1;
@@ -125,6 +129,7 @@ Page(pageSync.wrap({
   // 加载心愿详情
   loadWishDetail: async function() {
     var version = this._wishRequestVersion = (this._wishRequestVersion || 0) + 1;
+    this.stopImagePreload();
     wx.showLoading({ title: '加载中...' });
     try {
       var res = await api.get('/wishes/' + this.data.wishId);
@@ -156,11 +161,15 @@ Page(pageSync.wrap({
       });
 
       this.prepareShareImages(images);
+      this.startImagePreload([wish.image, ...images], wx);
 
       // 检查删除权限：管理员 或 心愿创建者
       this.checkDeletePermission(wish);
       var products = await loadLinkedProducts(wish, id => api.get('/products/' + id));
-      if (version === this._wishRequestVersion) this.setData({ linkedProducts: products });
+      if (version === this._wishRequestVersion) {
+        this.setData({ linkedProducts: products });
+        this.appendImagePreload(products.map(product => product.coverUrl));
+      }
     } catch (err) {
       if (version !== this._wishRequestVersion) return;
       wx.hideLoading();

@@ -69,6 +69,22 @@ test('普通图片点击预览全组，拖动和禁用状态不误触预览，�
   assert.equal(previews.length, 1);
 });
 
+test('预加载完成不重置画廊位置，放大复用本地文件，失效时通知所属详情回退', () => {
+  const { instance: gallery, previews, events, definition } = setup({ images: ['a', 'b'], mediaKey: 'product' });
+  gallery.onTouchStart(touch(200, 100)); gallery.onTouchMove(touch(100, 100)); gallery.onTouchEnd();
+  assert.equal(gallery.data.bannerIndex, 1);
+  gallery.data.imagePaths = { b: '/tmp/b' };
+  assert.ok(!Object.keys(definition.observers).some(key => key.includes('imagePaths')));
+  assert.equal(gallery.data.bannerIndex, 1);
+  gallery._suppressTapUntil = 0;
+  gallery.previewImage({ currentTarget: { dataset: { index: 1 } } });
+  assert.deepEqual(plain(previews[0]), { current: '/tmp/b', urls: ['a', '/tmp/b'] });
+  gallery.onImageError(metadata('old', 0, 0, 1));
+  assert.ok(!events.some(event => event.name === 'imageerror'));
+  gallery.onImageError(metadata('b', 0, 0, 1));
+  assert.deepEqual(plain(events.at(-1)), { name: 'imageerror', detail: { url: 'b' } });
+});
+
 test('打开外层弹窗、页面隐藏和卸载都暂停视频并释放横滑锁', () => {
   const { instance: gallery, definition, pauses } = setup({ images: ['a'], videoUrl: 'video' });
   for (const stop of [() => definition.observers.inactive.call(gallery, true),

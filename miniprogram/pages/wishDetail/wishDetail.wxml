@@ -4,8 +4,8 @@
 <scroll-view class="wish-page-scroll" scroll-y="{{!productSheetVisible && !showVideo && !pageBannerScrollLocked}}" style="height: 100vh;" enhanced="true" show-scrollbar="false">
 <view class="page-wrapper">
 
-  <media-gallery id="wishMediaGallery" images="{{wish.images}}" video-url="{{wish.videoUrl}}" poster="{{wish.image}}" media-key="{{wishId}}"
-    inactive="{{productSheetVisible || showVideo || showShareTemplates}}" bindscrolllockchange="onGalleryScrollLockChange" />
+  <media-gallery id="wishMediaGallery" images="{{wish.images}}" image-paths="{{imagePaths}}" video-url="{{wish.videoUrl}}" poster="{{wish.image}}" media-key="{{wishId}}"
+    inactive="{{productSheetVisible || showVideo || showShareTemplates}}" bindimageerror="onPreloadedImageError" bindscrolllockchange="onGalleryScrollLockChange" />
 
   <!-- 内容区 -->
   <view class="content-section">
@@ -14,7 +14,7 @@
       <scroll-view class="linked-product-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
         <view class="linked-product-list">
           <view class="linked-product-card" wx:for="{{linkedProducts}}" wx:key="id" bindtap="goToProduct" data-id="{{item.id}}">
-            <image wx:if="{{item.coverUrl}}" class="linked-product-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+            <image wx:if="{{item.coverUrl}}" class="linked-product-cover" src="{{imagePaths[item.coverUrl] || item.coverUrl}}" mode="aspectFill" binderror="onPreloadedImageError" data-src="{{item.coverUrl}}" />
             <view wx:else class="linked-product-cover linked-product-placeholder">暂无图片</view>
             <view class="linked-product-name">{{item.name}}</view>
           </view>
@@ -86,7 +86,7 @@
 <view class="wish-floating-video" wx:if="{{wish.videoUrl && !productSheetVisible && !showVideo}}" style="{{videoFloatStyle}}"
       catchtouchstart="startVideoFloatTouch" catchtouchmove="moveVideoFloat"
       catchtouchend="endVideoFloatTouch" catchtouchcancel="cancelVideoFloatTouch">
-  <image class="wish-floating-video-thumb" src="{{wish.image}}" mode="aspectFill" />
+  <image class="wish-floating-video-thumb" src="{{imagePaths[wish.image] || wish.image}}" mode="aspectFill" binderror="onPreloadedImageError" data-src="{{wish.image}}" />
   <view class="wish-floating-video-icon"><view class="wish-video-play-icon" /></view>
 </view>
 <view class="wish-video-overlay" wx:if="{{showVideo && !productSheetVisible}}" catchtap="closeVideoOverlay" catchtouchmove="stopVideoTap">

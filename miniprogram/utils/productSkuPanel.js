@@ -19,6 +19,7 @@ module.exports = {
     currentSkuPrice: null,
     currentSkuStock: null,
     currentSkuImage: null,
+    skuPanelImagePaths: {},
     currentSkuId: null,
     currentSkuUnlimited: false,
     currentSkuSoldOut: false,
@@ -290,9 +291,19 @@ if (bundleGroups && bundleGroups.length > 0) {
 },
 
   // ====== 开放图片全屏预览 ======
+  onSkuPanelImageError(e) {
+    const url = e.currentTarget.dataset.url;
+    if (!url || !this.data.skuPanelImagePaths[url]) return;
+    if (this._skuImagePreloader) this._skuImagePreloader.invalidate(url);
+    const paths = { ...this.data.skuPanelImagePaths };
+    delete paths[url];
+    this.setData({ skuPanelImagePaths: paths });
+  },
+
   previewBundleImage(e) {
     if (this.dismissSkuQuantityKeyboard(e)) return;
     var url = e.currentTarget.dataset.url;
+    url = this.data.skuPanelImagePaths[url] || url;
     if (url) { wx.previewImage({ urls: [url], current: url }); }
   },
 
@@ -301,6 +312,7 @@ if (bundleGroups && bundleGroups.length > 0) {
     if (this.dismissSkuQuantityKeyboard(e)) return;
     var product = this.data.currentProduct || {};
     var current = this.data.currentSkuImage || product.coverUrl || product.image;
+    current = this.data.skuPanelImagePaths[current] || current;
     if (current) {
       wx.previewImage({ urls: [current], current: current });
     }

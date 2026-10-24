@@ -52,6 +52,67 @@ function option(page, kind, value) {
   return page.data[`${kind}Options`].find(item => item.value === value);
 }
 
+test('仅首页打开规格弹窗触发全量预下载，切换与结算继续保留原始图片地址', t => {
+  const requests = [];
+  const previews = [];
+  let checkout;
+  t.mock.method(global.wx, 'hideKeyboard', () => {});
+  const previous = { ...global.wx };
+  Object.assign(global.wx, {
+    downloadFile(options) { requests.push(options); return { abort() {} }; },
+    previewImage(options) { previews.push(options); },
+    setStorageSync(key, value) { checkout = value; },
+    navigateTo() {}
+  });
+  t.after(() => {
+    for (const key of Object.keys(global.wx)) if (!(key in previous)) delete global.wx[key];
+    Object.assign(global.wx, previous);
+  });
+  const skus = [
+    { skuId: 1, color: '红色', stock: 5, price: 20, imageUrl: 'https://cdn/red.jpg' },
+    { skuId: 2, color: '蓝色', stock: 5, price: 20, imageUrl: 'https://cdn/blue.jpg' }
+  ];
+  for (const name of ['search', 'detail']) createPage(name, skus).open();
+  assert.equal(requests.length, 0);
+  const page = createPage('index', skus);
+  page.open();
+  assert.equal(page.data.showSku, true);
+  assert.deepEqual(requests.map(request => request.url), skus.map(sku => sku.imageUrl));
+  requests[1].success({ statusCode: 200, tempFilePath: '/tmp/blue' });
+  page.selectColor(event({ color: '蓝色' }));
+  assert.equal(page.data.currentSkuImage, skus[1].imageUrl);
+  assert.equal(page.data.skuPanelImagePaths[skus[1].imageUrl], '/tmp/blue');
+  page.previewSkuPanelImage(event({}));
+  assert.equal(previews[0].current, '/tmp/blue');
+  page.confirmAddToCart(event({ action: 'buy' }));
+  assert.equal(checkout[0].coverUrl, skus[1].imageUrl);
+});
+
+test('首页预下载迟到回调不串商品，关闭中止下载，本地图出错回退网络地址', t => {
+  const requests = [];
+  global.wx.downloadFile = options => {
+    const request = { ...options, aborted: false };
+    requests.push(request);
+    return { abort() { request.aborted = true; options.fail(); } };
+  };
+  t.after(() => { delete global.wx.downloadFile; });
+  const page = createPage('index', [{ skuId: 1, stock: 3, imageUrl: 'https://cdn/old.jpg' }]);
+  page.open();
+  const product = { id: 2, coverUrl: 'https://cdn/new.jpg', skuMatrix: [] };
+  page.openSkuPanel(event({ product }));
+  assert.equal(requests[0].aborted, true);
+  requests[0].success({ statusCode: 200, tempFilePath: '/tmp/old' });
+  assert.deepEqual(page.data.skuPanelImagePaths, {});
+  requests[1].success({ statusCode: 200, tempFilePath: '/tmp/new' });
+  page.onSkuPanelImageError(event({ url: product.coverUrl }));
+  assert.deepEqual(page.data.skuPanelImagePaths, {});
+  page.openSkuPanel(event({ product }));
+  page.closeSkuPanel(event({}));
+  assert.equal(requests[2].aborted, true);
+  requests[2].success({ statusCode: 200, tempFilePath: '/tmp/late' });
+  assert.deepEqual(page.data.skuPanelImagePaths, {});
+});
+
 test('默认组合按照界面颜色、尺码顺序，而不是有货 SKU 的返回顺序', () => {
   const skus = makeSkus([0, 0, 0, 0, 5, 2]);
   // 尺码已按黑色的 S/M/L 确定展示顺序，白色的 L 却比 M 先返回。

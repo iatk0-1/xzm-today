@@ -2,13 +2,13 @@
   <view class="banner-strip" bindtouchstart="onTouchStart" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd" bindtouchcancel="onTouchCancel">
     <view class="banner-track {{bannerDragging ? '' : 'gallery-settling'}}" style="{{'height: ' + bannerBaseHeight + 'px; transform: translate3d(' + bannerTranslateX + 'px, 0, 0);'}}">
       <view wx:if="{{videoUrl}}" class="banner-cell banner-video-cell" style="width: {{bannerBaseWidth}}px;">
-        <video id="galleryVideo" class="swiper-video" style="{{bannerVideoStyle}}" src="{{videoUrl}}" poster="{{poster}}"
+        <video id="galleryVideo" class="swiper-video" style="{{bannerVideoStyle}}" src="{{videoUrl}}" poster="{{imagePaths[poster] || poster}}"
           object-fit="{{bannerVideoFit}}" data-src="{{videoUrl}}" bindloadedmetadata="onVideoMetadata" binderror="onVideoError"
           show-play-btn="{{true}}" controls="{{false}}" autoplay="{{false}}" muted loop />
       </view>
       <view wx:for="{{bannerImgs}}" wx:key="index" class="banner-cell" style="width: {{bannerBaseWidth}}px;">
-        <image class="swiper-img" src="{{item}}" mode="{{bannerImageModes[index] || 'aspectFit'}}"
-          bindload="onImageLoad" data-src="{{item}}" catchtap="previewImage" data-index="{{index}}" />
+        <image class="swiper-img" src="{{imagePaths[item] || item}}" mode="{{bannerImageModes[index] || 'aspectFit'}}"
+          bindload="onImageLoad" binderror="onImageError" data-src="{{item}}" catchtap="previewImage" data-index="{{index}}" />
       </view>
     </view>
     <view wx:if="{{bannerImgs.length + (videoUrl ? 1 : 0) > 1}}" class="banner-dots">

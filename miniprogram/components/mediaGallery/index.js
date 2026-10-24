@@ -5,6 +5,7 @@ const { resolveDirection } = require('../../utils/productSheetGesture');
 Component({
   properties: {
     images: { type: Array, value: [] },
+    imagePaths: { type: Object, value: {} },
     videoUrl: { type: String, value: '' },
     poster: { type: String, value: '' },
     mediaKey: { type: String, value: '' },
@@ -107,6 +108,12 @@ Component({
       modes[index] = mode;
       this.setData({ bannerImageModes: modes });
     },
+    onImageError(e) {
+      const { index, src } = e.currentTarget.dataset;
+      if (this.data.bannerImgs[index] === src && this.data.imagePaths[src]) {
+        this.triggerEvent('imageerror', { url: src });
+      }
+    },
     onVideoMetadata(e) {
       if (e.currentTarget.dataset.src !== this.data.videoUrl) return;
       const { width, height } = e.detail;
@@ -121,7 +128,7 @@ Component({
     },
     previewImage(e) {
       if (Date.now() < (this._suppressTapUntil || 0) || this.data.inactive) return;
-      const urls = this.data.bannerImgs;
+      const urls = this.data.bannerImgs.map(url => this.data.imagePaths[url] || url);
       if (urls.length) wx.previewImage({ current: urls[e.currentTarget.dataset.index] || urls[0], urls });
     },
     pauseVideo() {

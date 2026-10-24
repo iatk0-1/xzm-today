@@ -9,10 +9,12 @@ const { findSelectedSku, getSkuOptions, getDefaultSkuSelection, getSkuOptionSele
 const { createShareImage } = require('../../utils/shareImage');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const skuQuantityEditor = require('../../utils/skuQuantityEditor');
+const { collectProductImages, imagePreloadMethods } = require('../../utils/detailImagePreload');
 
 function createProductDetailConfig() {
   return {
   ...skuQuantityEditor,
+  ...imagePreloadMethods,
   data: {
     embedded: false,
     loading: false,
@@ -23,6 +25,7 @@ function createProductDetailConfig() {
     statusBarHeight: 20,
     navHeight: 64,
     product: {},
+    imagePaths: {},
     currentTab: 0,
     bannerImgs: [],
     bannerImageModes: [],
@@ -108,6 +111,7 @@ function createProductDetailConfig() {
   },
 
   onUnload: function() {
+    this.stopImagePreload();
     this._videoFloatDrag = null;
     this._productVersion = (this._productVersion || 0) + 1;
     clearTimeout(this._videoTimer);
@@ -203,7 +207,8 @@ function createProductDetailConfig() {
   // 安全加载：等待认证就绪 + 带重试（解决分享链接冷启动 401 问题）
   loadProductSafe: async function(productId) {
     const version = this._productVersion = (this._productVersion || 0) + 1;
-    this.setData({ loading: true, loadError: '' });
+    this.stopImagePreload();
+    this.setData({ loading: true, loadError: '', imagePaths: {} });
     await this.waitForAuth(5000);
     if (version !== this._productVersion) return;
     this.refreshShareFloatVisibility();
@@ -324,6 +329,9 @@ function createProductDetailConfig() {
       this.prepareShareImages(banners.length > 0 ? banners : [product.image]);
 
       this.checkSkuMatch();
+
+      // 整页图片和普通、套装 SKU 图一起预下载，弹窗打开时直接复用。
+      this.startImagePreload(collectProductImages(this.data.product), wx);
 
       // 定位第一个有内容的标签
       let firstTab = '';
@@ -513,7 +521,10 @@ function createProductDetailConfig() {
           image: item.coverUrl || item.image
         }));
 
-        if (version === this._productVersion) this.setData({ relatedProducts: mappedProducts });
+        if (version === this._productVersion) {
+          this.setData({ relatedProducts: mappedProducts });
+          this.appendImagePreload(mappedProducts.map(item => item.image));
+        }
       }
     } catch (err) {
       console.error('获取关联商品失败:', err);
@@ -981,7 +992,8 @@ switchAuraTab(e) {
       wx.showToast({ title: '暂无图片', icon: 'none' });
       return;
     }
-    wx.previewImage({ current: current || validUrls[0], urls: validUrls });
+    wx.previewImage({ current: this.resolvePreloadedImage(current || validUrls[0]),
+      urls: validUrls.map(url => this.resolvePreloadedImage(url)) });
   },
 
   // A: 轮播图预览（支持左右滑动）
@@ -1021,7 +1033,7 @@ switchAuraTab(e) {
     if (this.dismissSkuQuantityKeyboard(e)) return;
     var current = this.data.currentSkuImage || this.data.product.image || this.data.product.coverUrl;
     if (current) {
-      wx.previewImage({ urls: [current], current: current });
+      this.previewImageSafe(current, [current]);
     }
   },
 

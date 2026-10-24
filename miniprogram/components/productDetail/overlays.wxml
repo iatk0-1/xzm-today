@@ -52,7 +52,7 @@
   <view class="sku-header">
     <view class="sku-image-column">
       <view class="sku-img-wrap">
-        <image class="sku-img" src="{{currentSkuImage || product.image}}" mode="aspectFill" catchtap="previewSkuPanelImage"></image>
+        <image class="sku-img" src="{{imagePaths[currentSkuImage || product.image] || currentSkuImage || product.image}}" mode="aspectFill" binderror="onPreloadedImageError" data-src="{{currentSkuImage || product.image}}" catchtap="previewSkuPanelImage"></image>
         <view class="sold-out-overlay" wx:if="{{currentSkuId ? currentSkuSoldOut : product.soldOut}}"><text>售罄</text></view>
       </view>
     </view>
@@ -78,7 +78,7 @@
     <view class="bundle-group-card {{sel.isChecked === false ? 'disabled-card' : ''}}" wx:for="{{bundleSelections}}" wx:key="index" wx:for-item="sel" wx:for-index="bgIdx">
 
       <view class="bundle-card-img-wrap">
-        <image class="bundle-card-img" src="{{sel.displayImage || product.coverUrl}}" mode="aspectFill"></image>
+        <image class="bundle-card-img" src="{{imagePaths[sel.displayImage || product.coverUrl] || sel.displayImage || product.coverUrl}}" mode="aspectFill" binderror="onPreloadedImageError" data-src="{{sel.displayImage || product.coverUrl}}"></image>
         <view class="sold-out-overlay" wx:if="{{sel.imageSoldOut}}"><text>售罄</text></view>
       </view>
 
@@ -155,7 +155,7 @@
 <view class="floating-video-btn" wx:if="{{product.videoUrl}}" style="{{videoFloatStyle}}"
       catchtouchstart="startVideoFloatTouch" catchtouchmove="moveVideoFloat"
       catchtouchend="endVideoFloatTouch" catchtouchcancel="cancelVideoFloatTouch">
-  <image class="floating-video-thumb" src="{{product.image || product.coverUrl}}" mode="aspectFill" />
+  <image class="floating-video-thumb" src="{{imagePaths[product.image || product.coverUrl] || product.image || product.coverUrl}}" mode="aspectFill" binderror="onPreloadedImageError" data-src="{{product.image || product.coverUrl}}" />
   <view class="play-icon-overlay"><view class="video-float-play-icon" /></view>
 </view>
 

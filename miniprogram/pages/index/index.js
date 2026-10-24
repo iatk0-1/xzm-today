@@ -9,6 +9,7 @@ const customerServiceUnread = require('../../utils/customerServiceUnread');
 const { groupStalls } = require('../../utils/productFilters');
 const { isProductSoldOut } = require('../../utils/stock');
 const productSkuPanel = require('../../utils/productSkuPanel');
+const { collectSkuImages, createSkuImagePreloader } = require('../../utils/skuImagePreloader');
 const app = getApp();
 
 Page(pageSync.wrap({
@@ -122,6 +123,7 @@ Page(pageSync.wrap({
 
   onUnload: function() {
     this._pageClosed = true;
+    if (this._skuImagePreloader) this._skuImagePreloader.stop();
     customerServiceUnread.stop(this);
     this._isInitializingHome = false;
     this._isRefreshingHome = false;
@@ -519,6 +521,23 @@ Page(pageSync.wrap({
   },
 
   ...productSkuPanel.methods,
+
+  openSkuPanel: function(e) {
+    // 先展示弹窗和默认规格，预下载不阻塞用户操作。
+    this.setData({ skuPanelImagePaths: {} });
+    productSkuPanel.methods.openSkuPanel.call(this, e);
+    if (!this._skuImagePreloader) this._skuImagePreloader = createSkuImagePreloader();
+    const urls = collectSkuImages(this.data.currentProduct, this.data.currentSkuImage);
+    this._skuImagePreloader.start(urls, (url, path) => {
+      if (this._pageClosed || !this.data.showSku) return;
+      this.setData({ skuPanelImagePaths: { ...this.data.skuPanelImagePaths, [url]: path } });
+    });
+  },
+
+  closeSkuPanel: function(e) {
+    productSkuPanel.methods.closeSkuPanel.call(this, e);
+    if (!this.data.showSku && this._skuImagePreloader) this._skuImagePreloader.stop();
+  },
 
   buildShareQuery: function() {
     const query = [];

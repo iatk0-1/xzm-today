@@ -32,6 +32,7 @@ function setup(role = 'admin', filename = 'publishWish') {
       if (name.endsWith('/media')) return { compressVideo: async file => ({ path: file }) };
       if (name.endsWith('/cos-upload')) return { uploadFile: async file => { calls.uploads.push(file); return 'https://uploaded/video.mp4'; } };
       if (name.endsWith('/wishProducts')) return require('../../utils/wishProducts');
+      if (name.endsWith('/detailImagePreload')) return require('../../utils/detailImagePreload');
       if (name.endsWith('/api')) return api;
       if (name.endsWith('/auth')) return auth;
       if (name.endsWith('/error')) return { getErrorMessage: (err, fallback) => err.message || fallback };

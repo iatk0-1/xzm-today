@@ -6,7 +6,7 @@
   <view class="sku-header" wx:if="{{currentProduct}}">
     <view class="sku-image-column">
       <view class="sku-img-wrap">
-        <image class="sku-img" src="{{currentSkuImage || currentProduct.coverUrl || currentProduct.image}}" mode="aspectFill" catchtap="previewSkuPanelImage"></image>
+        <image class="sku-img" src="{{skuPanelImagePaths[currentSkuImage || currentProduct.coverUrl || currentProduct.image] || currentSkuImage || currentProduct.coverUrl || currentProduct.image}}" mode="aspectFill" catchtap="previewSkuPanelImage" binderror="onSkuPanelImageError" data-url="{{currentSkuImage || currentProduct.coverUrl || currentProduct.image}}"></image>
         <view class="sold-out-overlay sku-sold-out-overlay" wx:if="{{currentSkuId ? currentSkuSoldOut : currentProduct.soldOut}}"><text>售罄</text></view>
       </view>
     </view>
@@ -44,7 +44,7 @@
   <scroll-view scroll-y style="max-height: 55vh; padding: 0 16rpx; padding-bottom: 0rpx;" wx:if="{{bundleSelections.length > 0}}">
     <view class="bundle-group-card {{sel.isOutOfStock ? 'out-of-stock-card' : ''}}" wx:for="{{bundleSelections}}" wx:key="index" wx:for-item="sel" wx:for-index="bgIdx">
 
-      <image class="bundle-card-img" src="{{sel.selectedSku.imageUrl || sel.skus[0].imageUrl || currentProduct.coverUrl}}" mode="aspectFill" bindtap="previewBundleImage" data-url="{{sel.selectedSku.imageUrl || sel.skus[0].imageUrl || currentProduct.coverUrl}}"></image>
+      <image class="bundle-card-img" src="{{skuPanelImagePaths[sel.selectedSku.imageUrl || sel.skus[0].imageUrl || currentProduct.coverUrl] || sel.selectedSku.imageUrl || sel.skus[0].imageUrl || currentProduct.coverUrl}}" mode="aspectFill" bindtap="previewBundleImage" binderror="onSkuPanelImageError" data-url="{{sel.selectedSku.imageUrl || sel.skus[0].imageUrl || currentProduct.coverUrl}}"></image>
 
       <view class="bundle-card-right">
         <view class="bundle-card-header">

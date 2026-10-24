@@ -9,15 +9,15 @@
   <view class="product-load-state" wx:if="{{loading}}">正在加载商品...</view>
   <view class="product-load-state product-load-error" wx:elif="{{loadError}}" bindtap="retryProduct">{{loadError}} · 点击重试</view>
   <view class="main-swiper-wrap {{embedded && galleryAnimating ? 'gallery-animating' : ''}}" style="{{embedded ? 'height: ' + galleryHeight + 'px;' : ''}}" wx:if="{{product.id}}" data-gesture="image" data-gallery="banner">
-    <media-gallery wx:if="{{!embedded}}" id="detailMediaGallery" images="{{bannerImgs}}" video-url="{{product.videoUrl}}" poster="{{product.image}}" media-key="{{product.id}}"
-      inactive="{{showVideo || showSku || showShareTemplates}}" bindscrolllockchange="onGalleryScrollLockChange" />
+    <media-gallery wx:if="{{!embedded}}" id="detailMediaGallery" images="{{bannerImgs}}" image-paths="{{imagePaths}}" video-url="{{product.videoUrl}}" poster="{{product.image}}" media-key="{{product.id}}"
+      inactive="{{showVideo || showSku || showShareTemplates}}" bindimageerror="onPreloadedImageError" bindscrolllockchange="onGalleryScrollLockChange" />
     <view wx:else class="banner-strip" data-gesture="image" data-gallery="banner">
       <view class="banner-track {{gallerySettling ? 'gallery-settling' : ''}} {{galleryAnimating ? 'gallery-transform-animating' : ''}}" style="{{'height: ' + galleryBaseHeight + 'px; transform: translate3d(' + galleryTranslateX + 'px, 0, 0) scale(' + galleryScale + ');'}}" data-gesture="image" data-gallery="banner">
         <view wx:if="{{product.videoUrl}}" class="banner-cell banner-video-cell" style="width: {{galleryBaseWidth}}px;" data-gesture="image" data-gallery="banner">
-          <video id="productBannerVideo" class="swiper-video" style="{{bannerVideoStyle}}" data-gesture="image" data-gallery="banner" src="{{product.videoUrl}}" poster="{{product.image}}" object-fit="{{bannerVideoFit}}" data-src="{{product.videoUrl}}" bindloadedmetadata="onBannerVideoMetadata" controls="{{false}}" autoplay="{{false}}" muted loop />
+          <video id="productBannerVideo" class="swiper-video" style="{{bannerVideoStyle}}" data-gesture="image" data-gallery="banner" src="{{product.videoUrl}}" poster="{{imagePaths[product.image] || product.image}}" object-fit="{{bannerVideoFit}}" data-src="{{product.videoUrl}}" bindloadedmetadata="onBannerVideoMetadata" controls="{{false}}" autoplay="{{false}}" muted loop />
         </view>
         <view wx:for="{{bannerImgs}}" wx:key="*this" class="banner-cell" style="width: {{galleryBaseWidth}}px;" data-gesture="image" data-gallery="banner">
-          <image class="swiper-img" data-gesture="image" data-gallery="banner" src="{{item}}" mode="{{bannerImageModes[index] || 'aspectFit'}}" bindload="onBannerImageLoad" data-src="{{item}}" catchtap="previewBannerImage" data-index="{{index}}" />
+          <image class="swiper-img" data-gesture="image" data-gallery="banner" src="{{imagePaths[item] || item}}" mode="{{bannerImageModes[index] || 'aspectFit'}}" bindload="onBannerImageLoad" binderror="onPreloadedImageError" data-src="{{item}}" catchtap="previewBannerImage" data-index="{{index}}" />
         </view>
       </view>
       <view wx:if="{{bannerImgs.length + (product.videoUrl ? 1 : 0) > 1}}" class="banner-dots">
@@ -78,7 +78,7 @@
   </view>
 
   <view class="lookbook-section" wx:if="{{lookbookImgs && lookbookImgs.length > 0}}">
-    <image class="lookbook-img" wx:for="{{lookbookImgs}}" wx:key="*this" src="{{item}}" mode="widthFix" bindload="onDocumentImageLoad" catchtap="previewLookbookImage" data-index="{{index}}"></image>
+    <image class="lookbook-img" wx:for="{{lookbookImgs}}" wx:key="*this" src="{{imagePaths[item] || item}}" mode="widthFix" bindload="onDocumentImageLoad" binderror="onPreloadedImageError" data-src="{{item}}" catchtap="previewLookbookImage" data-index="{{index}}"></image>
   </view>
 
   <view class="detail-views-section" wx:if="{{detailImgs && detailImgs.length > 0}}">
@@ -89,13 +89,13 @@
     <view class="detail-gallery">
       <swiper wx:if="{{!embedded}}" data-gesture="image" data-gallery="detail" class="detail-swiper" current="{{currentDetailIndex - 1}}" bindchange="onDetailSwiperChange">
         <swiper-item data-gesture="image" data-gallery="detail" class="detail-swiper-item" wx:for="{{detailImgs}}" wx:key="*this">
-          <image class="detail-swiper-img" data-gesture="image" data-gallery="detail" src="{{item}}" mode="{{detailImageModes[index] || 'aspectFit'}}" bindload="onDetailImageLoad" data-src="{{item}}" catchtap="previewDetailImage" data-index="{{index}}"></image>
+          <image class="detail-swiper-img" data-gesture="image" data-gallery="detail" src="{{imagePaths[item] || item}}" mode="{{detailImageModes[index] || 'aspectFit'}}" bindload="onDetailImageLoad" binderror="onPreloadedImageError" data-src="{{item}}" catchtap="previewDetailImage" data-index="{{index}}"></image>
         </swiper-item>
       </swiper>
       <view wx:else class="detail-swiper detail-strip" data-gesture="image" data-gallery="detail">
         <view class="detail-strip-track" style="{{'transform: translateX(-' + ((currentDetailIndex - 1) * 100) + '%);'}}" data-gesture="image" data-gallery="detail">
           <view class="detail-strip-cell" wx:for="{{detailImgs}}" wx:key="*this" data-gesture="image" data-gallery="detail">
-            <image class="detail-swiper-img" data-gesture="image" data-gallery="detail" src="{{item}}" mode="{{detailImageModes[index] || 'aspectFit'}}" bindload="onDetailImageLoad" data-src="{{item}}" catchtap="previewDetailImage" data-index="{{index}}" />
+            <image class="detail-swiper-img" data-gesture="image" data-gallery="detail" src="{{imagePaths[item] || item}}" mode="{{detailImageModes[index] || 'aspectFit'}}" bindload="onDetailImageLoad" binderror="onPreloadedImageError" data-src="{{item}}" catchtap="previewDetailImage" data-index="{{index}}" />
           </view>
         </view>
       </view>
@@ -113,7 +113,7 @@
     <view class="section-title-eng" style="text-align: left; padding-left: 20px;">关联商品</view>
     <view class="related-grid">
       <view class="related-item" wx:for="{{relatedProducts}}" wx:key="id" bindtap="goToRelatedDetail" data-id="{{item.id}}">
-        <image class="related-img" src="{{item.image}}" mode="aspectFill" catchtap="goToRelatedDetail" data-id="{{item.id}}"></image>
+        <image class="related-img" src="{{imagePaths[item.image] || item.image}}" mode="aspectFill" binderror="onPreloadedImageError" data-src="{{item.image}}" catchtap="goToRelatedDetail" data-id="{{item.id}}"></image>
         <view class="related-info">
           <view class="related-title">{{item.title}}</view>
           <view class="related-price">¥ {{item.displayPrice || item.price}}</view>
