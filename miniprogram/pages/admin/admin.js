@@ -1757,7 +1757,7 @@ const pageDefinition = {
     if (!this.data.showRelatedModal || (!reset && (this.data.relatedLoading || !this.data.relatedHasMore))) return;
     const version = this._relatedQueryVersion = (this._relatedQueryVersion || 0) + 1;
     const page = reset ? 1 : this.data.relatedPage;
-    const params = { page, size: 20, status: 'all', manage: true };
+    const params = { page, size: 20, status: 'all', manage: true, sort: 'newest' };
     if (this.data.searchKeyword.trim()) params.keyword = this.data.searchKeyword.trim();
     if (this.data.relatedStall) params.stallId = this.data.relatedStall;
     if (this.data.relatedTag) params.tagId = this.data.relatedTag;

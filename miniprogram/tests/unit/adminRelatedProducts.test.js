@@ -41,7 +41,7 @@ test('商品关联使用后端联合搜索，档口负责人仅加载负责档�
   await page.selectRelatedTag(tap('tag', '4'));
   await page.loadMoreRelatedProducts();
   assert.deepEqual(plain(calls.at(-1)), { url: '/products/query', params: {
-    page: 2, size: 20, status: 'all', manage: true, keyword: '外套', stallId: '3', tagId: '4'
+    page: 2, size: 20, status: 'all', manage: true, sort: 'newest', keyword: '外套', stallId: '3', tagId: '4'
   } });
   assert.equal(calls.some(call => call.url === '/stall-managers/stalls/mine'), true);
   assert.equal(calls.some(call => call.url === '/stalls/all'), false);
