@@ -4,6 +4,7 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const refundChannels = require('../../utils/refundChannels');
+const afterSaleDisplay = require('../../utils/afterSaleDisplay');
 
 const RETURN_EXPRESS_OPTIONS = [
   { code: 'ZTO', name: '中通' },
@@ -69,8 +70,13 @@ Page({
 
   formatAfterSaleDetail: function(res) {
     const orderDetail = res.orderDetail ? this.formatOrderDetail(res.orderDetail) : null;
+    const application = afterSaleDisplay.application(res);
     return {
       ...res,
+      items: application.items,
+      applicationRefundAmount: application.totalAmount,
+      applicationTypeDisplay: this.getAfterSaleTypeDisplay(application.type),
+      reviewedRefundAmount: application.reviewedAmount,
       refundPayment: res.refundPayment ? refundChannels.format(res.refundPayment) : null,
       statusDisplay: res.status === 'cancelled' && res.rejectReason ? '已关闭' : this.getStatusDisplay(res.status),
       typeDisplay: this.getAfterSaleTypeDisplay(res.type),
@@ -107,7 +113,7 @@ Page({
     timeline.push({
       status: '用户申请',
       time: this.formatTime(afterSale.createdAt),
-      description: `申请${afterSale.typeDisplay}，退款 ¥${this.formatAmount(afterSale.totalRefundAmount)}`
+      description: `申请${afterSale.applicationTypeDisplay || afterSale.typeDisplay}，退款 ¥${afterSale.applicationRefundAmount == null ? this.formatAmount(afterSale.totalRefundAmount) : afterSale.applicationRefundAmount}`
     });
 
     // 2. 管理员审核
@@ -115,7 +121,7 @@ Page({
       timeline.push({
         status: '商家审核',
         time: '-',
-        description: afterSale.type === 'return_refund' ? '审核通过，等待用户退货' : '审核通过，等待退款处理'
+        description: `审核通过，退款 ¥${afterSale.reviewedRefundAmount == null ? this.formatAmount(afterSale.totalRefundAmount) : afterSale.reviewedRefundAmount}，${afterSale.type === 'return_refund' ? '等待用户退货' : '等待退款处理'}`
       });
     } else if (afterSale.status === 'rejected') {
       timeline.push({

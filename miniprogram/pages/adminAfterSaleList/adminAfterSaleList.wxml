@@ -82,9 +82,11 @@
       <!-- 订单号 -->
       <view class="item-order">
         <view class="order-meta">
-          <text class="admin-seq" wx:if="{{item.adminSeqNo}}">序号：{{item.adminSeqNo}}</text>
-          <text class="refund-channel-tag" wx:if="{{item.peerOrder}}">同行订单</text>
-          <text class="refund-channel-tag" wx:elif="{{item.refundPayment.hasOfflinePayment}}">线下付款订单</text>
+          <view class="order-seq-line" wx:if="{{item.adminSeqNo || item.peerOrder || item.refundPayment.hasOfflinePayment}}">
+            <text class="admin-seq" wx:if="{{item.adminSeqNo}}">序号：{{item.adminSeqNo}}</text>
+            <text class="refund-channel-tag" wx:if="{{item.peerOrder}}">同行订单</text>
+            <text class="refund-channel-tag" wx:elif="{{item.refundPayment.hasOfflinePayment}}">线下付款订单</text>
+          </view>
           <view class="order-line">
             <text class="order-label">订单号：</text>
             <text class="order-no">{{item.orderId}}</text>

@@ -177,7 +177,8 @@ Page(pageSync.wrap({
       'approved': '已同意',
       'rejected': '已拒绝',
       'received': '已收货',
-      'refunded': '已退款'
+      'refunded': '已退款',
+      'cancelled': '已撤销'
     };
     return map[status] || status;
   },
@@ -525,6 +526,33 @@ Page(pageSync.wrap({
     // 跳转到售后详情页
     wx.navigateTo({
       url: `/pages/afterSaleDetail/afterSaleDetail?afterSaleId=${afterSaleId}`
+    });
+  },
+
+  cancelAfterSale: function(e) {
+    const id = String(e.currentTarget.dataset.id);
+    const record = this.data.afterSaleRecords.find(item => String(item.id) === id);
+    if (!record || record.status !== 'pending' || this._cancellingAfterSale) return;
+    wx.showModal({
+      title: '撤销申请',
+      content: '确定要撤销该售后申请吗？',
+      success: async (res) => {
+        if (!res.confirm || this._cancellingAfterSale) return;
+        this._cancellingAfterSale = true;
+        wx.showLoading({ title: '处理中...', mask: true });
+        try {
+          await auth.ensureAuthenticated({ silent: true });
+          await api.post(`/after-sales/${id}/cancel`);
+          wx.hideLoading();
+          wx.showToast({ title: '已撤销', icon: 'success' });
+          await this.loadOrderDetail(this.orderId || this.data.order.id);
+        } catch (err) {
+          wx.hideLoading();
+          wx.showToast({ title: getErrorMessage(err, '撤销失败'), icon: 'none' });
+        } finally {
+          this._cancellingAfterSale = false;
+        }
+      }
     });
   },
 

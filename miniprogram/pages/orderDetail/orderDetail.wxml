@@ -184,7 +184,10 @@
           <text class="after-sale-amount">退款：¥ {{item.refundAmount}}</text>
         </view>
         <view class="after-sale-reason" wx:if="{{item.reason}}">{{item.reason}}</view>
-        <view class="after-sale-time">{{item.createdAt}}</view>
+        <view class="after-sale-footer">
+          <view class="after-sale-time">{{item.createdAt}}</view>
+          <view class="after-sale-cancel" wx:if="{{item.status === 'pending'}}" catchtap="cancelAfterSale" data-id="{{item.id}}">撤销申请</view>
+        </view>
       </view>
     </view>
   </view>

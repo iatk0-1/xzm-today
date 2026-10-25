@@ -7,9 +7,8 @@
     <view class="status-desc" wx:if="{{afterSale.status === 'cancelled' && afterSale.rejectReason}}">{{afterSale.rejectReason}}</view>
     <view class="refund-amount">¥ {{afterSale.totalRefundAmount}}</view>
     <view class="refund-channel-summary" wx:if="{{afterSale.refundPayment}}">
-      <view>线上退款：¥ {{afterSale.refundPayment.onlineAmount}}</view>
-      <view>线下退款：¥ {{afterSale.refundPayment.offlineAmount}}</view>
-      <view>原申请：线上 ¥{{afterSale.refundPayment.requestedOnlineAmount}} · 线下 ¥{{afterSale.refundPayment.requestedOfflineAmount}}</view>
+      <view>线上退款 ¥{{afterSale.refundPayment.onlineAmount}} · 线下退款 ¥{{afterSale.refundPayment.offlineAmount}}</view>
+      <view wx:if="{{afterSale.status !== 'pending' && afterSale.refundPayment.hasAdjustedAmounts}}">原申请：线上 ¥{{afterSale.refundPayment.requestedOnlineAmount}} · 线下 ¥{{afterSale.refundPayment.requestedOfflineAmount}}</view>
       <view wx:if="{{afterSale.refundPayment.offlineAmount > 0}}">线下退款请联系客服处理。</view>
       <view wx:if="{{afterSale.refundPayment.historicalEstimate}}">历史申请渠道分摊为参考，实际金额以退款记录为准。</view>
     </view>
@@ -91,11 +90,11 @@
           <view class="item-name">{{item.productName}}</view>
           <view class="item-sku">{{item.skuSpec}} / {{item.skuSize}}</view>
           <view class="item-detail-row">
-            <text class="item-qty">×{{item.qty}}</text>
-            <text class="item-type">{{item.afterSaleType === 'refund' ? '仅退款' : '退货退款'}}</text>
+            <text class="item-qty">×{{item.applicationQty}}</text>
+            <text class="item-type">{{item.applicationType === 'refund' ? '仅退款' : '退货退款'}}</text>
           </view>
         </view>
-        <view class="item-refund">¥ {{item.refundAmount}}</view>
+        <view class="item-refund">¥ {{item.applicationRefundAmount}}</view>
       </view>
     </view>
   </view>
@@ -168,8 +167,8 @@
   </view>
 
   <!-- 底部操作按钮 -->
-  <view class="action-bar">
-    <view class="action-btn-group" wx:if="{{afterSale.status === 'pending'}}">
+  <view class="action-bar" wx:if="{{afterSale.status === 'pending'}}">
+    <view class="action-btn-group">
       <view class="btn-ghost" bindtap="cancelAfterSale">撤销申请</view>
     </view>
   </view>

@@ -7,6 +7,7 @@ const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const afterSaleFulfillment = require('../../utils/afterSaleFulfillment');
 const refundChannels = require('../../utils/refundChannels');
+const afterSaleDisplay = require('../../utils/afterSaleDisplay');
 
 Page({
   data: {
@@ -77,7 +78,7 @@ Page({
       map[String(item.id)] = item;
       return map;
     }, {});
-    const items = (res.items || []).map(item => {
+    const items = afterSaleDisplay.application(res).items.map(item => {
       const orderItem = orderItemsById[String(item.orderItemId)] || {};
       const shipmentKnown = orderItem.qty != null && orderItem.shippedQty != null;
       const currentShippedQty = shipmentKnown

@@ -10,7 +10,7 @@
     <view class="refund-channel-tag" wx:elif="{{afterSale.refundPayment.hasOfflinePayment}}">线下付款订单</view>
     <view class="refund-channel-summary" wx:if="{{afterSale.refundPayment}}">
       <view>线上退款 ¥{{afterSale.refundPayment.onlineAmount}} · 线下退款 ¥{{afterSale.refundPayment.offlineAmount}}</view>
-      <view>用户原申请：线上 ¥{{afterSale.refundPayment.requestedOnlineAmount}} · 线下 ¥{{afterSale.refundPayment.requestedOfflineAmount}}</view>
+      <view wx:if="{{afterSale.status !== 'pending' && afterSale.refundPayment.hasAdjustedAmounts}}">用户原申请：线上 ¥{{afterSale.refundPayment.requestedOnlineAmount}} · 线下 ¥{{afterSale.refundPayment.requestedOfflineAmount}}</view>
       <view wx:if="{{afterSale.refundPayment.historicalEstimate}}">历史申请渠道分摊为参考，已执行金额以退款记录为准。</view>
     </view>
     <view class="status-desc">
@@ -110,15 +110,15 @@
           <view class="item-name">{{item.productName}}</view>
           <view class="item-sku">{{item.skuSpec}} / {{item.skuSize}}</view>
           <view class="item-detail-row">
-            <text class="item-qty">×{{item.qty}}</text>
-            <text class="item-type {{item.afterSaleType}}">{{item.afterSaleType === 'refund' ? '仅退款' : '退货退款'}}</text>
+            <text class="item-qty">×{{item.applicationQty}}</text>
+            <text class="item-type {{item.applicationType}}">{{item.applicationType === 'refund' ? '仅退款' : '退货退款'}}</text>
             <text class="item-status {{item.status}}" wx:if="{{item.status}}">{{item.statusDisplay}}</text>
           </view>
           <view class="fulfillment-summary {{item.fulfillmentKnown ? '' : 'unknown'}}">{{item.fulfillmentText}}</view>
           <view class="fulfillment-detail" wx:if="{{item.fulfillmentKnown}}">{{item.fulfillmentStockText}}</view>
           <view class="fulfillment-detail" wx:if="{{item.applicationFulfillmentText}}">{{item.applicationFulfillmentText}}</view>
         </view>
-        <view class="item-refund">¥ {{item.refundAmount}}</view>
+        <view class="item-refund">¥ {{item.applicationRefundAmount}}</view>
       </view>
     </view>
   </view>

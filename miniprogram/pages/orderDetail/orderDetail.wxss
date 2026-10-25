@@ -155,6 +155,18 @@ page { background-color: #f7f8fa; padding-bottom: calc(118rpx + env(safe-area-in
   color: #ccc;
 }
 
+.after-sale-status.status-cancelled { background-color: #f0f0f0; color: #999; }
+.after-sale-footer { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.after-sale-cancel {
+  flex-shrink: 0;
+  padding: 12rpx 24rpx;
+  border: 1rpx solid #ddd;
+  border-radius: 32rpx;
+  color: #666;
+  background-color: #fff;
+  font-size: 24rpx;
+}
+
 /* 底部操作栏 */
 .bottom-action-bar {
   position: fixed;

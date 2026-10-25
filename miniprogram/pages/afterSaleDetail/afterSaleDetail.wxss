@@ -1,7 +1,7 @@
 /* miniprogram/pages/afterSaleDetail/afterSaleDetail.wxss */
 
 .page-wrapper {
-  padding-bottom: 120rpx;
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
   background-color: #f5f5f5;
   min-height: 100vh;
 }
@@ -346,6 +346,33 @@
   line-height: 1.5;
 }
 
+/* 与管理员审核栏保持一致，滚动页面时仍可撤销。 */
+.action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  padding: 24rpx 32rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+  z-index: 100;
+}
+
+.action-btn-group {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-ghost {
+  padding: 24rpx 48rpx;
+  background-color: #f5f5f5;
+  color: #666;
+  border-radius: 48rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
 /* 加载状态 */
 .loading-state {
   position: fixed;
@@ -535,3 +562,10 @@
 .refund-channel-tip { margin-top: 10rpx; color: #777; font-size: 22rpx; line-height: 1.6; }
 .refund-channel-error { color: #b23a2e; }
 .refund-channel-tag { display: inline-block; padding: 4rpx 12rpx; margin: 8rpx 0; color: #576b95; background: #edf2fa; border-radius: 6rpx; font-size: 22rpx; }
+
+.status-card .refund-channel-summary {
+  background: transparent;
+  color: #fff;
+  padding: 0;
+  text-align: center;
+}

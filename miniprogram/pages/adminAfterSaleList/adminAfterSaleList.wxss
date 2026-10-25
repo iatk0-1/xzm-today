@@ -231,6 +231,17 @@
   width: 100%;
 }
 
+.order-seq-line {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.order-seq-line .refund-channel-tag {
+  margin: 0;
+  flex-shrink: 0;
+}
+
 .admin-seq {
   align-self: flex-start;
   font-size: 22rpx;

@@ -4,7 +4,10 @@ function format(value) {
   if (!value) return null;
   return { ...value, onlineAmount: money(value.onlineAmount), offlineAmount: money(value.offlineAmount),
     totalAmount: money(value.totalAmount), requestedOnlineAmount: money(value.requestedOnlineAmount),
-    requestedOfflineAmount: money(value.requestedOfflineAmount), items: (value.items || []).map(row => ({ ...row,
+    requestedOfflineAmount: money(value.requestedOfflineAmount),
+    hasAdjustedAmounts: Math.round(Number(value.onlineAmount || 0) * 100) !== Math.round(Number(value.requestedOnlineAmount || 0) * 100)
+      || Math.round(Number(value.offlineAmount || 0) * 100) !== Math.round(Number(value.requestedOfflineAmount || 0) * 100),
+    items: (value.items || []).map(row => ({ ...row,
       onlineAmount: money(row.onlineAmount), offlineAmount: money(row.offlineAmount),
       requestedOnlineAmount: money(row.requestedOnlineAmount), requestedOfflineAmount: money(row.requestedOfflineAmount) })) };
 }
