@@ -14,6 +14,7 @@ function checkoutHarness({ failureAt, error, paymentError } = {}) {
     require(name) {
       if (name.endsWith('/error')) return errors;
       if (name.endsWith('/purchaseNotice')) return notices;
+      if (name.endsWith('/customerServiceNavigation')) return require('../../utils/customerServiceNavigation');
       if (name.endsWith('/auth')) return { ensureAuthenticated: async () => {} };
       if (name.endsWith('/api')) return {
         post: async url => { calls.push(url); if (url === failureAt) throw error; return url === '/orders' ? { id: '90071992547409933' } : { package: 'prepay_id=test', timeStamp: '1' }; },

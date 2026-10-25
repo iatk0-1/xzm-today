@@ -61,7 +61,10 @@
       <view class="shipping-label">
         <text class="sum-label">运费</text>
         <view class="shipping-question" catchtap="toggleShippingTip" aria-label="查看运费说明">?</view>
-        <view class="shipping-tip" wx:if="{{showShippingTip}}" catchtap="stopShippingTipTap">西藏、新疆等特殊地区按照商品件数计算运费。</view>
+        <view class="shipping-tip" wx:if="{{showShippingTip}}" catchtap="stopShippingTipTap">
+          <view>西藏、新疆等特殊地区按照商品件数计算运费。</view>
+          <view class="shipping-tip-contact"><text>如购买5件及以上，请联系</text><view class="shipping-contact-link"><text>客服</text><button class="shipping-contact-button" open-type="contact" catchtap="stopShippingTipTap" bindcontact="handleCustomerServiceContact" session-from="page:checkout" aria-label="联系客服"></button></view><text>～</text></view>
+        </view>
       </view>
       <text class="sum-value" wx:if="{{shippingReady}}">¥ {{shippingFee}}</text>
       <text class="sum-value" wx:else>{{!address ? '选择地址后计算' : (shippingLoading ? '计算中…' : '待计算')}}</text>

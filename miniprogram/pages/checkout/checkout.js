@@ -2,6 +2,7 @@ const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/checkout/checkout.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const { buildPurchaseNoticeSections } = require('../../utils/purchaseNotice');
 
 Page({
@@ -199,6 +200,7 @@ Page({
   toggleShippingTip: function() { this.setData({ showShippingTip: !this.data.showShippingTip }); },
   closeShippingTip: function() { if (this.data.showShippingTip) this.setData({ showShippingTip: false }); },
   stopShippingTipTap: function() {},
+  handleCustomerServiceContact: function(e) { customerServiceNavigation.openFromContact(e); },
 
   onUnload: function() { this._quoteRevision = (this._quoteRevision || 0) + 1; },
 

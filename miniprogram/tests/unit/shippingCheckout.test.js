@@ -17,6 +17,7 @@ function harness(options = {}) {
     require(name) {
       if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/purchaseNotice')) return require('../../utils/purchaseNotice');
+      if (name.endsWith('/customerServiceNavigation')) return require('../../utils/customerServiceNavigation');
       if (name.endsWith('/auth')) return { ensureAuthenticated: async () => {} };
       if (name.endsWith('/api')) return {
         get: async (url, data) => {

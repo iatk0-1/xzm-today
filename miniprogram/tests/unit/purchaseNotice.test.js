@@ -15,6 +15,7 @@ function harness({ get, post, authenticate, payment } = {}) {
     require(name) {
       if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/purchaseNotice')) return notices;
+      if (name.endsWith('/customerServiceNavigation')) return require('../../utils/customerServiceNavigation');
       if (name.endsWith('/auth')) return { ensureAuthenticated: async () => { if (authenticate) await authenticate(); } };
       if (name.endsWith('/api')) return {
         get: async url => { calls.push(['get', url]); if (url === '/orders/shipping-quote') return { shippingFee: '0.00', allowed: true, maxQuantity: null }; return get ? get(url) : { product: { name: '衣服' } }; },

@@ -80,5 +80,10 @@ page { background-color: #f9f9f9; }
 .shipping-question::before { content: ''; position: absolute; inset: -6px; }
 .shipping-tip { position: absolute; top: 26px; left: 0; width: 210px; padding: 10px 12px; box-sizing: border-box; border-radius: 6px; background: #333; color: #fff; font-size: 12px; line-height: 1.7; z-index: 10; box-shadow: 0 3px 12px rgba(0, 0, 0, .12); }
 .shipping-tip::before { content: ''; position: absolute; top: -5px; left: 40px; width: 10px; height: 10px; background: #333; transform: rotate(45deg); }
+.shipping-tip-contact { display: flex; align-items: baseline; margin-top: 4px; white-space: nowrap; }
+.shipping-tip-contact > text { flex-shrink: 0; }
+.shipping-contact-link { position: relative; flex: 0 0 2em; color: #91caff; text-decoration: underline; }
+.shipping-contact-button { position: absolute; z-index: 1; top: 0; right: 0; bottom: 0; left: 0; width: 100%; min-width: 0 !important; max-width: 100%; height: 100%; margin: 0; padding: 0; border: none; border-radius: 0; opacity: 0; }
+.shipping-contact-button::after { display: none; }
 .shipping-error { color: #b42318; font-size: 13px; line-height: 1.7; margin: 12px 0; }
 .shipping-hint { color: #777; font-size: 12px; line-height: 1.7; margin: 10px 0; }
