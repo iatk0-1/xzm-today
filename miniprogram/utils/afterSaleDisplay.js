@@ -3,8 +3,11 @@ const money = value => (value / 100).toFixed(2);
 
 // 商品清单和申请记录读取申请快照，审核后的金额单独展示。
 function application(sale) {
+  const orderItems = new Map(((sale.orderDetail && sale.orderDetail.items) || []).map(item => [String(item.id), item]));
   const items = (sale.items || []).map(item => ({
     ...item,
+    displayImage: item.skuImageUrl || (orderItems.get(String(item.orderItemId)) || {}).skuImageUrl
+      || item.productImage || (orderItems.get(String(item.orderItemId)) || {}).productImage || '',
     applicationRefundAmount: money(cents(item.requestedRefundAmount == null ? item.refundAmount : item.requestedRefundAmount)),
     applicationQty: item.requestedQty == null ? item.qty : item.requestedQty,
     applicationType: item.requestedAfterSaleType || item.afterSaleType

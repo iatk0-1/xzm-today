@@ -781,6 +781,7 @@ Page({
         productId: item.productId,
         productName: item.productName,
         productImage: item.productImage,
+        skuImageUrl: item.skuImageUrl,
         skuId: item.skuId,
         skuSpec: item.skuSpec,
         skuSize: item.skuSize,

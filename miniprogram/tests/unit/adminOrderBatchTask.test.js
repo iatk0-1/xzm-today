@@ -294,7 +294,8 @@ test('查看历史详情不覆盖正在发货的本地任务，并按包裹组�
   p.data.recentBatchTasks = [{ id: 'old' }];
   getHandler = async () => ({ id: 'old', status: 'COMPLETED', createdAt: '2026-10-20T11:12:13+08:00',
     groups: [{ id: 'g', sequenceNo: 0, status: 'SUCCESS', orderIds: ['1', '2'], expressNo: 'ZTO123', items: [
-      { orderId: '1', orderItemId: '11', orderNo: 'ORDER1', productName: '棉袄', skuSpec: '红色', shipQty: 2 },
+      { orderId: '1', orderItemId: '11', orderNo: 'ORDER1', productName: '棉袄', skuSpec: '红色', shipQty: 2,
+        skuImageUrl: '/red-sku.jpg', productImage: '/cover.jpg' },
       { orderId: '2', orderItemId: '22', orderNo: 'ORDER2', productName: '裤子', shipQty: 3 }
     ] }] });
   await p.selectRecentBatchTask({ currentTarget: { dataset: { index: 0 } } });
@@ -303,6 +304,7 @@ test('查看历史详情不覆盖正在发货的本地任务，并按包裹组�
   const group = p.data.batchProgress.groups[0];
   assert.equal(group.totalQty, 5);
   assert.equal(group.orders[0].items[0].productName, '棉袄');
+  assert.equal(group.orders[0].items[0].skuImageUrl, '/red-sku.jpg');
   assert.equal(group.orders[1].orderNo, '2');
   p.toggleBatchPackage({ currentTarget: { dataset: { groupId: 'g' } } });
   assert.equal(p.data.batchProgress.groups[0].expanded, true);

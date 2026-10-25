@@ -83,3 +83,23 @@ test('切换时间类型发送对应筛选参数，旧请求后返回不会覆�
   assert.equal(page.data.orders[0].id, 'new');
   assert.ok(page.data.orders[0].latestShippedAtDisplay);
 });
+
+test('订单列表初次加载和拣货入口刷新都保留SKU图，SKU无图才用商品图', async () => {
+  global.wx = { showLoading() {}, hideLoading() {}, showToast() {} };
+  const page = { ...pageConfig, data: structuredClone(pageConfig.data),
+    setData(patch) { Object.assign(this.data, patch); } };
+  const loading = page.loadOrders();
+  await new Promise(resolve => setImmediate(resolve));
+  pendingRequests.shift().resolve({ content: [{ id: '123', items: [
+    { skuImageUrl: '/red.jpg', productImage: '/cover.jpg' }, { skuImageUrl: null, productImage: '/fallback.jpg' }
+  ] }], totalElements: 1 });
+  await loading;
+  assert.equal(page.data.orders[0].items[0].skuImageUrl, '/red.jpg');
+  assert.equal(page.data.orders[0].items[1].skuImageUrl, '/fallback.jpg');
+  page.data.pickingSkuId = 'sku';
+  const refreshing = page.refreshOrder('123');
+  await new Promise(resolve => setImmediate(resolve));
+  pendingRequests.shift().resolve({ order: { id: '123', items: [{ skuImageUrl: '/blue.jpg', productImage: '/cover.jpg' }] } });
+  await refreshing;
+  assert.equal(page.data.orders[0].items[0].skuImageUrl, '/blue.jpg');
+});

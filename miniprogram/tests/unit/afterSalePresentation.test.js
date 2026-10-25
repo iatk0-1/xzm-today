@@ -98,3 +98,23 @@ test('已审核售后不能从订单卡片发起撤销', () => {
   assert.equal(env.modal(), undefined);
   assert.equal(env.requests.length, 0);
 });
+
+test('同商品多个SKU的售后清单按订单明细匹配图片，用户和管理员都优先SKU图', () => {
+  for (const name of ['afterSaleDetail', 'adminAfterSaleDetail']) {
+    const { page } = harness(name);
+    const input = sale();
+    input.items = [
+      { ...input.items[0], orderItemId: '9007199254740993', productImage: '/cover.jpg' },
+      { ...input.items[0], id: '2', orderItemId: '9007199254740994', productImage: '/cover.jpg' }
+    ];
+    input.orderDetail = { items: [
+      { id: '9007199254740993', skuImageUrl: '/red-sku.jpg', productImage: '/cover.jpg' },
+      { id: '9007199254740994', skuImageUrl: '/blue-sku.jpg', productImage: '/cover.jpg' }
+    ] };
+    const result = page.formatAfterSaleDetail(input);
+    assert.equal(result.items[0].displayImage, '/red-sku.jpg');
+    assert.equal(result.items[1].displayImage, '/blue-sku.jpg');
+    input.orderDetail.items[0].skuImageUrl = null;
+    assert.equal(page.formatAfterSaleDetail(input).items[0].displayImage, '/cover.jpg');
+  }
+});

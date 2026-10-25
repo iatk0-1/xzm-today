@@ -85,7 +85,7 @@
     <view class="section-title">商品清单</view>
     <view class="items-list">
       <view class="item-row" wx:for="{{afterSale.items}}" wx:key="id">
-        <image class="item-img" src="{{item.productImage}}" mode="aspectFill"></image>
+        <image class="item-img" src="{{item.displayImage}}" mode="aspectFill"></image>
         <view class="item-info">
           <view class="item-name">{{item.productName}}</view>
           <view class="item-sku">{{item.skuSpec}} / {{item.skuSize}}</view>

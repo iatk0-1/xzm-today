@@ -88,7 +88,6 @@ Page({
         ...afterSaleFulfillment.format(item),
         currentShippedQty,
         currentUnshippedQty: shipmentKnown ? Number(orderItem.qty) - currentShippedQty : null,
-        displayImage: item.productImage || item.skuImageUrl || orderItem.skuImageUrl || orderItem.productImage || '',
         statusDisplay: this.getStatusDisplay(item.status)
       };
     });

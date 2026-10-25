@@ -136,7 +136,7 @@
             </view>
             <view class="order-items pending-order-items">
               <view class="order-item pending-order-item" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{order.orderId}}" wx:for="{{order.items}}" wx:key="uniqueKey" wx:for-item="item">
-                <image class="item-image" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
+                <image class="item-image" src="{{item.skuImageUrl || item.skuImage || item.productImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
                 <view class="item-info">
                   <view class="item-name"><text user-select="{{true}}">{{item.productName}}</text></view>
                   <view class="item-sku"><text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text></view>
@@ -198,7 +198,7 @@
 
           <view class="order-items pending-order-items">
             <view class="order-item pending-order-item" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{group.orderId}}" wx:for="{{group.items}}" wx:key="uniqueKey" wx:for-item="item">
-              <image class="item-image" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
+              <image class="item-image" src="{{item.skuImageUrl || item.skuImage || item.productImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
               <view class="item-info">
                 <view class="item-name"><text user-select="{{true}}">{{item.productName}}</text></view>
                 <view class="item-sku"><text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text></view>
@@ -285,7 +285,7 @@
             <view class="selection-column item-selection-column" catchtap="stopPendingShipEvent">
               <view class="item-checkbox disabled"></view>
             </view>
-            <image class="item-image refunded" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
+            <image class="item-image refunded" src="{{item.skuImageUrl || item.skuImage || item.productImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
             <view class="item-info">
               <view class="item-name"><text user-select="{{true}}">{{item.productName}}</text></view>
               <view class="item-sku"><text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text> <text class="refund-tag">{{item.afterSaleStatusText || '售后'}}</text></view>
@@ -299,7 +299,7 @@
                 <text wx:if="{{item.selected}}">✓</text>
               </view>
             </view>
-            <image class="item-image" src="{{item.productImage || item.skuImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
+            <image class="item-image" src="{{item.skuImageUrl || item.skuImage || item.productImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
             <view class="item-info">
               <view class="item-name"><text user-select="{{true}}">{{item.productName}}</text></view>
               <view class="item-sku"><text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text></view>
@@ -508,7 +508,7 @@
               </view>
               <view class="batch-progress-meta" wx:if="{{order.createdAtText}}"><text user-select="{{true}}">下单 {{order.createdAtText}}</text></view>
               <view class="task-product" wx:for="{{order.items}}" wx:key="orderItemId" wx:for-item="item" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{order.orderId}}">
-                <image class="task-product-image" src="{{item.productImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
+                <image class="task-product-image" src="{{item.skuImageUrl || item.skuImage || item.productImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
                 <view class="task-product-content"><view class="task-product-name"><text user-select="{{true}}">{{item.productName}}</text></view><view class="batch-progress-meta"><text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text></view><view class="task-product-qty"><text user-select="{{true}}">本批数量 × {{item.shipQty}}</text></view></view>
               </view>
               <view class="task-product task-product-missing" wx:if="{{order.items.length === 0}}" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{order.orderId}}"><text user-select="{{true}}">历史商品快照未记录，点击此处进入订单</text></view>

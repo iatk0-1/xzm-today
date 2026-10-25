@@ -73,6 +73,16 @@ test('分页追加时合并跨页订单，触底继续请求下一页', { concur
   assert.equal(page.data.hasMore, false);
 });
 
+test('发货列表按订单分组保留各SKU图片，不用商品主图覆盖', () => {
+  const page = createPage();
+  const grouped = page.groupByOrder([
+    { ...item('10', '101', '2026-10-25'), skuImage: '/red.jpg', productImage: '/cover.jpg' },
+    { ...item('10', '102', '2026-10-25'), skuImageUrl: '/blue.jpg', productImage: '/cover.jpg' }
+  ]);
+  assert.equal(grouped.groups[0].items[0].skuImage, '/red.jpg');
+  assert.equal(grouped.groups[0].items[1].skuImageUrl, '/blue.jpg');
+});
+
 test('全选逐页补齐剩余订单并按下单时间排列待发货列表', { concurrency: false }, async () => {
   requests.length = 0;
   pages = [

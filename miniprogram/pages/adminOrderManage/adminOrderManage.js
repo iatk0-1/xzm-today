@@ -275,7 +275,7 @@ Page(autoSearch.wrap(pageSync.wrap({
         createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt),
         items: (order.items || []).map(item => ({
           ...item,
-          skuImageUrl: item.productImage || ''
+          skuImageUrl: item.skuImageUrl || item.productImage || ''
         }))
       }));
 
@@ -308,7 +308,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       this.setData({ orders: this.data.orders.flatMap(item => String(item.id) !== String(id) ? [item] : (entry ? [{
         ...item, ...entry.order, pickingPendingQty: entry.pendingQty, pickingOrderedQty: entry.orderedQty,
         createdAtDisplay: this.formatTime(entry.order.createdAt), latestShippedAtDisplay: this.formatTime(entry.order.latestShippedAt),
-        items: (entry.order.items || []).map(goods => ({ ...goods, skuImageUrl: goods.productImage || '' }))
+        items: (entry.order.items || []).map(goods => ({ ...goods, skuImageUrl: goods.skuImageUrl || goods.productImage || '' }))
       }] : [])) });
       return;
     }
@@ -319,7 +319,7 @@ Page(autoSearch.wrap(pageSync.wrap({
         outTradeNo: order.outTradeNo || order.id,
         settlementTotalDisplay: orderPricing.total(order),
         createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt),
-        items: (order.items || []).map(item => ({ ...item, skuImageUrl: item.productImage || '' }))
+        items: (order.items || []).map(item => ({ ...item, skuImageUrl: item.skuImageUrl || item.productImage || '' }))
       }),
       matches: order => (!STATUS_MAP[this.data.currentTab] || order.status === STATUS_MAP[this.data.currentTab])
         && (!this.data.pickingSkuId || order.status !== 'cancelled')

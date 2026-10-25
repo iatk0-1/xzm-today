@@ -313,7 +313,7 @@
       <view class="unbind-preview-order-head"><text>{{affectedOrder.current ? '当前订单' : '关联订单'}} · {{affectedOrder.statusText}}</text><text wx:if="{{affectedOrder.adminSeqNo}}">序号 {{affectedOrder.adminSeqNo}}</text></view>
       <view class="unbind-preview-order-no" user-select="{{true}}">{{affectedOrder.orderNo}}</view>
       <view class="unbind-preview-goods" wx:for="{{affectedOrder.items}}" wx:key="orderItemId" wx:for-item="goods">
-        <image src="{{goods.productImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
+        <image src="{{goods.skuImageUrl || goods.productImage || '/images/default-goods-image.png'}}" mode="aspectFill" />
         <view class="unbind-preview-goods-info"><view user-select="{{true}}">{{goods.productName}}</view><view class="unbind-preview-spec">{{goods.spec}} {{goods.size}}</view><view>本包数量 × {{goods.qty}}</view></view>
       </view>
     </view>
