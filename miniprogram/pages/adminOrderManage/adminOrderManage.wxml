@@ -108,7 +108,8 @@
               <text wx:if="{{goods.afterSaleSummary.shipmentBlockedQty > 0}}">可发 {{goods.afterSaleSummary.canShipQty}}</text>
             </view>
 
-            <view class="shipment-section" wx:if="{{item.status === 'stocking'}}">
+            <!-- 整单发完前，持续展示商品的备货和配货数量 -->
+            <view class="shipment-section" wx:if="{{item.status === 'stocking' || item.status === 'paid' || item.status === 'partial_shipped'}}">
               <view class="shipment-divider"></view>
               <view class="shipment-tags">
                 <text class="shipment-tag tag-total">全部 {{goods.qty}}</text>
