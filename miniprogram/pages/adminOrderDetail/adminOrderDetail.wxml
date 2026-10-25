@@ -328,9 +328,12 @@
   </view>
 </view>
 
-<view class="panel-mask" wx:if="{{showPricePanel}}" catchtap="closePricePanel"></view>
-<view class="bottom-panel price-panel" wx:if="{{showPricePanel}}">
-  <view class="panel-title">修改订单价格</view>
+<view class="panel-mask" wx:if="{{showPricePanel && !showCostPanel}}" catchtap="closePricePanel"></view>
+<view class="bottom-panel price-panel" wx:if="{{showPricePanel && !showCostPanel}}">
+  <view class="price-panel-header">
+    <view class="panel-title">修改订单价格</view>
+    <button class="price-cost-shortcut" size="mini" bindtap="openOrderCostPanel" disabled="{{priceSaving}}">快捷设置商品成本</button>
+  </view>
   <scroll-view scroll-y="{{true}}" class="price-panel-scroll">
     <view class="price-panel-content">
       <view class="price-form-row"><text>同行订单（不计佣金）</text><switch checked="{{priceDraft.peerOrder}}" disabled="{{pricing.peerOrder || priceSaving}}" bindchange="onPeerOrderChange" /></view>
@@ -358,8 +361,41 @@
         <view>成交总额：¥ {{pricePreview.total}}</view>
       </view>
       <view class="pricing-hint">成交总额＝线上应付＋线下实收；扣除运费后不能低于商品成本。修改运费会同步调整线上应付，线下实收不自动改动。线上应付最低0.01元，运费可设为0。</view>
-      <view class="price-error" wx:if="{{pricePreview.error}}">{{pricePreview.error}}</view>
+      <view class="price-error" wx:if="{{costSummaryStale}}">成本汇总待刷新，请打开“快捷设置商品成本”重试保存。</view>
+      <view class="price-error" wx:elif="{{pricePreview.error}}">{{pricePreview.error}}</view>
     </view>
   </scroll-view>
-  <view class="panel-actions"><button bindtap="closePricePanel" disabled="{{priceSaving}}">取消</button><button type="primary" bindtap="savePrice" loading="{{priceSaving}}" disabled="{{priceSaving || !pricePreview.valid}}">确认改价</button></view>
+  <view class="panel-actions"><button bindtap="closePricePanel" disabled="{{priceSaving}}">取消</button><button type="primary" bindtap="savePrice" loading="{{priceSaving}}" disabled="{{priceSaving || costSummaryStale || !pricePreview.valid}}">确认改价</button></view>
+</view>
+
+<view class="panel-mask" wx:if="{{showCostPanel}}" catchtap="closeOrderCostPanel"></view>
+<view class="bottom-panel order-cost-panel" wx:if="{{showCostPanel}}">
+  <view class="panel-header"><view class="panel-title">快捷设置商品成本</view></view>
+  <view class="order-cost-hint">点击右侧成本即可修改，填写的是每件 SKU 的成本。保存仅更新商品成本，不会重新计算商品售价或订单价格。</view>
+  <scroll-view scroll-y="{{true}}" class="order-cost-scroll">
+    <view class="order-cost-empty" wx:if="{{!orderCostRows.length}}">订单内暂无可设置成本的商品</view>
+    <view class="order-cost-row" wx:for="{{orderCostRows}}" wx:key="skuId">
+      <image class="order-cost-image" src="{{item.imageUrl}}" mode="aspectFill" />
+      <view class="order-cost-info">
+        <view class="order-cost-name">{{item.productName}}</view>
+        <view class="order-cost-spec">{{item.spec}}</view>
+        <view class="order-cost-spec">SKU：{{item.skuId}}</view>
+      </view>
+      <view class="order-cost-value">
+        <text wx:if="{{orderCostLoading}}" class="order-cost-loading">加载中…</text>
+        <view wx:elif="{{item.loadError}}" class="order-cost-load-error" bindtap="loadOrderCosts">
+          <view>{{item.loadError}}</view><text>点击重试</text>
+        </view>
+        <input wx:elif="{{item.editing}}" class="order-cost-input" type="digit" value="{{item.input}}" placeholder="输入成本" data-index="{{index}}" bindinput="onOrderCostInput" disabled="{{orderCostSaving}}" />
+        <view wx:else class="order-cost-edit {{item.costPrice == null ? 'order-cost-missing' : ''}}" data-index="{{index}}" bindtap="editOrderCost">
+          <view>{{item.costPrice == null ? '成本未设置' : '¥ ' + item.costDisplay}}</view><text>点击修改</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+  <view class="order-cost-refresh-error" wx:if="{{costSummaryStale && !orderCostSaving}}">成本汇总待刷新，点击“保存成本”重试。</view>
+  <view class="panel-actions">
+    <button bindtap="closeOrderCostPanel" disabled="{{orderCostSaving}}">关闭</button>
+    <button type="primary" bindtap="saveOrderCosts" loading="{{orderCostSaving}}" disabled="{{orderCostSaving || orderCostLoading || !orderCostRows.length}}">保存成本</button>
+  </view>
 </view>

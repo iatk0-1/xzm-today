@@ -14,7 +14,7 @@ function preview(draft, costAmount, costComplete) {
   if (online == null || online < 1) error = '线上应付至少0.01元，最多两位小数';
   else if (offline == null || shipping == null) error = '线下实收和运费须大于等于0，最多两位小数';
   else if (online + offline > 999999999) error = '成交总额不能超过9999999.99元';
-  else if (!costComplete || cost == null) error = '请先补齐所有商品成本，再重新打开改价';
+  else if (!costComplete || cost == null) error = '请点击右上方“快捷设置商品成本”补齐成本';
   else if (online + offline - shipping < cost) error = '扣除运费后的成交额不能低于商品成本';
   else if (offline > 0 && !draft.peerOrder) error = '有线下收款时请标记为同行订单';
   else if (offline > 0 && !String(draft.offlineMethod || '').trim()) error = '请填写线下收款方式';

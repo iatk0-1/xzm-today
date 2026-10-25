@@ -20,6 +20,11 @@ Page(pageSync.wrap({
     pricing: null,
     priceDraft: {},
     pricePreview: {},
+    showCostPanel: false,
+    orderCostRows: [],
+    orderCostLoading: false,
+    orderCostSaving: false,
+    costSummaryStale: false,
     offlineMethodOptions: ['微信转账', '支付宝转账', '银行转账', '其他'],
     offlineMethodIndex: 0,
     refundPayments: [],
@@ -76,7 +81,7 @@ Page(pageSync.wrap({
     }
   },
   async openPricePanel() {
-    if (this.data.priceSaving || this._priceOpening) return;
+    if (this.data.priceSaving || this.data.showCostPanel || this._priceOpening) return;
     this._priceOpening = true;
     try {
       const pricing = await this.loadPricing();
@@ -95,10 +100,125 @@ Page(pageSync.wrap({
       };
       this._lastShippingCents = orderPricing.cents(priceDraft.shippingFee);
       this.setData({ showPricePanel: true, priceDraft, offlineMethodIndex,
+        costSummaryStale: false,
         pricePreview: orderPricing.preview(priceDraft, pricing.costAmount, pricing.costComplete) });
     } finally { this._priceOpening = false; }
   },
-  closePricePanel() { if (!this.data.priceSaving) this.setData({ showPricePanel: false }); },
+  closePricePanel() {
+    if (!this.data.priceSaving && !this.data.showCostPanel) this.setData({ showPricePanel: false });
+  },
+  async openOrderCostPanel() {
+    if (this.data.priceSaving || this.data.showCostPanel || !this.data.showPricePanel) return;
+    const rows = new Map();
+    const add = (item, sku) => {
+      if (!sku.skuId) return;
+      const skuId = String(sku.skuId);
+      if (rows.has(skuId)) return;
+      rows.set(skuId, {
+        skuId, productName: item.bundleProductName || item.productName || '商品',
+        spec: [sku.bundleGroupName, sku.color || sku.productSpec, sku.size || sku.productSize].filter(Boolean).join(' / ') || '默认规格',
+        imageUrl: sku.imageUrl || item.skuImageUrl || item.productImage || '/images/default-goods-image.png',
+        costPrice: null, costDisplay: '', input: '', editing: false, loadError: ''
+      });
+    };
+    (this.data.order && this.data.order.items || []).forEach(item => {
+      if (Array.isArray(item.bundleConfig) && item.bundleConfig.length) {
+        item.bundleConfig.forEach(sku => add(item, sku));
+      } else add(item, item);
+    });
+    this._orderCostSession = {};
+    this.setData({ showCostPanel: true, orderCostRows: [...rows.values()] });
+    await this.loadOrderCosts();
+  },
+  async loadOrderCosts() {
+    if (!this.data.showCostPanel || this.data.orderCostLoading || this.data.orderCostSaving) return;
+    const session = this._orderCostSession;
+    const rows = this.data.orderCostRows;
+    this.setData({ orderCostLoading: true });
+    const loaded = await Promise.all(rows.map(async row => {
+      // 重试只读取失败行，保留已编辑、尚未保存的输入。
+      if (row.loaded && !row.loadError) return row;
+      try {
+        const result = await api.get('/picking-list/skus/' + encodeURIComponent(row.skuId) + '/cost');
+        return { ...row, loaded: true, loadError: '', costPrice: result.costPrice,
+          costDisplay: result.costPrice == null ? '' : Number(result.costPrice).toFixed(2),
+          input: result.costPrice == null ? '' : String(result.costPrice) };
+      } catch (error) {
+        return { ...row, loadError: getErrorMessage(error, '成本加载失败，请重试') };
+      }
+    }));
+    if (this._orderCostSession === session && this.data.showCostPanel) {
+      this.setData({ orderCostRows: loaded, orderCostLoading: false });
+    }
+  },
+  closeOrderCostPanel() {
+    if (this.data.orderCostSaving) return;
+    this._orderCostSession = null;
+    this.setData({ showCostPanel: false, orderCostLoading: false, orderCostRows: [] });
+  },
+  editOrderCost(e) {
+    if (this.data.orderCostLoading || this.data.orderCostSaving) return;
+    const index = Number(e.currentTarget.dataset.index);
+    const row = this.data.orderCostRows[index];
+    if (!row || row.loadError || !row.loaded) return;
+    this.setData({ orderCostRows: this.data.orderCostRows.map((item, i) => i === index ? { ...item, editing: true } : item) });
+  },
+  onOrderCostInput(e) {
+    if (this.data.orderCostLoading || this.data.orderCostSaving) return;
+    const index = Number(e.currentTarget.dataset.index);
+    this.setData({ orderCostRows: this.data.orderCostRows.map((item, i) => i === index && item.editing
+      ? { ...item, input: e.detail.value } : item) });
+  },
+  async refreshPriceCosts() {
+    try {
+      const latest = await api.get(`/admin/orders-manage/orders/${this.data.orderId}/pricing`);
+      // 只刷新成本校验依据，保留改价草稿、订单金额和价格版本。
+      const pricing = { ...this.data.pricing, costAmount: latest.costAmount, costComplete: latest.costComplete };
+      this.setData({ pricing, costSummaryStale: false,
+        pricePreview: orderPricing.preview(this.data.priceDraft, pricing.costAmount, pricing.costComplete) });
+      return true;
+    } catch (error) {
+      this.setData({ costSummaryStale: true });
+      wx.showToast({ title: getErrorMessage(error, '成本汇总刷新失败，请重试'), icon: 'none' });
+      return false;
+    }
+  },
+  async saveOrderCosts() {
+    if (this.data.orderCostSaving || this.data.orderCostLoading || !this.data.showCostPanel) return;
+    const changes = [];
+    for (const row of this.data.orderCostRows.filter(item => item.editing)) {
+      const value = String(row.input).trim();
+      const cost = Number(value);
+      if (!/^\d+(\.\d{1,2})?$/.test(value) || !Number.isFinite(cost) || cost <= 0 || cost > 99999999.99) {
+        wx.showToast({ title: '成本须大于0，最多两位小数且不超过99999999.99元', icon: 'none' });
+        return;
+      }
+      if (row.costPrice == null || cost !== Number(row.costPrice)) changes.push({ ...row, value: cost.toFixed(2) });
+    }
+    if (!changes.length && !this.data.costSummaryStale) {
+      this.closeOrderCostPanel();
+      return;
+    }
+    this.setData({ orderCostSaving: true, costSummaryStale: true });
+    let saved = false;
+    try {
+      for (const row of changes) {
+        const result = await api.put('/picking-list/skus/' + encodeURIComponent(row.skuId) + '/cost', { costPrice: row.value });
+        this.setData({ orderCostRows: this.data.orderCostRows.map(item => item.skuId === row.skuId
+          ? { ...item, costPrice: result.costPrice, costDisplay: Number(result.costPrice).toFixed(2),
+            input: String(result.costPrice), editing: false } : item) });
+      }
+      saved = true;
+    } catch (error) {
+      wx.showToast({ title: getErrorMessage(error, '部分成本未保存，请重试'), icon: 'none' });
+    }
+    const refreshed = await this.refreshPriceCosts();
+    this.setData({ orderCostSaving: false });
+    if (saved && refreshed) {
+      this.closeOrderCostPanel();
+      wx.showToast({ title: '成本已保存', icon: 'success' });
+    }
+  },
   onPriceInput(e) {
     const field = e.currentTarget.dataset.field;
     if (!['onlineAmount', 'offlineAmount', 'shippingFee', 'offlineNote', 'reason'].includes(field)) return;
@@ -155,7 +275,11 @@ Page(pageSync.wrap({
     this.setData({ priceDraft, pricePreview: orderPricing.preview(priceDraft, pricing.costAmount, pricing.costComplete) });
   },
   async savePrice() {
-    if (this.data.priceSaving) return;
+    if (this.data.priceSaving || this.data.showCostPanel) return;
+    if (this.data.costSummaryStale) {
+      wx.showToast({ title: '请先刷新商品成本汇总', icon: 'none' });
+      return;
+    }
     const draft = this.data.priceDraft;
     const check = orderPricing.preview(draft, this.data.pricing.costAmount, this.data.pricing.costComplete);
     if (!check.valid) { wx.showToast({ title: check.error, icon: 'none' }); return; }

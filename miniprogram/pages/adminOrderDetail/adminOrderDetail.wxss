@@ -358,5 +358,27 @@ page { background-color: #f2f2f2; }
 .price-item-line > text { flex-shrink: 0; }
 .price-history { border-top: 1rpx solid #eee; margin-top: 20rpx; padding-top: 16rpx; font-size: 24rpx; color: #666; line-height: 1.8; overflow-wrap: anywhere; }
 
-.price-panel .panel-title { padding: 26rpx 28rpx 8rpx; font-size: 32rpx; font-weight: 600; }
+.price-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; padding: 26rpx 28rpx 8rpx; }
+.price-panel .panel-title { font-size: 32rpx; font-weight: 600; }
+.price-panel-header .price-cost-shortcut { flex-shrink: 0; margin: 0; padding: 0 14rpx; line-height: 56rpx; font-size: 23rpx; border-radius: 8rpx; background: #edf7ef; color: #23783d; }
+.price-cost-shortcut::after { border: none; }
 .price-panel .panel-actions button { flex: 1; font-size: 28rpx; }
+
+.order-cost-panel { padding-bottom: calc(24rpx + env(safe-area-inset-bottom)); }
+.order-cost-hint { padding: 18rpx 28rpx; color: #777; font-size: 24rpx; line-height: 1.7; background: #f6f7f9; }
+.order-cost-scroll { height: 48vh; min-height: 0; width: 100%; }
+.order-cost-row { display: flex; align-items: center; gap: 16rpx; margin: 0 28rpx; padding: 24rpx 0; border-bottom: 1rpx solid #eee; }
+.order-cost-image { flex-shrink: 0; width: 88rpx; height: 100rpx; border-radius: 8rpx; }
+.order-cost-info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.order-cost-name { font-size: 26rpx; color: #333; }
+.order-cost-spec { margin-top: 8rpx; font-size: 22rpx; color: #888; }
+.order-cost-value { width: 200rpx; flex-shrink: 0; text-align: right; font-size: 26rpx; }
+.order-cost-edit { padding: 12rpx 0; color: #23783d; }
+.order-cost-edit text { display: block; margin-top: 8rpx; font-size: 22rpx; color: #888; }
+.order-cost-missing, .order-cost-load-error { color: #b86b26; }
+.order-cost-load-error { font-size: 22rpx; line-height: 1.6; overflow-wrap: anywhere; }
+.order-cost-input { width: 100%; height: 68rpx; box-sizing: border-box; border: 1rpx solid #9cc9a7; border-radius: 8rpx; padding: 0 12rpx; text-align: right; font-size: 27rpx; }
+.order-cost-loading, .order-cost-empty { font-size: 24rpx; color: #888; }
+.order-cost-empty { padding: 48rpx 28rpx; text-align: center; }
+.order-cost-refresh-error { padding: 12rpx 28rpx; color: #b23a2e; font-size: 24rpx; }
+.order-cost-panel .panel-actions button { flex: 1; font-size: 28rpx; }
