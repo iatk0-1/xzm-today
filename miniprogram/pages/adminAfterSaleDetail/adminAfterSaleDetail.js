@@ -255,6 +255,7 @@ Page({
       'apply': '用户申请',
       'review_approve': '审核通过',
       'review_reject': '审核拒绝',
+      'review_items': '商家审核',
       'ship_return': '用户已寄回',
       'receive': '逐项退货验收', 'reinspect': '逐项重新验收',
       'receive_pass': '仓库验收通过',
