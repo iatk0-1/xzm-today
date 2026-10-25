@@ -478,3 +478,8 @@
 .fulfillment-summary { margin-top: 10rpx; color: #8a5a22; font-size: 22rpx; line-height: 1.6; white-space: normal; }
 .fulfillment-summary.unknown { color: #8c8c8c; }
 .fulfillment-detail { margin-top: 4rpx; color: #777; font-size: 22rpx; line-height: 1.6; }
+
+.refund-channel-summary { padding: 18rpx 20rpx; font-size: 24rpx; line-height: 1.8; background: #f5f7fa; border-radius: 10rpx; color: #333; }
+.refund-channel-tip { margin-top: 10rpx; color: #777; font-size: 22rpx; line-height: 1.6; }
+.refund-channel-error { color: #b23a2e; }
+.refund-channel-tag { display: inline-block; padding: 4rpx 12rpx; margin: 8rpx 0; color: #576b95; background: #edf2fa; border-radius: 6rpx; font-size: 22rpx; }

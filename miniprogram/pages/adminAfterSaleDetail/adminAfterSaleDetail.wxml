@@ -6,6 +6,13 @@
     <view class="status-badge">{{afterSale.statusDisplay}}</view>
     <view class="status-desc" wx:if="{{afterSale.status === 'cancelled' && afterSale.rejectReason}}">{{afterSale.rejectReason}}</view>
     <view class="refund-total">¥ {{afterSale.totalRefundAmount}}</view>
+    <view class="refund-channel-tag" wx:if="{{afterSale.peerOrder}}">同行订单</view>
+    <view class="refund-channel-tag" wx:elif="{{afterSale.refundPayment.hasOfflinePayment}}">线下付款订单</view>
+    <view class="refund-channel-summary" wx:if="{{afterSale.refundPayment}}">
+      <view>线上退款 ¥{{afterSale.refundPayment.onlineAmount}} · 线下退款 ¥{{afterSale.refundPayment.offlineAmount}}</view>
+      <view>用户原申请：线上 ¥{{afterSale.refundPayment.requestedOnlineAmount}} · 线下 ¥{{afterSale.refundPayment.requestedOfflineAmount}}</view>
+      <view wx:if="{{afterSale.refundPayment.historicalEstimate}}">历史申请渠道分摊为参考，已执行金额以退款记录为准。</view>
+    </view>
     <view class="status-desc">
       <text>{{afterSale.typeDisplay}}</text>
       <text> · 共 {{afterSale.totalQty}} 件商品</text>
@@ -266,6 +273,7 @@
               <text class="review-item-name">{{item.productName}}</text>
               <text class="review-item-spec">{{item.skuSpec}} / {{item.skuSize}}</text>
               <text class="review-item-limit">用户申请 {{item.requestedQty || item.qty}} 件，¥ {{item.requestedRefundAmount || item.refundAmount}}</text>
+              <text class="review-item-limit" wx:if="{{item.selected && reviewQuote && !reviewQuoteLoading}}">本次审核：线上 ¥{{item.onlineRefundAmount}} · 线下 ¥{{item.offlineRefundAmount}}</text>
               <text class="review-item-limit fulfillment-summary">{{item.fulfillmentText}}</text>
               <text class="review-item-limit" wx:if="{{item.fulfillmentKnown}}">{{item.fulfillmentStockText}}</text>
               <text class="review-item-limit" wx:if="{{item.applicationFulfillmentText}}">{{item.applicationFulfillmentText}}</text>
@@ -316,6 +324,11 @@
           <view class="review-type-tip" wx:if="{{item.selected && item.reviewQtyLimit === 0}}">原退款方式与当前发货数量不符，请重新选择退款方式。</view>
         </view>
       </scroll-view>
+      <view class="refund-channel-summary" wx:if="{{reviewDecision === 'approve'}}">
+        <view wx:if="{{reviewQuoteLoading}}">正在重算退款渠道金额…</view>
+        <view class="refund-channel-error" wx:elif="{{reviewQuoteError}}">{{reviewQuoteError}}</view>
+        <block wx:elif="{{reviewQuote}}"><view>审核总额 ¥{{reviewQuote.totalAmount}}</view><view>线上退款 ¥{{reviewQuote.onlineAmount}} · 线下退款 ¥{{reviewQuote.offlineAmount}}</view><view>线下退款自行处理；线上退款完成后，系统按本笔退款完成处理。</view></block>
+      </view>
       <view class="modal-input-group" wx:if="{{reviewDecision === 'reject'}}">
         <view class="input-label">拒绝原因</view>
         <textarea

@@ -3,6 +3,7 @@ const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const refundChannels = require('../../utils/refundChannels');
 
 const RETURN_EXPRESS_OPTIONS = [
   { code: 'ZTO', name: '中通' },
@@ -70,6 +71,7 @@ Page({
     const orderDetail = res.orderDetail ? this.formatOrderDetail(res.orderDetail) : null;
     return {
       ...res,
+      refundPayment: res.refundPayment ? refundChannels.format(res.refundPayment) : null,
       statusDisplay: res.status === 'cancelled' && res.rejectReason ? '已关闭' : this.getStatusDisplay(res.status),
       typeDisplay: this.getAfterSaleTypeDisplay(res.type),
       createdAtDisplay: this.formatDateTime(res.createdAt),

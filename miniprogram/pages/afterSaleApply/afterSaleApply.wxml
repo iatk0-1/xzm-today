@@ -89,6 +89,7 @@
               <text class="refund-edit-unit">元</text>
             </view>
           </view>
+          <view class="refund-channel-tip" wx:if="{{item.selected && order.offlinePaidAmount > 0 && refundQuote && !refundQuoteLoading}}">线上退款 ¥{{item.onlineRefundAmount}} · 线下退款 ¥{{item.offlineRefundAmount}}</view>
         </view>
         
         <!-- 售后类型提示 -->
@@ -102,6 +103,20 @@
         </view>
       </view>
     </view>
+  </view>
+
+  <view class="section refund-channel-summary" wx:if="{{selectedItems.length}}">
+    <view>申请退款总额：¥ {{totalAmount}}</view>
+    <block wx:if="{{order.offlinePaidAmount > 0}}">
+      <view wx:if="{{refundQuoteLoading}}">正在计算线上、线下退款金额…</view>
+      <view class="refund-channel-error" wx:elif="{{refundQuoteError}}">{{refundQuoteError}}</view>
+      <block wx:elif="{{refundQuote}}">
+        <view>线上退款：¥ {{refundQuote.onlineAmount}}</view><view>线下退款：¥ {{refundQuote.offlineAmount}}</view>
+        <view class="refund-channel-tip">线下退款请联系客服处理；线上退款按审核结果原路退回。</view>
+        <view class="refund-channel-tip" wx:if="{{!refundQuote.finalSettlement}}">部分退款保留最后0.01元线上款，剩余商品和应退余额全部结清时再退。</view>
+      </block>
+    </block>
+    <view wx:else>线上退款：¥ {{totalAmount}} · 线下退款：¥ 0.00</view>
   </view>
 
   <!-- 售后原因 -->

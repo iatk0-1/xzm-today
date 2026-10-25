@@ -6,6 +6,7 @@ const orderPricing = require('../../utils/orderPricing');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const afterSaleFulfillment = require('../../utils/afterSaleFulfillment');
+const refundChannels = require('../../utils/refundChannels');
 
 Page({
   data: {
@@ -17,6 +18,7 @@ Page({
     reviewDecision: 'approve',
     returnPurchaseOrder: false,
     reviewItems: [],
+    reviewQuote: null, reviewQuoteLoading: false, reviewQuoteError: '',
     rejectReason: '',
     // 仓库收货
     showReceiveModal: false,
@@ -97,6 +99,7 @@ Page({
     ) || (items.length === 0 && res.status === 'approved' && res.type === 'return_refund');
     return {
       ...res,
+      refundPayment: res.refundPayment ? refundChannels.format(res.refundPayment) : null,
       items,
       orderDetail,
       hasApprovedRefundItems,
@@ -334,13 +337,16 @@ Page({
       reviewItems,
       rejectReason: ''
     });
+    this.updateReviewRefundPreview();
   },
 
   // 隐藏审核弹窗
   hideReviewModal: function() {
+    this._reviewQuoteVersion = (this._reviewQuoteVersion || 0) + 1;
     this.setData({
       showReviewModal: false,
       reviewItems: [],
+      reviewQuote: null, reviewQuoteLoading: false, reviewQuoteError: '',
       rejectReason: ''
     });
   },
@@ -358,6 +364,7 @@ Page({
   toggleReviewItem: function(e) {
     const index = Number(e.currentTarget.dataset.index);
     this.setData({ [`reviewItems[${index}].selected`]: !this.data.reviewItems[index].selected });
+    this.updateReviewRefundPreview();
   },
 
   updateReviewQty: function(index, nextQty) {
@@ -378,6 +385,7 @@ Page({
       [`reviewItems[${index}].reviewQty`]: String(qty),
       [`reviewItems[${index}].reviewAmount`]: reviewAmount
     });
+    this.updateReviewRefundPreview();
   },
 
   decreaseReviewQty: function(e) {
@@ -395,6 +403,7 @@ Page({
   onReviewAmountInput: function(e) {
     const index = Number(e.currentTarget.dataset.index);
     this.setData({ [`reviewItems[${index}].reviewAmount`]: e.detail.value });
+    this.updateReviewRefundPreview();
   },
 
   chooseReviewType: function(e) {
@@ -409,6 +418,26 @@ Page({
     }
     this.setData({ [`reviewItems[${index}].reviewType`]: type, [`reviewItems[${index}].reviewQtyLimit`]: limit });
     if (Number(item.reviewQty) > limit) this.updateReviewQty(index, limit);
+    else this.updateReviewRefundPreview();
+  },
+
+  updateReviewRefundPreview: async function() {
+    const sale = this.data.afterSale;
+    if (!(Number(sale && sale.orderDetail && sale.orderDetail.offlinePaidAmount) > 0)) {
+      const total = this.data.reviewItems.filter(item => item.selected).reduce((sum, item) => sum + (Number(item.reviewAmount) || 0), 0).toFixed(2);
+      this.setData({ reviewQuote: { totalAmount: total, onlineAmount: total, offlineAmount: '0.00' },
+        reviewItems: this.data.reviewItems.map(item => ({ ...item, onlineRefundAmount: Number(item.reviewAmount || 0).toFixed(2), offlineRefundAmount: '0.00' })) });
+      return;
+    }
+    const quote = await refundChannels.preview(this, api, `/after-sales/${this.data.afterSaleId}/refund-preview`,
+      this.data.reviewItems.filter(item => item.selected).map(item => ({ afterSaleItemId: item.id,
+        orderItemId: item.orderItemId, qty: Number(item.reviewQty), refundAmount: item.reviewAmount,
+        afterSaleType: item.reviewType })), 'reviewQuote');
+    if (!quote) return;
+    this.setData({ reviewItems: this.data.reviewItems.map(item => {
+      const part = quote.items.find(row => String(row.afterSaleItemId) === String(item.id));
+      return { ...item, onlineRefundAmount: part ? part.onlineAmount : '', offlineRefundAmount: part ? part.offlineAmount : '' };
+    }) });
   },
 
   // 提交审核
@@ -417,6 +446,10 @@ Page({
   },
 
   submitReview: async function() {
+    const mixed = Number(this.data.afterSale && this.data.afterSale.orderDetail && this.data.afterSale.orderDetail.offlinePaidAmount) > 0;
+    if (mixed && this.data.reviewDecision === 'approve' && (!this.data.reviewQuote || this.data.reviewQuoteLoading || this.data.reviewQuoteError)) {
+      wx.showToast({ title: this.data.reviewQuoteError || '请等待线上线下退款金额计算完成', icon: 'none' }); return;
+    }
     if (this.data.reviewDecision === 'reject' && !this.data.rejectReason) {
       wx.showToast({ title: '请填写拒绝原因', icon: 'none' });
       return;
@@ -430,6 +463,7 @@ Page({
         rejectReason: this.data.reviewDecision === 'reject' ? this.data.rejectReason : null,
         returnPurchaseOrder: this.data.reviewDecision === 'approve' && this.data.returnPurchaseOrder
       };
+      if (mixed && this.data.reviewDecision === 'approve') payload.refundQuoteToken = this.data.reviewQuote.token;
       if (this.data.reviewDecision === 'approve') {
         const invalidType = this.data.reviewItems.find(item => item.selected
           && Number(item.reviewQty) > this.getReviewQtyLimit(item, item.reviewType));
@@ -478,6 +512,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       wx.showToast({ title: getErrorMessage(err, '审核失败'), icon: 'none' });
+      if (mixed && this.data.reviewDecision === 'approve') this.updateReviewRefundPreview();
     }
   },
 

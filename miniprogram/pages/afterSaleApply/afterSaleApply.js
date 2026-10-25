@@ -3,6 +3,7 @@ const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
+const refundChannels = require('../../utils/refundChannels');
 
 const DEFAULT_AFTER_SALE_REASON = '不想要了';
 
@@ -29,6 +30,7 @@ Page({
     selectedItems: [],
     // 总金额
     totalAmount: '0.00',
+    refundQuote: null, refundQuoteLoading: false, refundQuoteError: '',
     reason: '',
     reasonText: '',
     reasonOptions: REASON_OPTIONS,
@@ -306,6 +308,7 @@ Page({
       selectedItems,
       totalAmount
     });
+    this.updateRefundPreview();
   },
 
   // 全选/取消全选
@@ -330,6 +333,7 @@ Page({
       selectedItems,
       totalAmount
     });
+    this.updateRefundPreview();
   },
 
   noop: function() {},
@@ -385,6 +389,19 @@ Page({
     const selectedItems = splitItems.filter(item => item.selected);
     const totalAmount = selectedItems.reduce((sum, item) => sum + (Number(item.inputAmount) || 0), 0).toFixed(2);
     this.setData({ splitItems, selectedItems, totalAmount });
+    this.updateRefundPreview();
+  },
+
+  updateRefundPreview: async function() {
+    if (!(Number(this.data.order && this.data.order.offlinePaidAmount) > 0)) return;
+    const quote = await refundChannels.preview(this, api, `/orders/${this.data.orderId}/refund-preview`,
+      this.data.selectedItems.map(item => ({ orderItemId: item.orderItemId, qty: Number(item.selectedQty),
+        refundAmount: item.inputAmount, afterSaleType: item.type })), 'refundQuote');
+    if (!quote) return;
+    this.setData({ splitItems: this.data.splitItems.map(item => {
+      const part = quote.items.find(row => String(row.orderItemId) === String(item.orderItemId) && row.afterSaleType === item.type);
+      return { ...item, onlineRefundAmount: part ? part.onlineAmount : '', offlineRefundAmount: part ? part.offlineAmount : '' };
+    }) });
   },
 
   // 选择原因
@@ -463,6 +480,11 @@ Page({
       return;
     }
 
+    const mixed = Number(this.data.order && this.data.order.offlinePaidAmount) > 0;
+    if (mixed && (!this.data.refundQuote || this.data.refundQuoteLoading || this.data.refundQuoteError)) {
+      wx.showToast({ title: this.data.refundQuoteError || '请等待线上线下退款金额计算完成', icon: 'none' }); return;
+    }
+
     const reason = this.data.reason || this.data.reasonText || DEFAULT_AFTER_SALE_REASON;
 
     wx.showLoading({ title: '提交中...', mask: true });
@@ -473,6 +495,7 @@ Page({
         orderId: this.data.orderId,
         reason: reason,
         evidenceUrls: this.data.evidenceUrls,
+        refundQuoteToken: mixed ? this.data.refundQuote.token : null,
         items: this.data.selectedItems.map(item => ({
           orderItemId: item.orderItemId,
           productId: item.productId,
@@ -518,6 +541,7 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('提交售后失败:', err);
+      if (mixed) this.updateRefundPreview();
       wx.showToast({
         title: getErrorMessage(err, '提交失败'),
         icon: 'none',
