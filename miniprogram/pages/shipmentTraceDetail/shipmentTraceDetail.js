@@ -7,14 +7,21 @@ Page({
   data: {
     shipmentId: '',
     orderId: '',
+    shipments: [],
+    activeIndex: 0,
+    activePackageId: '',
+    selectedShipment: null,
     trace: null,
-    isLoading: true
+    isLoading: true,
+    traceLoading: false,
+    loadError: ''
   },
 
   onLoad: function(options) {
     const shipmentId = options.shipmentId || '';
     const orderId = options.orderId || '';
-    if (!shipmentId) {
+    if (!shipmentId && !orderId) {
+      this.setData({ isLoading: false, loadError: '缺少发货单参数' });
       wx.showToast({ title: '缺少发货单参数', icon: 'none' });
       return;
     }
@@ -23,14 +30,115 @@ Page({
       shipmentId,
       orderId
     });
-    this.loadTrace(shipmentId);
+    return this.loadShipments();
+  },
+
+  loadShipments: async function() {
+    this.setData({ isLoading: true, loadError: '' });
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      if (!this.data.orderId) {
+        // 兼容仅携带发货单号的历史入口。
+        this.setData({ isLoading: false });
+        return this.loadTrace(this.data.shipmentId);
+      }
+
+      const result = await api.get(`/orders/${this.data.orderId}/shipments/detail`);
+      const shipments = (result || []).slice().sort((a, b) => {
+        const timeA = Date.parse(String(a.shippedAt || '').replace(' ', 'T')) || 0;
+        const timeB = Date.parse(String(b.shippedAt || '').replace(' ', 'T')) || 0;
+        if (timeA !== timeB) return timeB - timeA;
+        // 同一时间的发货单按 ID 倒序，字符串比较避免长 ID 丢失精度。
+        const idA = String(a.id);
+        const idB = String(b.id);
+        return idB.length - idA.length || (idB > idA ? 1 : idB < idA ? -1 : 0);
+      }).map((shipment, index, list) => {
+        const firstItem = (shipment.items || [])[0] || {};
+        return {
+          ...shipment,
+          id: String(shipment.id),
+          packageNumber: list.length - index,
+          totalQuantity: (shipment.items || []).reduce((total, item) => total + (Number(item.shipQty) || 0), 0),
+          imageUrl: firstItem.skuImageUrl || firstItem.productImage || '/images/default-goods-image.png',
+          productName: firstItem.productName || '包裹商品',
+          specDisplay: [firstItem.spec, firstItem.size].filter(Boolean).join(' / '),
+          shippedAtDisplay: this.formatTime(shipment.shippedAt),
+          expressName: this.getExpressName(shipment.expressCode)
+        };
+      });
+      this.setData({ shipments, isLoading: false });
+      if (shipments.length) {
+        return this.selectShipment(0);
+      }
+      this.setData({ trace: null, selectedShipment: null, loadError: '暂无包裹信息' });
+    } catch (err) {
+      this.setData({ isLoading: false, loadError: getErrorMessage(err, '加载包裹失败') });
+    }
+  },
+
+  selectShipment: function(index) {
+    const shipment = this.data.shipments[index];
+    if (!shipment) return;
+    this.setData({
+      activeIndex: index,
+      activePackageId: `package-${index}`,
+      selectedShipment: shipment,
+      shipmentId: shipment.id,
+      trace: null,
+      loadError: ''
+    });
+    return this.loadTrace(shipment.id);
+  },
+
+  switchShipment: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    if (index === this.data.activeIndex) return;
+    return this.selectShipment(index);
+  },
+
+  handleTouchStart: function(e) {
+    this._touchStart = e.touches.length === 1 ? e.touches[0] : null;
+  },
+
+  handleTouchCancel: function() {
+    this._touchStart = null;
+  },
+
+  handleTouchEnd: function(e) {
+    const start = this._touchStart;
+    this._touchStart = null;
+    const end = e.changedTouches[0];
+    if (!start || !end || this.data.shipments.length < 2) return;
+    const deltaX = end.clientX - start.clientX;
+    const deltaY = end.clientY - start.clientY;
+    if (Math.abs(deltaX) < 60 || Math.abs(deltaX) < Math.abs(deltaY) * 1.5) return;
+    return this.selectShipment(this.data.activeIndex + (deltaX < 0 ? 1 : -1));
+  },
+
+  retryLoad: function() {
+    if (!this.data.shipmentId && !this.data.orderId) return;
+    return this.data.shipments.length || !this.data.orderId
+      ? this.loadTrace(this.data.shipmentId)
+      : this.loadShipments();
+  },
+
+  handlePackageImageError: function(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const shipments = this.data.shipments.slice();
+    if (!shipments[index] || shipments[index].imageUrl === '/images/default-goods-image.png') return;
+    shipments[index] = { ...shipments[index], imageUrl: '/images/default-goods-image.png' };
+    this.setData({ shipments, selectedShipment: shipments[this.data.activeIndex] });
   },
 
   loadTrace: async function(shipmentId) {
-    wx.showLoading({ title: '加载中...' });
+    const requestId = (this._traceRequestId || 0) + 1;
+    this._traceRequestId = requestId;
+    this.setData({ trace: null, traceLoading: true, loadError: '' });
     try {
       await auth.ensureAuthenticated({ silent: true });
       const trace = await api.get(`/shipments/${shipmentId}/trace`);
+      // 快速切换时，仅当前包裹的请求可以更新页面。
+      if (requestId !== this._traceRequestId) return;
       const nodes = (trace.nodes || []).map((node, index) => ({
         ...node,
         descriptionSegments: this.parseTraceDescription(node.description),
@@ -42,18 +150,18 @@ Page({
       this.setData({
         trace: {
           ...trace,
+          expressName: this.getExpressName(trace.expressCode),
           statusTextDisplay,
           statusTextSegments: statusTextDisplay ? this.parseTraceDescription(statusTextDisplay) : [],
           message: this.formatTraceMessage(trace.message),
           nodes
         },
-        isLoading: false
+        isLoading: false,
+        traceLoading: false
       });
-      wx.hideLoading();
     } catch (err) {
-      wx.hideLoading();
-      this.setData({ isLoading: false });
-      wx.showToast({ title: getErrorMessage(err, '加载物流失败'), icon: 'none' });
+      if (requestId !== this._traceRequestId) return;
+      this.setData({ isLoading: false, traceLoading: false, loadError: getErrorMessage(err, '加载物流失败') });
     }
   },
 

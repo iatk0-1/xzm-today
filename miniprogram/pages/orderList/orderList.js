@@ -101,13 +101,14 @@ Page(pageSync.wrap({
   // 查看物流轨迹
   viewLogistics: function(e) {
     const shipmentId = e.currentTarget.dataset.shipmentId;
+    const orderId = e.currentTarget.dataset.orderId || '';
     if (!shipmentId) {
       wx.showToast({ title: '暂无发货单信息', icon: 'none' });
       return;
     }
 
     wx.navigateTo({
-      url: `/pages/shipmentTraceDetail/shipmentTraceDetail?shipmentId=${shipmentId}`
+      url: `/pages/shipmentTraceDetail/shipmentTraceDetail?shipmentId=${shipmentId}&orderId=${orderId}`
     });
   },
 

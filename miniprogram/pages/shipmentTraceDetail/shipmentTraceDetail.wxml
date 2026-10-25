@@ -1,58 +1,111 @@
 <view class="page" wx:if="{{!isLoading}}">
-  <view class="trace-header" wx:if="{{trace}}">
-    <view class="header-top">
-      <view class="header-title">{{getExpressName(trace.expressCode)}}</view>
+  <view class="package-section" wx:if="{{shipments.length > 0}}">
+    <view class="package-heading">
+      <text class="package-heading-title">包裹物流</text>
+      <text class="package-count">共 {{shipments.length}} 个包裹</text>
     </view>
-    <view class="header-status">
-      <text class="header-status-label">最新状态</text>
-      <text class="header-status-text" wx:if="{{trace.statusTextSegments && trace.statusTextSegments.length > 0}}">
-        <text
-          wx:for="{{trace.statusTextSegments}}"
-          wx:for-item="segment"
-          wx:key="index"
-          class="{{segment.type === 'phone' ? 'trace-phone' : ''}}"
-          catchtap="handleTraceSegmentTap"
-          data-type="{{segment.type}}"
-          data-phone="{{segment.value}}">{{segment.text}}</text>
-      </text>
-      <text class="header-status-text" wx:else>物流更新中</text>
-    </view>
-    <view class="header-meta">
-      <text class="meta-label">快递单号</text>
-      <view class="meta-value-box">
-        <text class="meta-value">{{trace.expressNo}}</text>
-        <view class="btn-copy" bindtap="copyExpressNo">复制</view>
-      </view>
-    </view>
-    <view class="header-tip" wx:if="{{trace.message}}">{{trace.message}}</view>
-  </view>
-
-  <view class="trace-card" wx:if="{{trace && trace.nodes && trace.nodes.length > 0}}">
-    <view class="trace-list">
-      <view class="trace-node {{item.isLatest ? 'latest' : ''}}" wx:for="{{trace.nodes}}" wx:key="index">
-        <view class="trace-axis">
-          <view class="trace-dot"></view>
-          <view class="trace-line" wx:if="{{index !== trace.nodes.length - 1}}"></view>
-        </view>
-        <view class="trace-content">
-          <view class="trace-desc">
-            <text
-              wx:for="{{item.descriptionSegments}}"
-              wx:for-item="segment"
-              wx:key="index"
-              class="{{segment.type === 'phone' ? 'trace-phone' : ''}}"
-              catchtap="handleTraceSegmentTap"
-              data-type="{{segment.type}}"
-              data-phone="{{segment.value}}">{{segment.text}}</text>
+    <scroll-view class="package-scroll" scroll-x enhanced show-scrollbar="{{false}}" scroll-with-animation scroll-into-view="{{activePackageId}}">
+      <view class="package-options">
+        <view
+          wx:for="{{shipments}}"
+          wx:key="id"
+          id="package-{{index}}"
+          class="package-option {{activeIndex === index ? 'is-active' : ''}}"
+          bindtap="switchShipment"
+          data-index="{{index}}">
+          <view class="package-image-wrap">
+            <image class="package-image" src="{{item.imageUrl}}" mode="aspectFill" binderror="handlePackageImageError" data-index="{{index}}" />
+            <text class="package-latest" wx:if="{{index === 0}}">最新</text>
           </view>
-          <view class="trace-time">{{item.timeDisplay}}</view>
+          <text class="package-name">包裹{{item.packageNumber}}</text>
+          <text class="package-quantity">共{{item.totalQuantity}}件商品</text>
+          <text class="package-carrier">{{item.expressName}}</text>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="package-hint" wx:if="{{shipments.length > 1}}">左右滑动查看包裹，点击切换物流</view>
+  </view>
+
+  <view class="package-detail" bindtouchstart="handleTouchStart" bindtouchend="handleTouchEnd" bindtouchcancel="handleTouchCancel">
+    <view class="selected-package" wx:if="{{selectedShipment}}">
+      <view class="selected-package-title">包裹{{selectedShipment.packageNumber}}</view>
+      <view class="selected-package-time" wx:if="{{selectedShipment.shippedAtDisplay}}">发货时间 {{selectedShipment.shippedAtDisplay}}</view>
+      <view class="shipment-items">
+        <view class="shipment-goods" wx:for="{{selectedShipment.items}}" wx:for-item="goodsItem" wx:key="id">
+          <image class="shipment-goods-image" src="{{goodsItem.skuImageUrl || goodsItem.productImage || '/images/default-goods-image.png'}}" mode="aspectFill"></image>
+          <view class="shipment-goods-info">
+            <view class="selected-product-name"><text user-select="{{true}}">{{goodsItem.productName || '商品'}}</text></view>
+            <view class="selected-product-spec"><text user-select="{{true}}">{{goodsItem.bundleGroupName ? goodsItem.bundleGroupName + ': ' : ''}}{{goodsItem.spec || ''}}{{goodsItem.size ? ' / ' + goodsItem.size : ''}}</text></view>
+            <view class="shipment-goods-qty">× {{goodsItem.shipQty}}</view>
+          </view>
         </view>
       </view>
     </view>
-  </view>
+    <view class="trace-header" wx:if="{{trace}}">
+      <view class="header-top">
+        <view class="header-title">{{trace.expressName}}</view>
+      </view>
+      <view class="header-status">
+        <text class="header-status-label">最新状态</text>
+        <text class="header-status-text" wx:if="{{trace.statusTextSegments && trace.statusTextSegments.length > 0}}">
+          <text
+            wx:for="{{trace.statusTextSegments}}"
+            wx:for-item="segment"
+            wx:key="index"
+            class="{{segment.type === 'phone' ? 'trace-phone' : ''}}"
+            catchtap="handleTraceSegmentTap"
+            data-type="{{segment.type}}"
+            data-phone="{{segment.value}}">{{segment.text}}</text>
+        </text>
+        <text class="header-status-text" wx:else>物流更新中</text>
+      </view>
+      <view class="header-meta">
+        <text class="meta-label">快递单号</text>
+        <view class="meta-value-box">
+          <text class="meta-value">{{trace.expressNo}}</text>
+          <view class="btn-copy" bindtap="copyExpressNo">复制</view>
+        </view>
+      </view>
+      <view class="header-tip" wx:if="{{trace.message}}">{{trace.message}}</view>
+    </view>
 
-  <view class="empty-card" wx:if="{{!trace || !trace.nodes || trace.nodes.length === 0}}">
-    <view class="empty-title">暂无物流轨迹</view>
-    <view class="empty-desc">快递公司返回轨迹后会在这里显示</view>
+    <view class="trace-card" wx:if="{{trace && trace.nodes && trace.nodes.length > 0}}">
+      <view class="trace-list">
+        <view class="trace-node {{item.isLatest ? 'latest' : ''}}" wx:for="{{trace.nodes}}" wx:key="index">
+          <view class="trace-axis">
+            <view class="trace-dot"></view>
+            <view class="trace-line" wx:if="{{index !== trace.nodes.length - 1}}"></view>
+          </view>
+          <view class="trace-content">
+            <view class="trace-desc">
+              <text
+                wx:for="{{item.descriptionSegments}}"
+                wx:for-item="segment"
+                wx:key="index"
+                class="{{segment.type === 'phone' ? 'trace-phone' : ''}}"
+                catchtap="handleTraceSegmentTap"
+                data-type="{{segment.type}}"
+                data-phone="{{segment.value}}">{{segment.text}}</text>
+            </view>
+            <view class="trace-time">{{item.timeDisplay}}</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="empty-card" wx:if="{{traceLoading}}">
+      <view class="empty-title">正在加载物流...</view>
+    </view>
+    <view class="empty-card" wx:elif="{{loadError}}">
+      <view class="empty-title">{{loadError}}</view>
+      <view class="btn-retry" wx:if="{{shipmentId || orderId}}" bindtap="retryLoad">重新加载</view>
+    </view>
+    <view class="empty-card" wx:elif="{{!trace || !trace.nodes || trace.nodes.length === 0}}">
+      <view class="empty-title">暂无物流轨迹</view>
+      <view class="empty-desc">快递公司返回轨迹后会在这里显示</view>
+    </view>
   </view>
+</view>
+<view class="empty-card page-loading" wx:else>
+  <view class="empty-title">正在加载包裹...</view>
 </view>
