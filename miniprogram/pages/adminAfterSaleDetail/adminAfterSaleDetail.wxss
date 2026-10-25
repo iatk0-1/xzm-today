@@ -28,6 +28,7 @@
   color: #a65a00;
 }
 
+.status-card.approved,
 .status-card.refunded {
   background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
 }
