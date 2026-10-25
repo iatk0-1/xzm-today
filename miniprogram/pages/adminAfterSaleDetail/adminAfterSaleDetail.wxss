@@ -16,12 +16,24 @@
   gap: 16rpx;
 }
 
+.status-card.pending {
+  background: #fff3e0;
+}
+
+.status-card.pending .status-badge,
+.status-card.pending .refund-total,
+.status-card.pending .status-desc,
+.status-card.pending .refund-channel-summary,
+.status-card.pending .refund-channel-tag {
+  color: #a65a00;
+}
+
 .status-card.refunded {
   background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
 }
 
 .status-card.rejected {
-  background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff4444 100%);
 }
 
 .status-badge {
