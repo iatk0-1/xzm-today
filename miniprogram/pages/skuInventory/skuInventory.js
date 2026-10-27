@@ -485,6 +485,19 @@ Page(autoSearch.wrap({
     } finally { this.setData({ batchReceiveSaving: false }); }
   },
   stopCardTap() {},
+  previewInventoryImage(e) {
+    const { url, emptyTip } = e.currentTarget.dataset;
+    if (!url || url === '/images/default-goods-image.png') {
+      wx.showToast({ title: emptyTip || '暂无可预览图片', icon: 'none' });
+      return;
+    }
+    wx.previewImage({ current: url, urls: [url] });
+  },
+  goToProductDetail(e) {
+    const { id } = e.currentTarget.dataset;
+    if (!id) return;
+    wx.navigateTo({ url: '/pages/detail/detail?id=' + encodeURIComponent(String(id)) });
+  },
   operateSku(e) {
     const { product, sku } = e.currentTarget.dataset;
     if (!product || !product.id || !sku) return;

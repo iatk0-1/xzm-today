@@ -43,10 +43,19 @@
         <view class="inventory-checkbox {{allSelected ? 'checked' : ''}}"><text wx:if="{{allSelected}}">✓</text></view>
         <text>全选</text>
       </view>
-      <button class="batch-receive-btn" bindtap="openBatchReceiveModal" disabled="{{!pendingReceiveItems.length && !batchRetryPending}}">{{batchRetryPending ? '入库待确认' : '批量入库'}}</button>
-      <button class="stock-shipping-btn" bindtap="openShippingModal">按照库存发货</button>
+      <view class="selection-summary">
+        <scroll-view class="selection-summary-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+          <view class="selection-summary-content {{selectedCount || pendingReceiveItems.length ? '' : 'is-empty'}}">
+            <text>已选 {{selectedCount}} 个商品 · 待入库 {{pendingReceiveProductCount}} 个商品、{{pendingReceiveItems.length}} 个规格，共 {{pendingReceiveTotal}} 件（切换筛选保留）</text>
+          </view>
+        </scroll-view>
+        <view class="selection-summary-tip">点击规格卡片可查看对应图片</view>
+      </view>
+      <view class="inventory-action-buttons">
+        <button class="batch-receive-btn" bindtap="openBatchReceiveModal" disabled="{{!pendingReceiveItems.length && !batchRetryPending}}">{{batchRetryPending ? '入库待确认' : '批量入库'}}</button>
+        <button class="stock-shipping-btn" bindtap="openShippingModal">按照库存发货</button>
+      </view>
     </view>
-    <view class="selection-summary" wx:if="{{selectedCount || pendingReceiveItems.length}}">已选 {{selectedCount}} 个商品 · 待入库 {{pendingReceiveProductCount}} 个商品，{{pendingReceiveItems.length}} 个规格，共 {{pendingReceiveTotal}} 件（切换筛选保留）</view>
   </view>
   <view class="product-list">
     <view class="product-item {{item.selected ? 'selected' : ''}}" wx:for="{{productList}}" wx:key="id">
@@ -54,7 +63,7 @@
         <view class="inventory-checkbox {{item.selected ? 'checked' : ''}} {{!item.skus.length || batchReceiveSaving || batchRetryPending ? 'disabled' : ''}}"><text wx:if="{{item.selected}}">✓</text></view>
       </view>
       <view class="product-media">
-        <image class="product-image" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
+        <image class="product-image" src="{{item.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" catchtap="previewInventoryImage" data-url="{{item.coverUrl}}" data-empty-tip="该商品暂无图片" />
         <view class="card-total-editor" wx:if="{{item.skus.length}}" catchtap="stopCardTap">
           <button class="card-qty-adjust" catchtap="adjustCardReceiveQty" data-product-id="{{item.id}}" data-delta="-1" disabled="{{batchReceiveSaving || batchRetryPending}}">−</button>
           <button class="card-qty-adjust" catchtap="adjustCardReceiveQty" data-product-id="{{item.id}}" data-delta="1" disabled="{{batchReceiveSaving || batchRetryPending}}">+</button>
@@ -62,8 +71,8 @@
         <button class="sku-expand-btn" wx:if="{{item.hasHiddenSkus}}" catchtap="toggleProductSkus" data-id="{{item.id}}">{{item.skusExpanded ? '收缩' : '展开全部'}}</button>
       </view>
       <view class="product-info">
-        <view class="product-name">{{item.name}}</view>
-        <view class="sku-summary" wx:for="{{item.visibleSkus}}" wx:for-item="sku" wx:key="id">
+        <view class="product-name" catchtap="goToProductDetail" data-id="{{item.id}}">{{item.name}}</view>
+        <view class="sku-summary" wx:for="{{item.visibleSkus}}" wx:for-item="sku" wx:key="id" catchtap="previewInventoryImage" data-url="{{sku.imageUrl}}" data-empty-tip="该规格暂无图片">
           <view class="sku-heading">
             <view class="sku-title">{{sku.spec}} {{sku.size}}</view>
             <view class="card-sku-editor" catchtap="stopCardTap">
@@ -103,7 +112,7 @@
       <view class="batch-pending-tip" wx:if="{{batchRetryPending && !batchReceiveSaving}}">上次入库结果待确认，请重试原批次，确认期间不能修改数量和来源。</view>
       <scroll-view class="batch-receive-list" scroll-y="true">
         <view class="batch-receive-row" wx:for="{{batchReceiveItems}}" wx:key="skuId">
-          <image class="batch-item-image" src="{{item.imageUrl}}" mode="aspectFill" />
+          <image class="batch-item-image" src="{{item.imageUrl}}" mode="aspectFill" catchtap="previewInventoryImage" data-url="{{item.imageUrl}}" data-empty-tip="暂无可预览图片" />
           <view class="batch-item-info">
             <view class="batch-item-name">{{item.productName}}</view>
             <view class="batch-item-sku">{{item.spec || '默认规格'}} {{item.size}}</view>
