@@ -26,6 +26,7 @@
     <view class="sort-tab {{currentMainTab === '销量' ? 'active' : ''}}" catchtap="handleMainTabChange" data-tab="销量">
       <text>销量</text>
     </view>
+    <view class="sort-tab {{currentMainTab === '现货' ? 'active' : ''}}" catchtap="handleMainTabChange" data-tab="现货">现货</view>
   </view>
 
   <view class="stall-filter-row" style="top: {{totalNavHeight}}px;">

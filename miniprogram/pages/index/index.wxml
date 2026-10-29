@@ -22,6 +22,11 @@
           <view class="line"></view>
         </view>
 
+        <view class="tab-item {{currentMainTab === '现货' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="现货">
+          <text>现货</text>
+          <view class="line"></view>
+        </view>
+
         <!-- 功能暂时不开放：分类和直播标签暂时隐藏 -->
       </view>
 

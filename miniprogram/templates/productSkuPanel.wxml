@@ -18,7 +18,8 @@
         {{bundlePriceRange}}
       </view>
 
-      <view class="sku-stock sku-stock-low" wx:if="{{bundleSelections.length === 0 && !currentSkuUnlimited && currentSkuStock != null && currentSkuStock <= 3}}">
+      <view class="sku-stock" wx:if="{{bundleSelections.length === 0 && currentSkuFreeStockQty > 0}}">现货：{{currentSkuFreeStockQty}}件</view>
+      <view class="sku-stock sku-stock-low" wx:elif="{{bundleSelections.length === 0 && !currentSkuUnlimited && currentSkuStock != null && currentSkuStock <= 3}}">
         库存：仅剩{{currentSkuStock}}件
       </view>
       <view class="sku-stock" wx:elif="{{bundleSelections.length === 0 && (isAdmin || isStallManager) && currentSkuStock != null}}">
@@ -67,6 +68,8 @@
             <view class="sku-tag minimal {{sel.selectedSize === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}" wx:for="{{sel.sizeOptions}}" wx:key="value" wx:for-item="item" bindtap="selectBundleSize" data-index="{{bgIdx}}" data-size="{{item.value}}">{{item.value}}</view>
           </view>
         </view>
+
+        <view class="sku-stock" wx:if="{{sel.selectedSku.freeStockQty > 0}}">现货：{{sel.selectedSku.freeStockQty}}件</view>
 
         <view class="bundle-card-footer">
           <view class="bundle-sku-price" style="color: #1a1a1a;">

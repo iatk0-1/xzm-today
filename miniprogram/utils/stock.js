@@ -13,6 +13,12 @@ function hasStock(stock, unlimitedFlag) {
   return (stock || 0) > 0;
 }
 
+// 正常空闲现货独立于可售库存；不从 stock 或无限库存标记推算。
+function getFreeStockQty(sku) {
+  var quantity = Number(sku && sku.freeStockQty);
+  return Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
+}
+
 function isUnlimited(stock, unlimitedFlag) {
   if (unlimitedFlag === true) return true;
   return (stock || 0) >= UNLIMITED_THRESHOLD;
@@ -34,6 +40,7 @@ function isProductSoldOut(product) {
 module.exports = {
   UNLIMITED_THRESHOLD: UNLIMITED_THRESHOLD,
   formatStock: formatStock,
+  getFreeStockQty: getFreeStockQty,
   hasStock: hasStock,
   isUnlimited: isUnlimited,
   isSkuSoldOut: isSkuSoldOut,

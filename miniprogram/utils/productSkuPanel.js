@@ -1,7 +1,7 @@
 // 首页和搜索页共用规格选择、数量控制及购物车操作。
 const api = require('../utils/api');
 const { getErrorMessage, isUnauthorized } = require('../utils/error');
-const { formatStock, hasStock, isSkuSoldOut } = require('../utils/stock');
+const { formatStock, getFreeStockQty, hasStock, isSkuSoldOut } = require('../utils/stock');
 const { findSelectedSku, getSkuOptions, getDefaultSkuSelection, getSkuOptionSelection } = require('../utils/skuSelection');
 const skuQuantityEditor = require('./skuQuantityEditor');
 
@@ -18,6 +18,7 @@ module.exports = {
     selectedSize: '',
     currentSkuPrice: null,
     currentSkuStock: null,
+    currentSkuFreeStockQty: 0,
     currentSkuImage: null,
     skuPanelImagePaths: {},
     currentSkuId: null,
@@ -40,11 +41,12 @@ module.exports = {
 
     // Build bundle groups from API or from skuMatrix
     var bundleGroups = product.bundleGroups;
+    const matrixById = new Map((product.skuMatrix || []).map(sku => [String(sku.skuId), sku]));
     if (!bundleGroups || bundleGroups.length === 0) {
       var matrix = product.skuMatrix || [];
       if (matrix.length > 0 && matrix[0].bundleGroupName) {
         var groupMap = {};
-        matrix.forEach(function(s) { var k = s.bundleGroupId || s.bundleGroupName; if (!groupMap[k]) groupMap[k] = { name: s.bundleGroupName, skus: [] }; groupMap[k].skus.push({ skuId: s.skuId, color: s.color, size: s.size, price: s.price, stock: s.stock, unlimitedStock: s.unlimitedStock, imageUrl: s.imageUrl }); });
+        matrix.forEach(function(s) { var k = s.bundleGroupId || s.bundleGroupName; if (!groupMap[k]) groupMap[k] = { name: s.bundleGroupName, skus: [] }; groupMap[k].skus.push({ skuId: s.skuId, color: s.color, size: s.size, price: s.price, stock: s.stock, freeStockQty: s.freeStockQty, unlimitedStock: s.unlimitedStock, imageUrl: s.imageUrl }); });
         bundleGroups = Object.values(groupMap);
       }
     }
@@ -76,6 +78,7 @@ if (bundleGroups && bundleGroups.length > 0) {
         color: sku.color || sku.spec,
         price: sku.price != null ? sku.price : sku.retailPrice,
         stock: sku.stock != null ? sku.stock : sku.stockMain,
+        freeStockQty: getFreeStockQty(matrixById.get(String(sku.skuId || sku.id)) || sku),
         unlimitedStock: sku.unlimitedStock === true || sku.isUnlimitedStock === true
       });
     });
@@ -151,6 +154,7 @@ if (bundleGroups && bundleGroups.length > 0) {
         ...options,
         currentSkuPrice: match.price,
         currentSkuStock: match.stock,
+        currentSkuFreeStockQty: getFreeStockQty(match),
         currentSkuUnlimited: match.unlimitedStock || false,
         currentSkuSoldOut: false,
         currentSkuStockText: formatStock(match.stock, match.unlimitedStock),
@@ -165,6 +169,7 @@ if (bundleGroups && bundleGroups.length > 0) {
         ...options,
         currentSkuPrice: null,
         currentSkuStock: soldOut ? 0 : null,
+        currentSkuFreeStockQty: 0,
         currentSkuUnlimited: false,
         currentSkuSoldOut: soldOut,
         currentSkuStockText: soldOut ? '0' : null,
@@ -233,7 +238,7 @@ if (bundleGroups && bundleGroups.length > 0) {
       var needSize = ns.uniqueSizes.length > 0;
       var match = findSelectedSku(ns.skus || [], ns.selectedColor, ns.selectedSize);
       if (match) {
-        ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price != null ? match.price : match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
+        ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price != null ? match.price : match.retailPrice, stock: match.stock, freeStockQty: getFreeStockQty(match), unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
         if (!ns.quantity) ns.quantity = 1;
         if (!match.unlimitedStock) ns.quantity = Math.min(ns.quantity, Number(match.stock));
         ns.computedPrice = parseFloat((Number(ns.selectedSku.price || 0) * ns.quantity).toFixed(2));

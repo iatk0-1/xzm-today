@@ -313,6 +313,30 @@ test('销量分页、下拉刷新和分享恢复均查全部销量，忽略旧�
   assert.equal(restored.data.selectedStall, 's1');
 });
 
+test('现货筛选：分页、刷新、分享恢复和搜索入口均保留现货与档口条件', async () => {
+  const page = createPage();
+  requestHandler = backendStub();
+  page.restoreShareFilters({ tab: '现货', stallId: 's2', tagId: 't1' });
+  await page.getProductsList();
+  page.data.hasMore = true;
+  await page.getProductsList(false);
+  assert.deepEqual(searchCalls().at(-1).params, { page: 2, size: 20, sort: 'stock', stallId: 's2', tagId: 't1' });
+  await page.onRefresh();
+  assert.equal(searchCalls().at(-1).params.sort, 'stock');
+  assert.equal(searchCalls().at(-1).params.page, 1);
+  const count = searchCalls().length;
+  await page.handleMainTabChange(event({ tab: '现货' }));
+  assert.equal(searchCalls().length, count);
+  const restored = createPage();
+  restored.restoreShareFilters(Object.fromEntries(new URLSearchParams(page.buildShareQuery())));
+  assert.equal(restored.data.currentMainTab, '现货');
+  page.goToSearch();
+  assert.equal(new URL(wxCalls.navigateUrl, 'https://test.local').searchParams.get('tab'), '现货');
+  await page.handleMainTabChange(event({ tab: '上新' }));
+  assert.equal(searchCalls().at(-1).params.sort, 'newest');
+  assert.equal(searchCalls().at(-1).params.stallId, 's2');
+});
+
 test('快速切换筛选：丢弃旧响应，合并等待中的查询并使用最终条件', async () => {
   const page = createPage();
   let resolveOld;

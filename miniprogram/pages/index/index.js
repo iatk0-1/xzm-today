@@ -85,7 +85,7 @@ Page(pageSync.wrap({
 
     // 标签入口保持隐藏，带标签参数的分享页不主动展开标签面板。
     // 兼容旧档口分享链接；档口筛选与上新/销量排序独立。
-    const currentMainTab = shareTab === '销量' ? '销量' : '上新';
+    const currentMainTab = ['销量', '现货'].includes(shareTab) ? shareTab : '上新';
 
     this.setData({
       currentMainTab: currentMainTab,
@@ -261,7 +261,7 @@ Page(pageSync.wrap({
       const params = {
         page: page,
         size: pageSize,
-        sort: currentMainTab === '销量' ? 'sales' : 'newest'
+        sort: currentMainTab === '现货' ? 'stock' : (currentMainTab === '销量' ? 'sales' : 'newest')
       };
 
       // 如果选择了档口，按档口筛选（使用 stall 参数）
@@ -406,7 +406,7 @@ Page(pageSync.wrap({
   // 排序与档口筛选独立，销量统一统计全部历史，重复点击不重复查询。
   handleMainTabChange(e) {
     const tabName = e.currentTarget.dataset.tab;
-    if (tabName !== '上新' && tabName !== '销量') return;
+    if (!['上新', '销量', '现货'].includes(tabName)) return;
     if (this.data.currentMainTab === tabName) return;
     this.setData({ currentMainTab: tabName, showAllPanel: false });
     return this.getProductsList();
@@ -579,6 +579,7 @@ Page(pageSync.wrap({
     entity: 'products', field: 'productList', url: id => '/products/' + id,
     normalize: product => ({ ...product, soldOut: isProductSoldOut(product) }),
     matches: product => product.status === 'on'
+      && (this.data.currentMainTab !== '现货' || (product.skuMatrix || []).some(sku => sku.freeStockQty > 0))
       && (!this.data.selectedStall || (product.stallIds || []).some(id => String(id) === String(this.data.selectedStall)))
       && (!this.data.selectedTag || (product.relateTagIds || []).some(id => String(id) === String(this.data.selectedTag)))
   });

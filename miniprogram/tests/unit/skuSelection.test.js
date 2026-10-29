@@ -120,6 +120,30 @@ test('默认组合按照界面颜色、尺码顺序，而不是有货 SKU 的返
   assert.deepEqual(getDefaultSkuSelection(skus), { selectedColor: '白色', selectedSize: 'M' });
 });
 
+test('普通规格库存文案互斥：有现货优先显示，无现货恢复原角色和少量库存提示', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const vm = require('node:vm');
+  for (const file of ['templates/productSkuPanel.wxml', 'components/productDetail/overlays.wxml']) {
+    const template = fs.readFileSync(path.join(__dirname, '../..', file), 'utf8');
+    const branches = [...template.matchAll(/<view class="sku-stock[^"]*" wx:(if|elif)="\{\{(.*?)\}\}">([\s\S]*?)<\/view>/g)]
+      .filter(branch => branch[2].includes('bundleSelections.length === 0'));
+    assert.deepEqual(branches.map(branch => branch[1]), ['if', 'elif', 'elif']);
+    function render(overrides) {
+      const data = { bundleSelections: [], currentSkuFreeStockQty: 0, currentSkuStock: 10,
+        currentSkuStockText: '10', currentSkuUnlimited: false, isAdmin: false, isStallManager: false, ...overrides };
+      const branch = branches.find(item => vm.runInNewContext(item[2], data));
+      return branch ? branch[3].trim().replace(/\{\{(.*?)\}\}/g, (_, expression) => vm.runInNewContext(expression, data)) : '';
+    }
+    assert.equal(render({ currentSkuFreeStockQty: 5, currentSkuStock: 2, isAdmin: true }), '现货：5件');
+    assert.equal(render({ currentSkuFreeStockQty: 5, currentSkuUnlimited: true }), '现货：5件');
+    assert.equal(render({ currentSkuStock: 2 }), '库存：仅剩2件');
+    assert.equal(render({ isAdmin: true }), '库存：10');
+    assert.equal(render({ isStallManager: true, currentSkuUnlimited: true, currentSkuStockText: '无限' }), '库存：无限');
+    assert.equal(render({}), '');
+  }
+});
+
 for (const name of ['index', 'search', 'detail']) {
   test(`${name}：数量输入可删空、保留零和超库存值，失焦后再校验`, () => {
     const page = createPage(name, makeSkus());
@@ -416,5 +440,44 @@ for (const name of ['index', 'search']) {
       assert.equal(page.data.bundleSelections[0].selectedSku.skuId, 5, action);
       assert.equal(page.data.bundleTotalPrice, '72.00', action);
     }
+  });
+}
+
+for (const name of ['index', 'search', 'detail']) {
+  test(`${name}：现货跟随选中规格，切换及清空不串数，购买上限仍使用可售库存`, () => {
+    const skus = [
+      { skuId: 1, color: '红色', size: 'M', stock: 10, freeStockQty: 2, price: 20 },
+      { skuId: 2, color: '蓝色', size: 'M', stock: 3, freeStockQty: 0, price: 20 },
+      { skuId: 3, color: '白色', size: 'M', stock: 0, unlimitedStock: true, freeStockQty: 7, price: 20 }
+    ];
+    const page = createPage(name, skus);
+    page.open();
+    assert.equal(page.data.currentSkuFreeStockQty, 2);
+    page.data.quantity = 4;
+    page.checkSkuMatch();
+    assert.equal(page.data.quantity, 4);
+    assert.equal(page.data.currentSkuStock, 10);
+    page.selectColor(event({ color: '蓝色' }));
+    assert.equal(page.data.currentSkuFreeStockQty, 0);
+    assert.equal(page.data.currentSkuStockText, '3');
+    page.selectColor(event({ color: '白色' }));
+    assert.equal(page.data.currentSkuFreeStockQty, 7);
+    assert.equal(page.data.currentSkuUnlimited, true);
+    page.setData({ selectedColor: '', selectedSize: '' });
+    page.checkSkuMatch();
+    assert.equal(page.data.currentSkuFreeStockQty, 0);
+  });
+
+  test(`${name}：套装从规格矩阵读取空闲现货，切换子项规格同步更新`, () => {
+    const skus = [
+      { skuId: 1, color: '红色', size: 'M', stock: 10, freeStockQty: 2, price: 20 },
+      { skuId: 2, color: '蓝色', size: 'M', stock: 10, freeStockQty: 0, price: 20 }
+    ];
+    const bundleGroups = [{ name: '上衣', skus: skus.map(({ freeStockQty, skuId, ...sku }) => ({ ...sku, id: skuId })) }];
+    const page = createPage(name, skus, bundleGroups);
+    page.open();
+    assert.equal(page.data.bundleSelections[0].selectedSku.freeStockQty, 2);
+    page.selectBundleColor(event({ index: 0, color: '蓝色' }));
+    assert.equal(page.data.bundleSelections[0].selectedSku.freeStockQty, 0);
   });
 }

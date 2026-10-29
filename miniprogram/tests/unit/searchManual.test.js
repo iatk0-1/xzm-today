@@ -143,6 +143,23 @@ test('从首页进入：首轮查询恢复销量排序和档口，忽略旧月�
   assert.equal(requests.at(-1).sort, 'sales');
 });
 
+test('现货入口、关键词及分页保持筛选，切回销量时保留关键词和档口', async t => {
+  const { page, requests } = setup(t);
+  await page.onLoad({ tab: encodeURIComponent('现货'), stallId: 's2' });
+  assert.equal(page.data.currentMainTab, '现货');
+  assert.equal(requests[0].sort, 'stock');
+  page.onInput({ detail: { value: '棉袄' } });
+  await page.doSearch();
+  page.onReachBottom();
+  await flush();
+  assert.deepEqual({ ...requests.at(-1) }, { page: 2, size: 20, sort: 'stock', stallId: 's2', keyword: '棉袄' });
+  const count = requests.length;
+  await page.handleMainTabChange(event({ tab: '现货' }));
+  assert.equal(requests.length, count);
+  await page.handleMainTabChange(event({ tab: '销量' }));
+  assert.deepEqual({ ...requests.at(-1) }, { page: 1, size: 20, sort: 'sales', stallId: 's2', keyword: '棉袄' });
+});
+
 test('搜索页排序与档口独立：切换全部销量、上新和全部档口时保留已搜索词', async t => {
   const { page, requests } = setup(t);
   page.data.keyword = '外套';

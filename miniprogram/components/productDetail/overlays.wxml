@@ -58,7 +58,8 @@
     </view>
     <view class="sku-main">
       <view class="sku-price" style="color: #d32f2f;">¥ {{currentSkuPrice || product.displayPrice || product.price}}</view>
-      <view class="sku-stock sku-stock-low" wx:if="{{bundleSelections.length === 0 && !currentSkuUnlimited && currentSkuStock != null && currentSkuStock <= 3}}">库存：仅剩{{currentSkuStock}}件</view>
+      <view class="sku-stock" wx:if="{{bundleSelections.length === 0 && currentSkuFreeStockQty > 0}}">现货：{{currentSkuFreeStockQty}}件</view>
+      <view class="sku-stock sku-stock-low" wx:elif="{{bundleSelections.length === 0 && !currentSkuUnlimited && currentSkuStock != null && currentSkuStock <= 3}}">库存：仅剩{{currentSkuStock}}件</view>
       <view class="sku-stock" wx:elif="{{bundleSelections.length === 0 && (isAdmin || isStallManager) && currentSkuStock != null}}">库存：{{currentSkuStockText}}</view>
       <view class="sku-meta-row">
         <view class="sku-choose-tip">已选: {{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
@@ -106,7 +107,8 @@
         </view>
 
         <view class="bundle-card-footer" wx:if="{{sel.selectedSku}}">
-          <text class="stock-status out" wx:if="{{!sel.selectedSku.unlimitedStock && sel.selectedSku.stock <= 0}}">已售罄</text>
+          <text class="stock-status normal" wx:if="{{sel.selectedSku.freeStockQty > 0}}">现货：{{sel.selectedSku.freeStockQty}}件</text>
+          <text class="stock-status out" wx:elif="{{!sel.selectedSku.unlimitedStock && sel.selectedSku.stock <= 0}}">已售罄</text>
           <text class="stock-status danger" wx:elif="{{!sel.selectedSku.unlimitedStock && sel.selectedSku.stock <= 5}}">🔥 仅剩少量</text>
           <text class="stock-status normal" wx:else>已选定</text>
         </view>

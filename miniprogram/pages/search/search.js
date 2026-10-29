@@ -50,7 +50,8 @@ Page({
       // 兼容外部链接中的不完整转义，无法识别的排序使用上新。
     }
     this.setData({
-      currentMainTab: tab === '销量' || options.sort === 'sales' ? '销量' : '上新',
+      currentMainTab: tab === '现货' || options.sort === 'stock' ? '现货'
+        : (tab === '销量' || options.sort === 'sales' ? '销量' : '上新'),
       selectedStall: options.stallId || '',
       selectedTag: options.tagId || ''
     });
@@ -80,7 +81,7 @@ Page({
 
   handleMainTabChange: function(e) {
     const tab = e.currentTarget.dataset.tab;
-    if (tab !== '上新' && tab !== '销量') return;
+    if (!['上新', '销量', '现货'].includes(tab)) return;
     this.finishSearchInput();
     if (this.data.currentMainTab === tab) return this.submitChangedKeyword();
     this.setData({ currentMainTab: tab, showAllPanel: false, showHistory: false });
@@ -253,7 +254,8 @@ Page({
     if (!this.data.hasMore) return;
     const version = this._queryVersion || 0;
     const { page, pageSize, currentMainTab, selectedStall, selectedTag } = this.data;
-    const params = { page, size: pageSize, sort: currentMainTab === '销量' ? 'sales' : 'newest' };
+    const params = { page, size: pageSize,
+      sort: currentMainTab === '现货' ? 'stock' : (currentMainTab === '销量' ? 'sales' : 'newest') };
     if (word) params.keyword = word;
     if (selectedStall) params.stallId = selectedStall;
     if (selectedTag) params.tagId = selectedTag;

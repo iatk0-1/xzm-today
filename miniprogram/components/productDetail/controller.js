@@ -4,7 +4,7 @@ const { normalizeProductImages } = require('../../utils/productImage');
 const { getBannerImageMode, getDetailImageMode } = require('../../utils/productGallery');
 const { getPurchaseNotice } = require('../../utils/purchaseNotice');
 const auth = require('../../utils/auth');
-const { formatStock, hasStock, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
+const { formatStock, getFreeStockQty, hasStock, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
 const { findSelectedSku, getSkuOptions, getDefaultSkuSelection, getSkuOptionSelection } = require('../../utils/skuSelection');
 const { createShareImage } = require('../../utils/shareImage');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
@@ -49,6 +49,7 @@ function createProductDetailConfig() {
     selectedSize: '',
     currentSkuPrice: null,
     currentSkuStock: null,
+    currentSkuFreeStockQty: 0,
     currentSkuImage: null,
     currentSkuId: null,
     currentSkuUnlimited: false,
@@ -582,6 +583,7 @@ function createProductDetailConfig() {
 
     // Build bundle groups from API or from skuMatrix
     var bundleGroups = product.bundleGroups;
+    const matrixById = new Map((product.skuMatrix || []).map(sku => [String(sku.skuId), sku]));
     if (!bundleGroups || bundleGroups.length === 0) {
       // Reconstruct from skuMatrix (for list pages where ProductSummaryResponse has no bundleGroups field)
       var matrix = product.skuMatrix || [];
@@ -590,7 +592,7 @@ function createProductDetailConfig() {
         matrix.forEach(function(s) {
           var key = s.bundleGroupId || s.bundleGroupName;
           if (!groupMap[key]) groupMap[key] = { name: s.bundleGroupName, skus: [] };
-          groupMap[key].skus.push({ skuId: s.skuId, color: s.color, size: s.size, price: s.price, stock: s.stock, unlimitedStock: s.unlimitedStock, imageUrl: s.imageUrl });
+          groupMap[key].skus.push({ skuId: s.skuId, color: s.color, size: s.size, price: s.price, stock: s.stock, freeStockQty: s.freeStockQty, unlimitedStock: s.unlimitedStock, imageUrl: s.imageUrl });
         });
         bundleGroups = Object.values(groupMap);
       }
@@ -605,6 +607,7 @@ function createProductDetailConfig() {
             color: sku.color || sku.spec,
             price: sku.price != null ? sku.price : sku.retailPrice,
             stock: sku.stock != null ? sku.stock : sku.stockMain,
+            freeStockQty: getFreeStockQty(matrixById.get(String(sku.skuId || sku.id)) || sku),
             unlimitedStock: sku.unlimitedStock === true || sku.isUnlimitedStock === true
           });
         });
@@ -676,6 +679,7 @@ function createProductDetailConfig() {
         ...options,
         currentSkuPrice: match.price,
         currentSkuStock: match.stock,
+        currentSkuFreeStockQty: getFreeStockQty(match),
         currentSkuUnlimited: match.unlimitedStock || false,
         currentSkuSoldOut: false,
         currentSkuStockText: formatStock(match.stock, match.unlimitedStock),
@@ -690,6 +694,7 @@ function createProductDetailConfig() {
         ...options,
         currentSkuPrice: product.retailPrice || product.displayPrice || null,
         currentSkuStock: soldOut ? 0 : null,
+        currentSkuFreeStockQty: 0,
         currentSkuUnlimited: false,
         currentSkuSoldOut: soldOut,
         currentSkuStockText: soldOut ? '0' : null,
@@ -755,7 +760,7 @@ function createProductDetailConfig() {
       ns.selectedSku = null;
       var match = findSelectedSku(ns.skus || [], ns.selectedColor, ns.selectedSize);
       if (match) {
-        ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price != null ? match.price : match.retailPrice, stock: match.stock, unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
+        ns.selectedSku = { skuId: match.skuId || match.id, color: match.color || match.spec, size: match.size, price: match.price != null ? match.price : match.retailPrice, stock: match.stock, freeStockQty: getFreeStockQty(match), unlimitedStock: match.unlimitedStock, imageUrl: match.imageUrl };
         totalPrice += Number(ns.selectedSku.price) || 0;
         anyOk = true;
       }
