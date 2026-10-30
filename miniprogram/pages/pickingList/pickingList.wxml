@@ -48,7 +48,7 @@
 
     <!-- SKU 筛选 -->
     <view class="sku-filter">
-      <input class="sku-input" placeholder="搜索 SKU/商品" value="{{skuKeyword}}" bindinput="onSkuKeywordInput" />
+      <input class="sku-input" placeholder="搜索 SKU/商品/货号" value="{{skuKeyword}}" bindinput="onSkuKeywordInput" />
       <button class="sku-search-btn" bindtap="searchSku">搜索</button>
     </view>
   </view>

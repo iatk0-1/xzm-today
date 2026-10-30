@@ -95,6 +95,7 @@ async function buildProduct(record) {
     sizeCategoryId: data.currentSizeCategoryId || null,
     skus: groups && !editing ? [] : skus, bundleGroups: editing ? undefined : groups,
     ...(!live ? {
+      articleNo: String(data.articleNo || '').trim(),
       schedule: data.productScheduleDirty ? data.productSchedule : undefined,
       useVideoCover: !!videoCover,
       lookbookImages: (data.lookbookImgs || []).map(url => remote(url, '搭配图片', true)),

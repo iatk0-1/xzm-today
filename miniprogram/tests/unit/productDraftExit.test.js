@@ -404,3 +404,18 @@ test('取帧失败保留视频封面首位与勾选，原视频可以直接重�
   assert.equal(page.data.videoThumbPath, 'wx://retry-frame.jpg');
   assert.equal(page.data.useVideoCover, true);
 });
+
+test('货号参与编辑回显、草稿保存、恢复与退出保护，旧草稿默认空值', async () => {
+  const { page, events } = harness('../../pages/admin/admin.js', { product: { name: '花棉袄', articleNo: 'HN-001', stallIds: [] } });
+  await page.onLoad({ editId: '10' });
+  assert.equal(page.data.articleNo, 'HN-001');
+  assert.equal(page.hasUnsavedDraftChanges(), false);
+  page.onInput({ currentTarget: { dataset: { field: 'articleNo' } }, detail: { value: 'HN-002' } });
+  assert.equal(page.hasUnsavedDraftChanges(), true);
+  await page.saveDraft();
+  assert.equal(events.find(event => event[0] === 'save')[1].articleNo, 'HN-002');
+  await page.restoreDraft({ articleNo: 'HN-003' });
+  assert.equal(page.data.articleNo, 'HN-003');
+  await page.restoreDraft({ title: '旧草稿' });
+  assert.equal(page.data.articleNo, '');
+});

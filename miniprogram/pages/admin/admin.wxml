@@ -26,7 +26,10 @@
   </view>
 
   <view class="form-group">
-    <view class="label"><text class="required">*</text>商品图片（最多99张，首图自动设为封面，长按可拖拽排序）</view>
+    <view class="lookbook-header">
+      <view class="label"><text class="required">*</text>商品图片（最多99张，首图自动设为封面，长按可拖拽排序）</view>
+      <button class="lookbook-sync-btn" size="mini" bindtap="syncProductImagesToLookbook">同步详情图片</button>
+    </view>
 
     <movable-area class="drag-area" style="height: {{dragAreaHeight}}px;">
       <view wx:if="{{useVideoCover}}" class="drag-item video-cover-fixed">
@@ -75,6 +78,11 @@
     <textarea class="input-box product-name-input" style="height: calc({{titleContentHeight}}px + 40rpx); max-height: {{titleMaxHeight}}px;" placeholder="例如：经典藏青百褶裙" value="{{title}}" bindinput="onInput" bindlinechange="onTitleLineChange" data-field="title" maxlength="140" adjust-position="{{true}}" adjust-keyboard-to="cursor" cursor-spacing="140"></textarea>
     <view class="product-schedule-summary" wx:if="{{productScheduleSummary}}">{{productScheduleSummary}}{{productScheduleDirty ? '（保存商品后生效）' : ''}}</view>
     <view class="product-schedule-summary" wx:elif="{{productScheduleDirty}}">已取消定时设置，保存商品后生效</view>
+  </view>
+
+  <view class="form-group">
+    <view class="label">货号</view>
+    <input class="input-box" placeholder="请输入货号（选填）" value="{{articleNo}}" bindinput="onInput" data-field="articleNo" maxlength="100" />
   </view>
 
   <!-- 所属档口 -->
@@ -337,7 +345,6 @@
   <view class="form-group">
     <view class="lookbook-header">
       <view class="label">Lookbook 详情长图 (选填，多张)</view>
-      <button class="lookbook-sync-btn" size="mini" bindtap="syncProductImagesToLookbook">同步图片</button>
     </view>
     <sortable-image-grid images="{{lookbookImgs}}" data-type="lookbook" bind:add="chooseExtraImage" bind:preview="previewExtraImage" bind:change="onExtraImagesChange" />
   </view>
@@ -386,7 +393,7 @@
   </view>
 
   <view class="search-bar-wrap">
-    <input class="search-input" placeholder="搜索商品名称、档口或标签" value="{{searchKeyword}}" bindinput="onSearchInput" bindconfirm="searchRelatedProducts" confirm-type="search" />
+    <input class="search-input" placeholder="搜索名称、货号、档口或标签" value="{{searchKeyword}}" bindinput="onSearchInput" bindconfirm="searchRelatedProducts" confirm-type="search" />
     <view class="related-search-btn" bindtap="searchRelatedProducts">搜索</view>
   </view>
 

@@ -9,7 +9,7 @@
       <view class="search-dismiss-mask" wx:if="{{searchActive}}" bindtap="onSearchConfirm"></view>
       <view class="search-box">
         <view class="search-input-wrapper">
-          <input class="search-input" placeholder="搜索商品名称" value="{{searchKeyword}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearchConfirm" focus="{{searchFocus}}" />
+          <input class="search-input" placeholder="搜索商品名称或货号" value="{{searchKeyword}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearchConfirm" focus="{{searchFocus}}" />
           <button class="search-btn" bindtap="onSearchConfirm">搜索</button>
         </view>
         <scroll-view class="search-dropdown" wx:if="{{searchKeyword && (searchDropdown.length > 0 || searchLoading)}}" style="height: {{searchDropdown.length >= 4 ? 600 : searchDropdown.length * 150 + (searchLoading ? 60 : 0)}}rpx" scroll-y="true" bindscrolltolower="loadMoreSearchProducts" lower-threshold="80">

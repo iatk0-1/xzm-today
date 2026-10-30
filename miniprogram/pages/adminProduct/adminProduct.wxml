@@ -16,7 +16,7 @@
 
   <view class="product-toolbar">
     <view class="search-input-wrapper">
-      <input class="search-input" placeholder="搜索商品名称、档口或标签" value="{{searchKeyword}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearchConfirm" focus="{{searchFocus}}" />
+      <input class="search-input" placeholder="搜索名称、货号、档口或标签" value="{{searchKeyword}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearchConfirm" focus="{{searchFocus}}" />
       <view class="search-clear" wx:if="{{searchKeyword}}" bindtap="clearSearch">×</view>
       <view class="search-btn" bindtap="onSearchConfirm">搜索</view>
     </view>
@@ -70,7 +70,15 @@
         <view class="product-info">
           <view class="product-title">{{item.name}}</view>
           <view class="manager-label" wx:if="{{item.managerName}}">档口负责人：{{item.managerName}}</view>
-          <view class="product-price">¥ {{item.displayPrice || item.retailPrice}}</view>
+          <view class="product-pricing-row" catchtap="openSkuPricing" data-id="{{item.id}}">
+            <text class="product-price">￥{{item.displayPrice || item.retailPrice}}</text>
+            <text class="product-cost">成本：￥{{item.costPrice == null ? '--' : item.costPrice}}</text>
+            <view class="quick-edit-icon"><view class="pencil-icon"></view></view>
+          </view>
+          <view class="product-article-row" catchtap="openArticleNoEditor" data-id="{{item.id}}">
+            <text class="product-article-text">货号：{{item.articleNo || '未填写'}}</text>
+            <view class="quick-edit-icon"><view class="pencil-icon"></view></view>
+          </view>
           <view class="relation-group" wx:if="{{!isStallManager}}" catchtap="onRelationTap" catchlongpress="onRelationLongPress" data-type="stall" data-product-id="{{item.id}}">
             <text class="relation-label">档口</text>
             <view class="relation-list">
@@ -152,3 +160,58 @@
 </view>
 
 <product-schedule visible="{{showProductSchedule}}" busy="{{batchOperating}}" allow-cancel="{{false}}" hint="确认后立即为所选商品保存定时设置" bind:close="closeProductSchedule" bind:confirm="confirmBatchSchedule" />
+
+<view class="quick-edit-overlay" wx:if="{{quickEditVisible}}">
+  <view class="quick-edit-mask" catchtap="closeQuickEdit" catchtouchmove="stopQuickEditTouch"></view>
+  <view class="quick-edit-panel">
+    <view class="quick-edit-header">
+      <text>{{quickEditType === 'sku' ? 'SKU 明细' : '修改货号'}}</text>
+      <view class="quick-edit-close" catchtap="closeQuickEdit">×</view>
+    </view>
+    <view class="quick-edit-product">{{quickEditProductName}}</view>
+    <block wx:if="{{quickEditType === 'sku'}}">
+      <view class="quick-edit-hint" wx:if="{{isStallManager}}">修改成本后，保存时按商品计价规则更新售价</view>
+      <view class="quick-edit-loading" wx:if="{{quickEditLoading}}">正在加载规格…</view>
+      <block wx:else>
+        <view class="quick-pricing-console">
+          <input class="quick-pricing-input" type="digit" placeholder="批量成本" value="{{quickEditCost}}" bindinput="onQuickEditInput" data-field="quickEditCost" disabled="{{quickEditSaving}}" />
+          <input wx:if="{{!isStallManager}}" class="quick-pricing-input" type="digit" placeholder="批量价格" value="{{quickEditPrice}}" bindinput="onQuickEditInput" data-field="quickEditPrice" disabled="{{quickEditSaving}}" />
+        </view>
+        <view class="quick-pricing-actions">
+          <view bindtap="fillAllSkuPricing">一键填充</view>
+          <view bindtap="toggleSkuPricingBatch">{{quickEditBatchVisible ? '收起批量设置' : '批量设置'}}</view>
+        </view>
+        <scroll-view class="quick-edit-scroll" scroll-y="true">
+          <view class="quick-pricing-batch" wx:if="{{quickEditBatchVisible}}">
+            <text class="quick-batch-title">选择颜色（不选则不限）</text>
+            <view class="quick-batch-options">
+              <view class="quick-batch-option" bindtap="toggleAllPricingOptions" data-field="quickEditColors">全选/取消</view>
+              <view class="quick-batch-option {{item.selected ? 'active' : ''}}" wx:for="{{quickEditColors}}" wx:key="name" bindtap="togglePricingOption" data-field="quickEditColors" data-index="{{index}}">{{item.name}}</view>
+            </view>
+            <text class="quick-batch-title">选择尺码（不选则不限）</text>
+            <view class="quick-batch-options">
+              <view class="quick-batch-option" bindtap="toggleAllPricingOptions" data-field="quickEditSizes">全选/取消</view>
+              <view class="quick-batch-option {{item.selected ? 'active' : ''}}" wx:for="{{quickEditSizes}}" wx:key="name" bindtap="togglePricingOption" data-field="quickEditSizes" data-index="{{index}}">{{item.name}}</view>
+            </view>
+            <view class="quick-batch-apply" bindtap="applySkuPricingBatch">应用批量设置</view>
+          </view>
+          <view class="quick-sku-row" wx:for="{{quickEditSkus}}" wx:key="id">
+            <view class="quick-sku-name">{{item.bundleGroupName ? item.bundleGroupName + ' · ' : ''}}{{item.spec || '默认'}} / {{item.size || '均码'}}</view>
+            <view class="quick-sku-fields">
+              <view class="quick-sku-field"><text>成本</text><input type="digit" placeholder="选填" value="{{item.costPrice}}" bindinput="onQuickSkuInput" data-index="{{index}}" data-field="costPrice" bindblur="onQuickSkuCostBlur" disabled="{{quickEditSaving}}" /></view>
+              <view class="quick-sku-field"><text>价格</text><input type="digit" placeholder="售价" value="{{item.retailPrice}}" bindinput="onQuickSkuInput" data-index="{{index}}" data-field="retailPrice" disabled="{{isStallManager || quickEditSaving}}" /></view>
+            </view>
+          </view>
+          <view class="quick-edit-loading" wx:if="{{!quickEditSkus.length}}">暂无可编辑的规格</view>
+        </scroll-view>
+      </block>
+    </block>
+    <view class="quick-article-form" wx:else>
+      <input class="quick-article-input" placeholder="请输入货号（选填）" value="{{quickEditArticleNo}}" bindinput="onQuickEditInput" data-field="quickEditArticleNo" maxlength="100" disabled="{{quickEditSaving}}" />
+    </view>
+    <view class="quick-edit-footer">
+      <button class="quick-edit-cancel" bindtap="closeQuickEdit" disabled="{{quickEditSaving}}">取消</button>
+      <button class="quick-edit-save" bindtap="saveQuickEdit" loading="{{quickEditSaving}}" disabled="{{quickEditLoading || quickEditSaving || quickEditPricingBusy || (quickEditType === 'sku' && !quickEditSkus.length)}}">保存</button>
+    </view>
+  </view>
+</view>

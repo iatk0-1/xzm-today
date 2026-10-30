@@ -47,6 +47,7 @@ const pageDefinition = {
     purchaseNotice: DEFAULT_PURCHASE_NOTICE,
 
     title: '',
+    articleNo: '',
     titleContentHeight: 0,
     titleMaxHeight: 150,
     selectedStalls: [],
@@ -281,6 +282,7 @@ const pageDefinition = {
       // 填充基本信息
       const formData = {
         title: product.name || '',
+        articleNo: product.articleNo || '',
         productSchedule: res.schedule || null,
         productScheduleDirty: false,
         productScheduleSummary: scheduleSummary(res.schedule),
@@ -517,6 +519,7 @@ const pageDefinition = {
       // 填充基本信息
       const formData = {
         title: product.name || '',
+        articleNo: product.articleNo || '',
         videoUrl: product.videoUrl || '',
         videoThumbPath: res.useVideoCover ? (product.coverUrl || '') : '',
         useVideoCover: !!res.useVideoCover,
@@ -1937,6 +1940,7 @@ const pageDefinition = {
       // 4. 构造商品请求数据
       const productData = {
         name: title,
+        articleNo: this.data.articleNo.trim(),
         schedule: this.data.productScheduleDirty ? this.data.productSchedule : undefined,
         costPrice: this.productCost(this.data.costPrice),
         pricingRuleId: this.data.pricingRuleId ? String(this.data.pricingRuleId) : null,
@@ -2582,6 +2586,7 @@ const pageDefinition = {
     var data = this.data;
     return {
       title: data.title,
+      articleNo: data.articleNo,
       costPrice: data.costPrice,
       pricingRuleId: data.pricingRuleId,
       pricingRuleName: data.pricingRuleName,
@@ -2670,6 +2675,7 @@ const pageDefinition = {
 
     var restored = {
       title: safeGet(draftData, 'title', ''),
+      articleNo: safeGet(draftData, 'articleNo', ''),
       videoUrl: safeGet(draftData, 'videoUrl', ''),
       videoThumbPath: draft.isRemoteUrl(draftData.videoThumbPath) ? draftData.videoThumbPath : '',
       useVideoCover: safeGet(draftData, 'useVideoCover', false),
@@ -2725,7 +2731,7 @@ const pageDefinition = {
 
   hasFormContent() {
     var d = this.data;
-    return !!(d.title || (d.mediaList && d.mediaList.length > 0) ||
+    return !!(d.title || d.articleNo || (d.mediaList && d.mediaList.length > 0) ||
       (d.skuList && d.skuList.length > 0) ||
       (d.selectedStalls && d.selectedStalls.length > 0) ||
       (d.selectedTags && d.selectedTags.length > 0) ||

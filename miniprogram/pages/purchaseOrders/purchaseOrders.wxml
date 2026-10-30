@@ -38,7 +38,7 @@
         </view>
       </view>
       <view class="sku-filter">
-        <input class="sku-input" placeholder="搜索商品名称" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="search" />
+        <input class="sku-input" placeholder="搜索商品名称或货号" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="search" />
         <button class="sku-search-btn" bindtap="search">搜索</button>
       </view>
       <view class="date-filter">

@@ -68,6 +68,7 @@ function loadPage(name, { fail = false, detail = {}, get } = {}) {
     require(moduleName) {
       if (moduleName.endsWith('/error')) return require('../../utils/error');
       if (moduleName.endsWith('/productImage')) return require('../../utils/productImage');
+      if (moduleName.endsWith('/productQuickEdit')) return require('../../utils/productQuickEdit');
       if (moduleName.endsWith('/draft')) return require('../../utils/draft');
       if (moduleName.endsWith('/api')) return {
         get: async (url, params) => get ? get(url, params) : detail, put: (url, data) => write('put', url, data),

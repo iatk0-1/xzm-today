@@ -27,7 +27,7 @@
 
   <view class="filter-panel">
     <view class="search-row">
-      <input class="search-input" value="{{keyword}}" placeholder="搜索商品名称" bindinput="onKeywordInput" bindconfirm="search" />
+      <input class="search-input" value="{{keyword}}" placeholder="搜索商品名称或货号" bindinput="onKeywordInput" bindconfirm="search" />
       <view class="clear-btn" wx:if="{{keyword}}" bindtap="clearSearch">清除</view>
       <view class="search-btn" bindtap="search">搜索</view>
     </view>

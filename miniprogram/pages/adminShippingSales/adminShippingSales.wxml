@@ -15,7 +15,7 @@
   </view>
   <view class="filter-bar">
     <view class="search-row">
-      <input class="search-input" placeholder="搜索商品名称..." value="{{keywordInput}}" bindinput="onKeywordInput" bindconfirm="onSearch" confirm-type="search" />
+      <input class="search-input" placeholder="搜索商品名称或货号..." value="{{keywordInput}}" bindinput="onKeywordInput" bindconfirm="onSearch" confirm-type="search" />
       <view class="search-btn" bindtap="onSearch">搜索</view>
     </view>
     <view class="filter-section">

@@ -5,7 +5,7 @@
       <text class="search-icon">🔍</text>
       <input
         class="search-input"
-        placeholder="搜索商品名称"
+        placeholder="搜索商品名称或货号"
         placeholder-class="input-placeholder"
         value="{{searchKeyword}}"
         bindinput="onSearchInput"

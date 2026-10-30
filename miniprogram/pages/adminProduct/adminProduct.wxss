@@ -128,3 +128,44 @@ page { background-color: #f2f2f2; height: 100vh; display: flex; flex-direction: 
 .schedule-cancel.disabled { color: #b8bec6; }
 .batch-clear.cancel-schedule { color: #d32f2f; }
 .batch-clear.cancel-schedule.disabled { color: #b8bec6; }
+
+/* 商品卡片快捷编辑与 SKU 价格弹窗 */
+.product-pricing-row, .product-article-row { display: flex; align-items: center; gap: 12rpx; margin-top: 8rpx; min-height: 44rpx; }
+.product-pricing-row .product-price { margin-top: 0; flex-shrink: 0; }
+.product-cost { font-size: 24rpx; color: #666; }
+.product-article-text { flex: 1; min-width: 0; font-size: 24rpx; color: #666; word-break: break-all; }
+.quick-edit-icon { width: 40rpx; height: 40rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pencil-icon { width: 20rpx; height: 7rpx; border: 2rpx solid #888; transform: rotate(-45deg); position: relative; }
+.pencil-icon::after { content: ''; position: absolute; left: -8rpx; top: -2rpx; border-top: 5rpx solid transparent; border-bottom: 5rpx solid transparent; border-right: 6rpx solid #888; }
+.quick-edit-overlay { position: fixed; inset: 0; z-index: 1200; }
+.quick-edit-mask { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
+.quick-edit-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88vh; display: flex; flex-direction: column; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 28rpx 28rpx calc(24rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
+.quick-edit-header { display: flex; align-items: center; justify-content: space-between; font-size: 32rpx; font-weight: 600; }
+.quick-edit-close { padding: 0 12rpx; font-size: 44rpx; line-height: 1; color: #888; }
+.quick-edit-product { font-size: 25rpx; color: #666; margin: 16rpx 0 22rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quick-edit-hint { color: #888; font-size: 23rpx; margin-bottom: 16rpx; }
+.quick-edit-loading { padding: 48rpx 0; text-align: center; color: #888; font-size: 26rpx; }
+.quick-pricing-console { display: flex; gap: 16rpx; }
+.quick-pricing-input { flex: 1; min-width: 0; height: 72rpx; padding: 0 20rpx; border-radius: 10rpx; background: #f5f5f5; font-size: 26rpx; }
+.quick-pricing-actions { display: flex; gap: 20rpx; margin: 18rpx 0; }
+.quick-pricing-actions > view, .quick-batch-apply { padding: 14rpx 22rpx; border-radius: 10rpx; background: #f2f3f5; font-size: 25rpx; color: #333; }
+.quick-edit-scroll { height: 44vh; min-height: 180rpx; }
+.quick-sku-row { padding: 22rpx 0; border-bottom: 1rpx solid #eee; }
+.quick-sku-name { font-size: 26rpx; color: #333; margin-bottom: 16rpx; word-break: break-all; }
+.quick-sku-fields { display: flex; gap: 24rpx; }
+.quick-sku-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12rpx; }
+.quick-sku-field > text { flex-shrink: 0; font-size: 24rpx; color: #888; }
+.quick-sku-field input { flex: 1; min-width: 0; height: 64rpx; padding: 0 14rpx; box-sizing: border-box; background: #f5f5f5; border-radius: 8rpx; font-size: 27rpx; }
+.quick-pricing-batch { background: #fafafa; padding: 20rpx; border-radius: 12rpx; }
+.quick-batch-title { font-size: 24rpx; color: #666; }
+.quick-batch-options { display: flex; flex-wrap: wrap; gap: 12rpx; margin: 16rpx 0 24rpx; }
+.quick-batch-option { padding: 10rpx 16rpx; font-size: 24rpx; background: #eee; border-radius: 8rpx; }
+.quick-batch-option.active { background: #333; color: #fff; }
+.quick-batch-apply { text-align: center; background: #333; color: #fff; }
+.quick-article-form { padding: 12rpx 0 36rpx; }
+.quick-article-input { height: 84rpx; padding: 0 22rpx; background: #f5f5f5; border-radius: 10rpx; font-size: 28rpx; }
+.quick-edit-footer { display: flex; gap: 20rpx; padding-top: 24rpx; }
+.quick-edit-footer button { flex: 1; margin: 0; font-size: 28rpx; border-radius: 12rpx; }
+.quick-edit-cancel { background: #f2f3f5; color: #555; }
+.quick-edit-save { background: #222; color: #fff; }
+.quick-edit-save[disabled] { background: #ccc; color: #fff; }

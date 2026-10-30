@@ -143,3 +143,12 @@ test('新增历史草稿可补发上下文，负责人禁用规则不能发布�
   await edit.publish();
   assert.equal(edit.submissions[0].productData.skus[0].retailPrice, 15);
 });
+
+test('普通商品草稿发布时保存选填货号并去掉首尾空格，缺失字段兼容旧草稿', async () => {
+  const withArticle = harness({ data: { articleNo: ' HN-001 ' } });
+  await withArticle.publish();
+  assert.equal(withArticle.submissions[0].productData.articleNo, 'HN-001');
+  const legacy = harness();
+  await legacy.publish();
+  assert.equal(legacy.submissions[0].productData.articleNo, '');
+});

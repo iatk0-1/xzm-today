@@ -4,10 +4,11 @@ const autoSearch = require('../../utils/autoSearch');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const draft = require('../../utils/draft');
+const { integrateProductQuickEdit } = require('../../utils/productQuickEdit');
 const { isProductSoldOut } = require('../../utils/stock');
 const { beijingParts, hasPendingSchedule } = require('../../utils/productSchedule');
 
-Page(autoSearch.wrap({
+Page(autoSearch.wrap(integrateProductQuickEdit({
   data: {
     draftCount: 0,
     products: [],
@@ -853,7 +854,7 @@ Page(autoSearch.wrap({
       url: '/pages/adminProductRecycleBin/adminProductRecycleBin'
     });
   }
-}, {
+}), {
   input: 'onSearchInput',
   submit: 'onSearchConfirm',
   field: 'searchKeyword',
