@@ -1,0 +1,57 @@
+<view class="promotion-card">
+  <view class="promotion-title"><text>商品优惠</text><button size="mini" bindtap="open" disabled="{{disabled}}">选择 / 新增优惠</button></view>
+  <view class="promotion-line">首单优惠：{{value.firstName || '不使用'}}</view>
+  <view wx:if="{{value.firstSummary}}" class="promotion-tip">{{value.firstSummary}}</view>
+  <view class="promotion-line">其他优惠：{{value.otherName || '不使用'}}</view>
+  <view wx:if="{{value.otherSummary}}" class="promotion-tip">{{value.otherSummary}}</view>
+  <view wx:if="{{value.otherSchemeId}}" class="promotion-tip">{{value.combine ? '允许与其他商品的同一方案凑单' : '仅当前商品生效'}}；覆盖本商品全部规格</view>
+  <view class="promotion-tip">先算首单优惠，再算其他优惠。选择将在保存商品后生效。</view>
+</view>
+<view wx:if="{{visible}}" class="promotion-mask" catchtap="close" catchtouchmove="block">
+  <view class="promotion-panel" catchtap="block">
+    <view class="promotion-title"><text>{{editing ? '新增优惠方案' : '选择商品优惠'}}</text><button size="mini" bindtap="close" disabled="{{saving}}">关闭</button></view>
+    <scroll-view scroll-y class="promotion-scroll">
+      <view wx:if="{{loading}}" class="promotion-tip">正在加载优惠方案…</view>
+      <block wx:elif="{{!editing}}">
+        <view class="promotion-label">首单优惠（独立，可叠加）</view>
+        <picker range="{{firstChoices}}" range-key="label" value="{{firstIndex}}" bindchange="chooseFirst"><view class="promotion-picker">{{value.firstName || '不使用首单优惠'}} ▾</view></picker>
+        <view class="promotion-tip">人数按商品独立计算，有效期从商品首次启用该方案起算。</view>
+        <view class="promotion-label">其他优惠类型（三种互斥）</view>
+        <picker range="{{typeLabels}}" value="{{otherTypeIndex}}" bindchange="chooseType"><view class="promotion-picker">{{typeLabels[otherTypeIndex]}} ▾</view></picker>
+        <picker wx:if="{{otherTypeIndex}}" range="{{otherChoices}}" range-key="label" value="{{otherIndex}}" bindchange="chooseOther"><view class="promotion-picker">{{value.otherName || '请选择优惠方案'}} ▾</view></picker>
+        <view wx:if="{{value.otherSchemeId}}" class="promotion-switch"><text>与同方案其他商品凑单</text><switch checked="{{value.combine}}" bindchange="combine" color="#07c160" /></view>
+        <view class="promotion-tip">关闭时只算本商品；开启后，只与同一订单中也开启凑单、且选择同一方案的商品合算。</view>
+        <button class="promotion-primary" bindtap="create" disabled="{{loading}}">新增优惠方案</button>
+        <button wx:if="{{error}}" bindtap="open">重新加载</button>
+      </block>
+      <block wx:else>
+        <view class="promotion-label">优惠类型</view>
+        <picker range="{{createTypes}}" value="{{createTypeIndex}}" bindchange="createType"><view class="promotion-picker">{{createTypes[createTypeIndex]}} ▾</view></picker>
+        <view class="promotion-label">方案名称</view><input class="promotion-input" placeholder="给方案起个便于选择的名字" value="{{form.name}}" data-field="name" bindinput="input" maxlength="100" />
+        <block wx:if="{{form.type === 'FIRST'}}">
+          <view class="promotion-label">优惠金额（元，每个商品首购合计减一次）</view><input class="promotion-input" type="digit" value="{{form.amount}}" data-field="amount" bindinput="input" />
+          <view class="promotion-label">可享人数（每个商品独立）</view><input class="promotion-input" type="number" value="{{form.maxUsers}}" data-field="maxUsers" bindinput="input" />
+          <view class="promotion-label">有效天数（商品启用时起算）</view><input class="promotion-input" type="number" value="{{form.validDays}}" data-field="validDays" bindinput="input" />
+        </block>
+        <block wx:if="{{form.type === 'AMOUNT'}}">
+          <view class="promotion-label">满多少元</view><input class="promotion-input" type="digit" value="{{form.thresholdAmount}}" data-field="thresholdAmount" bindinput="input" />
+          <view class="promotion-label">减多少元（达到门槛减一次）</view><input class="promotion-input" type="digit" value="{{form.amount}}" data-field="amount" bindinput="input" />
+        </block>
+        <block wx:if="{{form.type === 'RATE'}}">
+          <view class="promotion-label">满几件</view><input class="promotion-input" type="number" value="{{form.minimumQty}}" data-field="minimumQty" bindinput="input" />
+          <view class="promotion-label">打几折（例如9、9.5，达标后全部件数打折）</view><input class="promotion-input" type="digit" value="{{form.fold}}" data-field="fold" bindinput="input" />
+        </block>
+        <block wx:if="{{form.type === 'QUANTITY'}}">
+          <view class="promotion-label">减免方式</view><picker range="{{['满件总减', '按件递增减']}}" value="{{form.mode === 'PROGRESSIVE' ? 1 : 0}}" bindchange="mode"><view class="promotion-picker">{{form.mode === 'PROGRESSIVE' ? '按件递增减' : '满件总减'}} ▾</view></picker>
+          <block wx:if="{{form.mode !== 'PROGRESSIVE'}}"><view class="promotion-label">满几件</view><input class="promotion-input" type="number" value="{{form.minimumQty}}" data-field="minimumQty" bindinput="input" /></block>
+          <view class="promotion-label">{{form.mode === 'PROGRESSIVE' ? '每往后一件多减多少元（首件不减）' : '合计减多少元'}} </view><input class="promotion-input" type="digit" value="{{form.amount}}" data-field="amount" bindinput="input" />
+          <block wx:if="{{form.mode === 'PROGRESSIVE'}}"><view class="promotion-label">单件减免上限（元，选填）</view><input class="promotion-input" type="digit" value="{{form.maxUnitDiscount}}" data-field="maxUnitDiscount" bindinput="input" /></block>
+        </block>
+        <view class="promotion-tip">保存后方案可重复选择；本商品的优惠选择随商品一起保存。</view>
+        <button class="promotion-primary" loading="{{saving}}" disabled="{{saving}}" bindtap="saveScheme">保存方案并选中</button>
+        <button disabled="{{saving}}" bindtap="cancelCreate">返回选择</button>
+      </block>
+      <view wx:if="{{error}}" class="promotion-error">{{error}}</view>
+    </scroll-view>
+  </view>
+</view>

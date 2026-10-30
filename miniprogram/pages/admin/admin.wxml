@@ -80,6 +80,8 @@
     <view class="product-schedule-summary" wx:elif="{{productScheduleDirty}}">已取消定时设置，保存商品后生效</view>
   </view>
 
+  <product-promotions value="{{promotions}}" disabled="{{draftSaving || managerInactive}}" bind:change="onPromotionsChange" />
+
   <view class="form-group">
     <view class="label">货号</view>
     <input class="input-box" placeholder="请输入货号（选填）" value="{{articleNo}}" bindinput="onInput" data-field="articleNo" maxlength="100" />

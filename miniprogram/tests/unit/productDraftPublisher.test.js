@@ -152,3 +152,17 @@ test('普通商品草稿发布时保存选填货号并去掉首尾空格，缺�
   await legacy.publish();
   assert.equal(legacy.submissions[0].productData.articleNo, '');
 });
+
+
+test('草稿直接发布也提交优惠绑定，去除展示名称，清空选择与旧草稿有不同含义', async () => {
+  for (const promotions of [undefined, { firstSchemeId: null, otherSchemeId: null, combine: false },
+    { firstSchemeId: '9007199254740993555', otherSchemeId: '9007199254740993666', combine: true, firstName: '首单减5' }]) {
+    const env = harness({ data: { promotions } });await env.publish();
+    const actual = env.submissions[0].productData.promotions;
+    if (promotions === undefined) assert.equal(actual, undefined);
+    else {
+      assert.equal(actual.firstSchemeId, promotions.firstSchemeId);assert.equal(actual.otherSchemeId, promotions.otherSchemeId);
+      assert.equal(actual.combine, promotions.combine);assert.equal(actual.firstName, undefined);
+    }
+  }
+});

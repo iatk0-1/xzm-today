@@ -66,6 +66,7 @@ function loadPage(name, { fail = false, detail = {}, get } = {}) {
     clearTimeout(id) { if (timers[id - 1]) timers[id - 1].cancelled = true; }, Date, Set,
     wx: { showToast(value) { toasts.push(value.title); }, showLoading() {}, hideLoading() {}, showModal(value) { modals.push(value); } },
     require(moduleName) {
+      if (moduleName.endsWith('/productPromotions')) return require('../../utils/productPromotions');
       if (moduleName.endsWith('/error')) return require('../../utils/error');
       if (moduleName.endsWith('/productImage')) return require('../../utils/productImage');
       if (moduleName.endsWith('/productQuickEdit')) return require('../../utils/productQuickEdit');

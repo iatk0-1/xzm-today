@@ -4,6 +4,7 @@
     "product-draft-status": "../../components/productDraftStatus/index",
     "sortable-image-grid": "../../components/sortableImageGrid/index",
     "product-editor-shell": "../../components/productEditorShell/index",
-    "product-schedule": "../../components/productSchedule/index"
+    "product-schedule": "../../components/productSchedule/index",
+    "product-promotions": "../../components/productPromotions/index"
   }
 }

@@ -10,6 +10,7 @@ const { normalizeProductImages, productImageUrl } = require('../../utils/product
 const draft = require('../../utils/draft');
 const { integrateProductPricing } = require('../../utils/productPricing');
 const finance = require('../../utils/managerFinance');
+const { binding: promotionBinding, fromSelection: promotionsFromSelection } = require('../../utils/productPromotions');
 const { scheduleSummary } = require('../../utils/productSchedule');
 const { DEFAULT_PURCHASE_NOTICE, getPurchaseNotice } = require('../../utils/purchaseNotice');
 
@@ -48,6 +49,7 @@ const pageDefinition = {
 
     title: '',
     articleNo: '',
+    promotions: null,
     titleContentHeight: 0,
     titleMaxHeight: 150,
     selectedStalls: [],
@@ -131,6 +133,10 @@ const pageDefinition = {
 
     // 子项名称输入框聚焦
     bundleGroupNameFocus: false
+  },
+
+  onPromotionsChange(e) {
+    if (!this._pricingSubmitting && !this.data.draftSaving) this.setData({ promotions: e.detail.value });
   },
 
   async onLoad(options) {
@@ -283,6 +289,7 @@ const pageDefinition = {
       const formData = {
         title: product.name || '',
         articleNo: product.articleNo || '',
+        promotions: promotionsFromSelection(res.promotions),
         productSchedule: res.schedule || null,
         productScheduleDirty: false,
         productScheduleSummary: scheduleSummary(res.schedule),
@@ -1941,6 +1948,7 @@ const pageDefinition = {
       const productData = {
         name: title,
         articleNo: this.data.articleNo.trim(),
+        promotions: promotionBinding(this.data.promotions),
         schedule: this.data.productScheduleDirty ? this.data.productSchedule : undefined,
         costPrice: this.productCost(this.data.costPrice),
         pricingRuleId: this.data.pricingRuleId ? String(this.data.pricingRuleId) : null,
@@ -2587,6 +2595,7 @@ const pageDefinition = {
     return {
       title: data.title,
       articleNo: data.articleNo,
+      promotions: data.promotions,
       costPrice: data.costPrice,
       pricingRuleId: data.pricingRuleId,
       pricingRuleName: data.pricingRuleName,
@@ -2676,6 +2685,7 @@ const pageDefinition = {
     var restored = {
       title: safeGet(draftData, 'title', ''),
       articleNo: safeGet(draftData, 'articleNo', ''),
+      promotions: safeGet(draftData, 'promotions', this.data.promotions),
       videoUrl: safeGet(draftData, 'videoUrl', ''),
       videoThumbPath: draft.isRemoteUrl(draftData.videoThumbPath) ? draftData.videoThumbPath : '',
       useVideoCover: safeGet(draftData, 'useVideoCover', false),

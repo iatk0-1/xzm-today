@@ -1,0 +1,13 @@
+.promotion-card{margin:24rpx 0;padding:24rpx;background:#fff;border:1rpx solid #e9ecef;border-radius:16rpx;color:#252a30}
+.promotion-title{display:flex;align-items:center;justify-content:space-between;font-size:30rpx;font-weight:600;gap:16rpx}
+.promotion-title button{margin:0;font-size:24rpx;flex-shrink:0}
+.promotion-line{margin-top:16rpx;font-size:27rpx;word-break:break-all}
+.promotion-tip{margin:14rpx 0;color:#717780;font-size:24rpx;line-height:1.7}
+.promotion-mask{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1200;display:flex;align-items:flex-end}
+.promotion-panel{width:100%;box-sizing:border-box;background:#fff;padding:32rpx 28rpx calc(28rpx + env(safe-area-inset-bottom));border-radius:24rpx 24rpx 0 0}
+.promotion-scroll{max-height:70vh;margin-top:20rpx}
+.promotion-label{font-size:26rpx;margin:24rpx 0 12rpx;color:#424951}
+.promotion-input,.promotion-picker{background:#f5f6f7;border-radius:10rpx;padding:20rpx;font-size:28rpx;min-height:42rpx;line-height:42rpx}
+.promotion-switch{display:flex;align-items:center;justify-content:space-between;margin-top:24rpx;font-size:27rpx}
+.promotion-primary{margin:28rpx 0 16rpx;background:#07c160;color:#fff}
+.promotion-error{padding:20rpx 0;font-size:26rpx;color:#c83337;line-height:1.6}

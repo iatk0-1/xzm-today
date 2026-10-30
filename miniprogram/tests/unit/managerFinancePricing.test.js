@@ -36,6 +36,7 @@ function pageHarness(file, { get, post, put, del, upload, manager = false } = {}
       module, exports: module.exports, Page(value) { definition = value; },
       wx, console, setTimeout: () => 0, clearTimeout() {},
       require(name) {
+        if (name.endsWith('/productPromotions')) return require('../../utils/productPromotions');
         if (name.endsWith('/error')) return require('../../utils/error');
         if (name.endsWith('/productImage')) return require('../../utils/productImage');
         if (name.endsWith('/api') || name === './api') return api;

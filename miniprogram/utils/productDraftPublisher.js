@@ -1,3 +1,4 @@
+const { binding: promotionBinding } = require('./productPromotions');
 const api = require('./api');
 const auth = require('./auth');
 const draft = require('./draft');
@@ -96,6 +97,7 @@ async function buildProduct(record) {
     skus: groups && !editing ? [] : skus, bundleGroups: editing ? undefined : groups,
     ...(!live ? {
       articleNo: String(data.articleNo || '').trim(),
+      promotions: promotionBinding(data.promotions),
       schedule: data.productScheduleDirty ? data.productSchedule : undefined,
       useVideoCover: !!videoCover,
       lookbookImages: (data.lookbookImgs || []).map(url => remote(url, '搭配图片', true)),

@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function harness(file, { save, record, manager = false, product, useVideoCover, extractVideoCover } = {}) {
+function harness(file, { save, record, manager = false, product, promotions, useVideoCover, extractVideoCover } = {}) {
   let definition;
   const events = [];
   const wx = {
@@ -24,7 +24,7 @@ function harness(file, { save, record, manager = false, product, useVideoCover, 
       if (url.endsWith('/preference/mine')) return {};
       if (url === '/sizes/categories') return [{ id: '7', name: '默认尺码', sizes: [{ id: '8', name: '均码' }] }];
       if (url === '/stall-managers/mine') return { active: true };
-      if (url.startsWith('/products/')) return { useVideoCover, product: product || { name: '原商品', stallIds: [] },
+      if (url.startsWith('/products/')) return { useVideoCover, promotions, product: product || { name: '原商品', stallIds: [] },
         skus: [{ id: '20', spec: '白', size: '均码', retailPrice: '20', costPrice: '10', stockMain: 5 }] };
       return [];
     },
@@ -54,6 +54,7 @@ function harness(file, { save, record, manager = false, product, useVideoCover, 
       setTimeout: () => 0, clearTimeout() {},
       require(name) {
         if (name.endsWith('/videoCover')) return { extractVideoCover };
+        if (name.endsWith('/productPromotions')) return require('../../utils/productPromotions');
         if (name.endsWith('/error')) return require('../../utils/error');
         if (name.endsWith('/productImage')) return require('../../utils/productImage');
         if (name.endsWith('/api') || name === './api') return api;
@@ -418,4 +419,21 @@ test('货号参与编辑回显、草稿保存、恢复与退出保护，旧草�
   assert.equal(page.data.articleNo, 'HN-003');
   await page.restoreDraft({ title: '旧草稿' });
   assert.equal(page.data.articleNo, '');
+});
+
+
+test('商品优惠回显、修改、草稿保存与恢复保留首单和互斥方案及凑单设置', async () => {
+  const promotions = { binding: { firstSchemeId: '101', otherSchemeId: '102', combine: true },
+    firstScheme: { name: '首单减5' }, otherScheme: { name: '满200减10', type: 'AMOUNT' }, firstActivatedAt: '2026-10-31T08:00:00+08:00' };
+  const { page, events } = harness('../../pages/admin/admin.js', { promotions });
+  await page.onLoad({ editId: '10' });
+  assert.equal(page.data.promotions.firstSchemeId, '101');assert.equal(page.data.promotions.otherName, '满200减10');
+  page.onPromotionsChange({ detail: { value: { ...page.data.promotions, combine: false } } });
+  const draftData = page.collectDraftData();assert.equal(draftData.promotions.combine, false);
+  page.setData({ promotions: null });await page.restoreDraft(draftData);
+  assert.equal(page.data.promotions.firstSchemeId, '101');assert.equal(page.data.promotions.combine, false);
+  page.setData({ title: '带优惠的商品', mediaList: [{ id: 'cover', url: 'https://example.com/cover.jpg' }] });
+  await page.saveDraft();
+  const saved = events.filter(e => e[0] === 'save').at(-1);
+  assert.equal(saved[1].promotions.otherSchemeId, '102');
 });
