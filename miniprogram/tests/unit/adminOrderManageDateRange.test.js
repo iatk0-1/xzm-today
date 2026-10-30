@@ -103,3 +103,53 @@ test('订单列表初次加载和拣货入口刷新都保留SKU图，SKU无图�
   await refreshing;
   assert.equal(page.data.orders[0].items[0].skuImageUrl, '/blue.jpg');
 });
+
+
+test('档口标签组合筛选重置首屏，翻页保留条件，全部仅清除对应条件', async () => {
+  global.wx = { showLoading() {}, hideLoading() {}, showToast() {} };
+  const page = { ...pageConfig, data: structuredClone(pageConfig.data),
+    setData(patch, callback) { Object.assign(this.data, patch); if (callback) callback(); } };
+  page.data.currentTab = '备货中';
+  page.data.searchKeyword = '棉袄';
+  page.data.dateRange.startDate = '2026-10-01';
+  page.data.page = 3;
+  const request = async action => {
+    action();
+    await new Promise(resolve => setImmediate(resolve));
+    const pending = pendingRequests.shift();
+    assert.equal(pending.url, '/admin/orders-manage/orders/query');
+    assert.equal(pending.params.status, 'stocking');
+    assert.equal(pending.params.keyword, '棉袄');
+    assert.equal(pending.params.startDate, '2026-10-01');
+    pending.resolve({ content: [{ id: String(pending.params.page) }], totalElements: 10 });
+    await new Promise(resolve => setImmediate(resolve));
+    return pending.params;
+  };
+  let params = await request(() => page.selectStall({ currentTarget: { dataset: { stall: '9007199254740993' } } }));
+  assert.equal(params.page, 1);
+  assert.equal(params.stallId, '9007199254740993');
+  params = await request(() => page.selectTag({ currentTarget: { dataset: { tag: '22' } } }));
+  assert.equal(params.page, 1);
+  assert.equal(params.stallId, '9007199254740993');
+  assert.equal(params.tagId, '22');
+  params = await request(() => page.loadOrders(false));
+  assert.equal(params.page, 2);
+  assert.equal(params.tagId, '22');
+  assert.equal(page.data.orders.length, 2);
+  params = await request(() => page.selectStall({ currentTarget: { dataset: { stall: 'all' } } }));
+  assert.equal(params.page, 1);
+  assert.equal(params.stallId, undefined);
+  assert.equal(params.tagId, '22');
+  params = await request(() => page.selectTag({ currentTarget: { dataset: { tag: 'all' } } }));
+  assert.equal(params.stallId, undefined);
+  assert.equal(params.tagId, undefined);
+});
+
+test('筛选中的订单发生更新后重新查询，避免保留不再命中的订单', async () => {
+  const page = { ...pageConfig, data: structuredClone(pageConfig.data) };
+  page.data.selectedTag = '22';
+  let calls = 0;
+  page.loadOrders = async () => { calls++; };
+  await page.refreshOrder('123');
+  assert.equal(calls, 1);
+});

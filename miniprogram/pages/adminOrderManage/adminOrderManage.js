@@ -53,6 +53,10 @@ Page(autoSearch.wrap(pageSync.wrap({
     
     // 搜索
     searchKeyword: '',
+    stallList: [],
+    tagList: [],
+    selectedStall: '',
+    selectedTag: '',
     timeType: 'created',
     sortDirection: 'desc',
     
@@ -83,6 +87,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       this.loadOrders();
       return;
     }
+    this.loadFilterOptions();
     const statusMap = {
       'all': '全部',
       'pay': '待付款',
@@ -98,6 +103,28 @@ Page(autoSearch.wrap(pageSync.wrap({
       this.setData({ currentTab: statusMap[options.status] });
     }
     this.loadOrders();
+  },
+
+  // 与拣货单保持一致，档口和标签可组合筛选。
+  loadFilterOptions: async function() {
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      const [stalls, tags] = await Promise.all([api.get('/stalls/all'), api.get('/tags/all')]);
+      this.setData({ stallList: Array.isArray(stalls) ? stalls : [], tagList: Array.isArray(tags) ? tags : [] });
+    } catch (err) {
+      console.error('加载档口和标签失败:', err);
+      wx.showToast({ title: getErrorMessage(err, '加载档口和标签失败'), icon: 'none' });
+    }
+  },
+
+  selectStall: function(e) {
+    const stallId = e.currentTarget.dataset.stall;
+    this.setData({ selectedStall: stallId === 'all' ? '' : stallId }, () => this.loadOrders());
+  },
+
+  selectTag: function(e) {
+    const tagId = e.currentTarget.dataset.tag;
+    this.setData({ selectedTag: tagId === 'all' ? '' : tagId }, () => this.loadOrders());
   },
 
   switchTab: function(e) {
@@ -243,6 +270,8 @@ Page(autoSearch.wrap(pageSync.wrap({
       if (this.data.searchKeyword) params.keyword = this.data.searchKeyword;
       if (this.data.dateRange.startDate) params.startDate = this.data.dateRange.startDate;
       if (this.data.dateRange.endDate) params.endDate = this.data.dateRange.endDate;
+      if (this.data.selectedStall) params.stallId = this.data.selectedStall;
+      if (this.data.selectedTag) params.tagId = this.data.selectedTag;
       params.page = targetPage;
       params.size = this.data.size;
 
@@ -298,7 +327,7 @@ Page(autoSearch.wrap(pageSync.wrap({
   },
 
   refreshOrder: async function(id) {
-    if (!this.data.pickingSkuId && this.data.timeType === 'shipped') {
+    if (!this.data.pickingSkuId && (this.data.timeType === 'shipped' || this.data.selectedStall || this.data.selectedTag)) {
       await this.loadOrders();
       return;
     }
