@@ -15,6 +15,7 @@ function harness(options = {}) {
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../pages/checkout/checkout.js'), 'utf8'), {
     Page: v => { definition = v; }, wx, console: { error() {} }, setTimeout() {},
     require(name) {
+      if (name.endsWith('/skuSelectionDraft')) return require('../../utils/skuSelectionDraft');
       if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/purchaseNotice')) return require('../../utils/purchaseNotice');
       if (name.endsWith('/customerServiceNavigation')) return require('../../utils/customerServiceNavigation');

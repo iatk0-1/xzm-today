@@ -136,75 +136,7 @@
   </view>
 </view>
 
-<view class="sku-mask {{showSku ? 'fade-in' : ''}}" wx:if="{{showSku}}" catchtap="closeSkuPanel"></view>
-<view class="sku-panel {{showSku ? 'slide-up' : ''}}">
-  <view class="sku-close" catchtap="closeSkuPanel">×</view>
-  <view class="sku-header" wx:if="{{currentProduct}}">
-    <image class="sku-img" src="{{currentSkuImage || currentProduct.coverUrl}}" mode="aspectFill"></image>
-    <view class="sku-main">
-      <view class="sku-price">¥{{currentSkuPrice || currentProduct.retailPrice || currentProduct.displayPrice || '0.00'}}</view>
-      <view class="sku-stock {{currentSkuStock === 0 && !currentSkuUnlimited ? 'out-of-stock' : ''}}">库存：{{currentSkuStockText || '请选择规格'}}</view>
-      <view class="sku-choose-tip">已选：{{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</view>
-    </view>
-  </view>
-  <!-- 套装商品子项选择 -->
-  <scroll-view scroll-y style="max-height: 50vh;padding:0 16rpx;" wx:if="{{bundleSelections.length > 0}}">
-    <view class="bundle-group-card" wx:for="{{bundleSelections}}" wx:key="index" wx:for-item="sel" wx:for-index="bgIdx">
-      <view class="bundle-group-name">
-        <text class="bg-step">{{bgIdx + 1}}</text>
-        <text>{{sel.bundleGroupName}}</text>
-      </view>
-      <view class="bundle-group-colors" wx:if="{{sel.uniqueColors.length > 0}}">
-        <text class="bundle-group-label">颜色</text>
-        <view class="sku-options">
-          <view class="sku-tag {{sel.selectedColor === item ? 'active' : ''}}" wx:for="{{sel.uniqueColors}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleColor" data-index="{{bgIdx}}" data-color="{{item}}">{{item}}</view>
-        </view>
-      </view>
-      <view class="bundle-group-sizes" wx:if="{{sel.uniqueSizes.length > 0}}">
-        <text class="bundle-group-label">尺码</text>
-        <view class="sku-options">
-          <view class="sku-tag {{sel.selectedSize === item ? 'active' : ''}}" wx:for="{{sel.uniqueSizes}}" wx:key="*this" wx:for-item="item" bindtap="selectBundleSize" data-index="{{bgIdx}}" data-size="{{item}}">{{item}}</view>
-        </view>
-      </view>
-      <view wx:if="{{sel.selectedSku}}" class="bundle-group-selected">
-        <text class="bg-check">✓</text> {{sel.selectedColor}} / {{sel.selectedSize}} · 库存 {{sel.selectedSku.unlimitedStock ? '无限' : sel.selectedSku.stock}}
-      </view>
-    </view>
-  </scroll-view>
-
-  <!-- 普通商品颜色/尺码选择 -->
-  <scroll-view scroll-y style="max-height: 50vh;" wx:else>
-    <view class="sku-section" wx:if="{{uniqueColors.length > 0}}">
-      <view class="sku-title">颜色</view>
-      <view class="sku-options">
-        <view class="sku-tag {{selectedColor === item ? 'active' : ''}}" wx:for="{{uniqueColors}}" wx:key="*this" bindtap="selectColor" data-color="{{item}}">{{item}}</view>
-      </view>
-    </view>
-    <view class="sku-section" wx:if="{{uniqueSizes.length > 0}}">
-      <view class="sku-title">尺码</view>
-      <view class="sku-options">
-        <view class="sku-tag {{selectedSize === item ? 'active' : ''}}" wx:for="{{uniqueSizes}}" wx:key="*this" bindtap="selectSize" data-size="{{item}}">{{item}}</view>
-      </view>
-    </view>
-  </scroll-view>
-
-  <!-- 按钮区域 -->
-  <block wx:if="{{bundleSelections.length > 0}}">
-    <view class="sku-btn-confirm disabled" wx:if="{{!bundleAllSelected}}">请至少完整选择一个子项</view>
-    <view class="sku-actions" wx:else>
-      <view class="sku-btn-cart" bindtap="confirmAddToCart" data-action="cart">加入购物车</view>
-      <view class="sku-btn-buy" bindtap="confirmAddToCart" data-action="buy">立即购买</view>
-    </view>
-  </block>
-  <block wx:else>
-    <view class="sku-btn-confirm disabled" wx:if="{{!selectedColor || !selectedSize}}">请选择颜色和尺码</view>
-    <view class="sku-btn-confirm disabled" wx:elif="{{currentSkuStock === 0 && !currentSkuUnlimited}}">已售罄</view>
-    <view class="sku-actions" wx:else>
-      <view class="sku-btn-cart" bindtap="confirmAddToCart" data-action="cart">加入购物车</view>
-      <view class="sku-btn-buy" bindtap="confirmAddToCart" data-action="buy">立即购买</view>
-    </view>
-  </block>
-</view>
+<include src="../../templates/productSkuPanel.wxml" />
 
 <view class="modal-mask" wx:if="{{showConvertModal}}" bindtap="hideConvertModal">
   <view class="modal-content" catchtap="true">

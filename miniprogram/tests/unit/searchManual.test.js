@@ -17,20 +17,32 @@ function setup(t, handler) {
     setStorageSync() {},
     getMenuButtonBoundingClientRect: () => ({ top: 44, height: 32, bottom: 76 })
   };
+  const storage = new Map();
+  Object.assign(wx, {
+    getStorageSync: key => storage.get(key),
+    setStorageSync: (key, value) => storage.set(key, structuredClone(value)),
+    removeStorageSync: key => storage.delete(key)
+  });
+  function loadPickerUtility(file) {
+    const module = { exports: {} };
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../utils', file + '.js'), 'utf8'), {
+      module, exports: module.exports, wx, console,
+      require(dependency) {
+        if (dependency.endsWith('/api')) return { post: async (url, data) => { cartRequests.push({ url, data }); return {}; } };
+        if (dependency.endsWith('/auth')) return { getUserInfo: () => ({ id: 1 }) };
+        const name = path.basename(dependency);
+        if (['skuSelectionList', 'skuSelectionDraft'].includes(name)) return loadPickerUtility(name);
+        return require(path.resolve(__dirname, '../../utils', name));
+      }
+    });
+    return module.exports;
+  }
   let config;
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../pages/search/search.js'), 'utf8'), {
     Page(value) { config = value; },
     require(name) {
       if (name.endsWith('/productSkuPanel')) {
-        const module = { exports: {} };
-        vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../utils/productSkuPanel.js'), 'utf8'), {
-          module, exports: module.exports, wx, console,
-          require(dependency) {
-            if (dependency.endsWith('/api')) return { post: async (url, data) => { cartRequests.push({ url, data }); return {}; } };
-            return require(path.resolve(__dirname, '../../utils', path.basename(dependency)));
-          }
-        });
-        return module.exports;
+        return loadPickerUtility('productSkuPanel');
       }
         if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/api')) return {
@@ -514,7 +526,7 @@ test('搜索卡片输入中点加购仅结束输入，正常点击打开规格�
   await flush();
   assert.equal(cartRequests.length, 1);
   assert.deepEqual(JSON.parse(JSON.stringify(cartRequests[0])), {
-    url: '/cart/items', data: { productId: 'p1', skuId: 's1', color: '白色', size: 'M', count: 2 }
+    url: '/cart/items/batch', data: { items: [{ productId: 'p1', skuId: 's1', color: '白色', size: 'M', count: 1 }] }
   });
   assert.equal(page.data.showSku, false);
   assert.deepEqual(navigations, []);

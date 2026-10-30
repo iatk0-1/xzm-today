@@ -9,6 +9,7 @@ const plain = value => JSON.parse(JSON.stringify(value));
 
 function setup(component = 'productDetailSheet', handlers = {}) {
   let definition, timerId = 0, now = 1000;
+  const pickerStorage = new Map();
   const timers = new Map(), events = [], calls = { locks: 0, suppress: 0, pause: 0, keyboardHides: 0, posts: [], navigation: [], storage: [] };
   const child = { lockVerticalGesture() { calls.locks++; }, suppressGestureTap() { calls.suppress++; },
     pauseProductVideos() { calls.pause++; }, getProductShare: () => ({ path: '/pages/detail/detail?id=1' }) };
@@ -23,7 +24,9 @@ function setup(component = 'productDetailSheet', handlers = {}) {
       getMenuButtonBoundingClientRect: () => ({ left: 280, bottom: 70 }), showLoading() {}, hideLoading() {},
       showToast() {}, showModal() {}, createVideoContext: () => ({ pause() {}, play() {} }),
       hideKeyboard() { calls.keyboardHides++; },
-      navigateTo: value => calls.navigation.push(value), setStorageSync: (key, value) => calls.storage.push({ key, value }) },
+      navigateTo: value => { calls.navigation.push(value); if (value.success) value.success(); },
+      getStorageSync: key => pickerStorage.get(key), removeStorageSync: key => pickerStorage.delete(key),
+      setStorageSync: (key, value) => { pickerStorage.set(key, value); if (key === 'checkoutItems') calls.storage.push({ key, value }); } },
     require(name) {
       if (name.endsWith('/api')) return {
         get: handlers.get || (async () => ({ product: { id: '1', name: '商品', skuMatrix: [] } })),
@@ -31,9 +34,9 @@ function setup(component = 'productDetailSheet', handlers = {}) {
       };
       if (name.endsWith('/auth')) return { isAdmin: () => !!handlers.admin, isStallManager: () => false, ensureAuthenticated: async () => {} };
       if (name.endsWith('/shareImage')) return { createShareImage: async () => '' };
-      if (name.endsWith('/skuQuantityEditor')) {
+      if (['skuQuantityEditor', 'skuSelectionList', 'skuSelectionDraft'].some(file => name.endsWith('/' + file))) {
         const module = { exports: {} };
-        vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../utils/skuQuantityEditor.js'), 'utf8'), { ...ctx, module });
+        vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../utils', path.basename(name) + '.js'), 'utf8'), { ...ctx, module, require(dependency) { return ctx.require('../../utils/' + path.basename(dependency)); } });
         return module.exports;
       }
       if (name === './controller') {
@@ -360,7 +363,7 @@ for (const action of ['cart', 'buy']) {
       detail.confirmSkuAction(button);
       if (action === 'cart') {
         assert.equal(calls.posts.length, 1);
-        assert.equal(calls.posts[0].data.count, 3);
+        assert.equal(calls.posts[0].data.items[0].count, 3);
       } else {
         assert.equal(calls.navigation.length, 1);
         assert.equal(calls.storage[0].value[0].count, 3);
@@ -380,7 +383,7 @@ for (const action of ['cart', 'buy']) {
       sheet.onOverlayTouchStart(outside);
       if (blurFirst) detail.skuQuantityInputBlur({ detail: { value: '' } });
       sheet.requestClose(outside);
-      assert.equal(detail.data.quantity, 1);
+      assert.equal(detail.data.quantity, 0);
       assert.equal(detail.data.showSku, true);
       assert.equal(sheet.data.sheetTop, 250);
       assert.equal(sheet._closing, false);
@@ -440,14 +443,14 @@ test('共用规格逻辑在弹窗选择数量并加购，防止重复提交，�
   detail.openSkuPanel(tap({ action: 'cart' })); detail.skuQuantityPlus();
   detail.confirmSkuAction(tap({ action: 'cart' })); detail.confirmSkuAction(tap({ action: 'cart' }));
   assert.equal(calls.posts.length, 1);
-  assert.deepEqual(plain(calls.posts[0]), { url: '/cart/items', data: { productId: '360435019602202624',
-    skuId: '360435019602202625', color: '黑色', size: 'M', count: 2 } });
+  assert.deepEqual(plain(calls.posts[0]), { url: '/cart/items/batch', data: { items: [{ productId: '360435019602202624',
+    skuId: '360435019602202625', color: '黑色', size: 'M', count: 1 }] } });
   finish({}); await new Promise(setImmediate);
   assert.equal(detail.data.purchasePending, false); assert.equal(detail.data.showSku, false);
   detail.confirmSkuAction(tap({ action: 'buy' }));
   assert.equal(calls.navigation[0].url, '/pages/checkout/checkout');
   assert.equal(calls.storage[0].value[0].skuId, '360435019602202625');
-  assert.equal(calls.storage[0].value[0].count, 2);
+  assert.equal(calls.storage[0].value[0].count, 1);
 });
 
 test('弹窗保留套装勾选和购买，售罄与下架阻止加购', () => {

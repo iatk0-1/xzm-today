@@ -15,7 +15,8 @@
       <view class="nav-tabs-left">
         <view class="tab-item {{currentMainTab === '上新' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="上新">
           <text>上新</text>
-          <view class="line"></view> </view>
+          <view class="line"></view>
+        </view>
 
         <view class="tab-item {{currentMainTab === '销量' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="销量">
           <text>销量</text>

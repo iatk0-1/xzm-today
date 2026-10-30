@@ -4,15 +4,16 @@ const { normalizeProductImages } = require('../../utils/productImage');
 const { getBannerImageMode, getDetailImageMode } = require('../../utils/productGallery');
 const { getPurchaseNotice } = require('../../utils/purchaseNotice');
 const auth = require('../../utils/auth');
-const { formatStock, getFreeStockQty, hasStock, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
+const { formatStock, getFreeStockQty, isSkuSoldOut, isProductSoldOut } = require('../../utils/stock');
 const { findSelectedSku, getSkuOptions, getDefaultSkuSelection, getSkuOptionSelection } = require('../../utils/skuSelection');
 const { createShareImage } = require('../../utils/shareImage');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const skuQuantityEditor = require('../../utils/skuQuantityEditor');
+const selectionList = require('../../utils/skuSelectionList');
 const { collectProductImages, imagePreloadMethods } = require('../../utils/detailImagePreload');
 
 function createProductDetailConfig() {
-  return {
+  const config = {
   ...skuQuantityEditor,
   ...imagePreloadMethods,
   data: {
@@ -579,7 +580,7 @@ function createProductDetailConfig() {
 
     this.setData({ isAdmin: !!auth.isAdmin(), isStallManager: !!auth.isStallManager() });
 
-    const action = e.currentTarget.dataset.action || 'cart';
+    const action = e.currentTarget.dataset.action || 'buy';
 
     // Build bundle groups from API or from skuMatrix
     var bundleGroups = product.bundleGroups;
@@ -705,28 +706,6 @@ function createProductDetailConfig() {
     }
   },
 
-  skuQuantityMinus(e) {
-    if (this.dismissSkuQuantityKeyboard(e)) return;
-    if (this.data.quantity <= 1) return;
-    this.setData({ quantity: this.data.quantity - 1 });
-  },
-
-  skuQuantityPlus(e) {
-    if (this.dismissSkuQuantityKeyboard(e)) return;
-    const { quantity, currentSkuStock, currentSkuUnlimited } = this.data;
-    const hasStockLimit = !currentSkuUnlimited && currentSkuStock !== null;
-    const maxQuantity = hasStockLimit ? Number(currentSkuStock) : 99;
-    if (maxQuantity <= 0) {
-      wx.showToast({ title: '该规格已售罄', icon: 'none' });
-      return;
-    }
-    if (quantity >= maxQuantity) {
-      wx.showToast({ title: '已达到库存上限', icon: 'none' });
-      return;
-    }
-    this.setData({ quantity: quantity + 1 });
-  },
-
   // 套装子项选择处理
   selectBundleColor(e) {
     if (this.dismissSkuQuantityKeyboard(e)) return;
@@ -770,161 +749,6 @@ function createProductDetailConfig() {
       return ns;
     });
     return { bundleSelections: newSel, bundleAllSelected: anyOk, currentSkuPrice: totalPrice > 0 ? totalPrice : null };
-  },
-
-  confirmSkuAction(e) {
-    if (this.dismissSkuQuantityKeyboard(e)) return;
-    if (Date.now() < (this._suppressTapUntil || 0)) return;
-    const action = e.currentTarget.dataset.action || this.data.skuAction;
-    const { product, bundleSelections, bundleAllSelected } = this.data;
-    if (this.data.purchasePending) return;
-    if (!product.id || product.offSale || product.soldOut) return;
-
-    // 套装商品：仅收集完整选好的子项
-    if (bundleSelections && bundleSelections.length > 0) {
-      if (!bundleAllSelected) return wx.showToast({ title: '请至少完整选择一个子项', icon: 'none' });
-      var selectedSubs = bundleSelections.filter(function(s) { return s.selectedSku != null; });
-      var bundleConfig = selectedSubs.map(function(s) {
-        return { bundleGroupName: s.bundleGroupName, skuId: s.selectedSku.skuId, color: s.selectedSku.color, size: s.selectedSku.size, price: s.selectedSku.price, imageUrl: s.selectedSku.imageUrl || '', count: s.quantity || 1 };
-      });
-      var totalPrice = 0;
-      bundleConfig.forEach(function(b) { totalPrice += (Number(b.price) || 0) * (b.count || 1); });
-
-      this.setData({ showSku: false });
-      if (action === 'buy') {
-        var item = {
-          productId: product.id, skuId: bundleConfig[0].skuId,
-          name: product.name, image: product.coverUrl,
-          selectedColor: bundleConfig[0].color, selectedSize: bundleConfig[0].size,
-          price: totalPrice, finalPrice: totalPrice,
-          count: 1, bundleConfig: bundleConfig
-        };
-        wx.setStorageSync('checkoutItems', [item]);
-        wx.navigateTo({ url: '/pages/checkout/checkout' });
-      } else {
-        this.addToCartWithBundle(bundleConfig, totalPrice);
-      }
-      return;
-    }
-
-    // 普通商品流程
-    const { selectedColor, selectedSize, currentSkuPrice, currentSkuStock, currentSkuUnlimited, currentSkuId, currentSkuImage, uniqueColors, uniqueSizes, quantity } = this.data;
-
-    // 检查是否选择了颜色和尺码
-    if (uniqueColors.length > 0 && !selectedColor) {
-      return wx.showToast({ title: '请选择颜色', icon: 'none' });
-    }
-    if (uniqueSizes.length > 0 && !selectedSize) {
-      return wx.showToast({ title: '请选择尺码', icon: 'none' });
-    }
-    // 检查库存
-    if (!hasStock(currentSkuStock, currentSkuUnlimited)) {
-      return wx.showToast({ title: '该规格已售罄', icon: 'none' });
-    }
-
-    // 直播商品特殊处理
-    if (product.productType === 'live') {
-      // 如果直播商品已转换为正常商品，跳转到正常商品详情
-      if (product.convertedToProductId) {
-        wx.navigateTo({ url: '/pages/detail/detail?id=' + product.convertedToProductId });
-        return;
-      }
-      // 如果直播已结束，禁止购买
-      if (product.sessionStatus !== 'live') {
-        wx.showToast({ title: '直播已结束，无法购买', icon: 'none' });
-        return;
-      }
-    }
-
-    const productId = product.id || product._id;
-
-    // 如果没有选中颜色或尺码，使用默认值
-    const finalColor = selectedColor || (uniqueColors.length === 1 ? uniqueColors[0] : '默认');
-    const finalSize = selectedSize || (uniqueSizes.length === 1 ? uniqueSizes[0] : '均码');
-
-    if (action === 'buy') {
-      this.setData({ showSku: false });
-      // 立即购买模式，使用本地存储传递数据
-      const finalItem = {
-        productId: productId,
-        skuId: currentSkuId,
-        name: product.name,
-        image: product.coverUrl,
-        coverUrl: currentSkuImage || product.coverUrl,  // 优先使用 SKU 图片
-        selectedColor: finalColor,
-        selectedSize: finalSize,
-        finalPrice: currentSkuPrice || product.retailPrice || product.displayPrice,
-        price: Number(currentSkuPrice || product.retailPrice || product.displayPrice),
-        count: quantity,
-        selected: true
-      };
-      wx.setStorageSync('checkoutItems', [finalItem]);
-      wx.navigateTo({ url: '/pages/checkout/checkout' });
-    } else {
-      // 加入购物车模式，调用后端 API
-      wx.showLoading({ title: '添加中...' });
-
-      const cartData = {
-        productId: productId,
-        skuId: currentSkuId || 0,
-        color: finalColor,
-        size: finalSize,
-        count: quantity
-      };
-
-      const version = this._productVersion;
-      this.setData({ purchasePending: true });
-      api.post('/cart/items', cartData)
-        .then(() => {
-          wx.hideLoading();
-          wx.showToast({ title: '已加入购物车', icon: 'success' });
-          if (version === this._productVersion) this.setData({ showSku: false });
-        })
-        .catch(err => {
-          wx.hideLoading();
-          console.error('添加购物车失败:', err);
-          if (isUnauthorized(err)) {
-            wx.showToast({ title: '请先登录', icon: 'none' });
-          } else {
-            wx.showToast({ title: getErrorMessage(err, '添加失败'), icon: 'none' });
-          }
-        }).finally(() => {
-          if (version === this._productVersion) this.setData({ purchasePending: false });
-        });
-    }
-  },
-
-  // 套装商品加入购物车
-  addToCartWithBundle(bundleConfig, totalPrice) {
-    var self = this;
-    var product = this.data.product;
-    wx.showLoading({ title: '添加中...' });
-    var cartData = {
-      productId: product.id,
-      skuId: bundleConfig[0].skuId,
-      color: bundleConfig[0].color,
-      size: bundleConfig[0].size,
-      count: 1,
-      bundleConfig: bundleConfig
-    };
-    const version = this._productVersion;
-    this.setData({ purchasePending: true });
-    api.post('/cart/items', cartData)
-      .then(function() {
-        wx.hideLoading();
-        wx.showToast({ title: '已加入购物车', icon: 'success' });
-        if (version === self._productVersion) self.setData({ showSku: false });
-      })
-      .catch(function(err) {
-        wx.hideLoading();
-        if (isUnauthorized(err)) {
-          wx.showToast({ title: '请先登录', icon: 'none' });
-        } else {
-          wx.showToast({ title: getErrorMessage(err, '添加失败'), icon: 'none' });
-        }
-      }).finally(function() {
-        if (version === self._productVersion) self.setData({ purchasePending: false });
-      });
   },
 
   // 视频悬浮窗控制系统
@@ -1069,6 +893,7 @@ switchAuraTab(e) {
     };
   }
   };
+  return { ...selectionList.enhancePicker(config, true), data: { ...config.data, ...selectionList.initialData } };
 }
 
 module.exports = { createProductDetailConfig };

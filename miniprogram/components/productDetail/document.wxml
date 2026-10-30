@@ -41,7 +41,7 @@
           <text class="consult-label">咨询客服</text>
         </view>
       </button>
-      <view class="options-section" bindtap="openSkuPanel" data-action="cart">
+      <view class="options-section" bindtap="openSkuPanel" data-action="buy">
         <view class="size-selector">
           <text class="size-text" style="color: #333;">{{selectedColor || '颜色'}} / {{selectedSize || '尺码'}}</text>
           <text class="select-icon">›</text>

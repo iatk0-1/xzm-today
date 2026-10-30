@@ -1,3 +1,4 @@
+@import "../../styles/productSkuPanel.wxss";
 /* miniprogram/pages/liveRoomDetail/detail.wxss */
 .container {
   min-height: 100vh;
@@ -469,84 +470,6 @@
 /* 保持原有通用样式 */
 .empty-canvas-state { padding: 120rpx 0; text-align: center; }
 .empty-canvas-text { font-size: 28rpx; color: #999; }
-.sku-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.4); z-index: 998; opacity: 0; transition: opacity 0.3s; }
-.sku-mask.fade-in { opacity: 1; }
-.sku-panel { position: fixed; bottom: 0; left: 0; right: 0; background-color: #fff; border-radius: 32rpx 32rpx 0 0; z-index: 999; transform: translateY(100%); transition: transform 0.3s; max-height: 75vh; display: flex; flex-direction: column; }
-.sku-panel.slide-up { transform: translateY(0); }
-.sku-close { position: absolute; top: 24rpx; right: 24rpx; font-size: 40rpx; color: #999; z-index: 10; width: 60rpx; height: 60rpx; text-align: center; line-height: 60rpx;}
-.sku-header { display: flex; padding: 40rpx 32rpx; border-bottom: 1rpx solid #f2f2f7; }
-.sku-img { width: 160rpx; height: 160rpx; border-radius: 12rpx; background-color: #f5f5f5; object-fit: cover; }
-.sku-main { flex: 1; margin-left: 24rpx; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 10rpx;}
-.sku-price { font-size: 44rpx; font-weight: 700; color: #ff3b30; }
-.sku-stock { font-size: 24rpx; color: #999; margin-top: 8rpx; }
-.sku-stock.out-of-stock { color: #ff3b30; }
-.sku-choose-tip { font-size: 24rpx; color: #999; margin-top: 4rpx; }
-.sku-scroll-area { flex: 1; padding: 32rpx; overflow-y: auto; }
-.sku-section { margin-bottom: 40rpx; }
-.sku-title { font-size: 28rpx; font-weight: 600; color: #1a1a1a; margin-bottom: 20rpx; }
-.sku-options { display: flex; flex-wrap: wrap; gap: 20rpx; }
-.sku-tag { padding: 16rpx 32rpx; background-color: #f5f5f5; border-radius: 12rpx; font-size: 26rpx; color: #1a1a1a; }
-.sku-tag.active { background-color: #1a1a1a; color: #fff; }
-.sku-actions { display: flex; gap: 20rpx; padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid #eee; }
-.sku-btn-cart { flex: 1; text-align: center; padding: 24rpx 0; border-radius: 40rpx; font-size: 28rpx; font-weight: 600; background-color: #f5f5f5; color: #1a1a1a; }
-.sku-btn-buy { flex: 1; text-align: center; padding: 24rpx 0; border-radius: 40rpx; font-size: 28rpx; font-weight: 600; background-color: #1a1a1a; color: #fff; }
-.sku-btn-confirm.disabled { background-color: #f5f5f5; color: #999; text-align: center; padding: 24rpx 0; border-radius: 40rpx; font-size: 28rpx; margin: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom)); }
-
-/* 套装子项卡片 */
-.bundle-group-card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx 28rpx;
-  margin-bottom: 18rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
-}
-.bundle-group-name {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 16rpx;
-  display: flex;
-  align-items: center;
-}
-.bg-step {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34rpx;
-  height: 34rpx;
-  border-radius: 50%;
-  background: #f2f2f2;
-  color: #999;
-  font-size: 20rpx;
-  font-weight: 600;
-  margin-right: 10rpx;
-  flex-shrink: 0;
-}
-.bundle-group-label {
-  font-size: 22rpx;
-  color: #999;
-  margin-bottom: 8rpx;
-  display: block;
-  letter-spacing: 1rpx;
-}
-.bundle-group-colors, .bundle-group-sizes {
-  margin-bottom: 8rpx;
-}
-.bundle-group-selected {
-  font-size: 22rpx;
-  color: #666;
-  margin-top: 12rpx;
-  padding-top: 12rpx;
-  border-top: 1rpx solid #f5f5f5;
-  display: flex;
-  align-items: center;
-}
-.bg-check {
-  color: #07c160;
-  font-weight: 700;
-  margin-right: 6rpx;
-}
-
 .modal-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .modal-content { background-color: #fff; border-radius: 24rpx; padding: 40rpx; width: 600rpx; box-sizing: border-box;}
 .modal-title { font-size: 34rpx; font-weight: 600; color: #1a1a1a; text-align: center; margin-bottom: 30rpx; }

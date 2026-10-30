@@ -1,0 +1,27 @@
+<block wx:if="{{showSku && showPickedSkus}}">
+  <view class="sku-picked-mask" capture-bind:touchstart="onSkuQuantityTouchStart" catchtap="closePickedSkus" catchtouchmove="stopPickedTouchMove"></view>
+  <view class="sku-picked-panel" style="{{embedded && viewportHeight ? 'max-height: calc(' + viewportHeight + 'px - 240rpx - env(safe-area-inset-bottom));' : ''}}" capture-bind:touchstart="onSkuQuantityTouchStart" bindtap="onSkuPanelTap" catchtouchmove="stopPickedTouchMove">
+    <view class="sku-picked-heading">
+      <text>已选清单</text><text class="sku-picked-close" catchtap="closePickedSkus" aria-label="关闭已选清单">×</text>
+    </view>
+    <scroll-view class="sku-picked-scroll" scroll-y>
+      <view class="sku-picked-empty" wx:if="{{!pickedSkuItems.length}}">还没有选择商品，调整规格数量后会显示在这里</view>
+      <view class="sku-picked-row" wx:for="{{pickedSkuItems}}" wx:key="skuId">
+        <image class="sku-picked-image" src="{{skuPanelImagePaths[item.imageUrl] || imagePaths[item.imageUrl] || item.imageUrl}}" mode="aspectFill" catchtap="previewPickedSku" data-url="{{item.imageUrl}}"></image>
+        <view class="sku-picked-info">
+          <view class="sku-picked-group" wx:if="{{item.bundleGroupName}}">{{item.bundleGroupName}}</view>
+          <view class="sku-picked-spec">{{item.color}} / {{item.size}}</view>
+          <view class="sku-picked-item-bottom">
+            <text class="sku-picked-unit-price">￥{{item.priceText}}</text>
+            <view class="sku-quantity-control">
+              <view class="sku-quantity-btn" catchtap="pickedQuantityMinus" data-sku-id="{{item.skuId}}">-</view>
+              <input id="picked-quantity-{{item.skuId}}" class="sku-quantity-input" type="number" value="{{item.count}}" hold-keyboard="{{true}}" bindfocus="pickedQuantityInputFocus" bindinput="pickedQuantityInput" bindblur="pickedQuantityInputBlur" data-sku-id="{{item.skuId}}" />
+              <view class="sku-quantity-btn {{item.atLimit ? 'disabled' : ''}}" catchtap="pickedQuantityPlus" data-sku-id="{{item.skuId}}">+</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="sku-picked-footer"><text>共 {{pickedTotalCount}} 件</text><view>总计 <text class="sku-picked-total">￥{{pickedTotalPrice}}</text></view></view>
+  </view>
+</block>

@@ -377,7 +377,8 @@ Page({
     this._productTouchStartedWhileEditing = false;
     if (dismissSearch) return this.onPageTap();
     this.setData({ isAdmin: !!auth.isAdmin(), isStallManager: !!auth.isStallManager() });
-    return productSkuPanel.methods.openSkuPanel.call(this, e);
+    return productSkuPanel.methods.openSkuPanel.call(this, { ...e,
+      currentTarget: { ...e.currentTarget, dataset: { ...e.currentTarget.dataset, action: e.currentTarget.dataset.action || 'cart' } } });
   },
 
   // 记录手指按下时的输入状态，避免 blur 先于 tap 到达时误进详情。

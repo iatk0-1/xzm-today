@@ -525,7 +525,8 @@ Page(pageSync.wrap({
   openSkuPanel: function(e) {
     // 先展示弹窗和默认规格，预下载不阻塞用户操作。
     this.setData({ skuPanelImagePaths: {} });
-    productSkuPanel.methods.openSkuPanel.call(this, e);
+    productSkuPanel.methods.openSkuPanel.call(this, { ...e,
+      currentTarget: { ...e.currentTarget, dataset: { ...e.currentTarget.dataset, action: 'buy' } } });
     if (!this._skuImagePreloader) this._skuImagePreloader = createSkuImagePreloader();
     const urls = collectSkuImages(this.data.currentProduct, this.data.currentSkuImage);
     this._skuImagePreloader.start(urls, (url, path) => {

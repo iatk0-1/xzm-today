@@ -1,0 +1,6 @@
+<view class="sku-picked-summary {{showPickedSkus ? 'expanded' : ''}} {{purchasePending ? 'sku-picked-busy' : ''}}">
+  <view class="sku-btn-item cart sku-picked-entry" catchtap="openPickedSkus" aria-label="查看已选规格">
+    <text>已选</text>
+    <text class="sku-count-badge" wx:if="{{pickedTotalCount > 0}}">{{pickedCountText}}</text>
+  </view>
+</view>

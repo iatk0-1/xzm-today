@@ -13,6 +13,7 @@ function harness({ get, post, authenticate, payment } = {}) {
     Page: value => { definition = value; },
     console: { error() {} }, setTimeout() {},
     require(name) {
+      if (name.endsWith('/skuSelectionDraft')) return require('../../utils/skuSelectionDraft');
       if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/purchaseNotice')) return notices;
       if (name.endsWith('/customerServiceNavigation')) return require('../../utils/customerServiceNavigation');

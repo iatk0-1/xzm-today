@@ -1,3 +1,4 @@
+@import "./skuSelectionList.wxss";
 .sku-mask {
   position: fixed;
   top: 0;
@@ -26,6 +27,9 @@
   z-index: 1001;
   padding: 40rpx 40rpx 0 40rpx !important;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
   transform: translateY(100%);
   padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
 }
@@ -50,6 +54,7 @@
 
 .sku-header {
   display: flex;
+  flex-shrink: 0;
   margin-bottom: 40rpx;
 }
 
@@ -215,6 +220,7 @@
 .sku-tag.active {
   background-color: #1a1a1a; /* 选中纯黑 */
   color: #ffffff;
+  border-color: transparent;
   font-weight: 600;
 }
 
@@ -225,6 +231,35 @@
   border-color: transparent;
   font-weight: normal;
   text-decoration: line-through;
+  pointer-events: none;
+}
+
+/* 详情页和半屏详情固定文字占位，字重切换不再改变标签宽度。 */
+.sku-panel-detail .sku-tag {
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.sku-panel-detail .sku-tag.active { font-weight: 600; }
+.sku-panel-detail .sku-tag.disabled { font-weight: 400; }
+
+.sku-panel-detail .sku-tag-measure {
+  visibility: hidden;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.sku-panel-detail .sku-tag-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
   pointer-events: none;
 }
 

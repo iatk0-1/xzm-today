@@ -92,7 +92,7 @@
             <view class="goods-title">{{item.name || item.title}}</view>
             <view class="goods-price-row">
               <view class="goods-price">¥{{item.retailPrice || item.displayPrice}}</view>
-              <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}" aria-label="选择规格加入购物车">
+              <view class="btn-add-cart" catchtap="openSkuPanel" data-action="cart" data-product="{{item}}" aria-label="选择规格加入购物车">
                 <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
               </view>
             </view>
@@ -111,7 +111,7 @@
             <view class="goods-title">{{item.name || item.title}}</view>
             <view class="goods-price-row">
               <view class="goods-price">¥{{item.retailPrice || item.displayPrice}}</view>
-              <view class="btn-add-cart" catchtap="openSkuPanel" data-product="{{item}}" aria-label="选择规格加入购物车">
+              <view class="btn-add-cart" catchtap="openSkuPanel" data-action="cart" data-product="{{item}}" aria-label="选择规格加入购物车">
                 <image class="add-cart-icon" src="/images/add-cart.png" mode="aspectFit"></image>
               </view>
             </view>

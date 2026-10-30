@@ -1,3 +1,4 @@
+const { clearCheckoutDrafts } = require('../../utils/skuSelectionDraft');
 const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/checkout/checkout.js
 const api = require('../../utils/api');
@@ -316,6 +317,7 @@ Page({
       const orderId = orderRes.id;
       createdOrderId = orderId;
       this._createdOrderId = orderId;
+      clearCheckoutDrafts(checkoutItems);
       this.setData({ orderCreated: true });
       wx.removeStorageSync('checkoutItems');
       stage = 'payment';

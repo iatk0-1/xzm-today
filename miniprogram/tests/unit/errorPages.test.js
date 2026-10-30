@@ -12,6 +12,7 @@ function checkoutHarness({ failureAt, error, paymentError } = {}) {
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../pages/checkout/checkout.js'), 'utf8'), {
     Page: value => { definition = value; }, console: { error() {} }, setTimeout() {},
     require(name) {
+      if (name.endsWith('/skuSelectionDraft')) return require('../../utils/skuSelectionDraft');
       if (name.endsWith('/error')) return errors;
       if (name.endsWith('/purchaseNotice')) return notices;
       if (name.endsWith('/customerServiceNavigation')) return require('../../utils/customerServiceNavigation');

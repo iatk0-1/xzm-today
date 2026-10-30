@@ -18,7 +18,8 @@ function setup(kind = 'product') {
     getWindowInfo: () => ({ windowWidth: 375, windowHeight: 750, statusBarHeight: 24 }),
     getMenuButtonBoundingClientRect: () => ({ left: 280, bottom: 70 }),
     previewImage: value => previews.push(value),
-    setStorageSync: (key, value) => storage.push({ key, value }), navigateTo() {},
+    getStorageSync() {}, removeStorageSync() {},
+    setStorageSync: (key, value) => { if (key === 'checkoutItems') storage.push({ key, value }); }, navigateTo(options) { if (options.success) options.success(); },
     downloadFile(options) {
       const request = { ...options, aborted: false };
       requests.push(request);
@@ -44,7 +45,7 @@ function setup(kind = 'product') {
         if (name.endsWith('/shareImage')) return { createShareImage: async () => '' };
         if (name.endsWith('/pageSync')) return { wrap: config => config };
         const target = path.resolve(path.dirname(filename), name + '.js');
-        if (['controller.js', 'detailImagePreload.js', 'skuImagePreloader.js'].includes(path.basename(target))) return load(target);
+        if (['controller.js', 'detailImagePreload.js', 'skuImagePreloader.js', 'skuSelectionList.js', 'skuSelectionDraft.js'].includes(path.basename(target))) return load(target);
         return require(target);
       }
     }, { filename });
@@ -110,7 +111,7 @@ for (const kind of ['product', 'sheet']) {
     assert.equal(env.previews.at(-1).current, '/tmp/5');
     env.page.confirmSkuAction({ currentTarget: { dataset: { action: 'buy' } } });
     assert.equal(env.storage[0].value[0].coverUrl, url('1-blue'));
-    assert.deepEqual(plain(env.page.data.product.skuMatrix), response.product.skuMatrix);
+    assert.deepEqual(plain(env.page.data.product.skuMatrix).map(sku => sku.imageUrl), response.product.skuMatrix.map(sku => sku.imageUrl));
   });
 
   test(`${kind}：套装顶层分组的所有规格图片也在打开弹窗前下载`, async () => {

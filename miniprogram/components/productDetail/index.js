@@ -254,6 +254,7 @@ Component({
       if (this.dismissSkuQuantityKeyboard(e)) return true;
       if (this.data.showVideo) this.closeVideoOverlay();
       else if (this.data.showShareTemplates) this.closeShareTemplateSelector();
+      else if (this.data.showPickedSkus) this.closePickedSkus();
       else if (this.data.showSku) this.closeSkuPanel();
       else return !!this.data.purchasePending;
       return true;
