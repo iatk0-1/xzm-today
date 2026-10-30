@@ -1,3 +1,4 @@
+@import "../../styles/adminProductArticleNo.wxss";
 /* miniprogram/pages/pickingList/pickingList.wxss */
 page {
   background: #f6f7f9;

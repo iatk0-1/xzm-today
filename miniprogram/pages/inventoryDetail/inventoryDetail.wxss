@@ -1,3 +1,4 @@
+@import "../../styles/adminProductArticleNo.wxss";
 page { background: #f5f6f8; color: #26313e; }
 .inventory-detail { padding-bottom: 40rpx; }
 .product-header { display: flex; align-items: center; gap: 26rpx; padding: 28rpx 24rpx; background: #fff; }

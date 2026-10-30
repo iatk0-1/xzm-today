@@ -103,6 +103,7 @@
             <image class="product-img" src="{{product.productImage}}" mode="aspectFill"></image>
             <view class="product-info">
               <view class="product-name">{{product.productName}}</view>
+              <view class="admin-product-article-no" user-select="{{true}}">货号：{{product.articleNo || '未填写'}}</view>
               <view class="product-sku">{{product.skuSpec}} / {{product.skuSize}}</view>
               <view class="product-detail">
                 <text>×{{product.qty}}</text>

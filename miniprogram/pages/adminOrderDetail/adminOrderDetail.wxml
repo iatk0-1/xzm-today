@@ -47,6 +47,7 @@
       <image class="goods-img" src="{{item.skuImageUrl || item.productImage}}" mode="aspectFill"></image>
       <view class="goods-info">
         <view class="goods-title"><text class="copyable-text" user-select="{{true}}">{{item.productName}}</text></view>
+        <view class="admin-product-article-no" user-select="{{true}}">货号：{{item.articleNo || '未填写'}}</view>
         <view class="goods-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
           <view class="bundle-sub" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
             <text class="bundle-sub-name" user-select="{{true}}">{{sub.bundleGroupName}}:</text>
@@ -100,6 +101,7 @@
     <view class="price-item-line" wx:for="{{pricing.items}}" wx:key="orderItemId">
       <view class="price-item-info">
         <text>{{item.productName || '商品'}}</text>
+        <view class="admin-product-article-no">货号：{{item.articleNo || '未填写'}}</view>
         <view class="price-item-spec"><text wx:if="{{item.spec || item.size}}">{{item.spec}}{{item.spec && item.size ? ' / ' : ''}}{{item.size}} · </text>× {{item.qty}}</view>
       </view>
       <text>¥ {{item.settlementAmount}}</text>
@@ -163,6 +165,7 @@
             <image class="goods-img" src="{{goodsItem.skuImageUrl || goodsItem.productImage}}" mode="aspectFill"></image>
             <view class="goods-info">
               <view class="goods-title"><text class="copyable-text" user-select="{{true}}">{{goodsItem.productName || '商品'}}</text></view>
+              <view class="admin-product-article-no" user-select="{{true}}">货号：{{goodsItem.articleNo || '未填写'}}</view>
               <view class="goods-sku"><text user-select="{{true}}">{{goodsItem.spec || ''}}{{goodsItem.size ? ' / ' + goodsItem.size : ''}}</text></view>
               <view class="goods-qty">x {{goodsItem.shipQty}}</view>
             </view>
@@ -227,6 +230,7 @@
     <view class="refund-row" wx:for="{{refundItems}}" wx:for-item="refundItem" wx:for-index="refundIndex" wx:key="orderItemId">
       <view class="refund-main">
         <text class="refund-title">{{refundItem.productName}}</text>
+        <view class="admin-product-article-no" user-select="{{true}}">货号：{{refundItem.articleNo || '未填写'}}</view>
         <text class="refund-sub">{{refundItem.productSpec}} / {{refundItem.productSize}}</text>
         <text class="refund-limit">可退 {{refundItem.availableQty}} 件，¥ {{refundItem.availableRefundAmount}}</text>
       </view>
@@ -282,6 +286,7 @@
     <view class="refund-row" wx:for="{{partialUnbindItems}}" wx:for-item="unbindItem" wx:for-index="unbindIndex" wx:key="orderItemId">
       <view class="refund-main">
         <text class="refund-title">{{unbindItem.productName}}</text>
+        <view class="admin-product-article-no" user-select="{{true}}">货号：{{unbindItem.articleNo || '未填写'}}</view>
         <text class="refund-sub">{{unbindItem.spec}}</text>
         <text class="refund-limit">包裹内 {{unbindItem.shipQty}} 件</text>
       </view>
@@ -378,6 +383,7 @@
       <image class="order-cost-image" src="{{item.imageUrl}}" mode="aspectFill" />
       <view class="order-cost-info">
         <view class="order-cost-name">{{item.productName}}</view>
+        <view class="admin-product-article-no" user-select="{{true}}">货号：{{item.articleNo || '未填写'}}</view>
         <view class="order-cost-spec">{{item.spec}}</view>
         <view class="order-cost-spec">SKU：{{item.skuId}}</view>
       </view>

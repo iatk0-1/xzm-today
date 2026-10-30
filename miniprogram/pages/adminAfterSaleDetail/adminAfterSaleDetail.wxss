@@ -1,3 +1,4 @@
+@import "../../styles/adminProductArticleNo.wxss";
 /* miniprogram/pages/adminAfterSaleDetail/adminAfterSaleDetail.wxss */
 
 .page-wrapper {

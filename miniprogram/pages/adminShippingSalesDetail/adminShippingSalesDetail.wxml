@@ -1,5 +1,5 @@
 <view class="page-wrapper">
-  <view class="product-header"><text class="product-title">{{productName}}</text></view>
+  <view class="product-header"><text class="product-title">{{productName}}</text><view class="admin-product-article-no" user-select="{{true}}">货号：{{productArticleNo || '未填写'}}</view></view>
   <view class="overview-card">
     <view class="overview-status" wx:if="{{overviewLoading}}">统计加载中...</view>
     <view class="overview-status" wx:elif="{{overviewError}}" bindtap="loadOverview">{{overviewError}} · 点击重试</view>
@@ -54,6 +54,7 @@
           <image class="oi-img" src="{{oi.productImage || '/images/placeholder.png'}}" mode="aspectFill" />
           <view class="oi-info">
             <text class="oi-name">{{oi.productName}}</text>
+            <view class="admin-product-article-no" user-select="{{true}}">货号：{{oi.articleNo || '未填写'}}</view>
             <block wx:if="{{oi.bundleParsed && oi.bundleParsed.length > 0}}">
               <text class="oi-spec" wx:for="{{oi.bundleParsed}}" wx:key="skuId" wx:for-item="sub">{{sub.bundleGroupName}} {{sub.color}}/{{sub.size}}</text>
             </block>

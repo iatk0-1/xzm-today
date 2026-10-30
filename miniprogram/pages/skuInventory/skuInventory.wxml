@@ -72,6 +72,7 @@
       </view>
       <view class="product-info">
         <view class="product-name" catchtap="goToProductDetail" data-id="{{item.id}}">{{item.name}}</view>
+        <view class="admin-product-article-no" user-select="{{true}}">货号：{{item.articleNo || '未填写'}}</view>
         <view class="sku-summary" wx:for="{{item.visibleSkus}}" wx:for-item="sku" wx:key="id" catchtap="previewInventoryImage" data-url="{{sku.imageUrl}}" data-empty-tip="该规格暂无图片">
           <view class="sku-heading">
             <view class="sku-title">{{sku.spec}} {{sku.size}}</view>
@@ -115,6 +116,7 @@
           <image class="batch-item-image" src="{{item.imageUrl}}" mode="aspectFill" catchtap="previewInventoryImage" data-url="{{item.imageUrl}}" data-empty-tip="暂无可预览图片" />
           <view class="batch-item-info">
             <view class="batch-item-name">{{item.productName}}</view>
+            <view class="admin-product-article-no" user-select="{{true}}">货号：{{item.articleNo || '未填写'}}</view>
             <view class="batch-item-sku">{{item.spec || '默认规格'}} {{item.size}}</view>
             <view class="batch-item-sku" wx:if="{{batchReceiveSource === 'normal'}}">报单待到货 {{item.shortageQty}} 件</view>
           </view>
@@ -168,6 +170,7 @@
         <view wx:if="{{shippingLoading}}" class="muted">加载可发库存中...</view>
         <view wx:for="{{shippingProducts}}" wx:key="id" wx:for-item="product" wx:for-index="productIndex" class="record-card">
           <view class="product-name">{{product.name}}</view>
+          <view class="admin-product-article-no" user-select="{{true}}">货号：{{product.articleNo || '未填写'}}</view>
           <view wx:for="{{product.skus}}" wx:key="id" wx:for-item="sku" wx:for-index="skuIndex" class="shipping-sku">
             <view class="shipping-choice" data-product-index="{{productIndex}}" data-sku-index="{{skuIndex}}" bindtap="toggleShippingSku">
               <checkbox checked="{{sku.selected}}" disabled="{{matching}}" /><text>{{sku.spec}} {{sku.size}}</text>

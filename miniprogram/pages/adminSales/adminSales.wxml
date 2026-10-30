@@ -116,6 +116,7 @@
       <image class="product-img" src="{{item.productImage || '/images/placeholder.png'}}" mode="aspectFill" />
       <view class="product-info">
         <text class="product-name">{{item.productName}}</text>
+        <view class="admin-product-article-no" user-select="{{true}}">货号：{{item.articleNo || '未填写'}}</view>
         <view class="product-stats">
           <text class="product-qty">售出 {{item.soldQty || 0}} 件</text>
           <text class="product-amount">¥{{item.totalAmount || 0}}</text>

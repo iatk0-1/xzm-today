@@ -88,6 +88,7 @@
           <image class="goods-img" src="{{goods.skuImageUrl || goods.productImage}}" mode="aspectFill"></image>
           <view class="goods-info">
             <view class="goods-title"><text user-select="{{true}}">{{goods.productName}}</text></view>
+            <view class="admin-product-article-no" user-select="{{true}}">货号：{{goods.articleNo || '未填写'}}</view>
             <!-- 套装子项列表 -->
             <view class="goods-bundle" wx:if="{{goods.bundleConfig && goods.bundleConfig.length > 0}}">
               <view class="bundle-sub" wx:for="{{goods.bundleConfig}}" wx:key="skuId" wx:for-item="sub">

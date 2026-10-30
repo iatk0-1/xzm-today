@@ -60,6 +60,7 @@
       <image class="product-img" src="{{item.productImage || '/images/placeholder.png'}}" mode="aspectFill" />
       <view class="product-info">
         <view class="product-name">{{item.productName}}</view>
+        <view class="admin-product-article-no" user-select="{{true}}">货号：{{item.articleNo || '未填写'}}</view>
         <view class="product-stats">
           <text>售出 {{item.soldQty || 0}}</text>
           <text>待发 {{item.pendingQty || 0}}</text>

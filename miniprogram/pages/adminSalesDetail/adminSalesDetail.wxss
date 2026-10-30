@@ -1,3 +1,4 @@
+@import "../../styles/adminProductArticleNo.wxss";
 page { background-color: #f5f5f5; }
 .page-wrapper { padding: 16rpx; padding-bottom: 40rpx; }
 

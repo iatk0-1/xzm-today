@@ -27,7 +27,7 @@
 <view class="inventory-detail">
   <view class="product-header" wx:if="{{product}}">
     <image class="product-cover" src="{{product.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
-    <view class="product-heading"><view class="product-name">{{product.name}}</view><view class="muted">商品库存详情 · {{skus.length}} 个规格</view></view>
+    <view class="product-heading"><view class="product-name">{{product.name}}</view><view class="admin-product-article-no" user-select="{{true}}">货号：{{product.articleNo || '未填写'}}</view><view class="muted">商品库存详情 · {{skus.length}} 个规格</view></view>
   </view>
   <scroll-view class="main-tabs" scroll-x="true" enhanced="true" show-scrollbar="false" scroll-into-view="main-{{activeTab}}" scroll-with-animation="true">
     <view class="tab-track"><view wx:for="{{tabs}}" wx:key="id" id="main-{{item.id}}" class="main-tab {{activeTab === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="switchTab">{{item.name}}</view></view>
@@ -58,7 +58,7 @@
         <view class="exchange-section-title"><view class="section-title">应换回商品规格</view><button class="add-product" bindtap="addExchangeProducts" disabled="{{saving}}" aria-label="添加换回商品">＋</button></view>
         <view class="empty exchange-empty" wx:if="{{!exchangeProducts.length}}">点击右侧 ＋，查询并多选应换回的商品</view>
         <view class="exchange-product" wx:for="{{exchangeProducts}}" wx:for-item="exchangeProduct" wx:key="id">
-          <view class="exchange-product-header"><image src="{{exchangeProduct.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" /><view>{{exchangeProduct.name}}</view><button class="remove-product" data-id="{{exchangeProduct.id}}" bindtap="removeExchangeProduct" disabled="{{saving}}">移除</button></view>
+          <view class="exchange-product-header"><image src="{{exchangeProduct.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" /><view><view>{{exchangeProduct.name}}</view><view class="admin-product-article-no">货号：{{exchangeProduct.articleNo || '未填写'}}</view></view><button class="remove-product" data-id="{{exchangeProduct.id}}" bindtap="removeExchangeProduct" disabled="{{saving}}">移除</button></view>
           <template is="sku-table" data="{{skus: exchangeProduct.skus, editable: true, isTarget: true, productId: exchangeProduct.id, functionId, backfillMode, saving}}" />
         </view>
         <view class="exchange-total {{outgoingTotal === incomingTotal && outgoingTotal > 0 && !invalidQty ? 'balanced' : 'unbalanced'}}">出库 {{outgoingTotal}} 件 · 应换回 {{incomingTotal}} 件<view>{{invalidQty ? '请修正无效数量' : (outgoingTotal === incomingTotal ? '两边总件数一致，可跨规格换回' : '两边总件数须一致，才能提交')}}</view></view>

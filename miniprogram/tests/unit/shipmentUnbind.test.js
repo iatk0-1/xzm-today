@@ -23,6 +23,7 @@ function load({ preview, post, modal } = {}) {
   let definition;
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../pages/adminOrderDetail/adminOrderDetail.js'), 'utf8'), {
     console, wx, Page: value => { definition = value; }, require: name => {
+      if (name.endsWith('/adminProductArticleNo')) return require('../../utils/adminProductArticleNo');
       if (name.endsWith('/api')) return api;
       if (name.endsWith('/quantityOperation')) return operation;
       if (name.endsWith('/pageSync')) return { wrap: v => v, publish() {} };

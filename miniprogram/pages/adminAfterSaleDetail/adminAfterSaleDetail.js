@@ -1,3 +1,4 @@
+const { attachArticleNos } = require('../../utils/adminProductArticleNo');
 const quantityOperation = require('../../utils/quantityOperation');
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 // miniprogram/pages/adminAfterSaleDetail/adminAfterSaleDetail.js
@@ -151,7 +152,7 @@ Page({
         ...shipment,
         shippedAtDisplay: this.formatDateTime(shipment.shippedAt),
         expressName: this.getExpressName(shipment.expressCode),
-        items: (shipment.items || []).map(item => ({
+        items: attachArticleNos(shipment.items, this.data.afterSale && this.data.afterSale.orderDetail && this.data.afterSale.orderDetail.items || []).map(item => ({
           ...item,
           specDisplay: [item.spec || item.productSpec, item.size].filter(Boolean).join(' / '),
           displayImage: item.skuImageUrl || item.productImage || ''
@@ -549,7 +550,7 @@ Page({
 
   prepareInspection(reinspect) {
     const items = (this.data.afterSale.items || []).filter(i => i.afterSaleType === 'return_refund').map(item => ({
-      id: item.id, name: item.productName, qty: item.qty,
+      id: item.id, name: item.productName, articleNo: item.articleNo, qty: item.qty,
       receivedQty: item.inspection ? item.inspection.receivedQty : item.qty,
       acceptedQty: item.inspection ? item.inspection.acceptedQty : item.qty,
       minimumAcceptedQty: item.inspection ? item.inspection.acceptedQty : 0,

@@ -108,7 +108,7 @@ Page(autoSearch.wrap({
       const grouped = new Map(existing.map(product => [String(product.id), { ...product, skus: [...product.skus] }]));
       (result.content || []).forEach(row => {
         const key = String(row.productId);
-        const product = grouped.get(key) || { id: row.productId, name: row.productName, coverUrl: row.coverUrl, selected: false, skus: [] };
+        const product = grouped.get(key) || { id: row.productId, name: row.productName, articleNo: row.articleNo, coverUrl: row.coverUrl, selected: false, skus: [] };
         const sku = normalizeSku(row);
         const index = product.skus.findIndex(item => String(item.id) === String(sku.id));
         if (index < 0) product.skus.push(sku); else product.skus[index] = sku;
@@ -257,7 +257,7 @@ Page(autoSearch.wrap({
   },
   receiveItem(product, sku) {
     return {
-      skuId: sku.id, productId: product.id, productName: product.name,
+      skuId: sku.id, productId: product.id, productName: product.name, articleNo: product.articleNo,
       imageUrl: sku.imageUrl || product.coverUrl || '/images/default-goods-image.png',
       spec: sku.spec, size: sku.size, shortageQty: sku.shortageQty || 0,
       qty: batchQuantity(sku.receiveQty)
@@ -373,7 +373,7 @@ Page(autoSearch.wrap({
       const drafts = this.receiveDrafts();
       saved.preview.forEach(item => {
         const key = String(item.productId);
-        const product = drafts.get(key) || { id: item.productId, name: item.productName, selected: true, skus: [] };
+        const product = drafts.get(key) || { id: item.productId, name: item.productName, articleNo: item.articleNo, selected: true, skus: [] };
         const sku = { id: item.skuId, spec: item.spec, size: item.size, imageUrl: item.imageUrl,
           shortageQty: item.shortageQty, receiveQty: item.qty };
         const index = product.skus.findIndex(value => String(value.id) === String(item.skuId));
@@ -557,7 +557,7 @@ Page(autoSearch.wrap({
       const grouped = new Map();
       (rows || []).filter(row => row.shippableQty > 0).forEach(row => {
         const key = String(row.productId);
-        const product = grouped.get(key) || { id: row.productId, name: row.productName, coverUrl: row.coverUrl, skus: [] };
+        const product = grouped.get(key) || { id: row.productId, name: row.productName, articleNo: row.articleNo, coverUrl: row.coverUrl, skus: [] };
         product.skus.push({ ...normalizeSku(row), selected: true, shipQty: row.shippableQty });
         grouped.set(key, product);
       });

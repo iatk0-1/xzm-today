@@ -66,7 +66,7 @@ page { background-color: #f2f2f2; height: 100vh; display: flex; flex-direction: 
 
 .relation-group { display: flex; align-items: center; gap: 8rpx; min-height: 48rpx; margin-top: 8rpx; }
 .relation-label { width: 48rpx; flex-shrink: 0; font-size: 20rpx; color: #999; }
-.relation-list { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; gap: 8rpx; }
+.relation-list { display: flex; flex: 0 1 auto; min-width: 0; flex-wrap: wrap; gap: 8rpx; }
 .relation-list .tag { display: flex; align-items: center; gap: 6rpx; }
 .relation-add { width: 40rpx; height: 40rpx; line-height: 36rpx; flex-shrink: 0; border: 1rpx solid #c9ced6; border-radius: 50%; color: #68717c; font-size: 30rpx; text-align: center; box-sizing: border-box; }
 .relation-remove { color: #d32f2f; font-size: 28rpx; line-height: 20rpx; }
@@ -133,7 +133,7 @@ page { background-color: #f2f2f2; height: 100vh; display: flex; flex-direction: 
 .product-pricing-row, .product-article-row { display: flex; align-items: center; gap: 12rpx; margin-top: 8rpx; min-height: 44rpx; }
 .product-pricing-row .product-price { margin-top: 0; flex-shrink: 0; }
 .product-cost { font-size: 24rpx; color: #666; }
-.product-article-text { flex: 1; min-width: 0; font-size: 24rpx; color: #666; word-break: break-all; }
+.product-article-text { flex: 0 1 auto; min-width: 0; font-size: 24rpx; color: #666; word-break: break-all; }
 .quick-edit-icon { width: 40rpx; height: 40rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .pencil-icon { width: 20rpx; height: 7rpx; border: 2rpx solid #888; transform: rotate(-45deg); position: relative; }
 .pencil-icon::after { content: ''; position: absolute; left: -8rpx; top: -2rpx; border-top: 5rpx solid transparent; border-bottom: 5rpx solid transparent; border-right: 6rpx solid #888; }

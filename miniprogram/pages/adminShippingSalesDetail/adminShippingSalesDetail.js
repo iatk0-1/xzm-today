@@ -4,7 +4,7 @@ const auth = require('../../utils/auth');
 
 Page({
   data: {
-    productId: '', productName: '',
+    productId: '', productName: '', productArticleNo: '',
     overview: { soldQty: 0, pendingQty: 0, shippedQty: 0,
       afterSaleQty: 0, pendingReviewQty: 0 },
     overviewLoading: false, overviewError: false,
@@ -57,7 +57,7 @@ Page({
     return api.get('/admin/sales/shipping/products/' + this.data.productId + '/overview', this.dateParams())
       .then(res => {
         if (id !== this.overviewRequestId) return;
-        this.setData({ overview: {
+        this.setData({ productArticleNo: res.articleNo || '', overview: {
           soldQty: Number(res.sold_qty) || 0,
           pendingQty: Number(res.pending_qty) || 0,
           shippedQty: Number(res.shipped_qty) || 0,

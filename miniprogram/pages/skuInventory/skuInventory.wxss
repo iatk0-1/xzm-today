@@ -1,3 +1,4 @@
+@import "../../styles/adminProductArticleNo.wxss";
 /* 仓库库存：实物、报单欠货和异常分别展示。 */
 page { background: #f6f7f9; }
 .container { width: 100%; min-width: 0; align-items: stretch; padding: 0 16rpx 48rpx; box-sizing: border-box; }

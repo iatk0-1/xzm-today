@@ -105,7 +105,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       if (!matches(item)) return item;
       const sku = skus.get(String(item.skuId));
       if (!sku) return item;
-      return { ...item, productName: product.name, spec: sku.spec, size: sku.size,
+      return { ...item, productName: product.name, articleNo: product.articleNo, spec: sku.spec, size: sku.size,
         imageUrl: sku.imageUrl || '', defaultImageUrl: product.coverUrl || '/images/default-goods-image.png',
         costPrice: sku.costPrice ?? detail.costPrice ?? null };
     };
@@ -644,6 +644,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       skuId: i.skuId,
       productId: i.productId,
       productName: i.productName,
+      articleNo: i.articleNo,
       spec: i.spec,
       size: i.size,
       qty: this.parseOrderQty(i.qty) || 1,

@@ -88,6 +88,7 @@
         />
         <view class="item-info">
           <view class="item-name">{{item.productName}}</view>
+          <view class="admin-product-article-no" user-select="{{true}}">货号：{{item.articleNo || '未填写'}}</view>
           <view class="item-sku">现货已配 {{item.stockQty || 0}} · 在途覆盖 {{item.transitQty || 0}} · 富余在途 {{item.surplusTransitQty || 0}} · 空闲现货 {{item.freeStockQty || 0}}</view>
           <view class="item-sku">{{item.spec || '默认规格'}} · {{item.size || '均码'}}</view>
           <view class="stock-purchase-btn" catchtap="openStockPurchase" data-index="{{index}}">追加备货报单</view>
@@ -143,6 +144,7 @@
     <view class="modal-content refund-modal">
       <view class="modal-title">待报商品退款</view>
       <view class="refund-modal-subtitle">{{refundSku.productName}} · {{refundSku.spec || '默认规格'}} / {{refundSku.size || '均码'}}</view>
+      <view class="admin-product-article-no">货号：{{refundSku.articleNo || '未填写'}}</view>
       <scroll-view class="refund-order-list" scroll-y catchtouchmove="stopModalTouchMove">
         <view class="refund-loading" wx:if="{{refundLoading}}">关联订单加载中...</view>
         <view class="refund-loading" wx:elif="{{refundOrders.length === 0}}">暂无可退的关联订单</view>
@@ -186,6 +188,7 @@
           <image class="order-item-image" src="{{item.imageUrl ? item.imageUrl : item.defaultImageUrl}}" mode="aspectFill" catchtap="previewOrderProductImage" data-index="{{index}}" />
           <view class="order-item-info" catchtap="editOrderProduct" data-index="{{index}}">
             <view class="order-item-name">{{item.productName}}</view>
+            <view class="admin-product-article-no" user-select="{{true}}">货号：{{item.articleNo || '未填写'}}</view>
             <view class="order-item-sku">{{item.spec}} {{item.size}}</view>
             <view class="qty-label">报单数量（待报 {{item.recommendQty}}，超出部分记备货）</view>
           </view>
@@ -227,6 +230,7 @@
       <view class="modal-title">修改成本价</view>
       <view class="cost-modal-body">
         <view class="cost-product-name">{{costEditingItem.productName}}</view>
+        <view class="admin-product-article-no" user-select="{{true}}">货号：{{costEditingItem.articleNo || '未填写'}}</view>
         <view class="cost-product-spec">{{costEditingItem.spec}} {{costEditingItem.size}}</view>
         <view class="cost-input-label">成本单价（元 / 件）</view>
         <view class="cost-input-frame">

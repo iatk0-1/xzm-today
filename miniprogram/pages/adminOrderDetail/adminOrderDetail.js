@@ -1,3 +1,4 @@
+const { attachArticleNos } = require('../../utils/adminProductArticleNo');
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const orderPricing = require('../../utils/orderPricing');
@@ -70,6 +71,7 @@ Page(pageSync.wrap({
   async loadPricing() {
     try {
       const pricing = await api.get(`/admin/orders-manage/orders/${this.data.orderId}/pricing`);
+      pricing.items = attachArticleNos(pricing.items, this.data.order && this.data.order.items || []);
       pricing.history = (pricing.history || []).map(row => ({ ...row, timeDisplay: this.formatTime(row.createdAt) }));
       const refundPayments = Number(pricing.offlineAmount) > 0
         ? await api.get(`/admin/orders-manage/orders/${this.data.orderId}/refund-payments`) : [];
@@ -115,7 +117,7 @@ Page(pageSync.wrap({
       const skuId = String(sku.skuId);
       if (rows.has(skuId)) return;
       rows.set(skuId, {
-        skuId, productName: item.bundleProductName || item.productName || '商品',
+        skuId, productName: item.bundleProductName || item.productName || '商品', articleNo: item.articleNo,
         spec: [sku.bundleGroupName, sku.color || sku.productSpec, sku.size || sku.productSize].filter(Boolean).join(' / ') || '默认规格',
         imageUrl: sku.imageUrl || item.skuImageUrl || item.productImage || '/images/default-goods-image.png',
         costPrice: null, costDisplay: '', input: '', editing: false, loadError: ''
@@ -418,6 +420,7 @@ Page(pageSync.wrap({
       const shipments = await api.get(`/orders/${orderId}/shipments/detail`);
       if (shipments && shipments.length > 0) {
         shipments.forEach(s => {
+          s.items = attachArticleNos(s.items, this.data.order && this.data.order.items || []);
           s.expressName = getExpressName(s.expressCode);
           s.shippedAtDisplay = this.formatTime(s.shippedAt);
         });
@@ -581,7 +584,7 @@ Page(pageSync.wrap({
     if (!shipment) return;
     const partialUnbindItems = (shipment.items || []).map(item => ({
       orderItemId: item.orderItemId,
-      productName: item.productName || '商品',
+      productName: item.productName || '商品', articleNo: item.articleNo,
       spec: [item.spec, item.size].filter(Boolean).join(' / '),
       shipQty: item.shipQty || 0,
       unbindQty: ''
@@ -655,7 +658,7 @@ Page(pageSync.wrap({
     wx.showLoading({ title: '加载可退信息...' });
     try {
       const preview = await api.get(`/admin/orders-manage/orders/${this.data.orderId}/refund-preview`);
-      const refundItems = (preview.items || []).map(item => ({
+      const refundItems = attachArticleNos(preview.items, this.data.order && this.data.order.items || []).map(item => ({
         ...item,
         selectedQty: '0',
         inputAmount: '',

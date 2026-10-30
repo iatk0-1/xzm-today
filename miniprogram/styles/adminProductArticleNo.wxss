@@ -1,0 +1,9 @@
+.admin-product-article-no {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  font-weight: normal;
+  color: #888;
+  word-break: break-all;
+}

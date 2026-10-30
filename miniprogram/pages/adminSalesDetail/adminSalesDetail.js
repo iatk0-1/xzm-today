@@ -8,6 +8,7 @@ Page({
     productId: null,
     managerId: '',
     productName: '',
+    productArticleNo: '',
     // 统计概览
     overview: { soldItems: 0, soldQty: 0, totalAmount: 0, afterSaleCount: 0,
       afterSaleAmount: 0, afterSaleQty: 0, pendingReviewQty: 0 },
@@ -68,7 +69,7 @@ Page({
     if (this.data.endDate) params.endDate = this.data.endDate;
     return api.get(this.salesUrl('/products/' + this.data.productId + '/overview'), params).then(res => {
       if (requestId !== this._overviewRequestId) return;
-      this.setData({ overview: {
+      this.setData({ productArticleNo: res.articleNo || '', overview: {
         soldItems: res.soldItems || 0,
         soldQty: res.soldQty || 0,
         totalAmount: res.totalAmount || 0,

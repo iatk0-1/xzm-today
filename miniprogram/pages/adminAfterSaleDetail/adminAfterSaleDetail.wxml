@@ -74,6 +74,7 @@
           data-image-url="{{item.skuImageUrl || item.productImage}}"></image>
         <view class="item-info">
           <view class="item-name">{{item.productName}}</view>
+          <view class="admin-product-article-no" user-select="{{true}}">货号：{{item.articleNo || '未填写'}}</view>
           <view class="item-sku">{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}</view>
           <view class="item-detail-row">
             <text class="item-qty">×{{item.qty}}</text>
@@ -108,6 +109,7 @@
           data-image-url="{{item.displayImage}}"></image>
         <view class="item-info">
           <view class="item-name">{{item.productName}}</view>
+          <view class="admin-product-article-no" user-select="{{true}}">货号：{{item.articleNo || '未填写'}}</view>
           <view class="item-sku">{{item.skuSpec}} / {{item.skuSize}}</view>
           <view class="item-detail-row">
             <text class="item-qty">×{{item.applicationQty}}</text>
@@ -271,6 +273,7 @@
               data-image-url="{{item.displayImage}}"></image>
             <view class="review-item-info">
               <text class="review-item-name">{{item.productName}}</text>
+              <view class="admin-product-article-no" user-select="{{true}}">货号：{{item.articleNo || '未填写'}}</view>
               <text class="review-item-spec">{{item.skuSpec}} / {{item.skuSize}}</text>
               <text class="review-item-limit">用户申请 {{item.requestedQty || item.qty}} 件，¥ {{item.requestedRefundAmount || item.refundAmount}}</text>
               <text class="review-item-limit" wx:if="{{item.selected && reviewQuote && !reviewQuoteLoading}}">本次审核：线上 ¥{{item.onlineRefundAmount}} · 线下 ¥{{item.offlineRefundAmount}}</text>
@@ -355,6 +358,7 @@
       <scroll-view class="inspection-list" scroll-y="true">
         <view wx:for="{{inspectionItems}}" wx:key="id" class="inspection-row">
           <view>{{item.name}} · 申请 {{item.qty}} 件</view>
+          <view class="admin-product-article-no">货号：{{item.articleNo || '未填写'}}</view>
           <view class="inspection-inputs">
             <text>实收</text><input type="number" value="{{item.receivedQty}}" data-index="{{index}}" data-field="receivedQty" bindinput="onInspectionQtyInput" disabled="{{inspectionSaving}}" />
             <text>合格</text><input type="number" value="{{item.acceptedQty}}" data-index="{{index}}" data-field="acceptedQty" bindinput="onInspectionQtyInput" disabled="{{inspectionSaving}}" />
@@ -399,6 +403,7 @@
               bindtap="toggleNegotiatedItem">{{item.selected ? '✓' : ''}}</view>
             <view class="negotiated-product">
               <view class="negotiated-name">{{item.productName}}</view>
+              <view class="admin-product-article-no" user-select="{{true}}">货号：{{item.articleNo || '未填写'}}</view>
               <view class="negotiated-limit">原申请 ¥{{item.refundAmount}}，共 {{item.qty}} 件</view>
             </view>
           </view>
@@ -464,6 +469,7 @@
               data-image-url="{{goodsItem.displayImage}}"></image>
             <view class="shipment-goods-info">
               <text class="shipment-goods-name">{{goodsItem.productName || '商品'}}</text>
+              <view class="admin-product-article-no" user-select="{{true}}">货号：{{goodsItem.articleNo || '未填写'}}</view>
               <text class="shipment-goods-spec">{{goodsItem.specDisplay}}</text>
               <text class="shipment-goods-qty">×{{goodsItem.shipQty}}</text>
             </view>
