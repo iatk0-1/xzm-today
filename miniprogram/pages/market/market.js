@@ -10,6 +10,7 @@ const customerServiceUnread = require('../../utils/customerServiceUnread');
 
 Page(pageSync.wrap({
   data: {
+    currentSort: 'newest',
     wishes: [],
     leftColumn: [],   // 左列心愿
     rightColumn: [],  // 右列心愿
@@ -120,8 +121,23 @@ Page(pageSync.wrap({
     if (wasManaging) this.updateWishColumns(this.data.wishes, {}, true);
   },
 
+  // 切换排序时重置分页。
+  handleSortChange: async function(e) {
+    const sort = e.currentTarget.dataset.sort;
+    if (!['newest', 'likes'].includes(sort) || sort === this.data.currentSort || this.data.deletingWishes) return;
+    const version = this._sortChangeVersion = (this._sortChangeVersion || 0) + 1;
+    this.setData({ currentSort: sort, selectedWishIds: [] });
+    this.updateWishColumns(this.data.wishes, {}, true);
+    // 等旧请求结束再查新排序，连续切换只处理最后一次选择。
+    if (this._wishesTask) await this._wishesTask;
+    if (version !== this._sortChangeVersion) return;
+    return this.loadWishes(true, true);
+  },
+
   // 从后端 API 获取心愿列表（支持分页）
   loadWishes: function(reset = true, silent = false) {
+    // 排序切换失败后，触底重试也必须替换首屏，不能混用两种排序的列表。
+    reset = reset || this._loadedWishSort !== this.data.currentSort;
     if (reset) {
       // 刷新期间保留旧列表，等新数据返回后一次性替换，避免页面闪成空状态。
       this.setData({ page: 1, hasMore: true });
@@ -137,6 +153,8 @@ Page(pageSync.wrap({
   },
 
   fetchWishes: async function(reset, silent) {
+    const sort = this.data.currentSort;
+    const sortVersion = this._sortChangeVersion;
     this.setData({ loading: true });
     if (!silent) {
       wx.showLoading({ title: '探索中...' });
@@ -144,7 +162,8 @@ Page(pageSync.wrap({
 
     try {
       const { page, pageSize } = this.data;
-      const res = await api.get(`/wishes?page=${page}&size=${pageSize}`);
+      const res = await api.get(`/wishes?page=${page}&size=${pageSize}&sort=${sort}`);
+      if (sortVersion !== this._sortChangeVersion) return;
 
       // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
       const newWishes = (res.content || []).map(function(wish) {
@@ -160,20 +179,22 @@ Page(pageSync.wrap({
       });
       const hasMore = res.hasNext !== undefined ? res.hasNext : newWishes.length === pageSize;
 
-      // 后端已经按热度排序，前端继续兜底，分页追加后也保持全局顺序。
-      const allWishes = (reset ? newWishes : this.data.wishes.concat(newWishes))
-        .sort(function(a, b) { return b.likes - a.likes; });
+      // 后端先按选定规则排序再分页，前端保留返回顺序。
+      const allWishes = reset ? newWishes : this.data.wishes.concat(newWishes);
+      this._loadedWishSort = sort;
       this.updateWishColumns(allWishes, {
         page: this.data.page + 1,
         hasMore: hasMore,
         loading: false
       });
     } catch (err) {
+      if (sortVersion !== this._sortChangeVersion) return;
       console.error('加载心愿失败:', err);
       // 请求失败时也保留上一版列表，避免刷新失败后页面突然变空。
       this.setData({ loading: false });
       wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     } finally {
+      this.setData({ loading: false });
       if (!silent) {
         wx.hideLoading();
       }
@@ -461,13 +482,11 @@ Page(pageSync.wrap({
     };
   }
 }, async function(changes) {
-  for (const change of changes.filter(item => item.entity === 'wishes' && item.created && !item.removed)) {
-    if (this.data.wishes.some(item => String(item.id) === change.id)) continue;
-    const wish = await api.get('/wishes/' + change.id);
-    const images = wish.images && wish.images.length ? wish.images : (wish.image ? [wish.image] : []);
-    const item = { ...wish, images, image: wish.image || images[0] || '', title: wish.title || wish.content || '' };
-    const column = this.data.leftColumn.length <= this.data.rightColumn.length ? 'leftColumn' : 'rightColumn';
-    this.setData({ wishes: this.data.wishes.concat(item), [column]: this.data[column].concat(item) });
+  if (changes.some(item => item.entity === 'wishes' && item.created && !item.removed)) {
+    // 新心愿需按当前规则重新分页，不能直接追加到底部打乱最新顺序。
+    if (this._wishesTask) await this._wishesTask;
+    await this.loadWishes(true, true);
+    return;
   }
   await pageSync.updateList(this, changes, {
     entity: 'wishes', field: 'wishes', url: id => '/wishes/' + id,

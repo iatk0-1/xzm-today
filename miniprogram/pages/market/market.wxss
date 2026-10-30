@@ -1,18 +1,16 @@
 @import "../../styles/wishLike.wxss";
 page { background-color: #ffffff; }
-.market-wrapper { height: 100vh; overflow: hidden; }
-.market-scroll { height: calc(100vh - 100rpx - env(safe-area-inset-bottom)); }
+.market-wrapper { height: 100vh; overflow: hidden; display: flex; flex-direction: column; padding-bottom: calc(100rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
+.market-scroll { flex: 1; height: 0; min-height: 0; width: 100%; }
 
-/* 头部策展区 */
-.header-section { text-align: center; padding: 25px 0 35px; }
-.page-title { 
-  font-family: "Times New Roman", Times, serif; 
-  font-size: 22px; color: #111111; letter-spacing: 1px; 
-}
-.page-subtitle { 
-  font-family: -apple-system, sans-serif; font-size: 10px; 
-  color: #999999; margin-top: 8px; letter-spacing: 3px; text-transform: uppercase; 
-}
+/* 沿用首页排序标签的字号、间距和选中下划线。 */
+.market-sort-tabs { flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 10rpx 20px; margin-bottom: 20rpx; background: #fff; }
+.market-sort-tab { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; white-space: nowrap; }
+.market-sort-tab:active { opacity: 0.7; }
+.market-sort-tab text { font-size: 16px; line-height: 22px; font-weight: 400; letter-spacing: 0; color: #999; transition: color 0.2s ease; }
+.market-sort-tab.active text { font-weight: bold; color: #1a1a1a; }
+.market-sort-tab .line { width: 40rpx; height: 1rpx; background: #1a1a1a; border-radius: 4rpx; transform: scaleX(0); opacity: 0; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+.market-sort-tab.active .line { transform: scaleX(1); opacity: 1; }
 
 /* ================= Flexbox 双列布局（还原市集原样式） ================= */
 .masonry-grid {
@@ -34,7 +32,7 @@ page { background-color: #ffffff; }
   position: relative;
 }
 
-.management-hint { margin-top: 14px; color: #666; font-size: 11px; }
+.management-hint { margin: 0 15px 14px; color: #666; font-size: 11px; }
 .wish-selection {
   position: absolute; top: 8px; left: 8px; z-index: 2;
   width: 24px; height: 24px; border: 1px solid #999; border-radius: 50%;

@@ -140,6 +140,14 @@ page { background-color: #ffffff; }
   margin-bottom: 40rpx;
 }
 
+.like-hint {
+  display: block;
+  font-family: -apple-system, sans-serif;
+  font-size: 11px;
+  color: #bbb;
+  line-height: 1.5;
+}
+
 /* 底部点赞悬浮栏，适配底部安全区。 */
 .wish-like-bar {
   position: fixed;

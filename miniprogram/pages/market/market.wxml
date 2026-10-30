@@ -1,5 +1,17 @@
 <view class="market-wrapper">
 
+  <!-- 排序栏独立于列表滚动区，始终停留在顶部。 -->
+  <view class="market-sort-tabs">
+    <view class="market-sort-tab {{currentSort === 'newest' ? 'active' : ''}}" bindtap="handleSortChange" data-sort="newest">
+      <text>最新</text>
+      <view class="line"></view>
+    </view>
+    <view class="market-sort-tab {{currentSort === 'likes' ? 'active' : ''}}" bindtap="handleSortChange" data-sort="likes">
+      <text>点赞数</text>
+      <view class="line"></view>
+    </view>
+  </view>
+
   <scroll-view
     class="market-scroll"
     scroll-y
@@ -11,11 +23,7 @@
     bindscrolltolower="onReachBottom"
     lower-threshold="50"
   >
-    <view class="header-section">
-      <view class="page-title">Curation Market</view>
-      <view class="page-subtitle">探索 · 许愿 · 为你寻觅</view>
-      <view class="management-hint" wx:if="{{isAdmin && managingWishes}}">已选 {{selectedWishCount}} 条 · 全选当前已加载的心愿</view>
-    </view>
+    <view class="management-hint" wx:if="{{isAdmin && managingWishes}}">已选 {{selectedWishCount}} 条 · 全选当前已加载的心愿</view>
 
     <view class="masonry-grid" wx:if="{{wishes.length > 0}}">
       <!-- 左列 -->

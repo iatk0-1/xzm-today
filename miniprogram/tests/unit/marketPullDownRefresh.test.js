@@ -21,6 +21,7 @@ global.wx = {
 
 const originalLoad = Module._load;
 Module._load = function(request, ...rest) {
+  if (request.endsWith('utils/customerServiceUnread')) return { start() {}, stop() {} };
   if (request.endsWith('utils/api')) {
     return {
       get: async (url) => {
@@ -56,7 +57,7 @@ function wish(id, likes) {
   return { id, title: '心愿' + id, image: '/wish-' + id + '.jpg', likes };
 }
 
-nodeTest('市集下拉刷新：重新请求首屏并按热度倒序展示', async () => {
+nodeTest('市集下拉刷新：默认最新，保留后端创建时间倒序而非按点赞数重排', async () => {
   const page = createPage();
   page.data.wishes = [wish('old', 20)];
   page.data.leftColumn = [wish('old', 20)];
@@ -70,10 +71,102 @@ nodeTest('市集下拉刷新：重新请求首屏并按热度倒序展示', asyn
   assert.equal(page.data.refreshing, false);
   assert.equal(page.data.loading, false);
   assert.equal(wxCalls.showLoading, 0);
-  assert.deepEqual(requestLog, ['/wishes?page=1&size=20']);
-  assert.deepEqual(page.data.wishes.map((item) => item.id), ['high', 'middle', 'low']);
-  assert.deepEqual(page.data.leftColumn.map((item) => item.id), ['high', 'low']);
-  assert.deepEqual(page.data.rightColumn.map((item) => item.id), ['middle']);
+  assert.equal(page.data.currentSort, 'newest');
+  assert.deepEqual(requestLog, ['/wishes?page=1&size=20&sort=newest']);
+  assert.deepEqual(page.data.wishes.map((item) => item.id), ['low', 'high', 'middle']);
+  assert.deepEqual(page.data.leftColumn.map((item) => item.id), ['low', 'middle']);
+  assert.deepEqual(page.data.rightColumn.map((item) => item.id), ['high']);
+});
+
+const sortTap = sort => ({ currentTarget: { dataset: { sort } } });
+
+nodeTest('切换点赞数从第一页查询，翻页和刷新延续所选排序，重复点击不请求', async () => {
+  const page = createPage();
+  page.data.page = 4;
+  page.data.hasMore = false;
+  page.data.wishes = [wish('old', 2)];
+  requestHandler = async url => ({
+    content: url.includes('page=2') ? [wish('third', 5)] : [wish('first', 20), wish('second', 10)],
+    hasNext: !url.includes('page=2')
+  });
+  await page.handleSortChange(sortTap('likes'));
+  assert.deepEqual(page.data.wishes.map(item => item.id), ['first', 'second']);
+  assert.equal(page.data.page, 2);
+  await page.handleSortChange(sortTap('likes'));
+  assert.equal(requestLog.length, 1);
+  await page.loadWishes(false);
+  assert.deepEqual(page.data.wishes.map(item => item.id), ['first', 'second', 'third']);
+  await page.onRefresh();
+  assert.deepEqual(requestLog, [
+    '/wishes?page=1&size=20&sort=likes',
+    '/wishes?page=2&size=20&sort=likes',
+    '/wishes?page=1&size=20&sort=likes'
+  ]);
+  await page.handleSortChange(sortTap('newest'));
+  assert.equal(requestLog.at(-1), '/wishes?page=1&size=20&sort=newest');
+});
+
+nodeTest('加载中连续切换不混入旧分页，只有最后一次排序请求生效', async () => {
+  const page = createPage();
+  page.data.wishes = [wish('kept', 1)];
+  let resolveOld;
+  let resolveNew;
+  requestHandler = () => new Promise(resolve => { resolveOld = resolve; });
+  const oldTask = page.loadWishes(false);
+  const firstSwitch = page.handleSortChange(sortTap('likes'));
+  const secondSwitch = page.handleSortChange(sortTap('newest'));
+  const lastSwitch = page.handleSortChange(sortTap('likes'));
+  requestHandler = () => new Promise(resolve => { resolveNew = resolve; });
+  resolveOld({ content: [wish('stale', 99)], hasNext: false });
+  await oldTask;
+  await firstSwitch;
+  await secondSwitch;
+  assert.deepEqual(page.data.wishes.map(item => item.id), ['kept']);
+  assert.deepEqual(requestLog, ['/wishes?page=1&size=20&sort=newest', '/wishes?page=1&size=20&sort=likes']);
+  resolveNew({ content: [wish('latest-choice', 50)], hasNext: false });
+  await lastSwitch;
+  assert.deepEqual(page.data.wishes.map(item => item.id), ['latest-choice']);
+  assert.equal(page.data.loading, false);
+});
+
+nodeTest('排序加载失败保留列表，触底重试替换首屏，删除期间不切换排序', async () => {
+  const page = createPage();
+  page.data.wishes = [wish('kept', 1)];
+  page._loadedWishSort = 'newest';
+  page.data.deletingWishes = true;
+  await page.handleSortChange(sortTap('likes'));
+  assert.equal(page.data.currentSort, 'newest');
+  assert.equal(requestLog.length, 0);
+  page.data.deletingWishes = false;
+  requestHandler = async () => { throw new Error('网络失败'); };
+  await page.handleSortChange(sortTap('likes'));
+  assert.deepEqual(page.data.wishes.map(item => item.id), ['kept']);
+  assert.equal(page.data.loading, false);
+  requestHandler = async () => ({ content: [wish('recovered', 10)], hasNext: false });
+  await page.loadWishes(false);
+  assert.deepEqual(page.data.wishes.map(item => item.id), ['recovered']);
+  assert.equal(requestLog.at(-1), '/wishes?page=1&size=20&sort=likes');
+});
+
+nodeTest('发布新心愿返回市集时按当前排序重载，最新心愿不再追加在末尾', async () => {
+  for (const sort of ['newest', 'likes']) {
+    const page = createPage();
+    page.onLoad();
+    page._hasLoadedMarketData = true;
+    page.data.currentSort = sort;
+    page.data.page = 4;
+    page.data.wishes = [wish('old', 5)];
+    requestHandler = async () => ({ content: [wish('new', 0), wish('old', 5)], hasNext: false });
+    require('../../utils/pageSync').publish('wishes', 'new', false, { created: true });
+    try {
+      await page.onShow();
+      assert.deepEqual(requestLog, [`/wishes?page=1&size=20&sort=${sort}`]);
+      assert.deepEqual(page.data.wishes.map(item => item.id), ['new', 'old']);
+      assert.equal(page.data.page, 2);
+    } finally {
+      page.onUnload();
+    }
+  }
 });
 
 nodeTest('市集刷新：请求期间保留旧列表，避免先清空导致页面闪动', async () => {
