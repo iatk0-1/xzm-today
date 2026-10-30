@@ -191,6 +191,10 @@ Page({
   loadLogisticsAccounts: async function() {
     try {
       const accounts = await api.get('/logistics/bound-accounts');
+      // 韵达默认排在首位，其他物流账号保留原有顺序。
+      if (Array.isArray(accounts)) {
+        accounts.sort((a, b) => Number(b.deliveryId === 'YUNDA') - Number(a.deliveryId === 'YUNDA'));
+      }
       const selected = this.data.logisticsAccounts[this.data.logisticsIndex];
       const selectedIndex = selected && Array.isArray(accounts)
         ? accounts.findIndex(account => account.bizId === selected.bizId && account.deliveryId === selected.deliveryId)
