@@ -11,3 +11,9 @@
 .promotion-switch{display:flex;align-items:center;justify-content:space-between;margin-top:24rpx;font-size:27rpx}
 .promotion-primary{margin:28rpx 0 16rpx;background:#07c160;color:#fff}
 .promotion-error{padding:20rpx 0;font-size:26rpx;color:#c83337;line-height:1.6}
+
+.promotion-rule-row{display:flex;align-items:center;gap:10rpx;margin-bottom:16rpx;font-size:26rpx;white-space:nowrap}
+.promotion-rule-input{min-width:0;flex:1;box-sizing:border-box;padding:16rpx 10rpx;min-height:72rpx;border-radius:10rpx;background:#f5f6f7;text-align:center;font-size:28rpx}
+.promotion-rule-remove{width:60rpx;min-width:60rpx;margin:0;padding:0;line-height:72rpx;background:transparent;color:#c83337;font-size:40rpx}
+.promotion-rule-remove::after{border:0}
+.promotion-rule-add{margin:8rpx 0 20rpx;background:#f0faf4;color:#078c48;border:1rpx dashed #9bd8b5;font-size:28rpx}

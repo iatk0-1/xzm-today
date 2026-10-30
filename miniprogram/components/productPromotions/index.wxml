@@ -33,19 +33,18 @@
           <view class="promotion-label">可享人数（每个商品独立）</view><input class="promotion-input" type="number" value="{{form.maxUsers}}" data-field="maxUsers" bindinput="input" />
           <view class="promotion-label">有效天数（商品启用时起算）</view><input class="promotion-input" type="number" value="{{form.validDays}}" data-field="validDays" bindinput="input" />
         </block>
-        <block wx:if="{{form.type === 'AMOUNT'}}">
-          <view class="promotion-label">满多少元</view><input class="promotion-input" type="digit" value="{{form.thresholdAmount}}" data-field="thresholdAmount" bindinput="input" />
-          <view class="promotion-label">减多少元（达到门槛减一次）</view><input class="promotion-input" type="digit" value="{{form.amount}}" data-field="amount" bindinput="input" />
-        </block>
-        <block wx:if="{{form.type === 'RATE'}}">
-          <view class="promotion-label">满几件</view><input class="promotion-input" type="number" value="{{form.minimumQty}}" data-field="minimumQty" bindinput="input" />
-          <view class="promotion-label">打几折（例如9、9.5，达标后全部件数打折）</view><input class="promotion-input" type="digit" value="{{form.fold}}" data-field="fold" bindinput="input" />
-        </block>
-        <block wx:if="{{form.type === 'QUANTITY'}}">
-          <view class="promotion-label">减免方式</view><picker range="{{['满件总减', '按件递增减']}}" value="{{form.mode === 'PROGRESSIVE' ? 1 : 0}}" bindchange="mode"><view class="promotion-picker">{{form.mode === 'PROGRESSIVE' ? '按件递增减' : '满件总减'}} ▾</view></picker>
-          <block wx:if="{{form.mode !== 'PROGRESSIVE'}}"><view class="promotion-label">满几件</view><input class="promotion-input" type="number" value="{{form.minimumQty}}" data-field="minimumQty" bindinput="input" /></block>
-          <view class="promotion-label">{{form.mode === 'PROGRESSIVE' ? '每往后一件多减多少元（首件不减）' : '合计减多少元'}} </view><input class="promotion-input" type="digit" value="{{form.amount}}" data-field="amount" bindinput="input" />
-          <block wx:if="{{form.mode === 'PROGRESSIVE'}}"><view class="promotion-label">单件减免上限（元，选填）</view><input class="promotion-input" type="digit" value="{{form.maxUnitDiscount}}" data-field="maxUnitDiscount" bindinput="input" /></block>
+        <block wx:if="{{form.type !== 'FIRST'}}">
+          <view class="promotion-label">优惠规则</view>
+          <view class="promotion-rule-row" wx:for="{{form.rules}}" wx:key="_key">
+            <text>满</text>
+            <input class="promotion-rule-input" type="{{form.type === 'AMOUNT' ? 'digit' : 'number'}}" placeholder="{{form.type === 'AMOUNT' ? '金额' : '件数'}}" value="{{form.type === 'AMOUNT' ? item.thresholdAmount : item.minimumQty}}" data-index="{{index}}" data-field="{{form.type === 'AMOUNT' ? 'thresholdAmount' : 'minimumQty'}}" bindinput="ruleInput" disabled="{{saving}}" />
+            <text>{{form.type === 'AMOUNT' ? '元，减' : (form.type === 'RATE' ? '件，打' : '件，减')}}</text>
+            <input class="promotion-rule-input" type="digit" placeholder="{{form.type === 'RATE' ? '折扣' : '金额'}}" value="{{form.type === 'RATE' ? item.fold : item.amount}}" data-index="{{index}}" data-field="{{form.type === 'RATE' ? 'fold' : 'amount'}}" bindinput="ruleInput" disabled="{{saving}}" />
+            <text>{{form.type === 'RATE' ? '折' : '元'}}</text>
+            <button class="promotion-rule-remove" data-index="{{index}}" bindtap="removeRule" disabled="{{saving}}" aria-label="删除第{{index + 1}}条规则">×</button>
+          </view>
+          <button class="promotion-rule-add" bindtap="addRule" disabled="{{saving}}">＋ 新增</button>
+          <view class="promotion-tip">达到多个门槛时，使用最高门槛的一条规则，只优惠一次。{{form.type === 'RATE' ? '折扣可填9、9.5，达标后整组商品打折。' : ''}}</view>
         </block>
         <view class="promotion-tip">保存后方案可重复选择；本商品的优惠选择随商品一起保存。</view>
         <button class="promotion-primary" loading="{{saving}}" disabled="{{saving}}" bindtap="saveScheme">保存方案并选中</button>

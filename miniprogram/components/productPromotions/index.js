@@ -45,11 +45,27 @@ Component({
       if (s && (!s.id || s.enabled || String(s.id) === String((this.data.value || {}).otherSchemeId))) this.emit({ otherSchemeId: s.id || null, otherName: s.id ? s.name : '', otherSummary: s.id ? summary(s) : '' });
     },
     combine(e) { this.emit({ combine: !!e.detail.value }); },
-    create() { this.setData({ editing: true, createTypeIndex: 0, form: { type: 'FIRST', mode: 'FIXED' }, error: '' }); },
+    create() { this.setData({ editing: true, createTypeIndex: 0, form: { type: 'FIRST', rules: [this.emptyRule()] }, error: '' }); },
     cancelCreate() { if (!this.data.saving) this.setData({ editing: false, error: '' }); },
-    createType(e) { const i = Number(e.detail.value);this.setData({ createTypeIndex: i, form: { type: TYPES[i], mode: 'FIXED' }, error: '' }); },
+    createType(e) { const i = Number(e.detail.value);this.setData({ createTypeIndex: i, form: { type: TYPES[i], rules: [this.emptyRule()] }, error: '' }); },
     input(e) { this.setData({ ['form.' + e.currentTarget.dataset.field]: e.detail.value }); },
-    mode(e) { this.setData({ 'form.mode': Number(e.detail.value) ? 'PROGRESSIVE' : 'FIXED' }); },
+    emptyRule() { this._ruleSequence = (this._ruleSequence || 0) + 1;return { _key: 'rule-' + this._ruleSequence }; },
+    ruleInput(e) {
+      if (this.data.saving) return;
+      const { index, field } = e.currentTarget.dataset;
+      const rules = this.data.form.rules.map((row, i) => i === Number(index) ? { ...row, [field]: e.detail.value } : row);
+      this.setData({ 'form.rules': rules });
+    },
+    addRule() {
+      if (this.data.saving) return;
+      const rules = this.data.form.rules || [];
+      if (rules.length >= 100) { this.setData({ error: '每个方案最多100条规则' });return; }
+      this.setData({ 'form.rules': [...rules, this.emptyRule()], error: '' });
+    },
+    removeRule(e) {
+      if (this.data.saving) return;
+      this.setData({ 'form.rules': this.data.form.rules.filter((row, i) => i !== Number(e.currentTarget.dataset.index)), error: '' });
+    },
     async saveScheme() {
       if (this.data.saving) return;
       let request;
