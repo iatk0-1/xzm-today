@@ -131,7 +131,7 @@ Page(pageSync.wrap({
     // 等旧请求结束再查新排序，连续切换只处理最后一次选择。
     if (this._wishesTask) await this._wishesTask;
     if (version !== this._sortChangeVersion) return;
-    return this.loadWishes(true, true);
+    return this.loadWishes(true);
   },
 
   // 从后端 API 获取心愿列表（支持分页）
@@ -157,7 +157,7 @@ Page(pageSync.wrap({
     const sortVersion = this._sortChangeVersion;
     this.setData({ loading: true });
     if (!silent) {
-      wx.showLoading({ title: '探索中...' });
+      wx.showLoading({ title: '探索中...', mask: true });
     }
 
     try {

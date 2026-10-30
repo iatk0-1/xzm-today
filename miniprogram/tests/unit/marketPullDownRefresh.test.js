@@ -11,7 +11,7 @@ const wxCalls = { showLoading: 0, hideLoading: 0, stopPullDownRefresh: 0 };
 
 global.Page = (config) => { pageConfig = config; };
 global.wx = {
-  showLoading() { wxCalls.showLoading += 1; },
+  showLoading(options) { wxCalls.showLoading += 1; wxCalls.loadingOptions = options; },
   hideLoading() { wxCalls.hideLoading += 1; },
   stopPullDownRefresh() { wxCalls.stopPullDownRefresh += 1; },
   showToast() {},
@@ -42,6 +42,7 @@ require('../../pages/market/market.js');
 function createPage() {
   requestLog = [];
   wxCalls.showLoading = 0;
+  wxCalls.loadingOptions = null;
   wxCalls.hideLoading = 0;
   wxCalls.stopPullDownRefresh = 0;
 
@@ -92,8 +93,12 @@ nodeTest('切换点赞数从第一页查询，翻页和刷新延续所选排序�
   await page.handleSortChange(sortTap('likes'));
   assert.deepEqual(page.data.wishes.map(item => item.id), ['first', 'second']);
   assert.equal(page.data.page, 2);
+  assert.deepEqual(wxCalls.loadingOptions, { title: '探索中...', mask: true });
+  assert.equal(wxCalls.showLoading, 1);
+  assert.equal(wxCalls.hideLoading, 1);
   await page.handleSortChange(sortTap('likes'));
   assert.equal(requestLog.length, 1);
+  assert.equal(wxCalls.showLoading, 1);
   await page.loadWishes(false);
   assert.deepEqual(page.data.wishes.map(item => item.id), ['first', 'second', 'third']);
   await page.onRefresh();
@@ -127,6 +132,8 @@ nodeTest('加载中连续切换不混入旧分页，只有最后一次排序请�
   await lastSwitch;
   assert.deepEqual(page.data.wishes.map(item => item.id), ['latest-choice']);
   assert.equal(page.data.loading, false);
+  assert.equal(wxCalls.showLoading, 2);
+  assert.equal(wxCalls.hideLoading, 2);
 });
 
 nodeTest('排序加载失败保留列表，触底重试替换首屏，删除期间不切换排序', async () => {
@@ -142,6 +149,8 @@ nodeTest('排序加载失败保留列表，触底重试替换首屏，删除期�
   await page.handleSortChange(sortTap('likes'));
   assert.deepEqual(page.data.wishes.map(item => item.id), ['kept']);
   assert.equal(page.data.loading, false);
+  assert.equal(wxCalls.showLoading, 1);
+  assert.equal(wxCalls.hideLoading, 1);
   requestHandler = async () => ({ content: [wish('recovered', 10)], hasNext: false });
   await page.loadWishes(false);
   assert.deepEqual(page.data.wishes.map(item => item.id), ['recovered']);
