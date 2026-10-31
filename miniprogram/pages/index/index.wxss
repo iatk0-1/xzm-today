@@ -70,7 +70,7 @@ page {
   display: flex;
   justify-content: space-between; 
   align-items: center;
-  padding: 10rpx 20px;
+  padding: 10rpx 40rpx 10rpx 40rpx;
   width: 100%;
   box-sizing: border-box;
 }
@@ -78,12 +78,11 @@ page {
 .nav-tabs-left {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 40rpx;
 }
 
 .nav-tabs-left .tab-item {
   position: relative;
-  width: 32px;
   flex: none;
   flex-shrink: 0;
   display: flex;
@@ -92,18 +91,11 @@ page {
   white-space: nowrap;
 }
 
-.nav-tabs-left .tab-item:active {
-  transform: none;
-  transition: opacity 0.2s ease;
-}
-
 /* 未选中状态 */
 .nav-tabs-left .tab-item text {
-  /* 字号与横向布局采用整像素，减少文字落点取整造成的字间距差异。 */
-  font-size: 16px;
-  line-height: 22px;
-  font-weight: 400;
-  letter-spacing: 0;
+  /* 字号、行高和间距使用 rpx，随屏幕宽度缩放。 */
+  font-size: 32rpx;
+  line-height: 44rpx;
   color: #999;
   transition: color 0.2s ease;
 }
