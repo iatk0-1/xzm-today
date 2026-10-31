@@ -32,6 +32,37 @@ function sale(status = 'refunded') {
     refundPayment: { onlineAmount: 0, offlineAmount: 20, requestedOnlineAmount: 0, requestedOfflineAmount: 50 } };
 }
 
+for (const name of ['afterSaleDetail', 'adminAfterSaleDetail']) {
+  test(`${name}：关联订单按成交行金额分摊单价，保留原价和售后退款金额`, () => {
+    const { page } = harness(name), input = sale();
+    input.items[0].refundAmount = '0.90';input.items[0].requestedRefundAmount = '0.90';
+    input.orderDetail = { promotionDiscount: '0.28', items: [
+      { id: '9007199254740993', qty: 3, salePrice: '1.00', settlementAmount: '2.72' }
+    ] };
+    const result = page.formatAfterSaleDetail(input), item = result.orderDetail.items[0];
+    assert.equal(item.displayUnitPrice, '0.91');assert.equal(item.originalUnitPrice, '1.00');
+    assert.equal(item.showOriginalPrice, true);assert.equal(item.salePrice, '1.00');
+    assert.equal(item.settlementAmount, '2.72');assert.equal(result.items[0].refundAmount, '0.90');
+    assert.equal(input.orderDetail.items[0].displayUnitPrice, undefined);
+  });
+
+  test(`${name}：零元成交不回退原价，普通旧订单和改价订单沿用订单单价口径`, () => {
+    const { page } = harness(name);
+    const discounted = page.formatOrderDetail({ promotionDiscount: 1, items: [
+      { id: '1', qty: 1, salePrice: 1, settlementAmount: 0 }
+    ] }).items[0];
+    assert.equal(discounted.displayUnitPrice, '0.00');assert.equal(discounted.showOriginalPrice, true);
+    const ordinary = page.formatOrderDetail({ items: [{ id: '2', qty: 2, salePrice: 5 }] }).items[0];
+    assert.equal(ordinary.displayUnitPrice, '5.00');assert.equal(ordinary.showOriginalPrice, false);
+    const adjusted = page.formatOrderDetail({ priceRevision: 1, items: [
+      { id: '3', qty: 2, salePrice: 10, settlementAmount: 16 }
+    ] }).items[0];
+    assert.equal(adjusted.displayUnitPrice, '8.00');assert.equal(adjusted.originalUnitPrice, '10.00');
+    const missing = page.formatOrderDetail({ promotionDiscount: 1, items: [{ id: '4', qty: 1, salePrice: 5 }] }).items[0];
+    assert.equal(missing.displayUnitPrice, null);
+  });
+}
+
 test('管理员改金额和数量后，用户清单及申请进度保留50元两件，商家审核展示20元', () => {
   const { page } = harness('afterSaleDetail');
   const formatted = page.formatAfterSaleDetail(sale());

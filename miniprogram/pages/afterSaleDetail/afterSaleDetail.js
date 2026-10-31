@@ -5,6 +5,7 @@ const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const refundChannels = require('../../utils/refundChannels');
 const afterSaleDisplay = require('../../utils/afterSaleDisplay');
+const promotionDisplay = require('../../utils/skuPromotionDisplay');
 
 const RETURN_EXPRESS_OPTIONS = [
   { code: 'ZTO', name: '中通' },
@@ -90,10 +91,9 @@ Page({
   },
 
   formatOrderDetail: function(orderDetail) {
-    const items = (orderDetail.items || []).map(item => ({
+    const items = promotionDisplay.orderItemPrices(orderDetail, null).map(item => ({
       ...item,
-      afterSaleStatusDisplay: this.getAfterSaleItemStatusDisplay(item.afterSaleStatus),
-      salePriceDisplay: this.formatAmount(item.salePrice)
+      afterSaleStatusDisplay: this.getAfterSaleItemStatusDisplay(item.afterSaleStatus)
     }));
     return {
       ...orderDetail,

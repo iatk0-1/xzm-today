@@ -81,7 +81,10 @@
             <text class="item-type" wx:if="{{item.afterSaleStatusDisplay}}">{{item.afterSaleStatusDisplay}}</text>
           </view>
         </view>
-        <view class="item-refund">¥ {{item.salePriceDisplay}}</view>
+        <view class="related-order-prices">
+          <text class="related-order-original-price" wx:if="{{item.showOriginalPrice}}">原价：￥{{item.originalUnitPrice}}</text>
+          <text class="item-refund">{{item.displayUnitPrice != null ? '￥' + item.displayUnitPrice : '--'}}</text>
+        </view>
       </view>
     </view>
     <view class="amount-group">

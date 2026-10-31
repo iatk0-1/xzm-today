@@ -9,6 +9,7 @@ const clipboard = require('../../utils/clipboard');
 const afterSaleFulfillment = require('../../utils/afterSaleFulfillment');
 const refundChannels = require('../../utils/refundChannels');
 const afterSaleDisplay = require('../../utils/afterSaleDisplay');
+const promotionDisplay = require('../../utils/skuPromotionDisplay');
 
 Page({
   data: {
@@ -178,10 +179,9 @@ Page({
   },
 
   formatOrderDetail: function(orderDetail) {
-    const items = (orderDetail.items || []).map(item => ({
+    const items = promotionDisplay.orderItemPrices(orderDetail, null).map(item => ({
       ...item,
-      afterSaleStatusDisplay: this.getAfterSaleItemStatusDisplay(item.afterSaleStatus),
-      salePriceDisplay: this.formatAmount(item.salePrice)
+      afterSaleStatusDisplay: this.getAfterSaleItemStatusDisplay(item.afterSaleStatus)
     }));
     return {
       ...orderDetail,
