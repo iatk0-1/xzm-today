@@ -65,7 +65,10 @@
             <view class="goods-sku" wx:else><text user-select="{{true}}">{{goods.productSpec || '图片色'}} / {{goods.productSize || '均码'}}</text></view>
             <view class="remark-badge" wx:if="{{goods.remark}}">{{goods.remark}}</view>
             <view class="goods-price-row">
-              <text class="price">¥ {{goods.salePrice}}</text>
+              <view class="order-item-price-pair">
+                <text class="price" wx:if="{{goods.displayUnitPrice != null}}">￥{{goods.displayUnitPrice}}</text><text class="price" wx:else>待加载</text>
+                <text class="order-item-original-price" wx:if="{{goods.showOriginalPrice}}">原价：￥{{goods.originalUnitPrice}}</text>
+              </view>
               <text class="count">x {{goods.qty}}</text>
             </view>
             <view class="after-sale-line {{goods.afterSaleSummary && goods.afterSaleSummary.hasActive ? 'active' : 'handled'}}" wx:if="{{goods.afterSaleSummary && goods.afterSaleSummary.hasAfterSale}}">

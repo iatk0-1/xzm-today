@@ -20,6 +20,7 @@ Page(pageSync.wrap({
     showPricePanel: false,
     priceSaving: false,
     pricing: null,
+    promotionRows: [], promotionExpanded: false, promotionDetailsError: '',
     priceDraft: {},
     pricePreview: {},
     showCostPanel: false,
@@ -70,6 +71,7 @@ Page(pageSync.wrap({
   },
 
   async loadPricing() {
+    this.setData({ promotionDetailsError: '' });
     try {
       const pricing = await api.get(`/admin/orders-manage/orders/${this.data.orderId}/pricing`);
       pricing.items = attachArticleNos(pricing.items, this.data.order && this.data.order.items || []);
@@ -77,9 +79,12 @@ Page(pageSync.wrap({
       pricing.history = (pricing.history || []).map(row => ({ ...row, timeDisplay: this.formatTime(row.createdAt) }));
       const refundPayments = Number(pricing.offlineAmount) > 0
         ? await api.get(`/admin/orders-manage/orders/${this.data.orderId}/refund-payments`) : [];
-      this.setData({ pricing, refundPayments });
+      const order = this.data.order;
+      this.setData({ pricing, refundPayments, promotionRows: promotionDisplay.discountRows(pricing.promotions && pricing.promotions.applied),
+        ...(order ? { order: { ...order, items: promotionDisplay.orderItemPrices(order, pricing) } } : {}) });
       return pricing;
     } catch (error) {
+      this.setData({ promotionDetailsError: '优惠明细加载失败，点击重试' });
       wx.showToast({ title: getErrorMessage(error, '金额明细加载失败，请重试'), icon: 'none' });
       return null;
     }
@@ -317,6 +322,7 @@ Page(pageSync.wrap({
       await auth.ensureAuthenticated({ silent: true });
       const order = await api.get(`/admin/orders-manage/orders/${this.data.orderId}`);
       Object.assign(order, promotionDisplay.orderAmounts(order));
+      order.items = promotionDisplay.orderItemPrices(order, null);
       order.settlementTotalDisplay = orderPricing.total(order);
       order.statusDisplay = this.getOrderStatusDisplay(order.status);
       order.createdAtDisplay = this.formatTime(order.createdAt);
@@ -337,7 +343,7 @@ Page(pageSync.wrap({
         logisticsTraceMap: {}
       });
       if ((Number(order.priceRevision) > 0 || Number(order.promotionDiscount) > 0)) await this.loadPricing();
-      else this.setData({ pricing: null, refundPayments: [] });
+      else this.setData({ pricing: null, refundPayments: [], promotionRows: [], promotionDetailsError: '' });
       if (this._openPricingOnLoad && order.status === 'pending') {
         this._openPricingOnLoad = false;
         await this.openPricePanel();
@@ -359,6 +365,8 @@ Page(pageSync.wrap({
       this.syncPendingShipmentUnbind();
     }
   },
+
+  togglePromotionDetails() { this.setData({ promotionExpanded: !this.data.promotionExpanded }); },
 
   getOrderStatusDisplay(status) {
     const map = {

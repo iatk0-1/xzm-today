@@ -4,12 +4,15 @@ const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/cart/cart.js
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const promotionDisplay = require('../../utils/skuPromotionDisplay');
 
 Page(pageSync.wrap({
   data: {
     cartList: [],
     isAllSelected: true,
-    totalPrice: 0,
+    totalPrice: '0.00',
+    originalTotalPrice: '0.00', discountAmount: '0.00',
+    cartQuoteLoading: false, cartQuoteReady: false, cartQuoteError: '',
     totalCount: 0,
     currentSlideIndex: -1,  // 当前滑出的项索引
     slideOut: 0,  // 当前滑出的距离
@@ -18,15 +21,30 @@ Page(pageSync.wrap({
   },
 
   onLoad: function() {
-    this.loadCartData();
+    this._cartDisposed = false;
+    return this.loadCartData();
+  },
+
+  onShow: function() {
+    if (this._cartLoaded) return this.loadCartData();
+  },
+
+  onUnload: function() {
+    this._cartDisposed = true;
+    this._cartLoadVersion = (this._cartLoadVersion || 0) + 1;
+    this._cartQuoteVersion = (this._cartQuoteVersion || 0) + 1;
   },
 
   // 从后端加载购物车数据
   loadCartData: async function() {
+    const version = this._cartLoadVersion = (this._cartLoadVersion || 0) + 1;
+    this._cartQuoteVersion = (this._cartQuoteVersion || 0) + 1;
+    this.setData({ cartQuoteReady: false, cartQuoteLoading: true, cartQuoteError: '' });
     wx.showLoading({ title: '加载中...' });
     try {
       await auth.ensureAuthenticated({ silent: true });
       const res = await api.get('/cart');
+      if (this._cartDisposed || version !== this._cartLoadVersion) return;
       wx.hideLoading();
 
       // 后端返回：{ items: [...], totalCount, totalPrice, selectedCount }
@@ -46,8 +64,8 @@ Page(pageSync.wrap({
         var itemPrice = Number(item.price);
         if (bundleConfig && bundleConfig.length > 0) {
           itemPrice = bundleConfig.reduce(function(sum, b) {
-            return sum + (Number(b.price) || 0) * (b.count || 1);
-          }, 0);
+            return sum + Math.round(Number(b.price || 0) * 100) * Number(b.count == null ? 1 : b.count);
+          }, 0) / 100;
         }
 
         return {
@@ -74,14 +92,17 @@ Page(pageSync.wrap({
       });
 
       this.setData({ cartList });
-      this.calculateTotal();
+      this._cartLoaded = true;
+      await this.calculateTotal();
     } catch (err) {
+      if (this._cartDisposed || version !== this._cartLoadVersion) return;
       wx.hideLoading();
+      this.setData({ cartQuoteLoading: false, cartQuoteReady: false, cartQuoteError: getErrorMessage(err, '购物车加载失败，请重试') });
       console.error('加载购物车失败:', err);
       // 如果是因为未登录，清空本地购物车并提示
       if (isUnauthorized(err)) {
         wx.showToast({ title: '请先登录', icon: 'none' });
-        this.setData({ cartList: [] });
+        this.setData({ cartList: [], totalPrice: '0.00', totalCount: 0, isAllSelected: false });
       } else {
         wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
       }
@@ -89,9 +110,11 @@ Page(pageSync.wrap({
   },
 
   // 计算总价和总件数
-  calculateTotal: function() {
+  calculateTotal: async function() {
+    if (this._cartDisposed) return;
+    const version = this._cartQuoteVersion = (this._cartQuoteVersion || 0) + 1;
     let cart = this.data.cartList;
-    let totalP = 0;
+    let totalCents = 0;
     let totalC = 0;
     let allSelected = true;
 
@@ -103,9 +126,9 @@ Page(pageSync.wrap({
     } else {
       availableItems.forEach(item => {
         if (item.selected) {
-          let currentPrice = Number(item.finalPrice || item.price || 0);
-          totalP += (currentPrice * item.count);
-          totalC += item.count;
+          let currentPrice = Number(item.finalPrice != null ? item.finalPrice : item.price || 0);
+          totalCents += Math.round(currentPrice * 100) * Number(item.count);
+          totalC += Number(item.count);
         } else {
           allSelected = false;
         }
@@ -113,10 +136,28 @@ Page(pageSync.wrap({
     }
 
     this.setData({
-      totalPrice: totalP.toFixed(2),
+      originalTotalPrice: (totalCents / 100).toFixed(2),
+      totalPrice: '0.00', discountAmount: '0.00',
+      cartQuoteLoading: totalC > 0, cartQuoteReady: totalC === 0, cartQuoteError: '',
       totalCount: totalC,
       isAllSelected: allSelected
     });
+    if (!totalC) return;
+    const selectedItems = availableItems.filter(item => item.selected && Number(item.count) > 0);
+    const items = selectedItems.map(item => ({ skuId: item.skuId, qty: Number(item.count),
+      salePrice: Number(item.finalPrice != null ? item.finalPrice : item.price), pool: 'main',
+      ...(item.bundleConfig && item.bundleConfig.length ? { bundleConfig: item.bundleConfig } : {}) }));
+    try {
+      const quote = await api.post('/orders/goods-quote', { items });
+      if (this._cartDisposed || version !== this._cartQuoteVersion) return;
+      const amounts = promotionDisplay.amountSummary(quote, totalCents);
+      this.setData({ totalPrice: amounts.goodsAmount, discountAmount: amounts.discountAmount,
+        cartQuoteLoading: false, cartQuoteReady: true });
+    } catch (err) {
+      if (this._cartDisposed || version !== this._cartQuoteVersion) return;
+      this.setData({ cartQuoteLoading: false, cartQuoteReady: false,
+        cartQuoteError: getErrorMessage(err, '优惠金额计算失败，请重试') });
+    }
   },
 
   // 勾选/取消勾选单件商品
@@ -137,7 +178,7 @@ Page(pageSync.wrap({
       await api.patch(`/cart/items/${item.id}/selected?selected=${newSelected}`);
       item.selected = newSelected;
       this.setData({ cartList: cart });
-      this.calculateTotal();
+      await this.calculateTotal();
     } catch (err) {
       console.error('更新商品选中状态失败:', err);
       wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
@@ -152,10 +193,10 @@ Page(pageSync.wrap({
       await api.patch(`/cart/toggle-all`);
       let cart = this.data.cartList;
       cart.forEach(item => {
-        item.selected = allSelected;
+        item.selected = !item.disabled && allSelected;
       });
       this.setData({ cartList: cart, isAllSelected: allSelected });
-      this.calculateTotal();
+      await this.calculateTotal();
     } catch (err) {
       console.error('全选操作失败:', err);
       wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
@@ -187,7 +228,7 @@ Page(pageSync.wrap({
         await api.put(`/cart/items/${item.id}`, { count: newCount });
         item.count = newCount;
         this.setData({ cartList: cart });
-        this.calculateTotal();
+        await this.calculateTotal();
       } catch (err) {
         console.error('更新数量失败:', err);
         wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
@@ -199,14 +240,14 @@ Page(pageSync.wrap({
           await api.put(`/cart/items/${item.id}`, { count: newCount });
           item.count = newCount;
           this.setData({ cartList: cart });
-          this.calculateTotal();
+          await this.calculateTotal();
         } catch (err) {
           console.error('更新数量失败:', err);
           wx.showToast({ title: getErrorMessage(err, '操作失败'), icon: 'none' });
         }
       } else {
         // 数量为 1 时，点击"-"直接删除，不再确认
-        this.deleteItem({ currentTarget: { dataset: { index } } });
+        await this.deleteItem({ currentTarget: { dataset: { index } } });
       }
     }
   },
@@ -217,7 +258,10 @@ Page(pageSync.wrap({
       wx.showToast({ title: '请先选择商品', icon: 'none' });
       return;
     }
-    let selectedItems = this.data.cartList.filter(item => item.selected);
+    if (!this.data.cartQuoteReady || this.data.cartQuoteLoading) {
+      wx.showToast({ title: this.data.cartQuoteError || '正在计算优惠金额，请稍候', icon: 'none' });return;
+    }
+    let selectedItems = this.data.cartList.filter(item => item.selected && !item.disabled && Number(item.count) > 0);
     wx.setStorageSync('checkoutItems', selectedItems);
 
     wx.navigateTo({
@@ -331,7 +375,7 @@ Page(pageSync.wrap({
         currentSlideIndex: -1,
         slideOut: 0
       });
-      this.calculateTotal();
+      await this.calculateTotal();
       wx.showToast({ title: '已移除', icon: 'success' });
     } catch (err) {
       console.error('删除商品失败:', err);
@@ -341,6 +385,6 @@ Page(pageSync.wrap({
 }, async function(changes) {
   if (changes.some(item => item.entity === 'cart-removed')) {
     this.setData({ cartList: this.data.cartList.filter(item => !item.selected) });
-    this.calculateTotal();
+    await this.calculateTotal();
   }
 }));

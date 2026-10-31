@@ -2,6 +2,7 @@ const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/orderList/orderList.js
 const api = require('../../utils/api');
+const promotionDisplay = require('../../utils/skuPromotionDisplay');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const orderNavigation = require('../../utils/orderNavigation');
@@ -48,7 +49,7 @@ Page(pageSync.wrap({
   refreshOrder: async function(id) {
     await pageSync.updateList(this, [{ entity: 'orders', id: String(id) }], {
       entity: 'orders', field: 'orders', url: id => '/orders/' + id,
-      normalize: order => ({ ...order, statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status, createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt), customerServiceCard: customerServiceOrder.orderCard(order) }),
+      normalize: order => ({ ...order, items: promotionDisplay.orderItemPrices(order, null), statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status, createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt), customerServiceCard: customerServiceOrder.orderCard(order) }),
       matches: order => !STATUS_MAP[this.data.currentTab] || STATUS_MAP[this.data.currentTab] === 'after_sale'
         || order.status === STATUS_MAP[this.data.currentTab]
     });
@@ -133,6 +134,7 @@ Page(pageSync.wrap({
       // 后端返回格式：{ items: [...], total: N, page: 1, size: 20 }
       const orders = (res.content || res.items || []).map(order => ({
         ...order,
+        items: promotionDisplay.orderItemPrices(order, null),
         statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status,
         createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt),
         customerServiceCard: customerServiceOrder.orderCard(order)

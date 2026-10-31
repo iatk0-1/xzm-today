@@ -22,7 +22,7 @@
     <view class="section-label">商品清单</view>
     <view class="shipping-hint" wx:if="{{!checkoutItems.length}}">暂无结算商品，请返回挑选商品。</view>
     
-    <view class="item-card" wx:for="{{checkoutItems}}" wx:key="id">
+    <view class="item-card" wx:for="{{checkoutDisplayItems}}" wx:key="id">
       <image class="item-img" src="{{item.coverUrl || item.image}}" mode="aspectFill"></image>
       <view class="item-info">
         <view class="item-title">{{item.name || item.title}}</view>
@@ -31,7 +31,10 @@
           <view class="bundle-sub-item" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
             <text class="sub-name">{{sub.bundleGroupName}}</text>
             <text class="sub-spec">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
-            <text class="sub-price">¥{{sub.price}}</text>
+            <view class="order-item-price-pair checkout-sub-price-pair">
+              <text class="sub-price" wx:if="{{goodsQuoteReady && sub.displayUnitPrice != null}}">￥{{sub.displayUnitPrice}}</text><text class="sub-price" wx:else>{{shippingError ? '待计算' : '计算中…'}}</text>
+              <text class="order-item-original-price" wx:if="{{goodsQuoteReady && sub.showOriginalPrice}}">原价：￥{{sub.originalUnitPrice}}</text>
+            </view>
           </view>
         </view>
         <view class="item-sku" wx:else>
@@ -42,7 +45,10 @@
         </view>
         
         <view class="item-bottom">
-          <view class="item-price">¥ {{item.finalPrice || item.price}}</view>
+          <view class="order-item-price-pair">
+            <text class="item-price" wx:if="{{goodsQuoteReady && item.displayUnitPrice != null}}">￥{{item.displayUnitPrice}}</text><text class="item-price" wx:else>{{shippingError ? '待计算' : '计算中…'}}</text>
+            <text class="order-item-original-price" wx:if="{{goodsQuoteReady && item.showOriginalPrice}}">原价：￥{{item.originalUnitPrice}}</text>
+          </view>
           <view class="item-count">× {{item.count}}{{item.bundleConfig && item.bundleConfig.length ? '套' : '件'}}</view>
         </view>
         <view class="item-remark">
@@ -57,8 +63,13 @@
       <text class="sum-label">商品合计</text>
       <text class="sum-value">￥{{originalGoodsAmount}}</text>
     </view>
-    <view class="summary-row" wx:for="{{promotionRows}}" wx:key="key"><text class="sum-label">{{item.label}}</text><text class="sum-value promotion-deduction">-￥{{item.amount}}</text></view>
-    <view class="summary-row"><text class="sum-label">优惠共减</text><text class="sum-value promotion-deduction">{{goodsQuoteReady ? '-￥' + discountAmount : '计算中…'}}</text></view>
+    <block wx:if="{{goodsQuoteReady && discountAmount > 0}}">
+    <view class="summary-row" bindtap="togglePromotionDetails" aria-label="{{promotionExpanded ? '收起优惠明细' : '展开优惠明细'}}">
+      <text class="sum-label">优惠共减</text>
+      <view class="order-promotion-value"><text class="sum-value promotion-deduction">{{goodsQuoteReady ? '-￥' + discountAmount : '计算中…'}}</text><text class="order-promotion-arrow {{promotionExpanded ? 'expanded' : ''}}">></text></view>
+    </view>
+    <include src="../../templates/orderPromotionDetails.wxml" />
+    </block>
     <view class="summary-row">
       <view class="shipping-label">
         <text class="sum-label">运费</text>

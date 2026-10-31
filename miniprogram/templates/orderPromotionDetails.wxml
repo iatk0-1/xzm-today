@@ -1,0 +1,10 @@
+<view class="order-promotion-details" wx:if="{{promotionExpanded}}">
+  <view class="order-promotion-detail-row" wx:for="{{promotionRows}}" wx:key="key">
+    <text>{{item.label}}</text><text class="order-promotion-detail-amount">-￥{{item.amount}}</text>
+  </view>
+  <block wx:if="{{!promotionRows.length}}">
+    <view class="order-promotion-empty" wx:if="{{promotionDetailsError}}" bindtap="loadPricing">{{promotionDetailsError}}</view>
+    <view class="order-promotion-empty" wx:elif="{{order && order.promotionDiscount > 0 && !pricing}}">优惠明细加载中…</view>
+    <view class="order-promotion-empty" wx:else>暂无优惠明细</view>
+  </block>
+</view>

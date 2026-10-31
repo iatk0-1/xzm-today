@@ -21,6 +21,7 @@ Page(pageSync.wrap({
 
   data: {
     pricing: null,
+    promotionRows: [], promotionExpanded: false,
     order: null,
     isLoading: true,
     countdownText: '',
@@ -79,6 +80,7 @@ Page(pageSync.wrap({
       wx.hideLoading();
       const pricing = (Number(res.priceRevision) > 0 || Number(res.promotionDiscount) > 0) ? await api.get(`/orders/${orderId}/pricing`) : null;
       if (pricing) (pricing.items || []).forEach(row => { row.unitPriceDisplay = (Number(row.settlementAmount) / Math.max(1, Number(row.qty || 1))).toFixed(2); });
+      res.items = promotionDisplay.orderItemPrices(res, pricing);
       // 附加格式化字段
       res.statusDisplay = this.getOrderStatusDisplay(res.status);
       res.createdAtDisplay = this.formatTime(res.createdAt);
@@ -95,7 +97,8 @@ Page(pageSync.wrap({
         });
       }
       
-      this.setData({ pricing, order: res, customerServiceCard: customerServiceOrder.orderCard(res), isLoading: false });
+      this.setData({ pricing, promotionRows: promotionDisplay.discountRows(pricing && pricing.promotions && pricing.promotions.applied),
+        order: res, customerServiceCard: customerServiceOrder.orderCard(res), isLoading: false });
 
       // 加载售后记录
       this.loadAfterSaleRecords(orderId);
@@ -119,6 +122,8 @@ Page(pageSync.wrap({
       console.error(err);
     }
   },
+
+  togglePromotionDetails: function() { this.setData({ promotionExpanded: !this.data.promotionExpanded }); },
 
   getOrderStatusDisplay: function(status) {
     const map = {

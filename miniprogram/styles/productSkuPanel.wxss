@@ -41,12 +41,13 @@
 
 .sku-close {
   position: absolute;
-  top: 24rpx;
+  top: 34rpx;
   right: 24rpx;
   font-size: 46rpx;
   color: #999;
   width: 60rpx;
   height: 60rpx;
+  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -55,7 +56,8 @@
 .sku-header {
   display: flex;
   flex-shrink: 0;
-  margin-bottom: 40rpx;
+  align-items: flex-start;
+  margin-bottom: 0;
 }
 
 .sku-image-column {
@@ -152,10 +154,26 @@
 
 .sku-main {
   flex: 1;
+  min-width: 0;
+  height: 160rpx;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
 }
+
+/* 库存行始终占位，三行的位置不随库存文案隐藏而变化。 */
+.sku-summary-slot { display: flex; align-items: center; width: 100%; height: 48rpx; flex: 0 0 48rpx; min-width: 0; }
+.sku-price-scroll { width: 100%; height: 48rpx; white-space: nowrap; }
+.sku-header .sku-price { display: inline-flex; align-items: baseline; flex-wrap: nowrap; height: 48rpx; line-height: 48rpx; margin-bottom: 0; white-space: nowrap; gap: 12rpx; }
+.sku-header .sku-price.has-discount { color: #d32f2f; }
+.sku-before-total { position: relative; display: inline-block; color: #999; font-size: 23rpx; line-height: 1.2; font-weight: 400; }
+.sku-price-strike { position: absolute; left: 0; right: 0; top: 50%; height: 2rpx; background: #d32f2f; }
+.sku-average-price { font-size: 23rpx; line-height: 1.2; font-weight: 400; color: #d32f2f; }
+.sku-header .sku-stock { margin-bottom: 0; line-height: 1.2; }
+.sku-header .sku-choose-tip { background: none; padding: 0; border-radius: 0; height: 48rpx; line-height: 48rpx; color: #666; align-self: auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sku-discount-entry { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; min-height: 76rpx; margin-bottom: 20rpx; border-bottom: 1rpx solid #eee; }
+.sku-discount-entry .sku-title { margin-bottom: 0; }
+.sku-discount-entry-amount { color: #d32f2f; font-size: 26rpx; }
 
 .sku-price {
   font-size: 40rpx;

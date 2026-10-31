@@ -38,6 +38,7 @@ page { background-color: #f9f9f9; }
 .sub-spec { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #aaa; margin-left: 4px; margin-right: 8rpx; }
 .sub-count { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #777; margin-right: 8rpx; }
 .sub-price { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #555; margin-left: auto; }
+.checkout-sub-price-pair { margin-left: auto; }
 
 /* 商品备注输入 */
 .item-remark { margin-top: 8px; }

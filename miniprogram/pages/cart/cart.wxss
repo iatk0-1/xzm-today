@@ -119,4 +119,7 @@ page { background-color: #ffffff; }
 .total-price { display: flex; align-items: baseline; margin-right: 20px; }
 .label { font-family: "Times New Roman", Times, serif; font-size: 12px; color: #999999; margin-right: 8px; }
 .price-num { font-family: "Times New Roman", Times, serif; font-size: 16px; color: #111111; font-weight: bold; }
+.cart-quote-state { font-size: 13px; color: #999; }
+.cart-quote-error { position: absolute; left: 0; right: 0; bottom: 100%; padding: 10px 20px; box-sizing: border-box; background: #fff7f4; color: #b64735; font-size: 12px; text-align: right; }
+.btn-checkout.disabled { opacity: .45; }
 .btn-checkout { background-color: #111111; color: #ffffff; font-family: -apple-system, sans-serif; font-size: 12px; height: 40px; line-height: 40px; padding: 0 25px; border-radius: 2px; letter-spacing: 0.5px; }

@@ -11,9 +11,11 @@ Page({
   data: {
     address: null,
     checkoutItems: [],
+    checkoutDisplayItems: [],
     totalPrice: '0.00',
     goodsAmount: '0.00', shippingFee: '0.00', itemQuantity: 0,
     originalGoodsAmount: '0.00', discountAmount: '0.00', promotionRows: [], goodsQuoteReady: false,
+    promotionExpanded: false,
     shippingReady: false, shippingLoading: false, shippingError: '',
     shippingAllowed: false, showShippingTip: false,
     orderCreated: false,
@@ -177,7 +179,8 @@ Page({
     const quote = this._checkoutQuote;
     const amounts = quote ? promotionDisplay.amountSummary(quote, cents) : {
       originalGoodsAmount: (cents / 100).toFixed(2), goodsAmount: (cents / 100).toFixed(2), discountAmount: '0.00', promotionRows: [] };
-    this.setData({ ...amounts, itemQuantity: quantity,
+    const checkoutDisplayItems = promotionDisplay.checkoutItemPrices(this.data.checkoutItems || [], quote);
+    this.setData({ ...amounts, checkoutDisplayItems, itemQuantity: quantity,
       totalPrice: ((Math.round(Number(amounts.goodsAmount) * 100) + Math.round(Number(this.data.shippingFee || 0) * 100)) / 100).toFixed(2) });
   },
 
@@ -192,7 +195,7 @@ Page({
     this._checkoutQuote = null;
     this.recalculateGoods();
     const { address, itemQuantity } = this.data;
-    this.setData({ shippingReady: false, shippingAllowed: false, shippingError: '', goodsQuoteReady: false,
+    this.setData({ shippingReady: false, shippingAllowed: false, shippingError: '', goodsQuoteReady: false, promotionExpanded: false,
       shippingFee: '0.00', totalPrice: this.data.goodsAmount });
     if (!itemQuantity) { this.setData({ shippingLoading: false }); return; }
     this.setData({ shippingLoading: true });
@@ -221,6 +224,9 @@ Page({
     }
   },
 
+  togglePromotionDetails: function() {
+    if (this.data.goodsQuoteReady) this.setData({ promotionExpanded: !this.data.promotionExpanded });
+  },
   toggleShippingTip: function() { this.setData({ showShippingTip: !this.data.showShippingTip }); },
   closeShippingTip: function() { if (this.data.showShippingTip) this.setData({ showShippingTip: false }); },
   stopShippingTipTap: function() {},
@@ -233,7 +239,8 @@ Page({
     const index = e.currentTarget.dataset.index;
     const value = e.detail.value;
     this.setData({
-      ['checkoutItems[' + index + '].remark']: value
+      ['checkoutItems[' + index + '].remark']: value,
+      ['checkoutDisplayItems[' + index + '].remark']: value
     });
   },
 

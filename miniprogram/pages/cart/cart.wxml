@@ -92,9 +92,11 @@
       <view class="total-section">
         <view class="total-price">
           <text class="label">Total:</text>
-          <text class="price-num">¥ {{totalPrice}}</text>
+          <text class="price-num" wx:if="{{cartQuoteReady}}">¥ {{totalPrice}}</text>
+          <text class="cart-quote-state" wx:else>{{cartQuoteLoading ? '计算中…' : '待计算'}}</text>
         </view>
-        <view class="btn-checkout {{totalCount === 0 ? 'disabled' : ''}}" bindtap="goToCheckout">CHECK OUT ({{totalCount}})</view>
+        <view class="cart-quote-error" wx:if="{{cartQuoteError}}" bindtap="loadCartData">金额计算失败，点击重试</view>
+        <view class="btn-checkout {{totalCount === 0 || !cartQuoteReady || cartQuoteLoading ? 'disabled' : ''}}" bindtap="goToCheckout">CHECK OUT ({{totalCount}})</view>
       </view>
     </view>
   </block>

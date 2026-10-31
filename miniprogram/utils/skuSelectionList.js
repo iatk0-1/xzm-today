@@ -11,6 +11,7 @@ const initialData = {
   promotionOffers: [], promotionOffersReady: false, promotionOffersLoading: false, promotionOffersError: '',
   showSkuPromotions: false, skuQuoteLoading: false, skuQuoteError: '',
   pickedOriginalPrice: '0.00', pickedDiscountPrice: '0.00', pickedGoodsPrice: '0.00', pickedDiscountRows: [],
+  pickedHasDiscount: false, pickedAverageUnitPrice: '0.00', pickedPromotionRows: [],
   currentSkuDiscounted: false, currentSkuUnitPrice: '', currentSkuUnitApproximate: false
 };
 
@@ -91,6 +92,20 @@ function buildPickedPatch(page, state = page.data) {
   } else Object.assign(patch, decorateOptions(product.skuMatrix || [], state.selectedColor, quantities));
   const signature = selectionSignature(page, items);
   Object.assign(patch, promotionDisplay.pricing(items, page._skuQuote && page._skuQuote.signature === signature ? page._skuQuote.value : null));
+  patch.pickedHasDiscount = Number(patch.pickedDiscountPrice) > 0;
+  patch.pickedAverageUnitPrice = totalCount ? (Math.round(Math.round(Number(patch.pickedGoodsPrice) * 100) / totalCount) / 100).toFixed(2) : '0.00';
+  patch.pickedPromotionRows = promotionDisplay.pickerDiscountRows(state.promotionOffers, patch.pickedDiscountRows);
+  // 数量立即更新；新报价返回前保留上次金额，避免先闪回原价再显示优惠价。
+  if (totalCount && state.pickedTotalCount && page._skuQuote && page._skuQuote.signature !== signature) {
+    for (const key of ['pickedOriginalPrice', 'pickedDiscountPrice', 'pickedGoodsPrice', 'pickedDiscountRows',
+      'pickedHasDiscount', 'pickedAverageUnitPrice', 'pickedPromotionRows']) patch[key] = state[key];
+    const previousItems = new Map((state.pickedSkuItems || []).map(sku => [String(sku.skuId), sku]));
+    patch.pickedSkuItems = patch.pickedSkuItems.map(sku => {
+      const previous = previousItems.get(String(sku.skuId));
+      return previous ? { ...sku, unitPriceText: previous.unitPriceText,
+        discounted: previous.discounted, unitApproximate: previous.unitApproximate } : sku;
+    });
+  }
   const current = patch.pickedSkuItems.find(sku => String(sku.skuId) === String(state.currentSkuId));
   patch.currentSkuDiscounted = !!(current && current.discounted);
   patch.currentSkuUnitPrice = current ? current.unitPriceText : '';
@@ -142,6 +157,15 @@ const methods = {
   refreshPickedSkus() {
     applyPickerPatch(this, buildPickedPatch(this));
     this.refreshSkuPromotionQuote();
+  },
+
+  clearPickedSkus(e) {
+    if (this.data.purchasePending || this.dismissSkuQuantityKeyboard(e) || !this._pickedSkus) return;
+    this._pickedQuantities = {};
+    this._skuQuote = null;
+    this._skuQuoteVersion = (this._skuQuoteVersion || 0) + 1;
+    this._pickedDraft = drafts.writeDraft(this._pickedDraftKey, this._pickedQuantities);
+    this.refreshPickedSkus();
   },
 
   async loadSkuPromotions() {

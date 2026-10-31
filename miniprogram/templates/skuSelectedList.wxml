@@ -2,35 +2,34 @@
   <view class="sku-picked-mask" capture-bind:touchstart="onSkuQuantityTouchStart" catchtap="closePickedSkus" catchtouchmove="stopPickedTouchMove"></view>
   <view class="sku-picked-panel" style="{{embedded && viewportHeight ? 'max-height: calc(' + viewportHeight + 'px - 240rpx - env(safe-area-inset-bottom));' : ''}}" capture-bind:touchstart="onSkuQuantityTouchStart" bindtap="onSkuPanelTap" catchtouchmove="stopPickedTouchMove">
     <view class="sku-picked-heading">
-      <text>已选清单</text><text class="sku-picked-close" catchtap="closePickedSkus" aria-label="关闭已选清单">×</text>
+      <text>已选清单</text><view class="sku-picked-heading-actions"><text class="sku-picked-clear" catchtap="clearPickedSkus">清空</text><text class="sku-picked-close" catchtap="closePickedSkus" aria-label="关闭已选清单">×</text></view>
     </view>
     <scroll-view class="sku-picked-scroll" scroll-y>
-      <view class="sku-picked-empty" wx:if="{{!pickedSkuItems.length}}">还没有选择商品，调整规格数量后会显示在这里</view>
+      <view class="sku-picked-empty" wx:if="{{!pickedSkuItems.length}}">还没有选择商品</view>
       <view class="sku-picked-row" wx:for="{{pickedSkuItems}}" wx:key="skuId">
         <image class="sku-picked-image" src="{{skuPanelImagePaths[item.imageUrl] || imagePaths[item.imageUrl] || item.imageUrl}}" mode="aspectFill" catchtap="previewPickedSku" data-url="{{item.imageUrl}}"></image>
         <view class="sku-picked-info">
           <view class="sku-picked-group" wx:if="{{item.bundleGroupName}}">{{item.bundleGroupName}}</view>
-          <view class="sku-picked-spec">{{item.color}} / {{item.size}}</view>
-          <view class="sku-picked-item-bottom">
-            <view><text class="sku-picked-unit-price">{{item.unitApproximate ? '约' : ''}}￥{{item.unitPriceText}}</text><text class="sku-original-price" wx:if="{{item.discounted}}">优惠前：￥{{item.priceText}}</text></view>
+          <view class="sku-picked-spec-row">
+            <view class="sku-picked-spec">{{item.color}} / {{item.size}}</view>
             <view class="sku-quantity-control">
               <view class="sku-quantity-btn" catchtap="pickedQuantityMinus" data-sku-id="{{item.skuId}}">-</view>
               <input id="picked-quantity-{{item.skuId}}" class="sku-quantity-input" type="number" value="{{item.count}}" hold-keyboard="{{true}}" bindfocus="pickedQuantityInputFocus" bindinput="pickedQuantityInput" bindblur="pickedQuantityInputBlur" data-sku-id="{{item.skuId}}" />
               <view class="sku-quantity-btn {{item.atLimit ? 'disabled' : ''}}" catchtap="pickedQuantityPlus" data-sku-id="{{item.skuId}}">+</view>
             </view>
           </view>
+          <view class="sku-picked-item-bottom"><text class="sku-picked-unit-price {{item.discounted ? 'active' : ''}}">￥{{item.unitPriceText}}</text><text class="sku-original-price" wx:if="{{item.discounted}}">￥{{item.priceText}}</text></view>
         </view>
       </view>
     </scroll-view>
     <view class="sku-picked-amounts">
       <view class="sku-amount-row"><text>商品总价</text><text>￥{{pickedOriginalPrice}}</text></view>
-      <view wx:if="{{!pickedTotalCount || (promotionOffersReady && !skuQuoteLoading && !skuQuoteError)}}">
-        <view class="sku-amount-row" wx:for="{{pickedDiscountRows}}" wx:key="key"><text>{{item.label}}</text><text class="sku-discount-amount">-￥{{item.amount}}</text></view>
-        <view class="sku-picked-footer"><text>优惠共减￥{{pickedDiscountPrice}}</text><view>合计 <text class="sku-picked-total">￥{{pickedGoodsPrice}}</text></view></view>
+      <view>
+        <view class="sku-amount-row" wx:for="{{pickedPromotionRows}}" wx:key="key"><text>{{item.label}}</text><text class="sku-discount-amount {{item.active ? 'active' : ''}}">{{item.active ? '-￥' + item.amount : '￥0'}}</text></view>
+        <view class="sku-picked-footer"><text class="sku-picked-savings">优惠共减<text class="sku-picked-saving-amount {{pickedHasDiscount ? 'active' : ''}}">￥{{pickedDiscountPrice}}</text></text><view class="sku-picked-final">合计 <text class="sku-picked-total {{pickedHasDiscount ? 'active' : ''}}">￥{{pickedGoodsPrice}}</text></view></view>
       </view>
-      <view class="sku-promotion-message" wx:elif="{{promotionOffersError}}" catchtap="loadSkuPromotions">优惠信息加载失败，点击重试</view>
+      <view class="sku-promotion-message" wx:if="{{promotionOffersError}}" catchtap="loadSkuPromotions">优惠信息加载失败，点击重试</view>
       <view class="sku-promotion-message" wx:elif="{{skuQuoteError}}" catchtap="retrySkuPromotionQuote">优惠计算失败，点击重试</view>
-      <view class="sku-promotion-message" wx:else>优惠计算中…</view>
     </view>
   </view>
 </block>

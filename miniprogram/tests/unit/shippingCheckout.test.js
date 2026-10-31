@@ -46,20 +46,27 @@ function harness(options = {}) {
   });
   const page = { ...definition, data: structuredClone(definition.data), setData(v) { Object.assign(this.data, v); } };
   page.data.checkoutItems = [{ id: '1', productId: '10', skuId: '11', name: '普通商品', price: '10.01', count: 1 },
-    { id: '2', productId: '20', skuId: '21', name: '套装', price: '20.00', count: 2, bundleConfig: [{ count: 3, skuId: '22' }] }];
+    { id: '2', productId: '20', skuId: '21', name: '套装', price: '20.00', count: 2, bundleConfig: [{ count: 2, price: 10, skuId: '22' }] }];
   page.data.address = { recipient: '买家', phone: '13800000000', province: '西藏', city: '拉萨', district: '城关', detail: '测试地址' };
   page.data.purchaseNoticeAgreed = true;
   page.data.purchaseNoticeReady = true;
   return { page, calls, modals, toasts, storage };
 }
 function deferred() { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; }
+function quoteLines(first, second) {
+  return [{ requestIndex: 0, skuId: '11', quantity: 1, settlementAmount: first },
+    { requestIndex: 1, skuId: '22', quantity: 4, settlementAmount: second }];
+}
 
 test('结算按后端首单和满减展示原商品合计及优惠，合计含运费，下单仍传原价并核对实付', async () => {
   const { page, calls } = harness({ goodsQuote: async () => ({ originalGoodsAmount: '50.01', goodsAmount: '35.01', discountAmount: '15.00', shippingFee: '45.00',
-    applied: [{ scheme: { type: 'FIRST' }, discountAmount: '5.00' }, { scheme: { type: 'AMOUNT' }, discountAmount: '10.00' }] }) });
+    applied: [{ scheme: { type: 'FIRST' }, discountAmount: '5.00' }, { scheme: { type: 'AMOUNT' }, discountAmount: '10.00' }], items: quoteLines(7.01, 28) }) });
   await page.refreshShippingQuote();
   assert.equal(page.data.originalGoodsAmount, '50.01');assert.equal(page.data.goodsAmount, '35.01');
   assert.equal(page.data.discountAmount, '15.00');assert.equal(page.data.totalPrice, '80.01');
+  assert.equal(page.data.checkoutDisplayItems[0].displayUnitPrice, '7.01');assert.equal(page.data.checkoutDisplayItems[0].originalUnitPrice, '10.01');
+  assert.equal(page.data.checkoutDisplayItems[1].displayUnitPrice, '14.00');assert.equal(page.data.checkoutDisplayItems[1].originalUnitPrice, '20.00');
+  assert.equal(page.data.checkoutDisplayItems[1].bundleConfig[0].displayUnitPrice, '7.00');
   assert.deepEqual(JSON.parse(JSON.stringify(page.data.promotionRows.map(row => row.label))), ['首单优惠', '满减优惠']);
   await page.submitOrder();const request = calls.find(row => row[1] === '/orders')[2];
   assert.equal(request.expectedPayAmount, '80.01');assert.equal(request.expectedShippingFee, '45.00');
@@ -68,7 +75,7 @@ test('结算按后端首单和满减展示原商品合计及优惠，合计含�
 
 test('没有地址仍能计算优惠后货款，快递费保持待计算且不能提交订单', async () => {
   const { page, calls } = harness({ goodsQuote: async () => ({ originalGoodsAmount: 50.01, goodsAmount: 45.01, discountAmount: 5,
-    applied: [{ scheme: { type: 'FIRST' }, discountAmount: 5 }] }) });
+    applied: [{ scheme: { type: 'FIRST' }, discountAmount: 5 }], items: quoteLines(9.01, 36) }) });
   page.data.address = null;await page.refreshShippingQuote();
   assert.equal(page.data.totalPrice, '45.01');assert.equal(page.data.goodsQuoteReady, true);assert.equal(page.data.shippingReady, false);
   assert.ok(calls.some(row => row[1] === '/orders/goods-quote'));await page.submitOrder();assert.ok(!calls.some(row => row[1] === '/orders'));
@@ -83,7 +90,8 @@ test('优惠报价失败不把原价当作最终支付金额，重试前拦截�
 test('提交时首单资格失效，重新报价并要求核对，不自动重下单或支付', async () => {
   let changed = false;
   const { page, calls, modals } = harness({ goodsQuote: async () => ({ originalGoodsAmount: 50.01, goodsAmount: changed ? 50.01 : 45.01,
-    discountAmount: changed ? 0 : 5, shippingFee: 45, applied: changed ? [] : [{ scheme: { type: 'FIRST' }, discountAmount: 5 }] }),
+    discountAmount: changed ? 0 : 5, shippingFee: 45, applied: changed ? [] : [{ scheme: { type: 'FIRST' }, discountAmount: 5 }],
+    items: changed ? quoteLines(10.01, 40) : quoteLines(9.01, 36) }),
     post: async () => { changed = true;throw { statusCode: 409, message: '首单优惠或商品金额已变化' }; } });
   await page.refreshShippingQuote();assert.equal(page.data.totalPrice, '90.01');await page.submitOrder();
   assert.equal(page.data.totalPrice, '95.01');assert.equal(page.data.discountAmount, '0.00');assert.equal(page.data.orderCreated, false);
