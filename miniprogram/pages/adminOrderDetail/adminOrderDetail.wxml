@@ -60,7 +60,7 @@
           <text wx:if="{{item.afterSaleSummary.shipmentBlockedQty > 0}}"> · 可发 {{item.afterSaleSummary.canShipQty}}</text>
         </view>
         <view class="goods-price-row">
-          <text class="price">¥ {{item.salePrice}}</text>
+          <text class="price">{{order.promotionDiscount > 0 ? '原价 ¥' : '¥'}} {{item.salePrice}}</text>
           <text class="count">x {{item.qty}}</text>
         </view>
         <view class="goods-sku" wx:if="{{order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped'}}">
@@ -79,14 +79,19 @@
 
     <view class="money-breakdown">
       <view class="money-row">
-        <text class="money-label">商品总价</text>
-        <text class="money-val">¥ {{order.goodsAmount}}</text>
+        <text class="money-label">商品合计</text>
+        <text class="money-val">￥{{order.originalGoodsAmountText}}</text>
       </view>
+      <view class="money-row"><text class="money-label">优惠共减</text><text class="money-val">-￥{{order.promotionDiscountText}}</text></view>
+      <view class="money-row" wx:if="{{order.hasManualAdjustment}}"><text class="money-label">改价调整</text><text class="money-val">{{order.manualAdjustmentSign}}￥{{order.manualAdjustmentText}}</text></view>
       <view class="money-row">
         <text class="money-label">运费{{order.shippingRefundStatus === 'success' ? '(已退款)' : ''}}</text>
         <text class="money-val">¥ {{order.shippingFee}}</text>
       </view>
       <view class="money-row total">
+        <text class="money-label">合计</text><text class="money-val final">￥{{order.amountTotalText}}</text>
+      </view>
+      <view class="money-row">
         <text class="money-label">{{order.status === 'pending' ? '线上待付' : '线上实付'}}</text>
         <text class="money-val final">¥ {{order.payAmount}}</text>
       </view>
@@ -96,13 +101,14 @@
     </view>
   </view>
 
-  <view class="info-card pricing-details" wx:if="{{pricing && pricing.revision > 0}}">
+  <view class="info-card pricing-details" wx:if="{{pricing && (pricing.revision > 0 || order.promotionDiscount > 0)}}">
     <view class="section-title">实际成交分摊</view>
     <view class="price-item-line" wx:for="{{pricing.items}}" wx:key="orderItemId">
       <view class="price-item-info">
         <text>{{item.productName || '商品'}}</text>
         <view class="admin-product-article-no">货号：{{item.articleNo || '未填写'}}</view>
         <view class="price-item-spec"><text wx:if="{{item.spec || item.size}}">{{item.spec}}{{item.spec && item.size ? ' / ' : ''}}{{item.size}} · </text>× {{item.qty}}</view>
+        <view class="price-item-spec">成交均摊单价约 ¥ {{item.unitPriceDisplay}}</view>
       </view>
       <text>¥ {{item.settlementAmount}}</text>
     </view>

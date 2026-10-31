@@ -77,7 +77,7 @@ Page({
         return;
       }
 
-      const pricing = Number(res.priceRevision) > 0 ? await api.get(`/orders/${orderId}/pricing`) : null;
+      const pricing = (Number(res.priceRevision) > 0 || Number(res.promotionDiscount) > 0) ? await api.get(`/orders/${orderId}/pricing`) : null;
       const pricingByItem = {};
       if (pricing) (pricing.items || []).forEach(row => { pricingByItem[String(row.orderItemId)] = row; });
       res.items.forEach(item => {

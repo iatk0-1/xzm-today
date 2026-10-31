@@ -13,6 +13,7 @@ function checkoutHarness({ failureAt, error, paymentError } = {}) {
     Page: value => { definition = value; }, console: { error() {} }, setTimeout() {},
     require(name) {
       if (name.endsWith('/skuSelectionDraft')) return require('../../utils/skuSelectionDraft');
+      if (name.endsWith('/skuPromotionDisplay')) return require('../../utils/skuPromotionDisplay');
       if (name.endsWith('/error')) return errors;
       if (name.endsWith('/purchaseNotice')) return notices;
       if (name.endsWith('/customerServiceNavigation')) return require('../../utils/customerServiceNavigation');
@@ -36,6 +37,7 @@ function checkoutHarness({ failureAt, error, paymentError } = {}) {
   page.data.purchaseNoticeReady = true;
   page.data.purchaseNoticeAgreed = true;
   page.data.shippingReady = true;
+  page.data.goodsQuoteReady = true;
   page.data.shippingAllowed = true;
   return { page, calls, modals, toasts, redirects };
 }

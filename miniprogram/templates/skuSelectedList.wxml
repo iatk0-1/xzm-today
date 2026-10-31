@@ -12,7 +12,7 @@
           <view class="sku-picked-group" wx:if="{{item.bundleGroupName}}">{{item.bundleGroupName}}</view>
           <view class="sku-picked-spec">{{item.color}} / {{item.size}}</view>
           <view class="sku-picked-item-bottom">
-            <text class="sku-picked-unit-price">￥{{item.priceText}}</text>
+            <view><text class="sku-picked-unit-price">{{item.unitApproximate ? '约' : ''}}￥{{item.unitPriceText}}</text><text class="sku-original-price" wx:if="{{item.discounted}}">优惠前：￥{{item.priceText}}</text></view>
             <view class="sku-quantity-control">
               <view class="sku-quantity-btn" catchtap="pickedQuantityMinus" data-sku-id="{{item.skuId}}">-</view>
               <input id="picked-quantity-{{item.skuId}}" class="sku-quantity-input" type="number" value="{{item.count}}" hold-keyboard="{{true}}" bindfocus="pickedQuantityInputFocus" bindinput="pickedQuantityInput" bindblur="pickedQuantityInputBlur" data-sku-id="{{item.skuId}}" />
@@ -22,6 +22,15 @@
         </view>
       </view>
     </scroll-view>
-    <view class="sku-picked-footer"><text>共 {{pickedTotalCount}} 件</text><view>总计 <text class="sku-picked-total">￥{{pickedTotalPrice}}</text></view></view>
+    <view class="sku-picked-amounts">
+      <view class="sku-amount-row"><text>商品总价</text><text>￥{{pickedOriginalPrice}}</text></view>
+      <view wx:if="{{!pickedTotalCount || (promotionOffersReady && !skuQuoteLoading && !skuQuoteError)}}">
+        <view class="sku-amount-row" wx:for="{{pickedDiscountRows}}" wx:key="key"><text>{{item.label}}</text><text class="sku-discount-amount">-￥{{item.amount}}</text></view>
+        <view class="sku-picked-footer"><text>优惠共减￥{{pickedDiscountPrice}}</text><view>合计 <text class="sku-picked-total">￥{{pickedGoodsPrice}}</text></view></view>
+      </view>
+      <view class="sku-promotion-message" wx:elif="{{promotionOffersError}}" catchtap="loadSkuPromotions">优惠信息加载失败，点击重试</view>
+      <view class="sku-promotion-message" wx:elif="{{skuQuoteError}}" catchtap="retrySkuPromotionQuote">优惠计算失败，点击重试</view>
+      <view class="sku-promotion-message" wx:else>优惠计算中…</view>
+    </view>
   </view>
 </block>

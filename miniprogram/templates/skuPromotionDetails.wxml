@@ -1,0 +1,15 @@
+<block wx:if="{{showSkuPromotions}}">
+  <view class="sku-promotion-mask" catchtap="closeSkuPromotions" catchtouchmove="stopPickedTouchMove"></view>
+  <view class="sku-promotion-panel" catchtouchmove="stopPickedTouchMove">
+    <view class="sku-picked-heading"><text>商品优惠</text><text class="sku-picked-close" catchtap="closeSkuPromotions" aria-label="关闭商品优惠">×</text></view>
+    <scroll-view class="sku-promotion-scroll" scroll-y>
+      <view class="sku-promotion-message" wx:if="{{promotionOffersLoading}}">优惠信息加载中…</view>
+      <view class="sku-promotion-message" wx:elif="{{promotionOffersError}}" catchtap="loadSkuPromotions">优惠信息加载失败，点击重试</view>
+      <view class="sku-promotion-offer" wx:for="{{promotionOffers}}" wx:key="type" wx:for-item="offer">
+        <view class="sku-promotion-title"><text>{{offer.label}}</text><text class="sku-promotion-status" wx:if="{{offer.statusText}}">{{offer.statusText}}</text></view>
+        <view class="sku-promotion-rule" wx:for="{{offer.rulesText}}" wx:key="*this" wx:for-item="rule">{{rule}}</view>
+      </view>
+      <view class="sku-promotion-message" wx:if="{{promotionOffersReady && !promotionOffers.length}}">当前商品暂无优惠</view>
+    </scroll-view>
+  </view>
+</block>

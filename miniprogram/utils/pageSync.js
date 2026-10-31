@@ -9,6 +9,7 @@ function publish(entity, id, removed = false, extra = {}) {
 function recordMutation(url, method, data = {}, result) {
   if (method === 'GET') return;
   const path = url.split('?')[0];
+  if (['/orders/quote', '/orders/goods-quote'].includes(path)) return;
   if (path === '/product-submissions/v2' && result) {
     const product = result.product || result;
     const live = String(data.draftType || '').startsWith('live_');

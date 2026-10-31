@@ -12,11 +12,18 @@
     </view>
     <view class="sku-main">
       <view class="sku-price" wx:if="{{bundleSelections.length === 0}}">
-        ¥{{currentSkuPrice || currentProduct.retailPrice || currentProduct.displayPrice || '0.00'}}
+        <text wx:if="{{currentSkuDiscounted}}">{{currentSkuUnitApproximate ? '约' : ''}}￥{{currentSkuUnitPrice}}</text>
+        <text wx:else>￥{{currentSkuPrice || currentProduct.retailPrice || currentProduct.displayPrice || '0.00'}}</text>
+        <text class="sku-original-price" wx:if="{{currentSkuDiscounted}}">优惠前：￥{{currentSkuPrice}}</text>
+        <text class="sku-promotion-tag" wx:if="{{!pickedTotalCount && promotionOffers.length}}" catchtap="openSkuPromotions">可享优惠</text>
       </view>
       <view class="sku-price" wx:else>
         {{bundlePriceRange}}
+        <text class="sku-promotion-tag" wx:if="{{!pickedTotalCount && promotionOffers.length}}" catchtap="openSkuPromotions">可享优惠</text>
       </view>
+      <view class="sku-promotion-message" wx:if="{{promotionOffersError}}" catchtap="loadSkuPromotions">优惠信息加载失败，点击重试</view>
+      <view class="sku-promotion-message" wx:elif="{{skuQuoteLoading}}">优惠计算中…</view>
+      <view class="sku-promotion-message" wx:elif="{{skuQuoteError}}" catchtap="retrySkuPromotionQuote">优惠计算失败，点击重试</view>
 
       <view class="sku-stock sku-stock-low" wx:if="{{bundleSelections.length === 0 && currentSkuFreeStockQty > 0}}">现货：{{currentSkuFreeStockQty}}件</view>
       <view class="sku-stock sku-stock-low" wx:elif="{{bundleSelections.length === 0 && !currentSkuUnlimited && currentSkuStock != null && currentSkuStock <= 3}}">
@@ -73,7 +80,8 @@
 
         <view class="bundle-card-footer">
           <view class="bundle-sku-price" style="color: #1a1a1a;">
-            ¥{{sel.computedPrice || sel.selectedSku.price || sel.skus[0].price || sel.skus[0].retailPrice}}
+            <block wx:if="{{sel.promotionPrice.discounted}}">{{sel.promotionPrice.unitApproximate ? '约' : ''}}￥{{sel.promotionPrice.unitPriceText}}<text class="sku-original-price">优惠前：￥{{sel.selectedSku.price}}</text></block>
+            <block wx:else>￥{{sel.selectedSku.price || sel.skus[0].price || sel.skus[0].retailPrice}}</block>
           </view>
           <view class="stepper" wx:if="{{sel.selectedSku}}">
             <view class="step-btn {{sel.quantity <= 0 ? 'disabled' : ''}}" catchtap="bundleMinus" data-index="{{bgIdx}}">-</view>
@@ -122,4 +130,5 @@
       </view>
     </block>
   </view>
+  <include src="./skuPromotionDetails.wxml" />
 </view>

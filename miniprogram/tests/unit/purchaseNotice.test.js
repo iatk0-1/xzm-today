@@ -14,6 +14,7 @@ function harness({ get, post, authenticate, payment } = {}) {
     console: { error() {} }, setTimeout() {},
     require(name) {
       if (name.endsWith('/skuSelectionDraft')) return require('../../utils/skuSelectionDraft');
+      if (name.endsWith('/skuPromotionDisplay')) return require('../../utils/skuPromotionDisplay');
       if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/purchaseNotice')) return notices;
       if (name.endsWith('/customerServiceNavigation')) return require('../../utils/customerServiceNavigation');
@@ -22,6 +23,10 @@ function harness({ get, post, authenticate, payment } = {}) {
         get: async url => { calls.push(['get', url]); if (url === '/orders/shipping-quote') return { shippingFee: '0.00', allowed: true, maxQuantity: null }; return get ? get(url) : { product: { name: '衣服' } }; },
         post: async (url, body) => {
           calls.push(['post', url, body]);
+          if (url === '/orders/quote' || url === '/orders/goods-quote') {
+            const total = body.items.reduce((sum, item) => sum + item.salePrice * item.qty, 0);
+            return { originalGoodsAmount: total, goodsAmount: total, discountAmount: 0, applied: [], shippingFee: 0 };
+          }
           return post ? post(url, body) : url === '/orders' ? { id: '123' } : { package: 'prepay_id=test', timeStamp: '1' };
         },
         delete: async () => {}
@@ -38,6 +43,7 @@ function harness({ get, post, authenticate, payment } = {}) {
   page.data.address = { recipient: '测试买家', phone: '13800000000', province: '测试省', city: '测试市', district: '测试区', detail: '测试地址' };
   page.data.checkoutItems = [{ productId: '90071992547409931', skuId: '90071992547409932', name: '衣服', count: 1, price: 20 }];
   page.data.shippingReady = true;
+  page.data.goodsQuoteReady = true;
   page.data.shippingAllowed = true;
   return { page, calls, toasts };
 }

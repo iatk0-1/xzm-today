@@ -2,6 +2,7 @@ const { clearCheckoutDrafts } = require('../../utils/skuSelectionDraft');
 const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/checkout/checkout.js
 const api = require('../../utils/api');
+const promotionDisplay = require('../../utils/skuPromotionDisplay');
 const auth = require('../../utils/auth');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const { buildPurchaseNoticeSections } = require('../../utils/purchaseNotice');
@@ -12,6 +13,7 @@ Page({
     checkoutItems: [],
     totalPrice: '0.00',
     goodsAmount: '0.00', shippingFee: '0.00', itemQuantity: 0,
+    originalGoodsAmount: '0.00', discountAmount: '0.00', promotionRows: [], goodsQuoteReady: false,
     shippingReady: false, shippingLoading: false, shippingError: '',
     shippingAllowed: false, showShippingTip: false,
     orderCreated: false,
@@ -172,25 +174,46 @@ Page({
       cents += Math.round(Number(item.finalPrice != null ? item.finalPrice : item.price || 0) * 100) * Number(item.count);
       quantity += Number(item.count);
     });
-    this.setData({ goodsAmount: (cents / 100).toFixed(2), itemQuantity: quantity,
-      totalPrice: ((cents + Math.round(Number(this.data.shippingFee || 0) * 100)) / 100).toFixed(2) });
+    const quote = this._checkoutQuote;
+    const amounts = quote ? promotionDisplay.amountSummary(quote, cents) : {
+      originalGoodsAmount: (cents / 100).toFixed(2), goodsAmount: (cents / 100).toFixed(2), discountAmount: '0.00', promotionRows: [] };
+    this.setData({ ...amounts, itemQuantity: quantity,
+      totalPrice: ((Math.round(Number(amounts.goodsAmount) * 100) + Math.round(Number(this.data.shippingFee || 0) * 100)) / 100).toFixed(2) });
+  },
+
+  buildQuoteItems: function() {
+    return (this.data.checkoutItems || []).map(item => ({ skuId: item.skuId, qty: item.count,
+      salePrice: Number(item.finalPrice != null ? item.finalPrice : item.price), pool: 'main',
+      ...(item.bundleConfig && item.bundleConfig.length ? { bundleConfig: item.bundleConfig } : {}) }));
   },
 
   refreshShippingQuote: async function() {
     const revision = this._quoteRevision = (this._quoteRevision || 0) + 1;
+    this._checkoutQuote = null;
     this.recalculateGoods();
     const { address, itemQuantity } = this.data;
-    this.setData({ shippingReady: false, shippingAllowed: false, shippingError: '',
+    this.setData({ shippingReady: false, shippingAllowed: false, shippingError: '', goodsQuoteReady: false,
       shippingFee: '0.00', totalPrice: this.data.goodsAmount });
-    if (!address || !itemQuantity) { this.setData({ shippingLoading: false }); return; }
+    if (!itemQuantity) { this.setData({ shippingLoading: false }); return; }
     this.setData({ shippingLoading: true });
     try {
-      const quote = await api.get('/orders/shipping-quote', { province: address.province, quantity: itemQuantity });
+      let shipping = null;
+      if (address) {
+        shipping = await api.get('/orders/shipping-quote', { province: address.province, quantity: itemQuantity });
+        if (revision !== this._quoteRevision) return;
+        if (!Number.isFinite(Number(shipping.shippingFee)) || Number(shipping.shippingFee) < 0 || typeof shipping.allowed !== 'boolean')
+          throw new Error('运费计算结果无效，请重试');
+      }
+      const quote = await api.post(address && shipping.allowed ? '/orders/quote' : '/orders/goods-quote', {
+        items: this.buildQuoteItems(), ...(address ? { recipientProvince: address.province } : {})
+      });
       if (revision !== this._quoteRevision) return;
-      const fee = Number(quote.shippingFee);
-      if (!Number.isFinite(fee) || fee < 0 || typeof quote.allowed !== 'boolean') throw new Error('运费计算结果无效，请重试');
-      this.setData({ shippingFee: fee.toFixed(2), shippingReady: true, shippingAllowed: quote.allowed });
+      this._checkoutQuote = quote;
       this.recalculateGoods();
+      const fee = address && shipping.allowed ? Number(quote.shippingFee) : Number(shipping && shipping.shippingFee || 0);
+      if (!Number.isFinite(fee) || fee < 0) throw new Error('运费计算结果无效，请重试');
+      this.setData({ goodsQuoteReady: true, shippingFee: fee.toFixed(2), shippingReady: !!address,
+        shippingAllowed: !!(shipping && shipping.allowed), totalPrice: ((Math.round(Number(quote.goodsAmount) * 100) + Math.round(fee * 100)) / 100).toFixed(2) });
     } catch (error) {
       if (revision === this._quoteRevision) this.setData({ shippingError: getErrorMessage(error, '运费计算失败，请点击重试') });
     } finally {
@@ -259,7 +282,7 @@ Page({
       return;
     }
 
-    if (!this.data.shippingReady || this.data.shippingLoading) {
+    if (!this.data.shippingReady || !this.data.goodsQuoteReady || this.data.shippingLoading) {
       wx.showToast({ title: this.data.shippingError || '请等待运费计算完成', icon: 'none' }); return;
     }
     if (!this.data.shippingAllowed) {
@@ -308,7 +331,8 @@ Page({
         recipientCity: address.city,
         recipientDistrict: address.district,
         recipientDetail: address.detail,
-        expectedShippingFee: this.data.shippingFee
+        expectedShippingFee: this.data.shippingFee,
+        expectedPayAmount: this.data.totalPrice
       };
 
       // 1. 创建订单
@@ -377,6 +401,10 @@ Page({
         wx.showModal({ title: '运费已更新',
           content: getErrorMessage(err, '请核对地址、商品和金额后再次提交'), showCancel: false });
         return;
+      }
+      if (err && err.statusCode === 409 && stage === 'create' && !createdOrderId) {
+        await this.refreshShippingQuote();
+        wx.showModal({ title: '订单金额或状态已更新', content: getErrorMessage(err, '请核对最新金额后再次提交'), showCancel: false });return;
       }
       wx.showModal({
         title: stage === 'payment' ? '支付准备失败' : (stage === 'auth' ? '登录恢复失败' : '订单创建失败'),

@@ -122,6 +122,7 @@ Page(pageSync.wrap({
   },
 
   onUnload: function() {
+    this.disposeSkuPromotions();
     this._pageClosed = true;
     if (this._skuImagePreloader) this._skuImagePreloader.stop();
     customerServiceUnread.stop(this);

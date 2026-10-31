@@ -142,3 +142,32 @@ test('部分发货的用户申请页按已发和未发拆分售后类型', async
   await application.loadOrderDetail('10');
   assert.deepEqual(application.data.splitItems.map(item => [item.type, item.qty]), [['return_refund', 1], ['refund', 2]]);
 });
+
+
+test('优惠订单没有人工改价版本，也必须按优惠成交额而不是原价申请退款', async () => {
+  const reads = [];
+  getHandler = url => {
+    reads.push(url);
+    if (url.endsWith('/pricing')) return { promotions: { discountAmount: 15 }, items: [{ orderItemId: '23', settlementAmount: '85.00' }] };
+    if (url.startsWith('/orders/')) return { status: 'paid', priceRevision: 0, promotionDiscount: '15.00', items: [{ id: '23', qty: 1, shippedQty: 0, salePrice: '100.00' }] };
+    return { items: [] };
+  };
+  const application = page(applyConfig);await application.loadOrderDetail('10');
+  assert.ok(reads.includes('/orders/10/pricing'));
+  assert.equal(application.data.splitItems[0].maxRefundAmount, 85);
+  assert.equal(application.data.splitItems[0].salePrice, 85);
+});
+
+
+test('优惠后均摊单价含半分时，部分退款后的最后一件按剩余成交额82.60元申请', async () => {
+  getHandler = url => {
+    if (url.endsWith('/pricing')) return { items: [{ orderItemId: '23', settlementAmount: '165.21' }] };
+    if (url.startsWith('/orders/')) return { status: 'partial_shipped', priceRevision: 0, promotionDiscount: '43.45', items: [{ id: '23', qty: 2, shippedQty: 1, salePrice: '99.99' }] };
+    return { items: [{ status: 'refunded', items: [{ orderItemId: '23', status: 'refunded', qty: 1,
+      shippedQty: 0, unshippedQty: 1, refundAmount: '82.61', afterSaleType: 'refund' }] }] };
+  };
+  const application = page(applyConfig);await application.loadOrderDetail('10');
+  assert.equal(application.data.splitItems.length, 1);
+  assert.equal(application.data.splitItems[0].type, 'return_refund');
+  assert.equal(application.data.splitItems[0].maxRefundAmount, 82.60);
+});

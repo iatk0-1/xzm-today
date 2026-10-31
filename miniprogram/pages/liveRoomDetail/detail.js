@@ -248,6 +248,7 @@ Page(pageSync.wrap({
 
   // 商品购买弹窗统一复用首页布局和多规格已选清单。
   ...productSkuPanel.methods,
+  onUnload() { this.disposeSkuPromotions(); },
   openSkuPanel(e) {
     if (!this.data.canBuy) return wx.showToast({ title: '直播已结束，无法购买', icon: 'none' });
     const product = { ...e.currentTarget.dataset.product, productType: 'live', sessionStatus: this.data.session.status };

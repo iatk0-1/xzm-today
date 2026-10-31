@@ -54,9 +54,11 @@
 
   <view class="summary-section">
     <view class="summary-row">
-      <text class="sum-label">商品小计</text>
-      <text class="sum-value">¥ {{goodsAmount}}</text>
+      <text class="sum-label">商品合计</text>
+      <text class="sum-value">￥{{originalGoodsAmount}}</text>
     </view>
+    <view class="summary-row" wx:for="{{promotionRows}}" wx:key="key"><text class="sum-label">{{item.label}}</text><text class="sum-value promotion-deduction">-￥{{item.amount}}</text></view>
+    <view class="summary-row"><text class="sum-label">优惠共减</text><text class="sum-value promotion-deduction">{{goodsQuoteReady ? '-￥' + discountAmount : '计算中…'}}</text></view>
     <view class="summary-row">
       <view class="shipping-label">
         <text class="sum-label">运费</text>
@@ -72,7 +74,7 @@
     <view class="shipping-error" wx:if="{{shippingError}}" bindtap="refreshShippingQuote">{{shippingError}} · 点击重试</view>
     <view class="summary-row total-row">
       <text class="sum-label">合计</text>
-      <text class="sum-value total-val">¥ {{totalPrice}}</text>
+      <text class="sum-value total-val">{{goodsQuoteReady ? '￥' + totalPrice : '待计算'}}</text>
     </view>
   </view>
 
@@ -80,7 +82,7 @@
     <view class="pay-left">
       <view class="pay-total">
         <text class="pay-label">合计</text>
-        <text class="pay-price">¥ {{totalPrice}}</text>
+        <text class="pay-price">{{goodsQuoteReady ? '￥' + totalPrice : '待计算'}}</text>
       </view>
       <view class="purchase-notice-agreement">
         <view class="agreement-toggle" bindtap="togglePurchaseNoticeAgreement">

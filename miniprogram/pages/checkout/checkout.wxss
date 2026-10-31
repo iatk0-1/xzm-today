@@ -87,3 +87,4 @@ page { background-color: #f9f9f9; }
 .shipping-contact-button::after { display: none; }
 .shipping-error { color: #b42318; font-size: 13px; line-height: 1.7; margin: 12px 0; }
 .shipping-hint { color: #777; font-size: 12px; line-height: 1.7; margin: 10px 0; }
+.promotion-deduction { color: #c14534; }

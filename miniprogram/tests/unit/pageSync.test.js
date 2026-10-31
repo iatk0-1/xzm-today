@@ -31,6 +31,14 @@ function makePage() {
   return page;
 }
 
+test('优惠与货款报价是只读请求，不广播订单修改或触发列表刷新', async () => {
+  const changes = [];
+  const page = sync.wrap({}, updates => changes.push(...updates));page.onLoad();
+  sync.recordMutation('/orders/quote', 'POST', {}, {});
+  sync.recordMutation('/orders/goods-quote', 'POST', {}, {});
+  await page.onShow();assert.deepEqual(changes, []);page.onUnload();
+});
+
 test('无变动返回零请求；多次修改合并到单项，页码、勾选和顺序保留', async () => {
   requests.length = 0;
   responses = { '/products/1': { product: { id: 1, name: '改名', status: 'on' } } };

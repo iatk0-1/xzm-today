@@ -320,6 +320,7 @@ Page({
   },
 
   onUnload: function() {
+    this.disposeSkuPromotions();
     this._pageClosed = true;
     clearTimeout(this._blurTimer);
     this._pendingSearch = false;

@@ -1,6 +1,7 @@
 const { attachArticleNos } = require('../../utils/adminProductArticleNo');
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 const api = require('../../utils/api');
+const promotionDisplay = require('../../utils/skuPromotionDisplay');
 const orderPricing = require('../../utils/orderPricing');
 const quantityOperation = require('../../utils/quantityOperation');
 const auth = require('../../utils/auth');
@@ -72,6 +73,7 @@ Page(pageSync.wrap({
     try {
       const pricing = await api.get(`/admin/orders-manage/orders/${this.data.orderId}/pricing`);
       pricing.items = attachArticleNos(pricing.items, this.data.order && this.data.order.items || []);
+      if (pricing) (pricing.items || []).forEach(row => { row.unitPriceDisplay = (Number(row.settlementAmount) / Math.max(1, Number(row.qty || 1))).toFixed(2); });
       pricing.history = (pricing.history || []).map(row => ({ ...row, timeDisplay: this.formatTime(row.createdAt) }));
       const refundPayments = Number(pricing.offlineAmount) > 0
         ? await api.get(`/admin/orders-manage/orders/${this.data.orderId}/refund-payments`) : [];
@@ -314,6 +316,7 @@ Page(pageSync.wrap({
     try {
       await auth.ensureAuthenticated({ silent: true });
       const order = await api.get(`/admin/orders-manage/orders/${this.data.orderId}`);
+      Object.assign(order, promotionDisplay.orderAmounts(order));
       order.settlementTotalDisplay = orderPricing.total(order);
       order.statusDisplay = this.getOrderStatusDisplay(order.status);
       order.createdAtDisplay = this.formatTime(order.createdAt);
@@ -333,7 +336,7 @@ Page(pageSync.wrap({
         shipments: [],
         logisticsTraceMap: {}
       });
-      if (Number(order.priceRevision) > 0) await this.loadPricing();
+      if ((Number(order.priceRevision) > 0 || Number(order.promotionDiscount) > 0)) await this.loadPricing();
       else this.setData({ pricing: null, refundPayments: [] });
       if (this._openPricingOnLoad && order.status === 'pending') {
         this._openPricingOnLoad = false;

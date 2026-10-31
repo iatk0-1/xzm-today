@@ -46,7 +46,7 @@
           <text wx:if="{{item.afterSaleSummary.shipmentBlockedQty > 0}}"> · 可发 {{item.afterSaleSummary.canShipQty}}</text>
         </view>
         <view class="goods-price-row">
-          <text class="price">¥ {{item.salePrice}}</text>
+          <text class="price">{{order.promotionDiscount > 0 ? '原价 ¥' : '¥'}} {{item.salePrice}}</text>
           <text class="count">x {{item.qty}}</text>
         </view>
         <view class="goods-remark">
@@ -59,29 +59,32 @@
 
     <view class="money-breakdown">
       <view class="money-row">
-        <text class="money-label">商品总价</text>
-        <text class="money-val">¥ {{order.goodsAmount}}</text>
+        <text class="money-label">商品合计</text>
+        <text class="money-val">￥{{order.originalGoodsAmountText}}</text>
       </view>
+      <view class="money-row"><text class="money-label">优惠共减</text><text class="money-val">-￥{{order.promotionDiscountText}}</text></view>
+      <view class="money-row" wx:if="{{order.hasManualAdjustment}}"><text class="money-label">改价调整</text><text class="money-val">{{order.manualAdjustmentSign}}￥{{order.manualAdjustmentText}}</text></view>
       <view class="money-row">
         <text class="money-label">运费{{order.shippingRefundStatus === 'success' ? '(已退款)' : ''}}</text>
         <text class="money-val">¥ {{order.shippingFee}}</text>
       </view>
       <view class="money-row total">
-        <text class="money-label">实付款</text>
-        <text class="money-val final">¥ {{order.payAmount}}</text>
+        <text class="money-label">合计{{order.status === 'pending' ? '（待支付）' : ''}}</text>
+        <text class="money-val final">￥{{order.amountTotalText}}</text>
       </view>
     </view>
   </view>
 
   <view class="info-card pricing-details" wx:if="{{pricing}}">
-    <view class="section-title">{{pricing.peerOrder ? '同行订单' : '订单改价明细'}}</view>
-    <view class="info-row"><text class="info-label">线上已付</text><text>¥ {{pricing.onlineAmount}}</text></view>
-    <view class="info-row"><text class="info-label">线下已付</text><text>¥ {{pricing.offlineAmount}}</text></view>
+    <view class="section-title">{{pricing.peerOrder ? '同行订单' : (order.promotionDiscount > 0 ? '优惠成交明细' : '订单改价明细')}}</view>
+    <view class="info-row"><text class="info-label">线上支付金额</text><text>¥ {{pricing.onlineAmount}}</text></view>
+    <view class="info-row"><text class="info-label">线下实收</text><text>¥ {{pricing.offlineAmount}}</text></view>
     <view class="info-row"><text class="info-label">成交总额</text><text>¥ {{pricing.settlementTotal}}</text></view>
     <view class="info-row pricing-item" wx:for="{{pricing.items}}" wx:key="orderItemId">
       <view class="pricing-item-info">
         <text class="info-label">{{item.productName || '商品'}}</text>
         <view class="pricing-item-spec"><text wx:if="{{item.spec || item.size}}">{{item.spec}}{{item.spec && item.size ? ' / ' : ''}}{{item.size}} · </text>× {{item.qty}}</view>
+        <view class="pricing-item-spec">成交均摊单价约 ¥ {{item.unitPriceDisplay}}</view>
       </view>
       <text class="pricing-item-amount">¥ {{item.settlementAmount}}</text>
     </view>

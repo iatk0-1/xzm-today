@@ -2,6 +2,7 @@ const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/orderDetail/orderDetail.js
 const api = require('../../utils/api');
+const promotionDisplay = require('../../utils/skuPromotionDisplay');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const orderNavigation = require('../../utils/orderNavigation');
@@ -74,8 +75,10 @@ Page(pageSync.wrap({
         return;
       }
       const res = await api.get(`/orders/${orderId}`);
+      Object.assign(res, promotionDisplay.orderAmounts(res));
       wx.hideLoading();
-      const pricing = Number(res.priceRevision) > 0 ? await api.get(`/orders/${orderId}/pricing`) : null;
+      const pricing = (Number(res.priceRevision) > 0 || Number(res.promotionDiscount) > 0) ? await api.get(`/orders/${orderId}/pricing`) : null;
+      if (pricing) (pricing.items || []).forEach(row => { row.unitPriceDisplay = (Number(row.settlementAmount) / Math.max(1, Number(row.qty || 1))).toFixed(2); });
       // 附加格式化字段
       res.statusDisplay = this.getOrderStatusDisplay(res.status);
       res.createdAtDisplay = this.formatTime(res.createdAt);
