@@ -71,7 +71,7 @@
         </view>
       </scroll-view>
     </view>
-    <view class="quick-date-tabs">
+    <view class="quick-date-tabs" wx:if="{{currentTab === '未发货'}}">
       <view
         class="quick-date-tag {{(item.type === 'all' ? !dateRange.startDate && !dateRange.endDate : dateRange.quickSelect === item.type) ? 'active' : ''}}"
         wx:for="{{quickDateOptions}}"
