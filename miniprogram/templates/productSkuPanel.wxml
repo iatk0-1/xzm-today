@@ -3,7 +3,7 @@
 <view class="sku-panel {{showSku ? 'slide-up' : ''}} {{skuDetailMode ? 'sku-panel-detail' : ''}}" wx:if="{{showSku}}" capture-bind:touchstart="onSkuQuantityTouchStart" bindtap="onSkuPanelTap">
   <view class="sku-close" catchtap="closeSkuPanel">×</view>
 
-  <view class="sku-header" wx:if="{{currentProduct}}">
+  <view class="sku-header {{!promotionOffers.length ? 'without-promotions' : ''}}" wx:if="{{currentProduct}}">
     <view class="sku-image-column">
       <view class="sku-img-wrap">
         <image class="sku-img" src="{{skuPanelImagePaths[currentSkuImage || currentProduct.coverUrl || currentProduct.image] || imagePaths[currentSkuImage || currentProduct.coverUrl || currentProduct.image] || currentSkuImage || currentProduct.coverUrl || currentProduct.image}}" mode="aspectFill" catchtap="previewSkuPanelImage" binderror="onSkuPanelImageError" data-url="{{currentSkuImage || currentProduct.coverUrl || currentProduct.image}}"></image>
@@ -45,7 +45,7 @@
     </view>
   </view>
 
-  <view class="sku-discount-entry" catchtap="openSkuPromotions">
+  <view class="sku-discount-entry" wx:if="{{promotionOffers.length}}" catchtap="openSkuPromotions">
     <view class="sku-title">优惠</view>
     <text class="sku-discount-entry-amount" wx:if="{{pickedHasDiscount}}">-{{pickedDiscountPrice}}元</text>
   </view>

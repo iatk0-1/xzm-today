@@ -60,6 +60,10 @@
   margin-bottom: 0;
 }
 
+.sku-header.without-promotions {
+  margin-bottom: 32rpx;
+}
+
 .sku-image-column {
   width: 160rpx;
   margin-right: 30rpx;
