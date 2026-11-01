@@ -82,6 +82,22 @@
       {
         "value": "tests",
         "type": "folder"
+      },
+      {
+        "value": "node_modules",
+        "type": "folder"
+      },
+      {
+        "value": ".map",
+        "type": "suffix"
+      },
+      {
+        "value": "package.json",
+        "type": "file"
+      },
+      {
+        "value": "package-lock.json",
+        "type": "file"
       }
     ],
     "include": []

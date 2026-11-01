@@ -17,64 +17,270 @@
     "pages/shipmentTraceDetail/shipmentTraceDetail",
     "pages/afterSaleApply/afterSaleApply",
     "pages/afterSaleDetail/afterSaleDetail",
-    "pages/adminAfterSaleList/adminAfterSaleList",
-    "pages/adminAfterSaleDetail/adminAfterSaleDetail",
-    "pages/adminOrderDetail/adminOrderDetail",
-    "pages/adminProduct/adminProduct",
-    "pages/adminCatalogManage/adminCatalogManage",
-    "pages/stallManagers/stallManagers",
-    "pages/pricingRules/pricingRules",
-    "pages/commissionConfigs/commissionConfigs",
-    "pages/shippingTemplates/shippingTemplates",
-    "pages/managerIncome/managerIncome",
-    "pages/adminChangeRequestManage/adminChangeRequestManage",
-    "pages/adminCatalogProducts/adminCatalogProducts",
-    "pages/adminProductRecycleBin/adminProductRecycleBin",
-    "pages/adminWish/adminWish",
     "pages/publishWish/publishWish",
     "pages/wishDetail/wishDetail",
-    "pages/shipPartial/shipPartial",
-    "pages/unbindOrder/unbindOrder",
-    "pages/mergeGroupDetail/mergeGroupDetail",
-    "pages/logistics/printers/printers",
-    "pages/logistics/expressBatchManage/expressBatchManage",
-    "pages/bluetoothPrint/bluetoothPrint",
-    "pages/liveRoomList/index",
-    "pages/liveRoomDetail/detail",
-    "pages/liveRoomPublish/publish",
-    "pages/skuInventory/skuInventory",
-    "pages/inventoryDetail/inventoryDetail",
-    "pages/inventoryProductSelect/inventoryProductSelect",
-    "pages/pickingList/pickingList",
-    "pages/purchaseOrders/purchaseOrders",
-    "pages/adminOrderManage/adminOrderManage",
-    "pages/printer-login/authorize",
-    "pages/adminSales/adminSales",
-    "pages/adminShippingSales/adminShippingSales",
-    "pages/adminSalesDetail/adminSalesDetail",
-    "pages/adminShippingSalesDetail/adminShippingSalesDetail",
-    "pages/manualShip/manualShip"
+    "pages/adminSales/adminSales"
   ],
   "subPackages": [
     {
       "name": "productDrafts",
       "root": "pages/productDrafts",
-      "pages": ["index"]
+      "pages": [
+        "index"
+      ]
     },
     {
       "name": "productPublish",
       "root": "pages/admin",
-      "pages": ["admin"]
+      "pages": [
+        "admin"
+      ]
     },
     {
       "name": "shippingManage",
       "root": "pages/adminOrder",
-      "pages": ["adminOrder"]
+      "pages": [
+        "adminOrder"
+      ]
     },
     {
       "name": "stallManagerDetail",
       "root": "pages/stallManagerDetail",
-      "pages": ["stallManagerDetail"]
+      "pages": [
+        "stallManagerDetail"
+      ]
+    },
+    {
+      "name": "adminAfterSaleList",
+      "root": "pages/adminAfterSaleList",
+      "pages": [
+        "adminAfterSaleList"
+      ]
+    },
+    {
+      "name": "adminAfterSaleDetail",
+      "root": "pages/adminAfterSaleDetail",
+      "pages": [
+        "adminAfterSaleDetail"
+      ]
+    },
+    {
+      "name": "adminOrderDetail",
+      "root": "pages/adminOrderDetail",
+      "pages": [
+        "adminOrderDetail"
+      ]
+    },
+    {
+      "name": "adminProduct",
+      "root": "pages/adminProduct",
+      "pages": [
+        "adminProduct"
+      ]
+    },
+    {
+      "name": "adminCatalogManage",
+      "root": "pages/adminCatalogManage",
+      "pages": [
+        "adminCatalogManage"
+      ]
+    },
+    {
+      "name": "stallManagers",
+      "root": "pages/stallManagers",
+      "pages": [
+        "stallManagers"
+      ]
+    },
+    {
+      "name": "pricingRules",
+      "root": "pages/pricingRules",
+      "pages": [
+        "pricingRules"
+      ]
+    },
+    {
+      "name": "commissionConfigs",
+      "root": "pages/commissionConfigs",
+      "pages": [
+        "commissionConfigs"
+      ]
+    },
+    {
+      "name": "shippingTemplates",
+      "root": "pages/shippingTemplates",
+      "pages": [
+        "shippingTemplates"
+      ]
+    },
+    {
+      "name": "managerIncome",
+      "root": "pages/managerIncome",
+      "pages": [
+        "managerIncome"
+      ]
+    },
+    {
+      "name": "adminChangeRequestManage",
+      "root": "pages/adminChangeRequestManage",
+      "pages": [
+        "adminChangeRequestManage"
+      ]
+    },
+    {
+      "name": "adminCatalogProducts",
+      "root": "pages/adminCatalogProducts",
+      "pages": [
+        "adminCatalogProducts"
+      ]
+    },
+    {
+      "name": "adminProductRecycleBin",
+      "root": "pages/adminProductRecycleBin",
+      "pages": [
+        "adminProductRecycleBin"
+      ]
+    },
+    {
+      "name": "adminWish",
+      "root": "pages/adminWish",
+      "pages": [
+        "adminWish"
+      ]
+    },
+    {
+      "name": "shipPartial",
+      "root": "pages/shipPartial",
+      "pages": [
+        "shipPartial"
+      ]
+    },
+    {
+      "name": "unbindOrder",
+      "root": "pages/unbindOrder",
+      "pages": [
+        "unbindOrder"
+      ]
+    },
+    {
+      "name": "mergeGroupDetail",
+      "root": "pages/mergeGroupDetail",
+      "pages": [
+        "mergeGroupDetail"
+      ]
+    },
+    {
+      "name": "logistics",
+      "root": "pages/logistics",
+      "pages": [
+        "printers/printers",
+        "expressBatchManage/expressBatchManage"
+      ]
+    },
+    {
+      "name": "bluetoothPrint",
+      "root": "pages/bluetoothPrint",
+      "pages": [
+        "bluetoothPrint"
+      ]
+    },
+    {
+      "name": "liveRoomPublish",
+      "root": "pages/liveRoomPublish",
+      "pages": [
+        "publish"
+      ]
+    },
+    {
+      "name": "skuInventory",
+      "root": "pages/skuInventory",
+      "pages": [
+        "skuInventory"
+      ]
+    },
+    {
+      "name": "inventoryDetail",
+      "root": "pages/inventoryDetail",
+      "pages": [
+        "inventoryDetail"
+      ]
+    },
+    {
+      "name": "inventoryProductSelect",
+      "root": "pages/inventoryProductSelect",
+      "pages": [
+        "inventoryProductSelect"
+      ]
+    },
+    {
+      "name": "pickingList",
+      "root": "pages/pickingList",
+      "pages": [
+        "pickingList"
+      ]
+    },
+    {
+      "name": "purchaseOrders",
+      "root": "pages/purchaseOrders",
+      "pages": [
+        "purchaseOrders"
+      ]
+    },
+    {
+      "name": "adminOrderManage",
+      "root": "pages/adminOrderManage",
+      "pages": [
+        "adminOrderManage"
+      ]
+    },
+    {
+      "name": "printer-login",
+      "root": "pages/printer-login",
+      "pages": [
+        "authorize"
+      ]
+    },
+    {
+      "name": "adminShippingSales",
+      "root": "pages/adminShippingSales",
+      "pages": [
+        "adminShippingSales"
+      ]
+    },
+    {
+      "name": "adminSalesDetail",
+      "root": "pages/adminSalesDetail",
+      "pages": [
+        "adminSalesDetail"
+      ]
+    },
+    {
+      "name": "adminShippingSalesDetail",
+      "root": "pages/adminShippingSalesDetail",
+      "pages": [
+        "adminShippingSalesDetail"
+      ]
+    },
+    {
+      "name": "manualShip",
+      "root": "pages/manualShip",
+      "pages": [
+        "manualShip"
+      ]
+    },
+    {
+      "name": "liveRoomList",
+      "root": "pages/liveRoomList",
+      "pages": [
+        "index"
+      ]
+    },
+    {
+      "name": "liveRoomDetail",
+      "root": "pages/liveRoomDetail",
+      "pages": [
+        "detail"
+      ]
     }
   ],
   "window": {
