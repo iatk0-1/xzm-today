@@ -11,6 +11,7 @@ const orderNavigation = require('../../utils/orderNavigation');
 // 状态映射（前端中文 -> 后端英文）
 const STATUS_MAP = {
   '全部': null,
+  '未发货': 'unshipped',
   '待付款': 'pending',
   '备货中': 'stocking',
   '待发货': 'paid',
@@ -41,8 +42,14 @@ Page(autoSearch.wrap(pageSync.wrap({
     pickingSkuId: '',
     pickingStatus: '',
     pickingProductName: '',
-    tabs: ['全部', '待付款', '备货中', '待发货', '部分发货', '已发货', '已完成', '已关闭'],
+    tabs: ['全部', '待付款', '备货中', '未发货', '待发货', '部分发货', '已发货', '已完成', '已关闭'],
     currentTab: '全部',
+    quickDateOptions: [
+      { type: 'all', label: '全部' },
+      { type: '3days', label: '近3天' },
+      { type: '7days', label: '近7天' },
+      { type: '14days', label: '近14天' }
+    ],
     orders: [],
     isLoading: true,
     isLoadingMore: false,
@@ -90,6 +97,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     this.loadFilterOptions();
     const statusMap = {
       'all': '全部',
+      'unshipped': '未发货',
       'pay': '待付款',
       'stocking': '备货中',
       'paid': '待发货',
@@ -189,6 +197,17 @@ Page(autoSearch.wrap(pageSync.wrap({
     this.setData({ showDateModal: false });
   },
 
+  selectQuickDateRange: function(e) {
+    const type = e.currentTarget.dataset.type;
+    if (!this.data.quickDateOptions.some(option => option.type === type)) return;
+    if (type === 'all') {
+      this.clearDateRange();
+      return;
+    }
+    this.selectDateRange(e);
+    this.loadOrders();
+  },
+
   selectDateRange: function(e) {
     const type = e.currentTarget.dataset.type;
     const today = new Date();
@@ -199,9 +218,14 @@ Page(autoSearch.wrap(pageSync.wrap({
       case '1day':
         startDate = endDate;
         break;
+      case '3days':
       case '7days':
-        startDate = this.formatDate(new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000));
+      case '14days': {
+        const start = new Date(today);
+        start.setDate(start.getDate() - (parseInt(type, 10) - 1));
+        startDate = this.formatDate(start);
         break;
+      }
       case '30days':
         startDate = this.formatDate(new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000));
         break;
@@ -219,13 +243,15 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   onStartDateChange: function(e) {
     this.setData({
-      'dateRange.startDate': e.detail.value
+      'dateRange.startDate': e.detail.value,
+      'dateRange.quickSelect': ''
     });
   },
 
   onEndDateChange: function(e) {
     this.setData({
-      'dateRange.endDate': e.detail.value
+      'dateRange.endDate': e.detail.value,
+      'dateRange.quickSelect': ''
     });
   },
 
@@ -297,16 +323,7 @@ Page(autoSearch.wrap(pageSync.wrap({
         : (res && res.total !== undefined ? Number(res.total) : NaN);
       const total = Number.isNaN(rawTotal) ? list.length : rawTotal;
 
-      const orders = list.map(order => ({
-        ...order,
-        outTradeNo: order.outTradeNo || order.id,
-        settlementTotalDisplay: orderPricing.total(order),
-        createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt),
-        items: (order.items || []).map(item => ({
-          ...item,
-          skuImageUrl: item.skuImageUrl || item.productImage || ''
-        }))
-      }));
+      const orders = list.map(order => this.normalizeOrder(order));
 
       wx.hideLoading();
       this.setData({
@@ -326,8 +343,26 @@ Page(autoSearch.wrap(pageSync.wrap({
     }
   },
 
+  normalizeOrder: function(order) {
+    const items = (order.items || []).map(item => ({
+      ...item,
+      skuImageUrl: item.skuImageUrl || item.productImage || ''
+    }));
+    return {
+      ...order,
+      outTradeNo: order.outTradeNo || order.id,
+      settlementTotalDisplay: orderPricing.total(order),
+      createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt),
+      items,
+      // 保留完整明细，未发货页签仅筛选列表展示的商品。
+      displayItems: !this.data.pickingSkuId && this.data.currentTab === '未发货'
+        ? items.filter(item => Number(item.qty) > Number(item.shippedQty || 0))
+        : items
+    };
+  },
+
   refreshOrder: async function(id) {
-    if (!this.data.pickingSkuId && (this.data.timeType === 'shipped' || this.data.selectedStall || this.data.selectedTag)) {
+    if (!this.data.pickingSkuId && (this.data.currentTab === '未发货' || this.data.timeType === 'shipped' || this.data.selectedStall || this.data.selectedTag)) {
       await this.loadOrders();
       return;
     }
@@ -335,21 +370,13 @@ Page(autoSearch.wrap(pageSync.wrap({
       if (!this.data.orders.some(item => String(item.id) === String(id))) return;
       const entry = await api.get(`/picking-list/skus/${this.data.pickingSkuId}/orders/${id}`, { status: this.data.pickingStatus });
       this.setData({ orders: this.data.orders.flatMap(item => String(item.id) !== String(id) ? [item] : (entry ? [{
-        ...item, ...entry.order, pickingPendingQty: entry.pendingQty, pickingOrderedQty: entry.orderedQty,
-        createdAtDisplay: this.formatTime(entry.order.createdAt), latestShippedAtDisplay: this.formatTime(entry.order.latestShippedAt),
-        items: (entry.order.items || []).map(goods => ({ ...goods, skuImageUrl: goods.skuImageUrl || goods.productImage || '' }))
+        ...item, ...this.normalizeOrder(entry.order), pickingPendingQty: entry.pendingQty, pickingOrderedQty: entry.orderedQty
       }] : [])) });
       return;
     }
     await pageSync.updateList(this, [{ entity: 'orders', id: String(id) }], {
       entity: 'orders', field: 'orders', url: id => '/admin/orders-manage/orders/' + id,
-      normalize: order => ({
-        ...order,
-        outTradeNo: order.outTradeNo || order.id,
-        settlementTotalDisplay: orderPricing.total(order),
-        createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt),
-        items: (order.items || []).map(item => ({ ...item, skuImageUrl: item.skuImageUrl || item.productImage || '' }))
-      }),
+      normalize: order => this.normalizeOrder(order),
       matches: order => (!STATUS_MAP[this.data.currentTab] || order.status === STATUS_MAP[this.data.currentTab])
         && (!this.data.pickingSkuId || order.status !== 'cancelled')
     });
@@ -379,7 +406,7 @@ Page(autoSearch.wrap(pageSync.wrap({
           });
         } else if (res.tapIndex === 1) {
           // 快速发货 → 现有批量发货流程
-          const item = order.items && order.items[0];
+          const item = (order.displayItems || order.items || [])[0];
           if (!item) {
             wx.showToast({ title: '订单无商品', icon: 'none' });
             return;

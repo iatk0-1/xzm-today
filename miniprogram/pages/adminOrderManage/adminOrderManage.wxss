@@ -17,6 +17,10 @@ page {
 .picking-relation-qty text { background: #eaf4ff; padding: 6rpx 12rpx; border-radius: 6rpx; }
 .picking-product-link { align-self: flex-start; margin-top: 8rpx; color: #1677c8; font-size: 22rpx; }
 
+.quick-date-tabs { display: flex; gap: 16rpx; padding: 16rpx 24rpx 20rpx; }
+.quick-date-tag { flex: 1; text-align: center; padding: 10rpx 0; border-radius: 12rpx; background: #f2f4f7; color: #666; font-size: 24rpx; line-height: 32rpx; }
+.quick-date-tag.active { color: #1f2933; font-weight: 800; box-shadow: inset 0 -4rpx 0 #1f2933; }
+
 .panel-mask { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .45); }
 .bottom-panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001; max-height: 82vh; background: #fff; display: flex; flex-direction: column; border-radius: 18rpx 18rpx 0 0; }
 .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 28rpx; border-bottom: 1rpx solid #eee; }

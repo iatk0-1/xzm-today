@@ -153,3 +153,100 @@ test('筛选中的订单发生更新后重新查询，避免保留不再命中�
   await page.refreshOrder('123');
   assert.equal(calls, 1);
 });
+
+function createPage() {
+  return { ...pageConfig, data: structuredClone(pageConfig.data),
+    setData(patch, callback) {
+      for (const [key, value] of Object.entries(patch)) {
+        if (key.startsWith('dateRange.')) this.data.dateRange[key.slice('dateRange.'.length)] = value;
+        else this.data[key] = value;
+      }
+      if (callback) callback();
+    } };
+}
+
+test('快捷日期默认全部，近3/7/14天包含今天，点击后保留其他筛选并重查首屏', async () => {
+  global.wx = { showLoading() {}, hideLoading() {}, showToast() {} };
+  const page = createPage();
+  assert.equal(page.data.dateRange.startDate, '');
+  assert.equal(page.data.dateRange.endDate, '');
+  page.data.currentTab = '未发货';
+  page.data.selectedTag = '22';
+  page.data.searchKeyword = '棉袄';
+  for (const days of [3, 7, 14, 0]) {
+    page.data.page = 4;
+    page.selectQuickDateRange({ currentTarget: { dataset: { type: days ? `${days}days` : 'all' } } });
+    await new Promise(resolve => setImmediate(resolve));
+    const request = pendingRequests.shift();
+    const start = new Date();
+    start.setDate(start.getDate() - (days - 1));
+    assert.equal(request.params.startDate, days ? page.formatDate(start) : undefined);
+    assert.equal(request.params.endDate, days ? page.formatDate(new Date()) : undefined);
+    assert.equal(request.params.status, 'unshipped');
+    assert.equal(request.params.page, 1);
+    assert.equal(request.params.tagId, '22');
+    assert.equal(request.params.keyword, '棉袄');
+    request.resolve({ content: [], totalElements: 0 });
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  page.selectDateRange({ currentTarget: { dataset: { type: '7days' } } });
+  page.onStartDateChange({ detail: { value: '2026-10-01' } });
+  assert.equal(page.data.dateRange.quickSelect, '');
+});
+
+test('未发货列表隐藏已发完商品，部分发货保留，分页保留筛选且详情仍按订单ID打开', async () => {
+  const navigations = [];
+  global.wx = { showLoading() {}, hideLoading() {}, showToast() {}, navigateTo: options => navigations.push(options.url) };
+  const page = createPage();
+  page.switchTab({ currentTarget: { dataset: { tab: '未发货' } } });
+  await new Promise(resolve => setImmediate(resolve));
+  const first = pendingRequests.shift();
+  assert.equal(first.params.status, 'unshipped');
+  const original = { id: '123', status: 'partial_shipped', payAmount: '90', items: [
+    { id: 'done', qty: '2', shippedQty: '2', productImage: '/done.jpg' },
+    { id: 'partial', qty: '3', shippedQty: '1', productImage: '/partial.jpg' },
+    { id: 'pending', qty: '1', productImage: '/pending.jpg' }
+  ] };
+  first.resolve({ content: [original], totalElements: '2' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(page.data.orders[0].displayItems.map(item => item.id), ['partial', 'pending']);
+  assert.equal(page.data.orders[0].items.length, 3);
+  assert.equal(original.items.length, 3);
+  assert.equal(page.data.orders[0].settlementTotalDisplay, '90.00');
+  page.goToDetail({ currentTarget: { dataset: { id: '123' } } });
+  assert.deepEqual(navigations, ['/pages/adminOrderDetail/adminOrderDetail?id=123']);
+  const loading = page.loadOrders(false);
+  await new Promise(resolve => setImmediate(resolve));
+  const second = pendingRequests.shift();
+  assert.equal(second.params.status, 'unshipped');
+  assert.equal(second.params.page, 2);
+  second.resolve({ content: [{ ...original, id: '456' }], totalElements: '2' });
+  await loading;
+  assert.equal(page.data.orders.length, 2);
+  assert.equal(page.data.hasMore, false);
+  assert.deepEqual(page.data.orders[1].displayItems.map(item => item.id), ['partial', 'pending']);
+  page.data.currentTab = '全部';
+  assert.equal(page.normalizeOrder(original).displayItems.length, 3);
+  page.data.currentTab = '部分发货';
+  assert.equal(page.normalizeOrder(original).displayItems.length, 3);
+});
+
+test('未发货订单更新后重新核对列表，快速发货使用尚未发完的商品', async () => {
+  const page = createPage();
+  page.data.currentTab = '未发货';
+  let reloads = 0;
+  page.loadOrders = async () => { reloads++; };
+  await page.refreshOrder('123');
+  assert.equal(reloads, 1);
+  const navigations = [];
+  global.wx = {
+    showActionSheet: options => options.success({ tapIndex: 1 }),
+    navigateTo: options => navigations.push(options.url)
+  };
+  const order = page.normalizeOrder({ id: '123', items: [
+    { productId: '1', skuId: '11', qty: 1, shippedQty: 1 },
+    { productId: '2', skuId: '22', qty: 2, shippedQty: 1 }
+  ] });
+  page.goToShip({ currentTarget: { dataset: { order } } });
+  assert.deepEqual(navigations, ['/pages/adminOrder/adminOrder?productId=2&skuIds=22']);
+});

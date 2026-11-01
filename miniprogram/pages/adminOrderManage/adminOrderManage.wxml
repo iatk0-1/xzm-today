@@ -71,6 +71,14 @@
         </view>
       </scroll-view>
     </view>
+    <view class="quick-date-tabs">
+      <view
+        class="quick-date-tag {{(item.type === 'all' ? !dateRange.startDate && !dateRange.endDate : dateRange.quickSelect === item.type) ? 'active' : ''}}"
+        wx:for="{{quickDateOptions}}"
+        wx:key="type"
+        bindtap="selectQuickDateRange"
+        data-type="{{item.type}}">{{item.label}}</view>
+    </view>
   </view>
 
   <scroll-view scroll-y enable-flex enhanced class="order-scroll-area" bindscrolltolower="onScrollToLower" lower-threshold="120">
@@ -106,7 +114,7 @@
       </view>
 
       <view class="goods-list">
-        <view class="goods-item" wx:for="{{item.items}}" wx:for-item="goods" wx:key="id">
+        <view class="goods-item" wx:for="{{item.displayItems}}" wx:for-item="goods" wx:key="id">
           <image class="goods-img" src="{{goods.skuImageUrl || goods.productImage}}" mode="aspectFill"></image>
           <view class="goods-info">
             <view class="goods-title"><text user-select="{{true}}">{{goods.productName}}</text></view>
