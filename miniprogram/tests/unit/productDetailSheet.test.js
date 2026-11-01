@@ -7,6 +7,28 @@ const vm = require('node:vm');
 const { resolveDirection, moveSheet, settleSheet } = require('../../utils/productSheetGesture');
 const plain = value => JSON.parse(JSON.stringify(value));
 
+for (const viewportHeight of [472, 750]) {
+  test(`心愿商品详情高度${viewportHeight}：尺码现货随颜色更新，售罄规格仍禁选`, () => {
+    const { instance: detail } = setup('productDetail');
+    Object.assign(detail.data, { embedded: true, viewportHeight, product: {
+      id: 'ready-preview', name: '外套', coverUrl: 'cover.jpg', skuMatrix: [
+        { skuId: '11', color: '红色', size: 'S', stock: 5, freeStockQty: 1, price: 20 },
+        { skuId: '12', color: '红色', size: 'M', stock: 0, freeStockQty: 8, price: 20 },
+        { skuId: '21', color: '蓝色', size: 'S', stock: 5, freeStockQty: 0, price: 20 },
+        { skuId: '22', color: '蓝色', size: 'M', stock: 5, freeStockQty: 2, price: 20 }
+      ] } });
+    detail.openSkuPanel({ currentTarget: { dataset: { action: 'buy' } } });
+    assert.deepEqual(plain(detail.data.colorOptions.map(item => item.hasReadyStock)), [true, true]);
+    assert.deepEqual(plain(detail.data.sizeOptions.map(item => item.hasReadyStock)), [true, false]);
+    detail.selectSize({ currentTarget: { dataset: { size: 'M' } } });
+    assert.equal(detail.data.selectedSize, 'S');
+    assert.equal(detail.data.sizeOptions[1].disabled, true);
+    detail.selectColor({ currentTarget: { dataset: { color: '蓝色' } } });
+    assert.deepEqual(plain(detail.data.sizeOptions.map(item => item.hasReadyStock)), [false, true]);
+    assert.equal(detail.data.sizeOptions[1].disabled, false);
+  });
+}
+
 function setup(component = 'productDetailSheet', handlers = {}) {
   let definition, timerId = 0, now = 1000;
   const pickerStorage = new Map();

@@ -1,4 +1,8 @@
-.sku-tag { position: relative; overflow: visible; }
+.sku-tag { position: relative; overflow: visible; min-width: 96rpx; box-sizing: border-box; text-align: center; }
+/* 为左右两个角标预留宽度，角标绝对定位，不参与标签的文字布局。 */
+.sku-ready-stock-badge { position: absolute; left: 0; top: -16rpx; height: 26rpx; line-height: 26rpx; padding: 0 6rpx; border: 0; box-sizing: border-box; border-radius: 14rpx; background: #1a1a1a; color: #ffffff; font-size: 18rpx; font-weight: 500; white-space: nowrap; pointer-events: none; z-index: 1; }
+.sku-panel .sku-options.minimal { row-gap: 20rpx; }
+.sku-panel .bundle-card-specs { margin-bottom: 20rpx; }
 .sku-options-scroll { min-height: 0; flex-shrink: 1; }
 .sku-purchase-footer { position: relative; display: flex; align-items: center; gap: 20rpx; flex-shrink: 0; z-index: 3; background: #fff; border-top: 1rpx solid #eee; padding: 16rpx 0 calc(16rpx + env(safe-area-inset-bottom)); }
 .sku-purchase-footer.has-picked-list { border-top-color: transparent; }

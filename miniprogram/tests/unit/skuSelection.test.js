@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Module = require('node:module');
-const { getDefaultSkuSelection } = require('../../utils/skuSelection');
+const { getDefaultSkuSelection, getSkuOptions } = require('../../utils/skuSelection');
 
 const pages = {};
 let pickerAccount = 1;
@@ -62,6 +62,106 @@ function createPage(name, skus, bundleGroups, preserveCache = false) {
 
 function option(page, kind, value) {
   return page.data[`${kind}Options`].find(item => item.value === value);
+}
+
+function readyStockSkus() {
+  return [
+    { skuId: 1, color: '红色', size: 'S', stock: 200, freeStockQty: 0, abnormalFreeStockQty: 8, price: 20 },
+    { skuId: 2, color: '红色', size: 'M', stock: 0, freeStockQty: 7, price: 20 },
+    { skuId: 3, color: '红色', size: 'L', stock: 200, freeStockQty: 2, price: 20 },
+    { skuId: 4, color: '蓝色', size: 'S', stock: 200, freeStockQty: 3, price: 20 },
+    { skuId: 5, color: '蓝色', size: 'M', stock: 200, freeStockQty: 0, abnormalFreeStockQty: 9, price: 20 },
+    { skuId: 6, color: '蓝色', size: 'L', stock: 200, freeStockQty: 0, price: 20 },
+    { skuId: 7, color: '黑色', size: 'S', stock: 0, freeStockQty: 9, price: 20 }
+  ];
+}
+
+test('现货角标只认未售罄的正常空闲库存，不从可售库存、无限库存或异常空闲推算', () => {
+  const red = getSkuOptions(readyStockSkus(), '红色');
+  assert.deepEqual(red.colorOptions.map(item => item.hasReadyStock), [true, true, false]);
+  assert.deepEqual(red.sizeOptions.map(item => item.hasReadyStock), [false, false, true]);
+  assert.equal(red.colorOptions[2].disabled, true);
+  assert.equal(red.sizeOptions[1].disabled, true);
+  const blue = getSkuOptions(readyStockSkus(), '蓝色');
+  assert.deepEqual(blue.sizeOptions.map(item => item.hasReadyStock), [true, false, false]);
+  assert.equal(blue.sizeOptions[1].disabled, false, '无现货但可售的规格仍可正常选择');
+  const soldOut = getSkuOptions(readyStockSkus().map(sku => ({ ...sku, stock: 0 })), '红色');
+  assert.ok([...soldOut.colorOptions, ...soldOut.sizeOptions].every(item => item.disabled && !item.hasReadyStock));
+  const unlimited = getSkuOptions([
+    { color: '无现货', size: '均码', stock: 0, unlimitedStock: true },
+    { color: '有现货', size: '均码', stock: 0, unlimitedStock: true, freeStockQty: '2' }
+  ], '无现货');
+  assert.deepEqual(unlimited.colorOptions.map(item => item.hasReadyStock), [false, true]);
+  assert.ok(unlimited.colorOptions.every(item => !item.disabled));
+  const legacy = getSkuOptions([{ spec: '旧规格', size: '均码', stockMain: 2, freeStockQty: 1 }], '旧规格');
+  assert.equal(legacy.colorOptions[0].hasReadyStock, true);
+  assert.equal(legacy.sizeOptions[0].hasReadyStock, true);
+});
+
+for (const name of ['index', 'search', 'detail', 'liveRoomDetail']) {
+  test(`${name}：颜色汇总可售现货，尺码现货随颜色切换，售罄禁选与件数角标不变`, () => {
+    const page = createPage(name, readyStockSkus());
+    page.open();
+    page.setPickedSkuQuantity(3, 120);
+    page.setPickedSkuQuantity(4, 2);
+    assert.equal(page.data.selectedColor, '红色');
+    assert.equal(page.data.selectedSize, 'S');
+    assert.equal(option(page, 'color', '红色').hasReadyStock, true, '其他尺码有现货时也标记颜色');
+    assert.deepEqual(page.data.sizeOptions.map(item => item.hasReadyStock), [false, false, true]);
+    assert.equal(option(page, 'size', 'L').pickedCountText, '99+');
+    page.selectSize(event({ size: 'M' }));
+    assert.equal(page.data.selectedSize, 'S', '有空闲现货的售罄规格仍不可选');
+    const frames = [];
+    page.setData = patch => { Object.assign(page.data, patch); frames.push(structuredClone(page.data)); };
+    page.selectColor(event({ color: '蓝色' }));
+    assert.deepEqual(page.data.sizeOptions.map(item => item.hasReadyStock), [true, false, false]);
+    assert.equal(page.data.quantity, 2);
+    page.selectSize(event({ size: 'M' }));
+    assert.equal(page.data.selectedSize, 'M');
+    assert.equal(page.data.quantity, 0);
+    page.selectColor(event({ color: '黑色' }));
+    assert.equal(page.data.selectedColor, '蓝色');
+    page.selectColor(event({ color: '红色' }));
+    assert.equal(page.data.selectedSize, 'S');
+    for (const data of frames) {
+      assert.deepEqual(data.colorOptions.map(item => item.hasReadyStock), [true, true, false]);
+      assert.deepEqual(data.colorOptions.map(item => item.pickedCount), [120, 2, 0]);
+      assert.deepEqual(data.sizeOptions.map(item => item.hasReadyStock),
+        data.selectedColor === '红色' ? [false, false, true] : [true, false, false]);
+      assert.equal(data.pickedTotalCount, 122);
+    }
+  });
+
+  test(`${name}：套装现货角标按子项和当前颜色判断，矩阵现货与已选件数同时保留`, () => {
+    const first = readyStockSkus();
+    const second = [
+      { skuId: 101, color: '红色', size: 'S', stock: 20, freeStockQty: 0, price: 10 },
+      { skuId: 102, color: '蓝色', size: 'M', stock: 20, freeStockQty: 0, price: 10 }
+    ];
+    const groups = [first, second].map((skus, i) => ({ name: i ? '裤子' : '上衣',
+      skus: skus.map(({ skuId, freeStockQty, ...sku }) => ({ ...sku, id: skuId })) }));
+    const page = createPage(name, [...first, ...second], groups);
+    page.open();
+    page.setPickedSkuQuantity(3, 120);
+    page.setPickedSkuQuantity(4, 2);
+    const group = () => page.data.bundleSelections[0];
+    assert.deepEqual(group().colorOptions.map(item => item.hasReadyStock), [true, true, false]);
+    assert.deepEqual(group().sizeOptions.map(item => item.hasReadyStock), [false, false, true]);
+    page.selectBundleSize(event({ index: 0, size: 'M' }));
+    assert.equal(group().selectedSize, 'S');
+    page.selectBundleColor(event({ index: 0, color: '蓝色' }));
+    assert.deepEqual(group().sizeOptions.map(item => item.hasReadyStock), [true, false, false]);
+    assert.equal(group().quantity, 2);
+    page.selectBundleSize(event({ index: 0, size: 'M' }));
+    assert.equal(group().selectedSize, 'M');
+    page.selectBundleColor(event({ index: 0, color: '红色' }));
+    assert.equal(group().selectedSize, 'S');
+    assert.equal(group().sizeOptions.find(item => item.value === 'M').hasReadyStock, false);
+    assert.equal(group().colorOptions[0].pickedCountText, '99+');
+    assert.equal(page.data.pickedTotalCount, 122);
+    const other = page.data.bundleSelections[1];
+    assert.ok([...other.colorOptions, ...other.sizeOptions].every(item => !item.hasReadyStock), '不借用其他子项的现货');
+  });
 }
 
 test('仅首页打开规格弹窗触发全量预下载，切换与结算继续保留原始图片地址', t => {

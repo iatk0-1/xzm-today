@@ -1,4 +1,4 @@
-const { isSkuSoldOut } = require('./stock');
+const { isSkuSoldOut, getFreeStockQty } = require('./stock');
 
 function getColors(skus) {
   return Array.from(new Set(skus.map(sku => sku.color || sku.spec || ''))).filter(Boolean);
@@ -20,17 +20,22 @@ function findSelectedSku(skus, selectedColor, selectedSize) {
 function getSkuOptions(skus, selectedColor) {
   const uniqueColors = getColors(skus);
   const uniqueSizes = getSizes(skus);
+  // 现货角标只看未售罄规格的正常空闲库存，不改变原来的禁选判断。
+  const readySkus = skus.filter(sku => !isSkuSoldOut(sku) && getFreeStockQty(sku) > 0);
   return {
     uniqueColors,
     uniqueSizes,
     // 颜色按整体库存判断，避免被当前尺码锁住，导致无法切到其他有货颜色。
     colorOptions: uniqueColors.map(value => ({
       value,
-      disabled: !skus.some(sku => (sku.color || sku.spec) === value && !isSkuSoldOut(sku))
+      disabled: !skus.some(sku => (sku.color || sku.spec) === value && !isSkuSoldOut(sku)),
+      hasReadyStock: readySkus.some(sku => (sku.color || sku.spec) === value)
     })),
     sizeOptions: uniqueSizes.map(value => ({
       value,
       disabled: !skus.some(sku => sku.size === value && !isSkuSoldOut(sku)
+        && (!selectedColor || (sku.color || sku.spec) === selectedColor)),
+      hasReadyStock: readySkus.some(sku => sku.size === value
         && (!selectedColor || (sku.color || sku.spec) === selectedColor))
     }))
   };
