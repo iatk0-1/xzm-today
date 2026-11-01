@@ -143,6 +143,12 @@ function checkoutItemPrices(items, quote) {
     return { originalUnitPrice: money(original / 100), displayUnitPrice: settled == null ? null : money(Math.round(settled / quantity) / 100),
       showOriginalPrice: settled != null && settled !== original * quantity };
   };
+  // 结算只显示服务端本次报价的现货数量，不沿用购物车或本地缓存中的旧库存。
+  const readyQuantity = (lines, maximum) => {
+    if (!lines.length || lines.some(line => !Number.isInteger(line.readyStockQty) || line.readyStockQty < 0)) return null;
+    const count = lines.reduce((sum, line) => sum + line.readyStockQty, 0);
+    return count <= maximum ? count : null;
+  };
   let total = 0;
   const result = items.map((item, index) => {
     const original = Math.round(Number(item.finalPrice != null ? item.finalPrice : item.price || 0) * 100);
@@ -151,14 +157,17 @@ function checkoutItemPrices(items, quote) {
     if (hasLines && !lines.length) throw new Error('商品成交明细缺失，请重试');
     const settled = quote ? hasLines ? sum(lines) : original * quantity : null;
     total += settled || 0;
-    return { ...item, ...fields(original, quantity, settled),
+    const pieces = item.bundleConfig && item.bundleConfig.length
+      ? item.bundleConfig.reduce((sum, sub) => sum + Number(sub.count == null ? 1 : sub.count) * quantity, 0) : quantity;
+    return { ...item, ...fields(original, quantity, settled), readyStockQty: readyQuantity(lines, pieces),
       bundleConfig: item.bundleConfig && item.bundleConfig.map(sub => {
         const subOriginal = Math.round(Number(sub.price || 0) * 100);
         const subQuantity = Number(sub.count == null ? 1 : sub.count) * quantity;
         const subLines = lines.filter(line => String(line.skuId) === String(sub.skuId));
         if (hasLines && !subLines.length) throw new Error('套装成交明细缺失，请重试');
         const subSettled = quote ? hasLines ? sum(subLines) : subOriginal * subQuantity : null;
-        return { ...sub, ...fields(subOriginal, subQuantity, subSettled) };
+        return { ...sub, ...fields(subOriginal, subQuantity, subSettled), displayQuantity: subQuantity,
+          readyStockQty: readyQuantity(subLines, subQuantity) };
       }) };
   });
   if (quote && total !== Math.round(Number(quote.goodsAmount) * 100)) throw new Error('商品成交明细合计不一致，请重试');

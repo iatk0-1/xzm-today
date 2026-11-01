@@ -37,7 +37,7 @@
         <view class="goods-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
           <view class="bundle-sub" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
             <text class="bundle-sub-name" user-select="{{true}}">{{sub.bundleGroupName}}:</text>
-            <text class="bundle-sub-spec" user-select="{{true}}">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
+            <text class="bundle-sub-spec" user-select="{{true}}">{{sub.color}} / {{sub.size}} × {{sub.count}}件<text wx:if="{{sub.readyStockQty > 0}}">(含{{sub.readyStockQty}}件现货)</text></text>
           </view>
         </view>
         <view class="goods-sku" wx:else><text user-select="{{true}}">{{item.productSpec || '图片色'}} / {{item.productSize || '均码'}}</text></view>
@@ -50,7 +50,7 @@
             <text class="price" wx:if="{{item.displayUnitPrice != null}}">￥{{item.displayUnitPrice}}</text><text class="price" wx:else>待加载</text>
             <text class="order-item-original-price" wx:if="{{item.showOriginalPrice}}">原价：￥{{item.originalUnitPrice}}</text>
           </view>
-          <text class="count">x {{item.qty}}</text>
+          <text class="count">× {{item.qty}}{{item.bundleConfig && item.bundleConfig.length ? '套' : '件'}}<text wx:if="{{item.readyStockQty > 0}}">(含{{item.readyStockQty}}件现货)</text></text>
         </view>
         <view class="goods-remark">
           <text class="remark-tag">备注</text>

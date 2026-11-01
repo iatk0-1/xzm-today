@@ -154,9 +154,9 @@ page { background-color: #f7f8fa; }
 .goods-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
 .goods-title { font-size: 26rpx; color: #333; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .goods-sku { font-size: 22rpx; color: #999; margin-top: 10rpx; }
-.goods-price-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: auto; }
+.goods-price-row { display: flex; flex-wrap: wrap; gap: 8rpx 16rpx; justify-content: space-between; align-items: baseline; margin-top: auto; }
 .price { font-size: 28rpx; font-weight: bold; font-family: "Times New Roman", Times, serif; }
-.count { font-size: 24rpx; color: #999; font-family: "Times New Roman", Times, serif; }
+.count { font-size: 24rpx; color: #999; font-family: "Times New Roman", Times, serif; margin-left: auto; white-space: nowrap; }
 
 .after-sale-line {
   display: flex;

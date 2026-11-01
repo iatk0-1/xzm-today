@@ -55,9 +55,9 @@ page { background-color: #f7f8fa; padding-bottom: calc(118rpx + env(safe-area-in
 .bundle-sub-name { font-size: 22rpx; color: #666; margin-right: 6rpx; }
 .bundle-sub-spec { font-size: 22rpx; color: #999; }
 .bundle-sub-count { font-size: 22rpx; color: #777; }
-.goods-price-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: auto; }
+.goods-price-row { display: flex; flex-wrap: wrap; gap: 8rpx 16rpx; justify-content: space-between; align-items: baseline; margin-top: auto; }
 .price { font-size: 28rpx; font-weight: bold; font-family: "Times New Roman", Times, serif; }
-.count { font-size: 24rpx; color: #999; }
+.count { font-size: 24rpx; color: #999; margin-left: auto; white-space: nowrap; }
 
 /* 商品备注 */
 .goods-remark { display: flex; align-items: flex-start; gap: 8rpx; margin-top: 8rpx; }

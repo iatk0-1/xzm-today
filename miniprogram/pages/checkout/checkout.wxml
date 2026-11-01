@@ -30,7 +30,7 @@
         <view class="item-bundle" wx:if="{{item.bundleConfig && item.bundleConfig.length > 0}}">
           <view class="bundle-sub-item" wx:for="{{item.bundleConfig}}" wx:key="skuId" wx:for-item="sub">
             <text class="sub-name">{{sub.bundleGroupName}}</text>
-            <text class="sub-spec">{{sub.color}} / {{sub.size}} x {{sub.count}}</text>
+            <text class="sub-spec">{{sub.color}} / {{sub.size}} × {{sub.displayQuantity || sub.count}}件<text wx:if="{{sub.readyStockQty > 0}}">(含{{sub.readyStockQty}}件现货)</text></text>
             <view class="order-item-price-pair checkout-sub-price-pair">
               <text class="sub-price" wx:if="{{goodsQuoteReady && sub.displayUnitPrice != null}}">￥{{sub.displayUnitPrice}}</text><text class="sub-price" wx:else>{{shippingError ? '待计算' : '计算中…'}}</text>
               <text class="order-item-original-price" wx:if="{{goodsQuoteReady && sub.showOriginalPrice}}">原价：￥{{sub.originalUnitPrice}}</text>
@@ -49,7 +49,7 @@
             <text class="item-price" wx:if="{{goodsQuoteReady && item.displayUnitPrice != null}}">￥{{item.displayUnitPrice}}</text><text class="item-price" wx:else>{{shippingError ? '待计算' : '计算中…'}}</text>
             <text class="order-item-original-price" wx:if="{{goodsQuoteReady && item.showOriginalPrice}}">原价：￥{{item.originalUnitPrice}}</text>
           </view>
-          <view class="item-count">× {{item.count}}{{item.bundleConfig && item.bundleConfig.length ? '套' : '件'}}</view>
+          <view class="item-count">× {{item.count}}{{item.bundleConfig && item.bundleConfig.length ? '套' : '件'}}<text wx:if="{{item.readyStockQty > 0}}">(含{{item.readyStockQty}}件现货)</text></view>
         </view>
         <view class="item-remark">
           <input class="remark-input" placeholder="给这件商品加个备注..." value="{{item.remark}}" bindinput="onRemarkInput" data-index="{{index}}" maxlength="200" />

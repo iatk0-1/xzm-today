@@ -24,16 +24,16 @@ page { background-color: #f9f9f9; }
 .item-card { display: flex; margin-bottom: 20px; }
 .item-card:last-child { margin-bottom: 0; }
 .item-img { width: 70px; height: 93px; background-color: #f5f5f5; display: block; margin-right: 15px; }
-.item-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
 .item-title { font-family: "Times New Roman", Times, serif; font-size: 14px; color: #333333; line-height: 1.4; }
 .item-sku { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #aaaaaa; }
-.item-bottom { display: flex; justify-content: space-between; align-items: center; }
+.item-bottom { display: flex; flex-wrap: wrap; gap: 4px 8px; justify-content: space-between; align-items: center; }
 .item-price { font-family: "Times New Roman", Times, serif; font-size: 14px; color: #333333; }
-.item-count { font-family: -apple-system, sans-serif; font-size: 13px; color: #888888; }
+.item-count { font-family: -apple-system, sans-serif; font-size: 13px; color: #888888; margin-left: auto; white-space: nowrap; }
 
 /* 套装子项列表 */
 .item-bundle { margin-top: 4px; }
-.bundle-sub-item { display: flex; align-items: center; padding: 3px 0; }
+.bundle-sub-item { display: flex; flex-wrap: wrap; align-items: center; padding: 3px 0; }
 .sub-name { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #888; min-width: 36px; }
 .sub-spec { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #aaa; margin-left: 4px; margin-right: 8rpx; }
 .sub-count { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #777; margin-right: 8rpx; }
