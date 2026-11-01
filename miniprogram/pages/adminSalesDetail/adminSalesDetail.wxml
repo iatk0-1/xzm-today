@@ -8,7 +8,7 @@
   </view>
 
   <!-- 统计卡片 -->
-  <view class="overview-card {{managerId ? 'commission-overview' : ''}}">
+  <view class="overview-card commission-overview">
     <view class="stat-row">
       <view class="stat-item">
         <text class="stat-val">{{overview.soldQty || 0}}</text>
@@ -21,6 +21,10 @@
       <view class="stat-item" wx:if="{{managerId}}">
         <text class="stat-val">¥{{overview.salesCommission || 0}}</text>
         <text class="stat-label">销售佣金</text>
+      </view>
+      <view class="stat-item" wx:else>
+        <text class="stat-val">¥{{overview.profit || 0}}</text>
+        <text class="stat-label">利润</text>
       </view>
     </view>
     <view class="stat-row">
@@ -35,6 +39,10 @@
       <view class="stat-item" wx:if="{{managerId}}">
         <text class="stat-val">¥{{overview.refundedCommission || 0}}</text>
         <text class="stat-label">退还佣金</text>
+      </view>
+      <view class="stat-item" wx:else>
+        <text class="stat-val">¥{{overview.salesCommission || 0}}</text>
+        <text class="stat-label">佣金</text>
       </view>
     </view>
     <text class="pending-review-tag" wx:if="{{overview.pendingReviewQty > 0}}">待审核 {{overview.pendingReviewQty}} 件</text>

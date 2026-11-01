@@ -11,7 +11,7 @@ Page({
     productArticleNo: '',
     // 统计概览
     overview: { soldItems: 0, soldQty: 0, totalAmount: 0, afterSaleCount: 0,
-      afterSaleAmount: 0, afterSaleQty: 0, pendingReviewQty: 0 },
+      afterSaleAmount: 0, afterSaleQty: 0, pendingReviewQty: 0, profit: 0, salesCommission: 0 },
     // SKU 明细
     skus: [],
     skuTotal: 0, skuPage: 1, skuSize: 100, skuHasMore: false, skuLoading: false,
@@ -77,7 +77,9 @@ Page({
         afterSaleQty: res.afterSaleQty != null ? res.afterSaleQty : (res.afterSaleCount || 0),
         afterSaleAmount: res.afterSaleAmount || 0,
         pendingReviewQty: res.pendingReviewQty || 0,
-        ...(this.data.managerId ? { salesCommission: res.salesCommission || 0, refundedCommission: res.refundedCommission || 0 } : {})
+        profit: res.profit != null ? res.profit : 0,
+        salesCommission: res.salesCommission != null ? res.salesCommission : 0,
+        ...(this.data.managerId ? { refundedCommission: res.refundedCommission || 0 } : {})
       }});
     }).catch(err => { if (requestId !== this._overviewRequestId) return; console.error('加载概览失败:', err); this.setData({ overviewError: getErrorMessage(err, '加载概览失败') }); });
   },

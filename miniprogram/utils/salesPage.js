@@ -12,10 +12,10 @@ return autoSearch.wrap({
     loading: false,
     loadError: false,
     isRefreshing: false,
-    overview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleQty: 0, afterSaleAmount: 0, pendingReviewQty: 0 },
+    overview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleQty: 0, afterSaleAmount: 0, pendingReviewQty: 0, profit: 0, salesCommission: 0 },
     overviewLoading: false,
     overviewError: false,
-    filteredOverview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleQty: 0, afterSaleAmount: 0, pendingReviewQty: 0 },
+    filteredOverview: { soldQty: 0, totalAmount: 0, afterSaleCount: 0, afterSaleQty: 0, afterSaleAmount: 0, pendingReviewQty: 0, profit: 0, salesCommission: 0 },
     filteredOverviewLoading: false,
     filteredOverviewError: false,
     // 筛选
@@ -112,7 +112,9 @@ return autoSearch.wrap({
         afterSaleQty: res.afterSaleQty != null ? res.afterSaleQty : (res.afterSaleCount || 0),
         afterSaleAmount: res.afterSaleAmount || 0,
         pendingReviewQty: res.pendingReviewQty || 0,
-        ...(managerView ? { salesCommission: res.salesCommission || 0, refundedCommission: res.refundedCommission || 0 } : {})
+        profit: res.profit != null ? res.profit : 0,
+        salesCommission: res.salesCommission != null ? res.salesCommission : 0,
+        ...(managerView ? { refundedCommission: res.refundedCommission || 0 } : {})
       } });
     }).catch(err => {
       if (requestId !== this.overviewRequestId) return;
@@ -136,7 +138,9 @@ return autoSearch.wrap({
         afterSaleQty: res.afterSaleQty != null ? res.afterSaleQty : (res.afterSaleCount || 0),
         afterSaleAmount: res.afterSaleAmount || 0,
         pendingReviewQty: res.pendingReviewQty || 0,
-        ...(managerView ? { salesCommission: res.salesCommission || 0, refundedCommission: res.refundedCommission || 0 } : {})
+        profit: res.profit != null ? res.profit : 0,
+        salesCommission: res.salesCommission != null ? res.salesCommission : 0,
+        ...(managerView ? { refundedCommission: res.refundedCommission || 0 } : {})
       } });
     }).catch(err => {
       if (requestId !== this.filteredOverviewRequestId) return;

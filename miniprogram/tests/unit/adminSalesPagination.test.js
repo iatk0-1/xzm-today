@@ -158,8 +158,24 @@ test('销售页最近 1 天只查询当天，取消编辑不改已生效范围',
   assert.deepEqual(filteredOverviewRequests[0], { startDate: today, endDate: today });
   assert.deepEqual(page.data.overview, {
     soldQty: 25, totalAmount: 3316.25, afterSaleCount: 1, afterSaleQty: 1, afterSaleAmount: 132.65,
-    pendingReviewQty: 0
+    pendingReviewQty: 0, profit: 0, salesCommission: 0
   });
+});
+
+test('两组统计保留后端利润和负责人佣金，包含负利润及筛选后的独立金额', async () => {
+  overviewResponses = [Promise.resolve({ totalAmount: '100.00', profit: '-30.60', salesCommission: '10.00' })];
+  filteredOverviewResponses = [Promise.resolve({ totalAmount: '50.00', profit: '24.70', salesCommission: '5.00' })];
+  const page = createPage();
+  page.data.selectedStall = 2;
+  await Promise.all([page.loadOverview(), page.loadFilteredOverview()]);
+  assert.equal(page.data.overview.profit, '-30.60');
+  assert.equal(page.data.overview.salesCommission, '10.00');
+  assert.equal(page.data.filteredOverview.profit, '24.70');
+  assert.equal(page.data.filteredOverview.salesCommission, '5.00');
+  filteredOverviewResponses = [Promise.resolve({ profit: 0, salesCommission: 0 })];
+  await page.loadFilteredOverview();
+  assert.equal(page.data.filteredOverview.profit, 0);
+  assert.equal(page.data.filteredOverview.salesCommission, 0);
 });
 
 test('部分退款待审核时保留售出数量，退款成功后更新售出数量和待审核件数',

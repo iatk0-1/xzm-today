@@ -1,6 +1,6 @@
 <view class="page-wrapper">
   <!-- 销售数据统计 -->
-  <view class="overview-card {{managerView ? 'commission-overview' : ''}}" wx:if="{{!isStallManager}}">
+  <view class="overview-card commission-overview" wx:if="{{!isStallManager}}">
     <view class="overview-status" wx:if="{{overviewLoading}}">统计加载中...</view>
     <view class="overview-status" wx:elif="{{overviewError}}" bindtap="loadOverview">{{overviewError}} · 点击重试</view>
     <block wx:else>
@@ -17,6 +17,10 @@
           <text class="stat-val">¥{{overview.salesCommission || 0}}</text>
           <text class="stat-label">销售佣金</text>
         </view>
+        <view class="stat-item" wx:else>
+          <text class="stat-val">¥{{overview.profit || 0}}</text>
+          <text class="stat-label">利润</text>
+        </view>
       </view>
       <view class="stat-row">
         <view class="stat-item">
@@ -30,6 +34,10 @@
         <view class="stat-item" wx:if="{{managerView}}">
           <text class="stat-val">¥{{overview.refundedCommission || 0}}</text>
           <text class="stat-label">退还佣金</text>
+        </view>
+        <view class="stat-item" wx:else>
+          <text class="stat-val">¥{{overview.salesCommission || 0}}</text>
+          <text class="stat-label">佣金</text>
         </view>
       </view>
       <text class="pending-review-tag" wx:if="{{overview.pendingReviewQty > 0}}">待审核 {{overview.pendingReviewQty}} 件</text>
@@ -72,7 +80,7 @@
   </view>
 
   <!-- 与下方商品列表使用同一组筛选条件的统计 -->
-  <view class="overview-card filtered-overview-card {{managerView ? 'commission-overview' : ''}}">
+  <view class="overview-card filtered-overview-card commission-overview">
     <view class="filtered-overview-title">筛选结果统计</view>
     <view class="overview-status" wx:if="{{filteredOverviewLoading}}">统计加载中...</view>
     <view class="overview-status" wx:elif="{{filteredOverviewError}}" bindtap="loadFilteredOverview">{{filteredOverviewError}} · 点击重试</view>
@@ -90,6 +98,10 @@
           <text class="stat-val">¥{{filteredOverview.salesCommission || 0}}</text>
           <text class="stat-label">销售佣金</text>
         </view>
+        <view class="stat-item" wx:else>
+          <text class="stat-val">¥{{filteredOverview.profit || 0}}</text>
+          <text class="stat-label">利润</text>
+        </view>
       </view>
       <view class="stat-row">
         <view class="stat-item">
@@ -103,6 +115,10 @@
         <view class="stat-item" wx:if="{{managerView}}">
           <text class="stat-val">¥{{filteredOverview.refundedCommission || 0}}</text>
           <text class="stat-label">退还佣金</text>
+        </view>
+        <view class="stat-item" wx:else>
+          <text class="stat-val">¥{{filteredOverview.salesCommission || 0}}</text>
+          <text class="stat-label">佣金</text>
         </view>
       </view>
       <text class="pending-review-tag" wx:if="{{filteredOverview.pendingReviewQty > 0}}">待审核 {{filteredOverview.pendingReviewQty}} 件</text>

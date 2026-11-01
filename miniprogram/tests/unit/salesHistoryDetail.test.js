@@ -19,6 +19,21 @@ function harness(get) {
   return { page, requests };
 }
 
+test('普通销售详情读取商品利润和佣金，切换日期后更新并保留负数', async () => {
+  const { page, requests } = harness(async (url, params) => params.startDate === '2026-09-01'
+    ? { profit: '49.40', salesCommission: '10.00' }
+    : { profit: '-30.60', salesCommission: '5.00' });
+  page.setData({ managerId: '' });
+  await page.loadOverview();
+  assert.equal(page.data.overview.profit, '49.40');
+  assert.equal(page.data.overview.salesCommission, '10.00');
+  assert.equal(requests[0].url, '/admin/sales/products/9007199254740997/overview');
+  page.setData({ startDate: '2026-10-01' });
+  await page.loadOverview();
+  assert.equal(page.data.overview.profit, '-30.60');
+  assert.equal(page.data.overview.salesCommission, '5.00');
+});
+
 test('SKU超过100组可以继续加载，同规格不同尺码保留独立行', async () => {
   const { page, requests } = harness(async (url, params) => ({
     content: params.page === 1 ? Array.from({ length: 100 }, (_, index) => ({ skuSpec: '红色', skuSize: String(index), salesCommission: '1.23' }))
