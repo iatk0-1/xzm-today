@@ -165,7 +165,7 @@ function createPage() {
     } };
 }
 
-test('快捷日期默认全部，近3/7/14天包含今天，点击后保留其他筛选并重查首屏', async () => {
+test('快捷日期默认全部，超3/7/14天仅设结束日期，保留其他筛选并重查首屏', async () => {
   global.wx = { showLoading() {}, hideLoading() {}, showToast() {} };
   const page = createPage();
   assert.equal(page.data.dateRange.startDate, '');
@@ -175,23 +175,56 @@ test('快捷日期默认全部，近3/7/14天包含今天，点击后保留其�
   page.data.searchKeyword = '棉袄';
   for (const days of [3, 7, 14, 0]) {
     page.data.page = 4;
-    page.selectQuickDateRange({ currentTarget: { dataset: { type: days ? `${days}days` : 'all' } } });
+    page.data.dateRange.startDate = '2026-01-01';
+    page.selectQuickDateRange({ currentTarget: { dataset: { type: days ? `over${days}days` : 'all' } } });
     await new Promise(resolve => setImmediate(resolve));
     const request = pendingRequests.shift();
-    const start = new Date();
-    start.setDate(start.getDate() - (days - 1));
-    assert.equal(request.params.startDate, days ? page.formatDate(start) : undefined);
-    assert.equal(request.params.endDate, days ? page.formatDate(new Date()) : undefined);
+    const end = new Date();
+    end.setDate(end.getDate() - days);
+    assert.equal(request.params.startDate, undefined);
+    assert.equal(request.params.endDate, days ? page.formatDate(end) : undefined);
+    assert.equal(page.data.dateRange.quickSelect, days ? `over${days}days` : '');
     assert.equal(request.params.status, 'unshipped');
     assert.equal(request.params.page, 1);
     assert.equal(request.params.tagId, '22');
     assert.equal(request.params.keyword, '棉袄');
     request.resolve({ content: [], totalElements: 0 });
     await new Promise(resolve => setImmediate(resolve));
+    if (days) {
+      page.data.hasMore = true;
+      const loading = page.loadOrders(false);
+      await new Promise(resolve => setImmediate(resolve));
+      const next = pendingRequests.shift();
+      assert.equal(next.params.page, 2);
+      assert.equal(next.params.startDate, undefined);
+      assert.equal(next.params.endDate, request.params.endDate);
+      assert.equal(next.params.status, 'unshipped');
+      next.resolve({ content: [], totalElements: 0 });
+      await loading;
+    }
   }
   page.selectDateRange({ currentTarget: { dataset: { type: '7days' } } });
   page.onStartDateChange({ detail: { value: '2026-10-01' } });
   assert.equal(page.data.dateRange.quickSelect, '');
+});
+
+test('超期快捷筛选与日期弹窗最近7天互不混用，修改或清空日期后取消快捷选中', () => {
+  const page = createPage();
+  page.loadOrders = () => {};
+  page.selectQuickDateRange({ currentTarget: { dataset: { type: 'over7days' } } });
+  assert.equal(page.data.dateRange.startDate, '');
+  assert.equal(page.data.dateRange.quickSelect, 'over7days');
+  page.selectDateRange({ currentTarget: { dataset: { type: '7days' } } });
+  const start = new Date();
+  start.setDate(start.getDate() - 6);
+  assert.equal(page.data.dateRange.startDate, page.formatDate(start));
+  assert.equal(page.data.dateRange.endDate, page.formatDate(new Date()));
+  assert.equal(page.data.dateRange.quickSelect, '7days');
+  page.selectQuickDateRange({ currentTarget: { dataset: { type: 'over14days' } } });
+  page.onEndDateChange({ detail: { value: '2026-10-01' } });
+  assert.equal(page.data.dateRange.quickSelect, '');
+  page.clearDateRange();
+  assert.deepEqual(page.data.dateRange, { startDate: '', endDate: '', quickSelect: '' });
 });
 
 test('未发货列表隐藏已发完商品，部分发货保留，分页保留筛选且详情仍按订单ID打开', async () => {

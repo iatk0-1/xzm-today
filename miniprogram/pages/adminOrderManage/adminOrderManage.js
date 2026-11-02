@@ -47,9 +47,9 @@ Page(autoSearch.wrap(pageSync.wrap({
     currentTab: '全部',
     quickDateOptions: [
       { type: 'all', label: '全部' },
-      { type: '3days', label: '近3天' },
-      { type: '7days', label: '近7天' },
-      { type: '14days', label: '近14天' }
+      { type: 'over3days', label: '超3天', days: 3 },
+      { type: 'over7days', label: '超7天', days: 7 },
+      { type: 'over14days', label: '超14天', days: 14 }
     ],
     orders: [],
     isLoading: true,
@@ -200,12 +200,20 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   selectQuickDateRange: function(e) {
     const type = e.currentTarget.dataset.type;
-    if (!this.data.quickDateOptions.some(option => option.type === type)) return;
+    const option = this.data.quickDateOptions.find(option => option.type === type);
+    if (!option) return;
     if (type === 'all') {
       this.clearDateRange();
       return;
     }
-    this.selectDateRange(e);
+    const end = new Date();
+    end.setDate(end.getDate() - option.days);
+    // 接口按自然日筛选，包含 N 天前当天及更早的订单，不限制开始日期。
+    this.setData({
+      'dateRange.startDate': '',
+      'dateRange.endDate': this.formatDate(end),
+      'dateRange.quickSelect': type
+    });
     this.loadOrders();
   },
 
@@ -219,9 +227,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       case '1day':
         startDate = endDate;
         break;
-      case '3days':
-      case '7days':
-      case '14days': {
+      case '7days': {
         const start = new Date(today);
         start.setDate(start.getDate() - (parseInt(type, 10) - 1));
         startDate = this.formatDate(start);
