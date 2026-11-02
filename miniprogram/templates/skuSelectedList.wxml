@@ -18,15 +18,15 @@
               <view class="sku-quantity-btn {{item.atLimit ? 'disabled' : ''}}" catchtap="pickedQuantityPlus" data-sku-id="{{item.skuId}}">+</view>
             </view>
           </view>
-          <view class="sku-picked-item-bottom"><text class="sku-picked-unit-price {{item.discounted ? 'active' : ''}}">￥{{item.unitPriceText}}</text><text class="sku-original-price" wx:if="{{item.discounted}}">￥{{item.priceText}}</text></view>
+          <view class="sku-picked-item-bottom"><text class="sku-picked-unit-price {{item.discounted ? 'active' : ''}}">￥{{item.unitPriceDisplay}}</text><text class="sku-original-price" wx:if="{{item.discounted}}">￥{{item.priceDisplay}}</text></view>
         </view>
       </view>
     </scroll-view>
     <view class="sku-picked-amounts">
-      <view class="sku-amount-row"><text>商品总价</text><text>￥{{pickedOriginalPrice}}</text></view>
+      <view class="sku-amount-row"><text>商品总价</text><text>￥{{skuMoneyText.pickedOriginalPrice}}</text></view>
       <view>
-        <view class="sku-amount-row" wx:for="{{pickedPromotionRows}}" wx:key="key"><text>{{item.label}}</text><text class="sku-discount-amount {{item.active ? 'active' : ''}}">{{item.active ? '-￥' + item.amount : '￥0'}}</text></view>
-        <view class="sku-picked-footer"><text class="sku-picked-savings" wx:if="{{promotionOffers.length}}">优惠共减<text class="sku-picked-saving-amount {{pickedHasDiscount ? 'active' : ''}}">￥{{pickedDiscountPrice}}</text></text><view class="sku-picked-final">合计 <text class="sku-picked-total {{pickedHasDiscount ? 'active' : ''}}">￥{{pickedGoodsPrice}}</text></view></view>
+        <view class="sku-amount-row" wx:for="{{pickedPromotionRows}}" wx:key="key"><text>{{item.label}}</text><text class="sku-discount-amount {{item.active ? 'active' : ''}}">{{item.active ? '-￥' + item.amountDisplay : '￥0'}}</text></view>
+        <view class="sku-picked-footer"><text class="sku-picked-savings" wx:if="{{promotionOffers.length}}">优惠共减<text class="sku-picked-saving-amount {{pickedHasDiscount ? 'active' : ''}}">￥{{skuMoneyText.pickedDiscountPrice}}</text></text><view class="sku-picked-final">合计 <text class="sku-picked-total {{pickedHasDiscount ? 'active' : ''}}">￥{{skuMoneyText.pickedGoodsPrice}}</text></view></view>
       </view>
       <view class="sku-promotion-message" wx:if="{{promotionOffersError}}" catchtap="loadSkuPromotions">优惠信息加载失败，点击重试</view>
       <view class="sku-promotion-message" wx:elif="{{skuQuoteError}}" catchtap="retrySkuPromotionQuote">优惠计算失败，点击重试</view>

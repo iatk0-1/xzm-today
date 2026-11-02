@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const display = require('../../utils/skuPromotionDisplay');
+const skuMoneyText = require('../../utils/skuMoneyText');
 const plain = value => JSON.parse(JSON.stringify(value));
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const deferred = () => { let resolve;const promise = new Promise(r => { resolve = r; });return { promise, resolve }; };
@@ -46,6 +47,31 @@ function picker(handlers = {}) {
   page.open = p => page.openSkuPanel({ currentTarget: { dataset: { product: p } } });
   return { page, calls, purchases };
 }
+
+test('弹窗金额先四舍五入到分，再省略小数末尾的零，最多两位小数且不吞掉零元', () => {
+  for (const [value, expected] of [[299, '299'], ['299.00', '299'], ['299.999', '300'],
+    ['299.004', '299'], ['299.005', '299.01'], ['299.126', '299.13'], ['299.10', '299.1'],
+    ['299.104', '299.1'], ['299.196', '299.2'], [100, '100'], ['0.10', '0.1'],
+    [1.005, '1.01'], [0, '0'], ['0.004', '0'], ['0.005', '0.01']]) {
+    assert.equal(skuMoneyText(value), expected);
+  }
+});
+
+test('弹窗未选及已选整元展示一致，展示格式不改变计算金额和下单原价', async () => {
+  const { page, purchases } = picker();page.open(product('p'));await tick();
+  assert.equal(page.data.currentSkuOriginalPriceText, '100');
+  page.setPickedSkuQuantity('p1', 2);await tick();
+  assert.equal(page.data.skuMoneyText.pickedOriginalPrice, '200');
+  assert.equal(page.data.skuMoneyText.pickedGoodsPrice, '190');
+  assert.equal(page.data.skuMoneyText.pickedDiscountPrice, '10');
+  assert.equal(page.data.skuMoneyText.pickedAverageUnitPrice, '95');
+  assert.equal(page.data.pickedSkuItems[0].unitPriceDisplay, '95');
+  assert.equal(page.data.pickedSkuItems[0].priceDisplay, '100');
+  assert.equal(page.data.pickedPromotionRows[0].amountDisplay, '10');
+  assert.equal(page.data.pickedGoodsPrice, '190.00');
+  await page.confirmAddToCart({ currentTarget: { dataset: { action: 'buy' } } });
+  assert.equal(purchases[0][0].price, 100);assert.equal(purchases[0][0].count, 2);
+});
 
 test('首单已付款及待支付占用都显示已使用，规则只展示购买者需要的内容', () => {
   const result = display.offersForDisplay([offer('USED'), offer('RESERVED'),

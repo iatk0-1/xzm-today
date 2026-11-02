@@ -14,13 +14,13 @@
       <view class="sku-summary-slot">
         <scroll-view class="sku-price-scroll" scroll-x show-scrollbar="{{false}}">
           <view class="sku-price {{pickedHasDiscount ? 'has-discount' : ''}}">
-            <text wx:if="{{pickedTotalCount > 0}}">￥{{pickedGoodsPrice}}</text>
-            <text wx:elif="{{bundleSelections.length === 0}}">￥{{currentSkuPrice || currentProduct.retailPrice || currentProduct.displayPrice || '0.00'}}</text>
+            <text wx:if="{{pickedTotalCount > 0}}">￥{{skuMoneyText.pickedGoodsPrice}}</text>
+            <text wx:elif="{{bundleSelections.length === 0}}">￥{{currentSkuOriginalPriceText}}</text>
             <text wx:else>{{bundlePriceRange}}</text>
             <block wx:if="{{pickedHasDiscount}}">
-              <view class="sku-before-total"><text>￥{{pickedOriginalPrice}}</text><view class="sku-price-strike"></view></view>
-              <text class="sku-average-price">￥{{pickedAverageUnitPrice}}/件</text>
+              <view class="sku-before-total"><text>￥{{skuMoneyText.pickedOriginalPrice}}</text><view class="sku-price-strike"></view></view>
             </block>
+            <text class="sku-average-price {{pickedHasDiscount ? 'active' : ''}}" wx:if="{{pickedTotalCount > 1}}">￥{{skuMoneyText.pickedAverageUnitPrice}}/件</text>
           </view>
         </scroll-view>
       </view>
@@ -46,8 +46,11 @@
   </view>
 
   <view class="sku-discount-entry" wx:if="{{promotionOffers.length}}" catchtap="openSkuPromotions">
-    <view class="sku-title">优惠</view>
-    <text class="sku-discount-entry-amount" wx:if="{{pickedHasDiscount}}">-{{pickedDiscountPrice}}元</text>
+    <view class="sku-discount-label">
+      <view class="sku-title">优惠</view>
+      <view class="sku-discount-question" catchtap="openSkuPromotions" aria-label="查看优惠规则">?</view>
+    </view>
+    <text class="sku-discount-entry-amount" wx:if="{{pickedHasDiscount}}">-{{skuMoneyText.pickedDiscountPrice}}元</text>
   </view>
   <view class="sku-promotion-message" wx:if="{{promotionOffersError}}" catchtap="loadSkuPromotions">优惠信息加载失败，点击重试</view>
   <view class="sku-promotion-message" wx:elif="{{skuQuoteError}}" catchtap="retrySkuPromotionQuote">优惠计算失败，点击重试</view>
@@ -84,8 +87,8 @@
 
         <view class="bundle-card-footer">
           <view class="bundle-sku-price" style="color: #1a1a1a;">
-            <block wx:if="{{sel.promotionPrice.discounted}}">￥{{sel.promotionPrice.unitPriceText}}<text class="sku-original-price">￥{{sel.selectedSku.price}}</text></block>
-            <block wx:else>￥{{sel.selectedSku.price || sel.skus[0].price || sel.skus[0].retailPrice}}</block>
+            <block wx:if="{{sel.promotionPrice.discounted}}">￥{{sel.promotionPrice.unitPriceDisplay}}<text class="sku-original-price">￥{{sel.originalPriceDisplay}}</text></block>
+            <block wx:else>￥{{sel.originalPriceDisplay}}</block>
           </view>
           <view class="stepper" wx:if="{{sel.selectedSku}}">
             <view class="step-btn {{sel.quantity <= 0 ? 'disabled' : ''}}" catchtap="bundleMinus" data-index="{{bgIdx}}">-</view>

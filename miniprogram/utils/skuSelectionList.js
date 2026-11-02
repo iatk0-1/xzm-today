@@ -4,6 +4,7 @@ const { isSkuSoldOut, isProductSoldOut, formatStock, getFreeStockQty } = require
 const { getSkuOptions, findSelectedSku, getSkuOptionSelection } = require('./skuSelection');
 const drafts = require('./skuSelectionDraft');
 const promotionDisplay = require('../utils/skuPromotionDisplay');
+const skuMoneyText = require('./skuMoneyText');
 
 const initialData = {
   pickedSkuItems: [], pickedTotalCount: 0, pickedTotalPrice: '0.00',
@@ -12,7 +13,8 @@ const initialData = {
   showSkuPromotions: false, skuQuoteLoading: false, skuQuoteError: '',
   pickedOriginalPrice: '0.00', pickedDiscountPrice: '0.00', pickedGoodsPrice: '0.00', pickedDiscountRows: [],
   pickedHasDiscount: false, pickedAverageUnitPrice: '0.00', pickedPromotionRows: [],
-  currentSkuDiscounted: false, currentSkuUnitPrice: '', currentSkuUnitApproximate: false
+  currentSkuDiscounted: false, currentSkuUnitPrice: '', currentSkuUnitApproximate: false,
+  currentSkuOriginalPriceText: '0', skuMoneyText: {}
 };
 
 function normalizedSku(sku) {
@@ -62,6 +64,8 @@ function buildPickedPatch(page, state = page.data) {
   if (!page._pickedSkus) return {};
   const product = getProduct({ data: state });
   const quantities = page._pickedQuantities;
+  const originalPrice = [state.currentSkuPrice, product.retailPrice, product.displayPrice]
+    .find(value => value != null && value !== '');
   const items = [];
   let totalCents = 0;
   let totalCount = 0;
@@ -76,6 +80,7 @@ function buildPickedPatch(page, state = page.data) {
       atLimit: !sku.unlimitedStock && count >= Number(sku.stock) });
   }
   const patch = { pickedSkuItems: items, pickedTotalCount: totalCount, pickedCountText: badgeText(totalCount), pickedTotalPrice: (totalCents / 100).toFixed(2),
+    currentSkuOriginalPriceText: skuMoneyText(originalPrice),
     quantity: quantities[String(state.currentSkuId)] || 0 };
   if ((state.bundleSelections || []).length) {
     patch.bundleSelections = state.bundleSelections.map(group => {
@@ -88,7 +93,7 @@ function buildPickedPatch(page, state = page.data) {
     patch.bundleNamesStr = items.length ? [...new Set(items.map(sku => sku.bundleGroupName))].join('，') : '待选择';
     const prices = [...page._pickedSkus.values()].map(sku => Number(sku.price || 0));
     const min = Math.min(...prices), max = Math.max(...prices);
-    patch.bundlePriceRange = min === max ? `¥${min.toFixed(2)}` : `¥${min.toFixed(2)} - ¥${max.toFixed(2)}`;
+    patch.bundlePriceRange = min === max ? `¥${skuMoneyText(min)}` : `¥${skuMoneyText(min)} - ¥${skuMoneyText(max)}`;
   } else Object.assign(patch, decorateOptions(product.skuMatrix || [], state.selectedColor, quantities));
   const signature = selectionSignature(page, items);
   Object.assign(patch, promotionDisplay.pricing(items, page._skuQuote && page._skuQuote.signature === signature ? page._skuQuote.value : null));
@@ -106,11 +111,20 @@ function buildPickedPatch(page, state = page.data) {
         discounted: previous.discounted, unitApproximate: previous.unitApproximate } : sku;
     });
   }
+  patch.skuMoneyText = {};
+  for (const key of ['pickedOriginalPrice', 'pickedGoodsPrice', 'pickedDiscountPrice', 'pickedAverageUnitPrice']) {
+    patch.skuMoneyText[key] = skuMoneyText(patch[key]);
+  }
+  patch.pickedSkuItems = patch.pickedSkuItems.map(sku => ({ ...sku,
+    unitPriceDisplay: skuMoneyText(sku.unitPriceText), priceDisplay: skuMoneyText(sku.priceText) }));
+  patch.pickedPromotionRows = patch.pickedPromotionRows.map(row => ({ ...row, amountDisplay: skuMoneyText(row.amount) }));
   const current = patch.pickedSkuItems.find(sku => String(sku.skuId) === String(state.currentSkuId));
   patch.currentSkuDiscounted = !!(current && current.discounted);
   patch.currentSkuUnitPrice = current ? current.unitPriceText : '';
   patch.currentSkuUnitApproximate = !!(current && current.unitApproximate);
   if (patch.bundleSelections) patch.bundleSelections = patch.bundleSelections.map(group => ({ ...group,
+    originalPriceDisplay: skuMoneyText(group.selectedSku && group.selectedSku.price != null ? group.selectedSku.price :
+      group.skus[0] && (group.skus[0].price != null ? group.skus[0].price : group.skus[0].retailPrice)),
     promotionPrice: patch.pickedSkuItems.find(sku => group.selectedSku && String(sku.skuId) === String(group.selectedSku.skuId)) || null }));
   return patch;
 }

@@ -172,11 +172,15 @@
 .sku-header .sku-price.has-discount { color: #d32f2f; }
 .sku-before-total { position: relative; display: inline-block; color: #999; font-size: 23rpx; line-height: 1.2; font-weight: 400; }
 .sku-price-strike { position: absolute; left: 0; right: 0; top: 50%; height: 2rpx; background: #d32f2f; }
-.sku-average-price { font-size: 23rpx; line-height: 1.2; font-weight: 400; color: #d32f2f; }
+.sku-average-price { font-size: 23rpx; line-height: 1.2; font-weight: 400; color: #999; }
+.sku-average-price.active { color: #d32f2f; }
 .sku-header .sku-stock { margin-bottom: 0; line-height: 1.2; }
 .sku-header .sku-choose-tip { background: none; padding: 0; border-radius: 0; height: 48rpx; line-height: 48rpx; color: #666; align-self: auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .sku-discount-entry { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; min-height: 76rpx; margin-bottom: 20rpx; border-bottom: 1rpx solid #eee; }
 .sku-discount-entry .sku-title { margin-bottom: 0; }
+.sku-discount-label { display: flex; align-items: center; gap: 10rpx; }
+.sku-discount-question { position: relative; width: 28rpx; height: 28rpx; border: 2rpx solid #bbb; border-radius: 50%; box-sizing: border-box; text-align: center; line-height: 24rpx; font-size: 20rpx; color: #999; font-weight: 400; flex-shrink: 0; }
+.sku-discount-question::before { content: ''; position: absolute; inset: -12rpx; }
 .sku-discount-entry-amount { color: #d32f2f; font-size: 26rpx; }
 
 .sku-price {
