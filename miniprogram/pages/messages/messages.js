@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -127,7 +128,7 @@ Page({
 
   formatTime(raw) {
     if (!raw) return '';
-    const value = new Date(raw);
+    const value = parseDate(raw);
     if (Number.isNaN(value.getTime())) return '';
     const pad = n => String(n).padStart(2, '0');
     return value.getFullYear() + '-' + pad(value.getMonth() + 1) + '-' + pad(value.getDate())

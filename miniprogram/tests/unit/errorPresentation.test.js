@@ -74,6 +74,7 @@ function apiHarness(handler, { upload, auth } = {}) {
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../utils/api.js'), 'utf8'), {
     module, exports: module.exports, console, setTimeout, clearTimeout,
     require(name) {
+      if (name === './date') return require('../../utils/date');
       if (name === './config') return config;
       if (name === './error') return errors;
       if (name === './media') return { compressImage: async p => ({ path: p }) };

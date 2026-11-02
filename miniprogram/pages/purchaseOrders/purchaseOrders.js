@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/purchaseOrders/purchaseOrders.js
@@ -769,7 +770,7 @@ Page(autoSearch.wrap({
   // 格式化时间
   formatTime: function(timeStr) {
     if (!timeStr) return '';
-    const date = new Date(timeStr);
+    const date = parseDate(timeStr);
     return date.toLocaleString('zh-CN', {
       month: '2-digit',
       day: '2-digit',

@@ -1,3 +1,4 @@
+const { parseDate, dateTimestamp } = require('../../utils/date');
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -45,8 +46,8 @@ Page({
 
       const result = await api.get(`/orders/${this.data.orderId}/shipments/detail`);
       const shipments = (result || []).slice().sort((a, b) => {
-        const timeA = Date.parse(String(a.shippedAt || '').replace(' ', 'T')) || 0;
-        const timeB = Date.parse(String(b.shippedAt || '').replace(' ', 'T')) || 0;
+        const timeA = dateTimestamp(a.shippedAt) || 0;
+        const timeB = dateTimestamp(b.shippedAt) || 0;
         if (timeA !== timeB) return timeB - timeA;
         // 同一时间的发货单按 ID 倒序，字符串比较避免长 ID 丢失精度。
         const idA = String(a.id);
@@ -168,7 +169,7 @@ Page({
   formatTime: function(raw) {
     if (!raw) return '';
     try {
-      var d = new Date(raw);
+      var d = parseDate(raw);
       if (isNaN(d.getTime())) {
         return String(raw);
       }

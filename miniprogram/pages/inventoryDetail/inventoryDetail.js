@@ -1,3 +1,4 @@
+const { parseDate, dateTimestamp } = require('../../utils/date');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const { getErrorMessage } = require('../../utils/error');
@@ -54,7 +55,7 @@ Page({
           targetLabel: labels.get(String(item.targetSkuId)) || '规格 ' + item.targetSkuId,
           pendingQty: item.qty - item.receivedQty, receiveQty: '0' });
       }
-      const latestFirst = (a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0);
+      const latestFirst = (a, b) => dateTimestamp(b.createdAt || 0) - dateTimestamp(a.createdAt || 0);
       this.setData({ product: result.product, skus, receipts: receipts.sort(latestFirst), flows: flows.sort(latestFirst),
         inspections: inspections.map(item => ({ ...item, disposeQty: '0' })), reports: reports.sort(latestFirst), exchanges: [...exchangeMap.values()], loading: false });
       wx.setNavigationBarTitle({ title: result.product.name });
@@ -352,6 +353,6 @@ Page({
   },
   formatTime(value) {
     if (!value) return '';
-    return new Date(value).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return parseDate(value).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   }
 });

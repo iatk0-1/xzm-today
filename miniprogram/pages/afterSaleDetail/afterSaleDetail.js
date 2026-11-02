@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/afterSaleDetail/afterSaleDetail.js
 const api = require('../../utils/api');
@@ -228,13 +229,13 @@ Page({
 
   formatTime: function(timeStr) {
     if (!timeStr) return '-';
-    const date = new Date(timeStr);
+    const date = parseDate(timeStr);
     return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   },
 
   formatDateTime: function(raw) {
     if (!raw) return '-';
-    const date = new Date(raw);
+    const date = parseDate(raw);
     if (Number.isNaN(date.getTime())) {
       return String(raw);
     }

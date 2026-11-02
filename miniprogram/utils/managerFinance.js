@@ -1,3 +1,4 @@
+const { dateTimestamp } = require('./date');
 const { getBusinessFailureMessage } = require('./error');
 // 金额以分校验；业务 ID 始终保持字符串，资金终态只信任后端。
 function money(value, allowZero = false) {
@@ -116,7 +117,7 @@ function timeMillis(value) {
   // 后端也会返回无时区的北京时间字符串；显式补时区，避免手机解析后再多加8小时。
   const local = text.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/);
   if (local) return Date.parse(`${local[1]}-${local[2]}-${local[3]}T${local[4]}:${local[5]}:${local[6] || '00'}+08:00`);
-  return Date.parse(text);
+  return dateTimestamp(text);
 }
 function displayTime(value) {
   const millis = timeMillis(value);

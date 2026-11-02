@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/orderDetail/orderDetail.js
@@ -149,12 +150,7 @@ Page(pageSync.wrap({
         // Jackson 默认序列化 LocalDateTime 为 [年,月,日,时,分,秒,纳秒]
         d = new Date(raw[0], raw[1] - 1, raw[2], raw[3] || 0, raw[4] || 0, raw[5] || 0);
       } else {
-        var s = String(raw);
-        if (s.length >= 16 && s.indexOf('T') !== -1) {
-          d = new Date(s);
-        } else {
-          d = new Date(s);
-        }
+        d = parseDate(String(raw));
       }
       if (isNaN(d.getTime())) return String(raw);
       var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
@@ -278,7 +274,7 @@ Page(pageSync.wrap({
 
   // 启动支付倒计时
   startCountdown: function(createdAt) {
-    const orderTime = new Date(createdAt).getTime();
+    const orderTime = parseDate(createdAt).getTime();
     const timeout = PAYMENT_TIMEOUT_MINUTES * 60 * 1000; // 30 分钟超时
     const deadline = orderTime + timeout;
 

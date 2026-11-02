@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 const pageSync = require('../../utils/pageSync');
@@ -580,7 +581,7 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   // 格式化日期
   formatDate: function(date) {
-    const d = new Date(date);
+    const d = parseDate(date);
     const month = (d.getMonth() + 1).toString().padStart(2, '0');
     const day = d.getDate().toString().padStart(2, '0');
     return `${d.getFullYear()}-${month}-${day}`;
@@ -596,7 +597,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       } else if (raw instanceof Array) {
         d = new Date(raw[0], raw[1] - 1, raw[2], raw[3] || 0, raw[4] || 0, raw[5] || 0);
       } else {
-        d = new Date(String(raw));
+        d = parseDate(String(raw));
       }
       if (isNaN(d.getTime())) return String(raw);
       var pad = function(n) { return n < 10 ? '0' + n : '' + n; };

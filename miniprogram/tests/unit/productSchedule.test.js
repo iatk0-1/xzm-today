@@ -27,7 +27,7 @@ test('弹窗回显北京时间、动作和取消事件，保存中不接受重�
   const events = [];
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../components/productSchedule/index.js'), 'utf8'), {
     Component(value) { definition = value; }, Date,
-    require: () => scheduleUtils,
+    require: name => name.endsWith('/date') ? require('../../utils/date') : scheduleUtils,
     wx: { showToast() {} }
   });
   const component = { ...definition.methods, data: { ...definition.data, busy: false,
@@ -66,6 +66,7 @@ function loadPage(name, { fail = false, detail = {}, get } = {}) {
     clearTimeout(id) { if (timers[id - 1]) timers[id - 1].cancelled = true; }, Date, Set,
     wx: { showToast(value) { toasts.push(value.title); }, showLoading() {}, hideLoading() {}, showModal(value) { modals.push(value); } },
     require(moduleName) {
+      if (moduleName.endsWith('/date')) return require('../../utils/date');
       if (moduleName.endsWith('/productCardTags')) return require('../../utils/productCardTags');
       if (moduleName.endsWith('/productPromotions')) return require('../../utils/productPromotions');
       if (moduleName.endsWith('/error')) return require('../../utils/error');

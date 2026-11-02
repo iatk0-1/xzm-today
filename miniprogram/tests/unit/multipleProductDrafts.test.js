@@ -48,7 +48,7 @@ function harness({ live = false, options = {}, saved = [], upload, submit, failS
   };
   const draftModule = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../utils/draft.js'), 'utf8'), {
-    module: draftModule, require: () => api, console, URL, Map, Set
+    module: draftModule, require: name => name === './date' ? require('../../utils/date') : api, console, URL, Map, Set
   });
   const draft = draftModule.exports;
   const exitModule = { exports: {} };

@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -21,8 +22,8 @@ function formatMessage(m, formatTime) {
 }
 
 function compareMessages(a, b) {
-  const first = new Date(a.createdAt).getTime();
-  const second = new Date(b.createdAt).getTime();
+  const first = parseDate(a.createdAt).getTime();
+  const second = parseDate(b.createdAt).getTime();
   return (Number.isFinite(first) && Number.isFinite(second) ? first - second : 0) || Number(a.id) - Number(b.id);
 }
 
@@ -59,8 +60,8 @@ Page({
       const messages = await api.get(base + '/messages');
       const me = auth.getUserInfo() || {};
       const activeMine = session.status === 'active' && String(session.assignedStaffId) === String(me.userId);
-      const expires = session.replyExpiresAt ? new Date(session.replyExpiresAt) : null;
-      const over48Hours = session.lastUserAt && Date.now() - new Date(session.lastUserAt).getTime() >= 48 * 60 * 60 * 1000;
+      const expires = session.replyExpiresAt ? parseDate(session.replyExpiresAt) : null;
+      const over48Hours = session.lastUserAt && Date.now() - parseDate(session.lastUserAt).getTime() >= 48 * 60 * 60 * 1000;
       const valid = !over48Hours && expires && expires.getTime() > Date.now();
       const minutesLeft = valid ? Math.max(0, Math.ceil((expires.getTime() - Date.now()) / 60000)) : 0;
       const quotaText = valid
@@ -100,7 +101,7 @@ Page({
   },
   formatTime(raw) {
     if (!raw) return '';
-    const date = new Date(raw);
+    const date = parseDate(raw);
     if (Number.isNaN(date.getTime())) return '';
     const pad = n => String(n).padStart(2, '0');
     return pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());

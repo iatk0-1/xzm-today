@@ -1,3 +1,4 @@
+const { dateTimestamp } = require('./date');
 const SHANGHAI_OFFSET_MS = 8 * 60 * 60 * 1000;
 
 function beijingParts(timestamp = Date.now()) {
@@ -14,7 +15,7 @@ function buildSchedule(date, time, status, now = Date.now()) {
     throw new Error('请选择定时日期和时间');
   }
   const executeAt = `${date}T${time}:00+08:00`;
-  const timestamp = Date.parse(executeAt);
+  const timestamp = dateTimestamp(executeAt);
   const parts = beijingParts(timestamp);
   if (!Number.isFinite(timestamp) || parts.date !== date || parts.time !== time) {
     throw new Error('日期或时间无效，请重新选择');
@@ -26,7 +27,7 @@ function buildSchedule(date, time, status, now = Date.now()) {
 
 function scheduleSummary(schedule) {
   if (!schedule || schedule.cancelled || schedule.state === 'cancelled') return '';
-  const parts = beijingParts(Date.parse(schedule.executeAt));
+  const parts = beijingParts(dateTimestamp(schedule.executeAt));
   const action = schedule.status === 'on' ? '上架' : '下架';
   const result = schedule.state === 'skipped' ? `（已跳过：${schedule.resultMessage || '未满足执行条件'}）`
     : schedule.state === 'executed' ? '（已执行）' : '';
@@ -35,7 +36,7 @@ function scheduleSummary(schedule) {
 
 function hasPendingSchedule(schedule) {
   return !!(schedule && !schedule.cancelled && (!schedule.state || schedule.state === 'pending')
-    && (schedule.status === 'on' || schedule.status === 'off') && Number.isFinite(Date.parse(schedule.executeAt)));
+    && (schedule.status === 'on' || schedule.status === 'off') && Number.isFinite(dateTimestamp(schedule.executeAt)));
 }
 
 module.exports = { beijingParts, buildSchedule, scheduleSummary, hasPendingSchedule };

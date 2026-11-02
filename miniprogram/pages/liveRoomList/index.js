@@ -1,3 +1,4 @@
+const { dateTimestamp } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/liveRoomList/index.js
@@ -160,9 +161,9 @@ Page(pageSync.wrap({
   normalizeTimestamp: function(ts) {
     if (ts === null || ts === undefined || ts === '') return 0;
 
-    // 字符串：用 Date.parse 处理（支持 ISO、空格分隔等格式）
+    // 字符串：统一兼容 iOS，支持 ISO 和空格分隔的日期时间
     if (typeof ts === 'string') {
-      const parsed = Date.parse(ts);
+      const parsed = dateTimestamp(ts);
       if (!Number.isNaN(parsed)) return parsed;
     }
 

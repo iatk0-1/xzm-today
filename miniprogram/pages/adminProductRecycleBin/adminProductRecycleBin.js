@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 const pageSync = require('../../utils/pageSync');
@@ -285,7 +286,7 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   formatDeletedTime: function(value) {
     if (!value) return '未知';
-    const date = new Date(value);
+    const date = parseDate(value);
     if (Number.isNaN(date.getTime())) return '未知';
     const pad = number => String(number).padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;

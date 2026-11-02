@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/orderList/orderList.js
@@ -159,7 +160,7 @@ Page(pageSync.wrap({
       } else if (raw instanceof Array) {
         date = new Date(raw[0], raw[1] - 1, raw[2], raw[3] || 0, raw[4] || 0, raw[5] || 0);
       } else {
-        date = new Date(String(raw));
+        date = parseDate(String(raw));
       }
 
       if (isNaN(date.getTime())) return String(raw);

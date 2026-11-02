@@ -1,3 +1,4 @@
+const { parseDate, dateTimestamp } = require('../../utils/date');
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 // adminOrder.js - 完整版
 const api = require('../../utils/api');
@@ -1050,8 +1051,8 @@ Page({
       groupsMap.get(item.orderId).items.push({ ...item, pendingIndex: index });
     });
     const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => {
-      const timeA = Date.parse(a.orderCreatedAt || a.createdAt) || 0;
-      const timeB = Date.parse(b.orderCreatedAt || b.createdAt) || 0;
+      const timeA = dateTimestamp(a.orderCreatedAt || a.createdAt) || 0;
+      const timeB = dateTimestamp(b.orderCreatedAt || b.createdAt) || 0;
       if (timeA !== timeB) return timeA - timeB;
       const idA = String(a.orderId);
       const idB = String(b.orderId);
@@ -1633,7 +1634,7 @@ Page({
         try {
           const trace = await api.get(`/shipments/${id}/trace`);
           const nodes = (trace.nodes || []).map((node, index) => ({ ...node, index,
-            timeDisplay: node.time && Number.isFinite(new Date(node.time).getTime()) ? this.formatDate(node.time) : node.time || '' }));
+            timeDisplay: node.time && Number.isFinite(parseDate(node.time).getTime()) ? this.formatDate(node.time) : node.time || '' }));
           result = { loading: false, expanded: false, nodes, visibleNodes: nodes.slice(0, 1) };
         } catch (err) {
           result = { loading: false, expanded: false, nodes: [], visibleNodes: [],
@@ -1935,7 +1936,7 @@ Page({
 
   formatDate: function(dateStr) {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    const date = parseDate(dateStr);
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const day = date.getDate().toString().padStart(2, '0');

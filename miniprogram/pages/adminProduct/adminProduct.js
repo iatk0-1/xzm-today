@@ -1,3 +1,4 @@
+const { dateTimestamp } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/adminProduct/adminProduct.js
@@ -83,7 +84,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
       return;
     }
     const times = this.data.products.filter(item => hasPendingSchedule(item.schedule))
-      .map(item => Date.parse(item.schedule.executeAt));
+      .map(item => dateTimestamp(item.schedule.executeAt));
     if (!times.length) return;
     const next = Math.min(...times);
     this._scheduleRefreshTimer = setTimeout(() => {
@@ -319,7 +320,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
     item.cardTagsReady = item.promotions !== undefined || !!item.cardTagsReady;
     item.hasSchedule = hasPendingSchedule(item.schedule);
     if (item.hasSchedule) {
-      const parts = beijingParts(Date.parse(item.schedule.executeAt));
+      const parts = beijingParts(dateTimestamp(item.schedule.executeAt));
       item.scheduleTimeStr = `${parts.date} ${parts.time}`;
       item.scheduleAction = item.schedule.status === 'on' ? '上架' : '下架';
     } else {
@@ -330,8 +331,8 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
     // 兼容尚未返回 listedAt 的旧接口；明确为 null 表示新商品尚未上架。
     const listedAt = item.listedAt === undefined ? item.createdAt : item.listedAt;
     item.listedTimeStr = '';
-    if (listedAt && Number.isFinite(Date.parse(listedAt))) {
-      const parts = beijingParts(Date.parse(listedAt));
+    if (listedAt && Number.isFinite(dateTimestamp(listedAt))) {
+      const parts = beijingParts(dateTimestamp(listedAt));
       item.listedTimeStr = `${parts.date.slice(5)} ${parts.time}`;
     }
     item.selected = false;

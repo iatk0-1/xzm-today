@@ -1,3 +1,4 @@
+const { dateTimestamp } = require('./date');
 // miniprogram/utils/api.js
 const config = require('./config');
 const { compressImage } = require('./media');
@@ -41,7 +42,7 @@ function getRefreshToken() {
 function parseExpireTime(value) {
   if (!value) return 0;
   if (typeof value === 'number') return value;
-  var parsed = Date.parse(value);
+  var parsed = dateTimestamp(value);
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 

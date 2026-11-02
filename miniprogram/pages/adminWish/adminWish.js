@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const db = wx.cloud.database();
 const _ = db.command;
@@ -44,7 +45,7 @@ Page({
             item.image = item.image || images[0] || '';
             item.title = item.title || item.content || '';
             if (item.createTime) {
-              const date = new Date(item.createTime);
+              const date = parseDate(item.createTime);
               item.createTimeStr = `${date.getMonth()+1}-${date.getDate()}`;
             }
             return item;

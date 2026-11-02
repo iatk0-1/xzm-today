@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { attachArticleNos } = require('../../utils/adminProductArticleNo');
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
 const api = require('../../utils/api');
@@ -390,7 +391,7 @@ Page(pageSync.wrap({
       } else if (raw instanceof Array) {
         d = new Date(raw[0], raw[1] - 1, raw[2], raw[3] || 0, raw[4] || 0, raw[5] || 0);
       } else {
-        d = new Date(String(raw));
+        d = parseDate(String(raw));
       }
       if (isNaN(d.getTime())) return String(raw);
       const pad = n => (n < 10 ? '0' + n : '' + n);

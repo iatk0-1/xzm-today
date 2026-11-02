@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 // pages/adminSalesDetail/adminSalesDetail.js
 const api = require('../../utils/api');
@@ -221,7 +222,7 @@ Page({
   formatTime(raw) {
     if (!raw) return '';
     try {
-      var d = new Date(raw);
+      var d = parseDate(raw);
       if (isNaN(d.getTime())) return String(raw);
       var pad = n => n < 10 ? '0' + n : '' + n;
       return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())

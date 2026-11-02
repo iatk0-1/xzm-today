@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { attachArticleNos } = require('../../utils/adminProductArticleNo');
 const quantityOperation = require('../../utils/quantityOperation');
 const { getErrorMessage, getBusinessFailureMessage } = require('../../utils/error');
@@ -270,13 +271,13 @@ Page({
 
   formatTime: function(timeStr) {
     if (!timeStr) return '-';
-    const date = new Date(timeStr);
+    const date = parseDate(timeStr);
     return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   },
 
   formatDateTime: function(raw) {
     if (!raw) return '-';
-    const date = new Date(raw);
+    const date = parseDate(raw);
     if (Number.isNaN(date.getTime())) {
       return String(raw);
     }

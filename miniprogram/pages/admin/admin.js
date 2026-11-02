@@ -1,3 +1,4 @@
+const { dateTimestamp } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/admin/admin.js
 const api = require('../../utils/api');
@@ -1833,7 +1834,7 @@ const pageDefinition = {
 
     const schedule = this.data.productSchedule;
     if (this.data.productScheduleDirty && schedule && !schedule.cancelled
-      && (!Number.isFinite(Date.parse(schedule.executeAt)) || Date.parse(schedule.executeAt) <= Date.now())) {
+      && (!Number.isFinite(dateTimestamp(schedule.executeAt)) || dateTimestamp(schedule.executeAt) <= Date.now())) {
       return wx.showToast({ title: '定时时间已过，请重新设置', icon: 'none' });
     }
 

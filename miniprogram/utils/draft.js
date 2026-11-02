@@ -1,3 +1,4 @@
+const { parseDate } = require('./date');
 // miniprogram/utils/draft.js
 // 草稿存储工具 — 后端数据库存储（图片先上传 CDN，JSON 存入 PostgreSQL）
 //
@@ -131,7 +132,7 @@ function editorUrl(record) {
 
 function formatTime(value) {
   if (!value) return '';
-  const time = new Date(value);
+  const time = parseDate(value);
   if (!Number.isFinite(time.getTime())) return '';
   const china = new Date(time.getTime() + 8 * 60 * 60 * 1000);
   return china.getUTCFullYear() + '-' + String(china.getUTCMonth() + 1).padStart(2, '0') + '-'

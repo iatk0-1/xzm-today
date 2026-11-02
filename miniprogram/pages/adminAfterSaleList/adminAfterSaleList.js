@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/adminAfterSaleList/adminAfterSaleList.js
@@ -247,7 +248,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     } else if (Array.isArray(raw)) {
       date = new Date(raw[0], (raw[1] || 1) - 1, raw[2] || 1, raw[3] || 0, raw[4] || 0, raw[5] || 0);
     } else {
-      date = new Date(raw);
+      date = parseDate(raw);
     }
 
     if (Number.isNaN(date.getTime())) return String(raw);

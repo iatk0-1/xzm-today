@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
@@ -10,7 +11,7 @@ const ORDER_STATUS_LABELS = {
 
 function formatOrderTime(raw) {
   if (!raw) return '';
-  const date = new Date(raw);
+  const date = parseDate(raw);
   if (Number.isNaN(date.getTime())) return String(raw);
   const pad = value => String(value).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`

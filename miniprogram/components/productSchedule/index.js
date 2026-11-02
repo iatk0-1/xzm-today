@@ -1,3 +1,4 @@
+const { dateTimestamp } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const { beijingParts, buildSchedule } = require('../../utils/productSchedule');
 
@@ -15,7 +16,7 @@ Component({
       if (!value) return;
       const current = this.data.schedule;
       const valid = current && !current.cancelled && (!current.state || current.state === 'pending');
-      const parts = beijingParts(valid ? Date.parse(current.executeAt) : Date.now() + 60 * 60 * 1000);
+      const parts = beijingParts(valid ? dateTimestamp(current.executeAt) : Date.now() + 60 * 60 * 1000);
       this.setData({ ...parts, minDate: beijingParts().date, status: valid ? current.status : 'on' });
     }
   },

@@ -1,3 +1,4 @@
+const { parseDate } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/wishDetail/wishDetail.js
@@ -481,7 +482,7 @@ Page(pageSync.wrap({
       } else if (raw instanceof Array) {
         d = new Date(raw[0], raw[1] - 1, raw[2], raw[3] || 0, raw[4] || 0, raw[5] || 0);
       } else {
-        d = new Date(String(raw));
+        d = parseDate(String(raw));
       }
       if (isNaN(d.getTime())) return String(raw);
       var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
