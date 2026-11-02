@@ -3,6 +3,7 @@ const { getErrorMessage } = require('../../utils/error');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const { isProductSoldOut } = require('../../utils/stock');
+const { cardTags, loadCardTags } = require('../../utils/productCardTags');
 const { groupStalls } = require('../../utils/productFilters');
 
 const productSkuPanel = require('../../utils/productSkuPanel');
@@ -267,7 +268,7 @@ Page({
       const res = await api.get('/products/query', params);
       if (this._pageClosed || version !== (this._queryVersion || 0)) return;
       const newResults = (res.content || []).map(function(product) {
-        return Object.assign({}, product, { soldOut: isProductSoldOut(product) });
+        return Object.assign({}, product, { soldOut: isProductSoldOut(product), cardTags: cardTags(product) });
       });
       const hasMore = res.hasNext !== undefined ? res.hasNext : newResults.length === pageSize;
       const allResults = reset ? newResults : [...this.data.results, ...newResults];
@@ -288,6 +289,8 @@ Page({
         page: page + 1,
         hasMore: hasMore
       });
+      this._cardTagsTask = loadCardTags(this, newResults, 'results',
+        id => api.get('/products/' + id + '/promotions'));
 
       // 搜索成功后重新加载历史记录（只在首次搜索时）
       if (reset && word) {

@@ -2018,7 +2018,8 @@ const pageDefinition = {
         const updateRes = await this.submitDraftProduct(productData);
         const eventChannel = this.getOpenerEventChannel && this.getOpenerEventChannel();
         if (eventChannel && eventChannel.emit) {
-          eventChannel.emit('productUpdated', { ...(updateRes.product || updateRes), schedule: updateRes.schedule || null });
+          eventChannel.emit('productUpdated', { ...(updateRes.product || updateRes), schedule: updateRes.schedule || null,
+            promotions: updateRes.promotions });
         }
         wx.hideLoading();
       } else {

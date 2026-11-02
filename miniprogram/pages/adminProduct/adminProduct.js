@@ -6,6 +6,7 @@ const auth = require('../../utils/auth');
 const draft = require('../../utils/draft');
 const { integrateProductQuickEdit } = require('../../utils/productQuickEdit');
 const { isProductSoldOut } = require('../../utils/stock');
+const { cardTags, managedCardTags, loadCardTags } = require('../../utils/productCardTags');
 const { beijingParts, hasPendingSchedule } = require('../../utils/productSchedule');
 
 Page(autoSearch.wrap(integrateProductQuickEdit({
@@ -49,6 +50,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
   } }); },
 
   onLoad: function() {
+    this._pageClosed = false;
     this.setData({ isStallManager: auth.isStallManager() });
     this.loadFilterOptions();
     this.loadProducts();
@@ -64,6 +66,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
     this.clearScheduleRefresh();
   },
   onUnload() {
+    this._pageClosed = true;
     this._schedulePageVisible = false;
     this.clearScheduleRefresh();
   },
@@ -119,6 +122,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
       this.setData({ page: lastIndex + 2, hasMore: last.hasNext !== undefined ? last.hasNext
         : (last.content || []).length === this.data.pageSize });
       this.refreshSelectionState(products, selectedIds);
+      this.loadProductTags(products);
       this._scheduleListNeedsRefill = false;
     } catch (err) {
       console.error('刷新到期定时商品失败:', err);
@@ -210,6 +214,12 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
 
   // 改造：从后端 API 加载商品列表（支持分页）
   loadProducts: async function(reset = true) {
+    if (this._pageClosed) return;
+    if (reset) this._productQueryVersion = (this._productQueryVersion || 0) + 1;
+    if (this.data.isLoading) {
+      if (reset) this._pendingProductsReset = true;
+      return;
+    }
     if (reset) {
       this.setData({
         page: 1,
@@ -222,9 +232,10 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
       });
     }
 
-    if (!this.data.hasMore || this.data.isLoading) return;
+    if (!this.data.hasMore) return;
 
     this._productQueryVersion = (this._productQueryVersion || 0) + 1;
+    const version = this._productQueryVersion;
     this.setData({ isLoading: true });
 
     if (reset) {
@@ -233,12 +244,15 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
 
     try {
       await auth.ensureAuthenticated({ silent: true });
+      if (this._pageClosed || version !== this._productQueryVersion) return;
       const pageSize = this.data.pageSize;
       const res = await api.get('/products/query', this.getQueryParams());
+      if (this._pageClosed || version !== this._productQueryVersion) return;
 
       let list = (res.content || []).map(item => this.normalizeProduct(item))
         .filter(item => this.data.activeStatus !== 'scheduled' || item.hasSchedule);
       await this.loadProductOwners(list);
+      if (this._pageClosed || version !== this._productQueryVersion) return;
 
       const hasMore = res.hasNext !== undefined ? res.hasNext : list.length === pageSize;
       const products = reset ? list : [...this.data.products, ...list];
@@ -249,18 +263,20 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
         hasMore: hasMore,
         isLoading: false
       });
+      this.loadProductTags(list);
       if (reset) this._scheduleListNeedsRefill = false;
       this.planScheduleRefresh();
-
-      if (reset) {
-        wx.hideLoading();
-      }
     } catch (err) {
-      if (reset) {
-        wx.hideLoading();
+      if (!this._pageClosed && version === this._productQueryVersion) {
+        wx.showToast({ title: getErrorMessage(err, '获取失败'), icon: 'none' });
       }
-      wx.showToast({ title: getErrorMessage(err, '获取失败'), icon: 'none' });
-      this.setData({ isLoading: false });
+    } finally {
+      if (reset) wx.hideLoading();
+      if (!this._pageClosed) this.setData({ isLoading: false });
+      if (this._pendingProductsReset && !this._pageClosed) {
+        this._pendingProductsReset = false;
+        await this.loadProducts();
+      }
     }
   },
 
@@ -279,8 +295,28 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
     }
   },
 
+  loadProductTags(products) {
+    const version = this._productQueryVersion;
+    this._cardTagsTask = loadCardTags(this, products, 'products', async id => {
+      const detail = await api.get('/products/' + encodeURIComponent(id) + '?manage=true');
+      return detail && detail.promotions;
+    }, managedCardTags).then(() => {
+      if (this._pageClosed || version !== this._productQueryVersion || this.data.activeStatus !== 'promotion') return;
+      const visible = this.data.products.filter(product => !product.cardTagsReady
+        || product.cardTags.some(tag => tag.type !== 'READY_STOCK'));
+      if (visible.length === this.data.products.length) return;
+      const visibleIds = new Set(visible.map(product => this.normalizeId(product.id)));
+      this.refreshSelectionState(visible, this.data.selectedProductIds.filter(id => visibleIds.has(this.normalizeId(id))));
+      this.planScheduleRefresh();
+    });
+    return this._cardTagsTask;
+  },
+
   normalizeProduct: function(item) {
     item.soldOut = isProductSoldOut(item);
+    item.cardTags = item.promotions !== undefined ? managedCardTags(item, item.promotions)
+      : cardTags(item, (item.cardTags || []).map(tag => ({ type: tag.type, status: 'AVAILABLE' })));
+    item.cardTagsReady = item.promotions !== undefined || !!item.cardTagsReady;
     item.hasSchedule = hasPendingSchedule(item.schedule);
     if (item.hasSchedule) {
       const parts = beijingParts(Date.parse(item.schedule.executeAt));
@@ -626,6 +662,10 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
       if (!isProductSoldOut(product)) return false;
     } else if (activeStatus === 'scheduled') {
       if (!hasPendingSchedule(product.schedule)) return false;
+    } else if (activeStatus === 'promotion') {
+      if (product.cardTagsReady && !(product.cardTags || []).some(tag => tag.type !== 'READY_STOCK')) return false;
+    } else if (activeStatus === 'ready_stock') {
+      if (!cardTags(product).some(tag => tag.type === 'READY_STOCK')) return false;
     } else if (activeStatus !== 'all' && product.status !== activeStatus) return false;
     const keyword = searchKeyword.trim().toLowerCase();
     if (keyword && !String(product.name || '').toLowerCase().includes(keyword)) return false;
@@ -649,6 +689,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
       ? this.data.selectedProductIds
       : this.data.selectedProductIds.filter(id => this.normalizeId(id) !== productId);
     this.refreshSelectionState(products, selectedIds);
+    if (stillVisible) this.loadProductTags([product]);
     this.planScheduleRefresh();
   },
 

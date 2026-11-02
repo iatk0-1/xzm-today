@@ -1,0 +1,30 @@
+.product-card-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30rpx;
+  margin-right: 6rpx;
+  padding: 0 6rpx;
+  /* 从参考截图“1年1度”标签的纯色区域取色。 */
+  background-color: #ff3350;
+  color: #ffffff;
+  border-radius: 4rpx;
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 22rpx;
+  font-weight: 500;
+  line-height: 1;
+  vertical-align: 2rpx;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+/* 仅收窄标签文字，保留字号、外框形状和商品标题字形。 */
+.product-card-tag-label {
+  display: block;
+  flex-shrink: 0;
+  margin: 0 -4rpx;
+  line-height: 22rpx;
+  transform: scaleX(0.82);
+  transform-origin: center;
+}

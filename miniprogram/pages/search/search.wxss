@@ -1,4 +1,5 @@
 @import "../../styles/productSkuPanel.wxss";
+@import "../../styles/productCardTags.wxss";
 
 page {
   background-color: #f8f9fa;
@@ -322,6 +323,7 @@ page {
 .goods-title {
 
   font-size: 26rpx;
+  line-height: 40rpx;
   color: #333;
   display: -webkit-box;
   -webkit-line-clamp: 2;

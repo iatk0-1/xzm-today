@@ -96,6 +96,28 @@ function flush() {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
+test('首页左右列先展示现货，优惠补齐后首单排在其他优惠前面', async () => {
+  const page = createPage();
+  const resolveOffers = [];
+  requestHandler = async url => {
+    if (url === '/products/query') return {
+      content: ['left', 'right'].map(id => ({ ...makeProduct(id), skuMatrix: [{ stock: 5, freeStockQty: 2 }] })),
+      hasNext: false
+    };
+    if (url.endsWith('/promotions')) return new Promise(resolve => resolveOffers.push(resolve));
+    return [];
+  };
+  await page.getProductsList(true, { silent: true });
+  assert.equal(resolveOffers.length, 2);
+  assert.equal(page.data.loading, false);
+  assert.deepEqual(page.data.leftColumn[0].cardTags.map(tag => tag.label), ['现货']);
+  resolveOffers.forEach(resolve => resolve([{ type: 'RATE', status: 'AVAILABLE' }, { type: 'FIRST', status: 'AVAILABLE' }]));
+  await page._cardTagsTask;
+  for (const product of [...page.data.leftColumn, ...page.data.rightColumn]) {
+    assert.deepEqual(product.cardTags.map(tag => tag.label), ['首单优惠', '多件多折', '现货']);
+  }
+});
+
 test('下拉刷新：释放时重新查询商品首屏，带上当前筛选条件并刷新档口/标签', async () => {
   const page = createPage();
   page.data.productList = [makeProduct('old')];
@@ -118,7 +140,7 @@ test('下拉刷新：释放时重新查询商品首屏，带上当前筛选条�
   assert.equal(searchCalls().length, 1);
   assert.deepEqual(searchCalls()[0].params, { page: 1, size: 20, sort: 'newest', stallId: 's1', tagId: 't1' });
 
-  const urls = requestLog.map((item) => item.url).sort();
+  const urls = requestLog.map((item) => item.url).filter(url => !url.endsWith('/promotions')).sort();
   assert.deepEqual(urls, ['/products/query', '/stalls', '/tags']);
 
   assert.deepEqual(page.data.productList.map((item) => item.id), ['p1', 'p2', 'p3']);
@@ -164,7 +186,7 @@ test('首页首次初始化：page 从 1 开始时仍会发起三类查询', asy
   await flush();
   await flush();
 
-  const urls = requestLog.map((item) => item.url).sort();
+  const urls = requestLog.map((item) => item.url).filter(url => !url.endsWith('/promotions')).sort();
   assert.deepEqual(urls, ['/products/query', '/stalls', '/tags']);
   assert.equal(page.hasLoadedHomeData(), true);
 });

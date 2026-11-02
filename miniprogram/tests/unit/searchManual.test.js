@@ -58,6 +58,7 @@ function setup(t, handler) {
       if (name.endsWith('/auth')) return { ensureAuthenticated: async () => {}, isAdmin: () => false, isStallManager: () => false };
       if (name.endsWith('/stock')) return { isProductSoldOut: () => false };
       if (name.endsWith('/productFilters')) return require('../../utils/productFilters');
+      if (name.endsWith('/productCardTags')) return require('../../utils/productCardTags');
       throw new Error('未模拟依赖：' + name);
     },
     wx,
@@ -82,6 +83,26 @@ test('输入和停顿不搜索，失焦后查询一次，重复失焦不重复�
   t.mock.timers.tick(200);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(requests.length, 1);
+});
+
+test('搜索左右列先展示现货，优惠补齐不阻塞列表并按首单、其他、现货排序', async t => {
+  const resolveOffers = [];
+  const { page } = setup(t, async url => {
+    if (url === '/products/query') return { content: ['left', 'right'].map(id => ({
+      id, skuMatrix: [{ stock: 5, freeStockQty: 2 }]
+    })), hasNext: false };
+    if (url.endsWith('/promotions')) return new Promise(resolve => resolveOffers.push(resolve));
+    return [];
+  });
+  await page.queryProducts(true, '');
+  assert.equal(page.data.loading, false);
+  assert.equal(resolveOffers.length, 2);
+  assert.deepEqual(Array.from(page.data.leftColumn[0].cardTags, tag => tag.label), ['现货']);
+  resolveOffers.forEach(resolve => resolve([{ type: 'AMOUNT', status: 'AVAILABLE' }, { type: 'FIRST', status: 'AVAILABLE' }]));
+  await page._cardTagsTask;
+  for (const product of [...page.data.leftColumn, ...page.data.rightColumn]) {
+    assert.deepEqual(Array.from(product.cardTags, tag => tag.label), ['首单优惠', '满减优惠', '现货']);
+  }
 });
 
 test('失焦同时点击搜索或历史词只查询一次', async t => {

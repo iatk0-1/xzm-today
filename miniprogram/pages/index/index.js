@@ -8,6 +8,7 @@ const customerServiceNavigation = require('../../utils/customerServiceNavigation
 const customerServiceUnread = require('../../utils/customerServiceUnread');
 const { groupStalls } = require('../../utils/productFilters');
 const { isProductSoldOut } = require('../../utils/stock');
+const { cardTags, loadCardTags } = require('../../utils/productCardTags');
 const productSkuPanel = require('../../utils/productSkuPanel');
 const { collectSkuImages, createSkuImagePreloader } = require('../../utils/skuImagePreloader');
 const app = getApp();
@@ -280,7 +281,7 @@ Page(pageSync.wrap({
 
       // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
       const newProducts = (res.content || []).map(function(product) {
-        return Object.assign({}, product, { soldOut: isProductSoldOut(product) });
+        return Object.assign({}, product, { soldOut: isProductSoldOut(product), cardTags: cardTags(product) });
       });
       const hasMore = res.hasNext !== undefined ? res.hasNext : newProducts.length === pageSize;
 
@@ -305,6 +306,8 @@ Page(pageSync.wrap({
         hasMore: hasMore,
         loading: false
       });
+      this._cardTagsTask = loadCardTags(this, newProducts, 'productList',
+        id => api.get('/products/' + id + '/promotions'));
     } catch (err) {
       console.error('拉取商品失败:', err);
       if (queryVersion === (this._productsQueryVersion || 0)) {
@@ -579,7 +582,7 @@ Page(pageSync.wrap({
 }, async function(changes) {
   await pageSync.updateList(this, changes, {
     entity: 'products', field: 'productList', url: id => '/products/' + id,
-    normalize: product => ({ ...product, soldOut: isProductSoldOut(product) }),
+    normalize: product => ({ ...product, soldOut: isProductSoldOut(product), cardTags: cardTags(product) }),
     matches: product => product.status === 'on'
       && (this.data.currentMainTab !== '现货' || (product.skuMatrix || []).some(sku => sku.freeStockQty > 0))
       && (!this.data.selectedStall || (product.stallIds || []).some(id => String(id) === String(this.data.selectedStall)))
@@ -590,4 +593,7 @@ Page(pageSync.wrap({
     leftColumn: this.data.leftColumn.filter(item => byId.has(String(item.id))).map(item => byId.get(String(item.id))),
     rightColumn: this.data.rightColumn.filter(item => byId.has(String(item.id))).map(item => byId.get(String(item.id)))
   });
+  const changedIds = new Set(changes.filter(change => change.entity === 'products').map(change => String(change.id)));
+  this._cardTagsTask = loadCardTags(this, this.data.productList.filter(product => changedIds.has(String(product.id))),
+    'productList', id => api.get('/products/' + id + '/promotions'));
 }));

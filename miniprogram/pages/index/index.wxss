@@ -1,4 +1,5 @@
 @import "../../styles/productSkuPanel.wxss";
+@import "../../styles/productCardTags.wxss";
 
 /* ==================全局基础设定================== */
 page {
@@ -404,6 +405,7 @@ page {
 
 .product-title {
   font-size: 26rpx;
+  line-height: 40rpx;
   color: #333;
   display: -webkit-box;
   -webkit-line-clamp: 2;

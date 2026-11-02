@@ -77,6 +77,7 @@ page { background-color: #f2f2f2; height: 100vh; display: flex; flex-direction: 
 .status-tag.online { background: #e3f2fd; color: #1976d2; }
 .status-tag.offline { background: #fbe9e7; color: #d84315; }
 .status-tag.sold-out { background: #fff8e1; color: #f9a825; }
+.promotion-stock-tag { background: #fff1f0; color: #ff3350; border: 1px solid #ff3350; border-radius: 0; line-height: 20rpx; }
 
 .relation-picker { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1200; }
 .relation-picker-mask { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0, 0, 0, .42); }

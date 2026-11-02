@@ -9,6 +9,7 @@ let statusResponse;
 let modalOptions;
 let navigationOptions;
 let deletedIds = [];
+let managedDetailHandler = async () => ({});
 
 global.Page = config => { pageConfig = config; };
 global.wx = {
@@ -24,6 +25,7 @@ Module._load = function(request, ...args) {
   if (request.endsWith('utils/api')) {
     return {
       get: async (url, params) => {
+        if (url.endsWith('?manage=true')) return managedDetailHandler(url);
         if (url === '/products/query') {
           requests.push(params);
           return pages.shift();
@@ -174,4 +176,89 @@ test('单件下架和删除就地更新当前列表，筛选不匹配时移除�
   assert.equal(page.data.page, 3);
   assert.deepEqual(requests.map(params => params.page), [1, 2]);
   assert.equal(pages.length, 0);
+});
+
+test('管理列表非阻塞补齐优惠和现货，保持状态、多选、负责人和分页信息', async () => {
+  const resolvers = [];
+  managedDetailHandler = url => new Promise(resolve => resolvers.push({ url, resolve }));
+  try {
+    const page = createPage();
+    page.data.isStallManager = true;
+    pages = [{ content: [1, 2].map(id => ({ ...product(id, id === 1 ? 'off' : 'on'),
+      skuMatrix: [{ stock: 5, freeStockQty: 2 }] })), hasNext: true }];
+    await page.loadProducts();
+    page.toggleProductId(1);
+    assert.equal(page.data.isLoading, false);
+    assert.deepEqual(page.data.products[0].cardTags.map(tag => tag.label), ['现货']);
+    assert.deepEqual(resolvers.map(item => item.url), ['/products/1?manage=true', '/products/2?manage=true']);
+    resolvers.forEach(({ resolve }) => resolve({ promotions: {
+      firstScheme: { type: 'FIRST', enabled: true }, otherScheme: { type: 'RATE', enabled: true }
+    } }));
+    await page._cardTagsTask;
+    assert.deepEqual(page.data.products.map(item => item.status), ['off', 'on']);
+    assert.deepEqual(page.data.products[0].cardTags.map(tag => tag.label), ['首单优惠', '多件多折', '现货']);
+    assert.equal(page.data.products[0].selected, true);
+    assert.equal(page.data.selectedCount, 1);
+    assert.equal(page.data.page, 2);
+    assert.equal('leftColumn' in page.data, false);
+  } finally { managedDetailHandler = async () => ({}); }
+});
+
+test('优惠和现货筛选保留关键词、档口、标签条件并使用服务端分页，刷新重回第一页', async () => {
+  for (const status of ['promotion', 'ready_stock']) {
+    const page = createPage();
+    page.setData({ activeStatus: status, searchKeyword: ' 棉袄 ', selectedStall: 's1', selectedTag: 't1' });
+    pages = [{ content: [], hasNext: true }, { content: [], hasNext: false }, { content: [], hasNext: false }];
+    requests = [];
+    await page.loadProducts();
+    await page.loadMore();
+    await page.onRefresh();
+    assert.deepEqual(requests.map(query => query.page), [1, 2, 1]);
+    assert.ok(requests.every(query => query.status === status && query.manage === true
+      && query.keyword === '棉袄' && query.stallId === 's1' && query.tagId === 't1'));
+  }
+});
+
+test('快速切换优惠和现货仅应用最终筛选，旧请求不覆盖新列表', async () => {
+  const page = createPage();
+  let resolveOld;
+  pages = [new Promise(resolve => { resolveOld = resolve; }), {
+    content: [{ ...product(2), skuMatrix: [{ stock: 3, freeStockQty: 1 }] }], hasNext: false
+  }];
+  requests = [];
+  const first = page.loadProducts();
+  await new Promise(resolve => setImmediate(resolve));
+  page.selectStatusTab({ currentTarget: { dataset: { status: 'promotion' } } });
+  page.selectStatusTab({ currentTarget: { dataset: { status: 'ready_stock' } } });
+  resolveOld({ content: [product(1)], hasNext: true });
+  await first;
+  await page._cardTagsTask;
+  assert.deepEqual(requests.map(query => query.status), ['all', 'ready_stock']);
+  assert.deepEqual(page.data.products.map(item => item.id), [2]);
+});
+
+test('编辑后取消优惠或消耗完现货时移出对应列表，保留其他商品', async () => {
+  const page = createPage();
+  const first = page.normalizeProduct({ ...product(1), skuMatrix: [{ stock: 5, freeStockQty: 2 }],
+    promotions: { firstScheme: { type: 'FIRST', enabled: true } } });
+  const other = page.normalizeProduct({ ...product(2), skuMatrix: [{ stock: 5, freeStockQty: 2 }] });
+  page.setData({ products: [first, other], activeStatus: 'promotion' });
+  page.updateVisibleProduct({ id: 1, promotions: { firstScheme: null, otherScheme: null } });
+  assert.deepEqual(page.data.products.map(item => item.id), [2]);
+  page.setData({ products: [first, other], activeStatus: 'ready_stock' });
+  page.updateVisibleProduct({ id: 1, skuMatrix: [{ stock: 5, freeStockQty: 0 }] });
+  assert.deepEqual(page.data.products.map(item => item.id), [2]);
+});
+
+test('优惠配置尚未返回时保留商品，补充查询确认优惠已取消后才移出优惠列表', async () => {
+  const page = createPage();
+  const item = page.normalizeProduct({ ...product(1), skuMatrix: [{ stock: 5, freeStockQty: 2 }] });
+  page.setData({ activeStatus: 'promotion', products: [item], selectedProductIds: ['1'], selectedCount: 1 });
+  assert.equal(page.productMatchesFilters(item), true);
+  managedDetailHandler = async () => ({ promotions: { firstScheme: null, otherScheme: null } });
+  try {
+    await page.loadProductTags([item]);
+    assert.deepEqual(page.data.products, []);
+    assert.equal(page.data.selectedCount, 0);
+  } finally { managedDetailHandler = async () => ({}); }
 });
