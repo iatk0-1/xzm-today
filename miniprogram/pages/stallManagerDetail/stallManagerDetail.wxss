@@ -180,3 +180,5 @@ textarea { padding:20rpx; line-height:1.6; border-radius:8rpx; background:#f5f5f
 .voucher-images { display: flex; gap: 16rpx; flex-wrap: wrap; margin: 16rpx 0; }
 .voucher-images image { width: 140rpx; height: 140rpx; border-radius: 8rpx; }
 .voucher-image-item button { margin: 0; font-size: 22rpx; padding: 0; }
+
+@import "../../styles/afterSaleEmbedded.wxss";

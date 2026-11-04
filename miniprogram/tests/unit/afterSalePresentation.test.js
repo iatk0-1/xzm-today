@@ -149,3 +149,159 @@ test('同商品多个SKU的售后清单按订单明细匹配图片，用户和�
     assert.equal(page.formatAfterSaleDetail(input).items[0].displayImage, '/cover.jpg');
   }
 });
+
+test('两端摘要区分原申请与审核金额，保留零元结果且不改原始退款字段', () => {
+  for (const name of ['afterSaleDetail', 'adminAfterSaleDetail']) {
+    const { page } = harness(name), input = sale();
+    input.totalRefundAmount = '0.00';
+    input.items[0].refundAmount = '0.00';
+    const result = page.formatAfterSaleDetail(input);
+    assert.equal(result.displayRefundAmount, '0.00');
+    assert.equal(result.refundAmountLabel, '退款金额');
+    assert.equal(result.applicationRefundAmount, '50.00');
+    assert.equal(result.applicationTotalQty, 2);
+    assert.equal(result.hasAdjustedTotal, true);
+    assert.equal(result.items[0].applicationRefundAmount, '50.00');
+    assert.equal(input.items[0].requestedRefundAmount, '50.00');
+    const pending = page.formatAfterSaleDetail(sale('pending'));
+    assert.equal(pending.displayRefundAmount, '50.00');
+    assert.equal(pending.refundAmountLabel, '申请退款金额');
+    assert.equal(pending.hasAdjustedTotal, false);
+    const legacy = sale('approved');
+    delete legacy.totalRefundAmount;
+    assert.equal(page.formatAfterSaleDetail(legacy).displayRefundAmount, '20.00');
+  }
+});
+
+test('买家详情按申请原因和补充说明展示，时间轴视图不改写业务进度', () => {
+  const display = require('../../utils/afterSaleDisplay');
+  const input = sale('pending');
+  input.reason = '尺码不符\n上身偏大，申请退货';
+  input.evidenceUrls = '["/a.jpg","/b.jpg"]';
+  const result = harness('afterSaleDetail').page.formatAfterSaleDetail(input);
+  assert.equal(result.reasonTitle, '尺码不符');
+  assert.equal(result.reasonDescription, '上身偏大，申请退货');
+  assert.deepEqual(Array.from(result.evidenceImages), ['/a.jpg', '/b.jpg']);
+  const entries = [{ status: '用户申请', time: '11/4 10:26' }, { status: '商家审核', description: '审核通过' }];
+  const view = display.timelineView(entries, 'approved');
+  assert.equal(view[0].status, '商家审核通过');
+  assert.equal(view[1].time, '11-04 10:26');
+  assert.equal(entries[0].status, '用户申请');
+  assert.equal(display.timelineView(entries.slice(0, 1), 'pending')[1].waiting, true);
+});
+
+test('买家和管理端统一按实际付款构成展示线下退款，零元分摊和历史标记不误判', () => {
+  for (const name of ['afterSaleDetail', 'adminAfterSaleDetail']) {
+    const { page } = harness(name);
+    const pureOnline = sale();
+    pureOnline.peerOrder = true;
+    pureOnline.orderDetail = { priceRevision: 2, offlinePaidAmount: '0.00', items: [] };
+    pureOnline.refundPayment.hasOfflinePayment = true;
+    const originalPayment = structuredClone(pureOnline.refundPayment);
+    const result = page.formatAfterSaleDetail(pureOnline);
+    assert.equal(result.showOfflineRefund, false);
+    assert.equal(result.showRefundBreakdown, false);
+    assert.doesNotMatch(result.statusHint, /线下/);
+    assert.deepEqual(pureOnline.refundPayment, originalPayment);
+    const mixed = sale();
+    mixed.orderDetail = { offlinePaidAmount: '30.00', items: [] };
+    mixed.refundPayment.offlineAmount = 0;
+    assert.equal(page.formatAfterSaleDetail(mixed).showOfflineRefund, true);
+    mixed.refundPayment.requestedOfflineAmount = 0;
+    assert.equal(page.formatAfterSaleDetail(mixed).showRefundBreakdown, false);
+    delete mixed.orderDetail;
+    mixed.refundPayment.hasOfflinePayment = true;
+    assert.equal(page.formatAfterSaleDetail(mixed).showOfflineRefund, true);
+  }
+});
+
+test('买家售后进度接入真实审核和退款时间，退款后审核时间不会被覆盖', () => {
+  const { page } = harness('afterSaleDetail');
+  const input = sale();
+  input.createdAt = '2026-11-04 23:46:00';
+  input.updatedAt = '2026-11-05 01:00:00';
+  input.progress = [
+    { action: 'apply', createdAt: input.createdAt },
+    { action: 'review_items', createdAt: '2026-11-04 23:48:00' },
+    { action: 'refund', createdAt: '2026-11-04 23:49:00' }
+  ];
+  const formatted = page.formatAfterSaleDetail(input);
+  const view = require('../../utils/afterSaleDisplay').timelineView(page.buildTimeline(formatted), input.status);
+  assert.equal(view[0].status, '退款完成');
+  assert.equal(view[0].time, '11-04 23:49');
+  assert.equal(view[1].status, '商家审核通过');
+  assert.equal(view[1].time, '11-04 23:48');
+  assert.equal(view[2].time, '11-04 23:46');
+  assert.equal(formatted.updatedAt, input.updatedAt);
+});
+
+test('逐项退款和重复验收取最终操作时间，首次审核时间单独保留', () => {
+  const { page } = harness('afterSaleDetail'), input = sale();
+  input.type = 'return_refund';
+  input.warehouseCheck = 'pass';
+  input.progress = [
+    { action: 'negotiated_refund', createdAt: '2026-11-05 12:30:00' },
+    { action: 'review_items', createdAt: '2026-11-05 10:00:00' },
+    { action: 'receive_fail', createdAt: '2026-11-05 11:00:00' },
+    { action: 'refund', createdAt: '2026-11-05 12:00:00' },
+    { action: 'reinspect_pass', createdAt: '2026-11-05 11:30:00' },
+    { action: 'review_approve', createdAt: '2026-11-05 10:01:00' }
+  ];
+  const timeline = page.buildTimeline(page.formatAfterSaleDetail(input));
+  assert.equal(timeline.find(item => item.status === '商家审核').time, '11/5 10:00');
+  assert.equal(timeline.find(item => item.status === '仓库已收货').time, '11/5 11:30');
+  assert.equal(timeline.find(item => item.status === '退款完成').time, '11/5 12:30');
+});
+
+test('旧接口、无日志和无效时间不冒用最后更新时间，已完成节点明确提示未记录', () => {
+  const { page } = harness('afterSaleDetail'), input = sale();
+  input.updatedAt = '2026-11-05 01:00:00';
+  for (const progress of [undefined, [], null, 'invalid', [
+    { action: 'refund', createdAt: 'invalid' }, null,
+    { action: 'review_items', createdAt: null }
+  ]]) {
+    input.progress = progress;
+    const timeline = page.buildTimeline(page.formatAfterSaleDetail(input));
+    assert.equal(timeline.find(item => item.status === '商家审核').time, '时间未记录');
+    assert.equal(timeline.find(item => item.status === '退款完成').time, '时间未记录');
+  }
+  assert.equal(page.formatTime('invalid'), '-');
+});
+
+test('审核拒绝、撤销和逐项验收节点使用各自的日志时间', () => {
+  const { page } = harness('afterSaleDetail');
+  for (const [status, action, warehouseCheck] of [
+    ['rejected', 'review_reject'], ['rejected', 'review_items'], ['cancelled', 'cancel'],
+    ['received', 'receive', 'pass'], ['received', 'reinspect', 'fail']
+  ]) {
+    const input = { ...sale(status), warehouseCheck,
+      progress: [{ action, createdAt: '2026-11-05 09:15:00' }] };
+    const timeline = page.buildTimeline(page.formatAfterSaleDetail(input));
+    assert.equal(timeline.at(-1).time, '11/5 09:15');
+  }
+});
+
+test('退货物流优先采用物流字段时间，缺失时读取日志，待审核提示不伪造时间', () => {
+  const { page } = harness('afterSaleDetail');
+  const input = { ...sale('approved'), type: 'return_refund', returnExpressNo: 'ZTO123',
+    returnShippedAt: '2026-11-05 10:10:00',
+    progress: [{ action: 'ship_return', createdAt: '2026-11-05 10:11:00' }] };
+  let timeline = page.buildTimeline(page.formatAfterSaleDetail(input));
+  assert.equal(timeline.at(-1).time, '11/5 10:10');
+  delete input.returnShippedAt;
+  timeline = page.buildTimeline(page.formatAfterSaleDetail(input));
+  assert.equal(timeline.at(-1).time, '11/5 10:11');
+  const display = require('../../utils/afterSaleDisplay');
+  const pending = display.timelineView(page.buildTimeline(page.formatAfterSaleDetail(sale('pending'))), 'pending');
+  assert.equal(pending.at(-1).waiting, true);
+  assert.equal(pending.at(-1).time, undefined);
+});
+
+test('日志时间比较保留时区，按真实时刻选择最终退款', () => {
+  const display = require('../../utils/afterSaleDisplay');
+  const input = { progress: [
+    { action: 'refund', createdAt: '2026-11-05T10:00:00+08:00' },
+    { action: 'refund', createdAt: '2026-11-05T03:00:00Z' }
+  ] };
+  assert.equal(display.progressTime(input, ['refund']), '2026-11-05T03:00:00Z');
+});

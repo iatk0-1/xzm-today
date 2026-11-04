@@ -48,7 +48,7 @@ test('退货物流新增或修改入口固定在标题行右侧', () => {
   const wxmlFile = path.resolve(__dirname, '../../pages/afterSaleDetail/afterSaleDetail.wxml');
   const wxml = fs.readFileSync(wxmlFile, 'utf8');
   assert.match(wxml, /class="return-logistics-header"[\s\S]*退货物流[\s\S]*class="return-logistics-action"/);
-  assert.match(wxml, /afterSale\.returnExpressNo \? '修改' : '新增'/);
+  assert.match(wxml, /afterSale\.returnExpressNo \? '修改物流' : '填写退货物流'/);
   assert.doesNotMatch(wxml, /class="action-btn"[^>]*bindtap="shipReturnGoods"/);
 });
 

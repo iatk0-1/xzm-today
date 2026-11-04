@@ -19,9 +19,11 @@ function format(item) {
   if (!quantities) {
     return { fulfillmentKnown: false, fulfillmentText: '申请时未保存报单匹配，请核对报单记录', fulfillmentStockText: '' };
   }
-  const [, transit, stock] = quantities;
+  const [unreported, transit, stock, shipped] = quantities;
   return {
     fulfillmentKnown: true,
+    fulfillmentCompactText: `已发 ${shipped} · 未发 ${unreported + transit + stock}`,
+    fulfillmentStockCompactText: `已报单在途 ${transit} · 已入库现货 ${stock}`,
     fulfillmentText: `${current ? '当前售后匹配' : '申请时匹配'}：${summary(quantities)}`,
     fulfillmentStockText: `其中：已报单在途 ${transit} 件 · 已入库现货 ${stock} 件`,
     applicationFulfillmentText: current && requested ? `申请时：${summary(requested)}` : ''

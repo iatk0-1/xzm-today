@@ -393,3 +393,5 @@ page { background-color: #f7f8fa; padding-bottom: calc(118rpx + env(safe-area-in
 
 /* 保留文字原有行内排版，商品标题继续由外层控制两行省略。 */
 .copyable-text { display: inline; }
+
+@import "../../styles/afterSaleEmbedded.wxss";

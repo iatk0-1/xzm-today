@@ -1,0 +1,38 @@
+@import "./afterSaleControls.wxss";
+/* 只覆盖关联页面内的售后区域，不重置宿主页面的布局与其他业务控件。 */
+.after-sale-card, .order-after-sale-summary, .after-sale-line, .after-sale-tag, .item-after-sale, .after-sale-alert, .after-sales, .order-after-sale-pending, .order-after-sale-approved, .product-after-sale, .product-pending-review, .pending-review-tag, .after-sale-return-record { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+.after-sale-text, .after-sale-note { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+.after-sale-card .after-sale-item { padding: 20rpx 0; border-bottom: 1rpx solid #ededed; border-radius: 0; background: #fff; }
+.after-sale-card .after-sale-item:last-child { border-bottom: none; }
+.after-sale-card .after-sale-type { font-size: 26rpx; font-weight: 500; color: #333; }
+.after-sale-card .after-sale-status { background: transparent; color: #777; padding: 0; border-radius: 0; font-size: 22rpx; }
+.after-sale-card .after-sale-status::before { content: ''; display: inline-block; width: 10rpx; height: 10rpx; margin-right: 8rpx; border-radius: 50%; background: #999; }
+.after-sale-card .status-pending::before { background: #e3aa4b; }
+.after-sale-card .status-approved::before, .after-sale-card .status-received::before, .after-sale-card .status-refunded::before { background: #64876a; }
+.after-sale-card .status-rejected::before { background: #b56558; }
+.after-sale-card .after-sale-qty, .after-sale-card .after-sale-amount { font-family: inherit; color: #333; font-size: 24rpx; }
+.after-sale-card .after-sale-amount { font-weight: 500; }
+.after-sale-card .after-sale-reason { color: #888; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+.after-sale-card .after-sale-time { color: #999; }
+.after-sale-card .after-sale-cancel { border-radius: 4rpx; color: #666; border-color: #ddd; }
+.order-after-sale-summary, .order-after-sale-summary.handled { background: #fafafa; border-color: #e8e8e8; border-radius: 4rpx; }
+.order-after-sale-summary .order-after-sale-label { border-radius: 4rpx; background: transparent; }
+.order-after-sale-summary .order-after-sale-label, .order-after-sale-summary .order-after-sale-text { color: #777; }
+.order-after-sale-summary.active .order-after-sale-label, .order-after-sale-summary.active .order-after-sale-text { color: #a57b39; }
+.after-sale-line { border-radius: 4rpx; }
+.after-sale-line text, .after-sale-line.handled text { color: #888; }
+.after-sale-line.active text { color: #a57b39; }
+.after-sale-tag, .item-after-sale { color: #777; background: #f7f7f7; border-radius: 4rpx; }
+.item-after-sale text { color: #777; }
+.after-sale-alert { color: #a57b39; background: #fafafa; border-color: #e8e8e8; border-radius: 4rpx; }
+.after-sales .after-sale-label, .after-sales .after-sale-status, .order-status.order-after-sale-pending, .order-status.order-after-sale-approved { color: #777; background: #f7f7f7; border-radius: 4rpx; }
+.after-sales .after-sale-status, .order-status.order-after-sale-pending { color: #a57b39; }
+.admin-refund-panel .refund-summary { color: #666; background: #fafafa; }
+.admin-refund-panel .refund-row { flex-direction: column; gap: 16rpx; }
+.admin-refund-panel .refund-inputs { width: 100%; flex-direction: column; gap: 14rpx; align-items: stretch; }
+.admin-refund-panel .refund-field { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; color: #666; font-size: 24rpx; }
+.admin-refund-panel .refund-field .panel-input { width: 95px; height: 30px; line-height: normal; box-sizing: border-box; padding: 0 8px; border: 1px solid #eee; background: #fff; border-radius: 0; font-size: 13px; text-align: right; }
+.admin-refund-panel .panel-actions button { border-radius: 4rpx; }
+.admin-refund-panel .panel-actions button[type="primary"] { background: #111; color: #fff; }
+.admin-refund-panel .panel-actions .panel-btn.danger { background: #111; color: #fff; }
+.after-sale-return-record .record-button { border-radius: 4rpx; }

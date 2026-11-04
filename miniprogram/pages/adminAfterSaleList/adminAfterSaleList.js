@@ -70,6 +70,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     currentTab: '全部',
     currentStatus: null,
     currentType: null,
+    expandedSaleId: '',
     afterSales: [],
     isLoading: false,
     page: 1,
@@ -217,7 +218,9 @@ Page(autoSearch.wrap(pageSync.wrap({
             orderStatusDisplay: ORDER_STATUS_DISPLAY[item.orderStatus] || item.orderStatus || '-',
             typeDisplay: TYPE_DISPLAY[item.type] || item.type,
             createdAtDisplay: this.formatDateTime(item.createdAt),
+            createdAtCompact: this.formatCompactTime(item.createdAt),
             orderCreatedAtDisplay: this.formatDateTime(item.orderCreatedAt),
+            orderCreatedAtCompact: this.formatCompactTime(item.orderCreatedAt),
             itemDisplay: item.items && item.items.length > 0 
               ? `${item.items.length} 件商品` 
               : `${item.totalQty || 0} 件商品`
@@ -236,6 +239,17 @@ Page(autoSearch.wrap(pageSync.wrap({
         this.setData({ isLoading: false });
         if (callback) callback();
       });
+  },
+
+  toggleSaleMeta: function(e) {
+    const id = e.currentTarget.dataset.id;
+    this.setData({ expandedSaleId: this.data.expandedSaleId === id ? '' : id });
+  },
+
+  // 列表使用紧凑时间，原完整时间继续保留用于核对。
+  formatCompactTime: function(raw) {
+    const value = this.formatDateTime(raw);
+    return /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(5, 16) : value;
   },
 
   // 格式化列表中的时间，统一显示到秒
@@ -285,6 +299,7 @@ Page(autoSearch.wrap(pageSync.wrap({
       statusDisplay: item.status === 'cancelled' && item.rejectReason ? '已关闭' : (STATUS_DISPLAY[item.status] || item.status),
       typeDisplay: TYPE_DISPLAY[item.type] || item.type,
       createdAtDisplay: this.formatDateTime(item.createdAt),
+            createdAtCompact: this.formatCompactTime(item.createdAt),
       itemDisplay: `${item.items && item.items.length || item.totalQty || 0} 件商品`
     }),
     matches: item => (!this.data.currentStatus || item.status === this.data.currentStatus)

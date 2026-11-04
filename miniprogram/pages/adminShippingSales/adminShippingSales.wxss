@@ -79,3 +79,5 @@ page { background-color: #f5f5f5; }
 .after-sale-label, .after-sale-status { border-radius: 6rpx; padding: 3rpx 10rpx; font-size: 21rpx; }
 .after-sale-label { background: #fff0e4; color: #b45116; }
 .after-sale-status { background: #fff7f0; color: #a75523; }
+
+@import "../../styles/afterSaleEmbedded.wxss";

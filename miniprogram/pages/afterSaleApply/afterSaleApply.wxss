@@ -1,494 +1,59 @@
-/* miniprogram/pages/afterSaleApply/afterSaleApply.wxss */
-
-.page-wrapper {
-  padding-bottom: 120rpx;
-  background-color: #f5f5f5;
-  min-height: 100vh;
-}
-
-/* 订单信息区域 */
-.order-info-section {
-  background-color: #fff;
-  padding: 24rpx 32rpx;
-  margin-bottom: 16rpx;
-}
-
-.order-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.order-id {
-  font-size: 26rpx;
-  color: #666;
-}
-
-.order-id-box {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  min-width: 0;
-}
-
-.copy-btn {
-  flex-shrink: 0;
-  padding: 4rpx 12rpx;
-  font-size: 22rpx;
-  line-height: 1.3;
-  color: #576b95;
-  background: #f5f7fa;
-  border-radius: 6rpx;
-}
-
-.order-status {
-  font-size: 26rpx;
-  color: #111;
-  font-weight: 500;
-}
-
-/* 通用区块样式 */
-.section {
-  background-color: #fff;
-  margin-bottom: 16rpx;
-  padding: 32rpx;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24rpx;
-}
-
-.section-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #111;
-}
-
-.select-all {
-  font-size: 26rpx;
-  color: #ff4444;
-}
-
-/* 拆分商品列表 */
-.split-items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.split-item {
-  display: flex;
-  align-items: center;
-  padding: 20rpx;
-  border-radius: 12rpx;
-  background-color: #fafafa;
-  position: relative;
-  border: 2rpx solid transparent;
-}
-
-.split-item.selected {
-  background-color: #fff5f5;
-  border-color: #ff6b6b;
-}
-
-.goods-img {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 8rpx;
-  margin-right: 20rpx;
-  flex-shrink: 0;
-}
-
-.goods-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-  min-width: 0;
-}
-
-.goods-title {
-  font-size: 28rpx;
-  color: #111;
-  font-weight: 500;
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.goods-sku {
-  font-size: 24rpx;
-  color: #999;
-}
-
-.goods-bundle { margin-top: 4rpx; }
-.bundle-sub { display: flex; align-items: center; padding: 2rpx 0; }
-.bundle-sub-name { font-size: 22rpx; color: #666; margin-right: 6rpx; }
-.bundle-sub-spec { font-size: 22rpx; color: #999; }
-.bundle-sub-count { font-size: 22rpx; color: #777; }
-
-.goods-status {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.status-tag {
-  padding: 4rpx 12rpx;
-  border-radius: 4rpx;
-  font-size: 22rpx;
-  background-color: #f0f0f0;
-  color: #666;
-}
-
-.status-tag.shipped {
-  background-color: #e3f2fd;
-  color: #1976d2;
-}
-
-.status-tag.unshipped {
-  background-color: #fff3e0;
-  color: #f57c00;
-}
-
-.qty-info {
-  font-size: 24rpx;
-  color: #999;
-}
-
-.after-sale-limit {
-  font-size: 22rpx;
-  color: #d97706;
-  line-height: 1.4;
-}
-
-.goods-price-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 8rpx;
-}
-
-.price {
-  font-size: 32rpx;
-  color: #ff4444;
-  font-weight: 600;
-}
-
-.max-refund {
-  font-size: 24rpx;
-  color: #999;
-}
-
-/* 售后类型标签 */
-.after-sale-type-tag {
-  position: absolute;
-  top: 20rpx;
-  right: 70rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 4rpx;
-  font-size: 22rpx;
-  background-color: #f0f0f0;
-  color: #666;
-}
-
-.after-sale-type-tag.refund {
-  background-color: #e8f5e9;
-  color: #2e7d32;
-}
-
-.after-sale-type-tag.return_refund {
-  background-color: #fce4ec;
-  color: #c2185b;
-}
-
-/* 复选框 */
-.checkbox {
-  width: 40rpx;
-  height: 40rpx;
-  border: 2rpx solid #ddd;
-  border-radius: 50%;
-  margin-left: 16rpx;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24rpx;
-  color: #fff;
-}
-
-.checkbox.checked {
-  background-color: #ff4444;
-  border-color: #ff4444;
-}
-
-.after-sale-type-tip { margin-bottom: 20rpx; color: #888; font-size: 24rpx; line-height: 1.6; }
-
-/* 原因标签 */
-.reason-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-  margin-bottom: 20rpx;
-}
-
-.reason-tag {
-  padding: 12rpx 24rpx;
-  border-radius: 32rpx;
-  background-color: #f5f5f5;
-  font-size: 26rpx;
-  color: #666;
-}
-
-.reason-tag.selected {
-  background-color: #fff5f5;
-  border: 2rpx solid #ff6b6b;
-  color: #ff4444;
-}
-
-.reason-textarea {
-  width: 100%;
-  min-height: 200rpx;
-  padding: 20rpx;
-  background-color: #f5f5f5;
-  border-radius: 12rpx;
-  font-size: 28rpx;
-  color: #333;
-  box-sizing: border-box;
-}
-
-/* 图片上传 */
-.evidence-uploader {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-}
-
-.upload-btn {
-  width: 200rpx;
-  height: 200rpx;
-  background-color: #fafafa;
-  border-radius: 12rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-}
-
-.upload-icon {
-  font-size: 64rpx;
-  color: #ccc;
-  line-height: 1;
-}
-
-.upload-text {
-  font-size: 24rpx;
-  color: #999;
-}
-
-.image-preview {
-  width: 200rpx;
-  height: 200rpx;
-  position: relative;
-  border-radius: 12rpx;
-  overflow: hidden;
-}
-
-.evidence-image {
-  width: 100%;
-  height: 100%;
-}
-
-.image-delete {
-  position: absolute;
-  top: 8rpx;
-  right: 8rpx;
-  width: 48rpx;
-  height: 48rpx;
-  background-color: rgba(0, 0, 0, 0.5);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 32rpx;
-  line-height: 1;
-}
-
-/* 提交栏 */
-.submit-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: #fff;
-  padding: 24rpx 32rpx;
-  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
-  z-index: 100;
-}
-
-.submit-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
-.submit-label {
-  font-size: 26rpx;
-  color: #666;
-}
-
-.submit-amount {
-  font-size: 40rpx;
-  color: #ff4444;
-  font-weight: 600;
-}
-
-.submit-btn {
-  background-color: #f0f0f0;
-  color: #999;
-  padding: 24rpx 64rpx;
-  border-radius: 48rpx;
-  font-size: 30rpx;
-  font-weight: 600;
-  border: none;
-}
-
-.submit-btn.active {
-  background-color: #ff4444;
-  color: #fff;
-}
-
-.submit-btn.active:active {
-  background-color: #ff3333;
-}
-
-.refund-edit-row {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 16rpx;
-  padding-top: 16rpx;
-  border-top: 1rpx solid #f0f0f0;
-}
-
-.refund-edit-field {
-  display: flex;
-  align-items: center;
-  gap: 6rpx;
-  min-width: 0;
-}
-
-.refund-edit-label {
-  font-size: 22rpx;
-  color: #666;
-  white-space: nowrap;
-}
-
-.refund-qty-stepper {
-  display: flex;
-  align-items: center;
-  height: 52rpx;
-  overflow: hidden;
-  border: 1rpx solid #d8d8d8;
-  border-radius: 6rpx;
-  background: #fff;
-}
-
-.refund-qty-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 46rpx;
-  height: 100%;
-  background: #f5f5f5;
-  color: #333;
-  font-size: 30rpx;
-  line-height: 1;
-}
-
-.refund-qty-btn.disabled {
-  color: #ccc;
-}
-
-.refund-qty-value {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48rpx;
-  height: 100%;
-  color: #111;
-  font-size: 24rpx;
-}
-
-.refund-edit-input {
-  width: 76rpx;
-  height: 52rpx;
-  padding: 0 10rpx;
-  border: 1rpx solid #d8d8d8;
-  border-radius: 6rpx;
-  background: #fff;
-  text-align: center;
-  font-size: 24rpx;
-  color: #111;
-}
-
-.refund-edit-input.amount {
-  width: 112rpx;
-}
-
-.refund-edit-unit {
-  font-size: 22rpx;
-  color: #999;
-}
-
-/* 加载状态 */
-.loading-state {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.95);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 24rpx;
-  z-index: 1000;
-}
-
-.loading-spinner {
-  width: 64rpx;
-  height: 64rpx;
-  border: 4rpx solid #f0f0f0;
-  border-top-color: #ff4444;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.loading-text {
-  font-size: 28rpx;
-  color: #666;
-}
-
-.refund-channel-summary { padding: 18rpx 20rpx; font-size: 24rpx; line-height: 1.8; background: #f5f7fa; border-radius: 10rpx; color: #333; }
-.refund-channel-tip { margin-top: 10rpx; color: #777; font-size: 22rpx; line-height: 1.6; }
-.refund-channel-error { color: #b23a2e; }
-.refund-channel-tag { display: inline-block; padding: 4rpx 12rpx; margin: 8rpx 0; color: #576b95; background: #edf2fa; border-radius: 6rpx; font-size: 22rpx; }
+@import "../../styles/afterSale.wxss";
+.order-info-section { padding: 16rpx 40rpx; background: #f7f7f7; }
+.order-header { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.order-id-box { display: flex; align-items: center; flex: 1; min-width: 0; gap: 12rpx; }
+.order-id { color: #333; font-size: 22rpx; word-break: break-all; }
+.order-id-box .copy-btn { margin-left: auto; color: #333; }
+.order-status { color: #888; font-size: 22rpx; padding-left: 18rpx; border-left: 1rpx solid #ddd; flex-shrink: 0; }
+.section { padding: 22rpx 0; }
+.section-title { font-size: 32rpx; line-height: 44rpx; }
+.section-header { margin-bottom: 8rpx; }
+.select-all { display: flex; align-items: center; gap: 10rpx; font-size: 24rpx; color: #666; padding: 8rpx 0 8rpx 16rpx; }
+.select-all-circle { width: 28rpx; height: 28rpx; border: 1rpx solid #aaa; border-radius: 50%; box-sizing: border-box; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; font-size: 20rpx; line-height: 1; }
+.select-all-circle.checked { background: #111; border-color: #111; }
+.after-sale-type-tip { font-size: 22rpx; line-height: 32rpx; color: #888; white-space: pre-line; margin-bottom: 28rpx; }
+.split-item { padding: 24rpx 0; border-bottom: 1rpx solid #ededed; }
+.split-item:first-child { padding-top: 0; }
+.split-item:last-child { border-bottom: 0; padding-bottom: 0; }
+.goods-main { display: flex; align-items: flex-start; gap: 28rpx; }
+.checkbox { display: flex; align-items: center; justify-content: center; width: 36rpx; height: 36rpx; box-sizing: border-box; border: 1rpx solid #aaa; border-radius: 50%; margin-top: 76rpx; flex-shrink: 0; font-size: 22rpx; color: #fff; }
+.checkbox.checked { border-color: #111; background: #111; }
+.goods-img { width: 148rpx; height: 188rpx; border-radius: 4rpx; background: #f7f7f7; flex-shrink: 0; }
+.goods-info { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4rpx; }
+.goods-title { color: #222; font-size: 28rpx; font-weight: 500; line-height: 40rpx; word-break: break-all; }
+.goods-sku, .bundle-sub { font-size: 24rpx; color: #888; line-height: 34rpx; word-break: break-all; }
+.bundle-sub-name { margin-right: 6rpx; }
+.goods-status { display: flex; flex-wrap: wrap; gap: 8rpx; color: #888; font-size: 22rpx; line-height: 32rpx; }
+.after-sale-type-tag { padding: 0 8rpx; font-size: 22rpx; color: #666; line-height: 30rpx; border: 1rpx solid #ddd; border-radius: 4rpx; }
+.goods-price-row { width: 100%; display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4rpx 8rpx; margin-top: 4rpx; }
+.price { color: #111; font-size: 28rpx; line-height: 38rpx; font-weight: 600; }
+.max-refund { color: #888; font-size: 20rpx; line-height: 32rpx; }
+.after-sale-limit { color: #a0753c; font-size: 22rpx; line-height: 32rpx; }
+.refund-edit-row { margin: 20rpx 0 0 72rpx; padding: 14rpx 0 0; border-top: 1rpx solid #ededed; display: flex; flex-direction: column; gap: 14rpx; }
+.refund-edit-field { display: flex; align-items: center; justify-content: flex-end; gap: 12rpx; }
+.refund-edit-label { flex: 1; font-size: 24rpx; color: #444; }
+.refund-edit-control { width: 115px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+.refund-edit-input { width: 95px; height: 30px; box-sizing: border-box; padding: 0 8px; text-align: right; font-size: 13px; border: 1px solid #eee; border-radius: 0; }
+.refund-edit-unit { width: 14px; flex-shrink: 0; font-size: 22rpx; color: #888; }
+.item-channel-note { margin: 12rpx 0 0 58rpx; font-size: 22rpx; color: #888; }
+.refund-detail-row { display: flex; justify-content: space-between; gap: 20rpx; padding: 5rpx 0; font-size: 26rpx; line-height: 36rpx; }
+.refund-detail-row:first-of-type { border-bottom: 1rpx solid #eee; }
+.reason-tags { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 16rpx; }
+.reason-tag { width: calc((100% - 24rpx) / 3); min-height: 52rpx; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 6rpx 4rpx; color: #444; font-size: 23rpx; line-height: 32rpx; border: 1rpx solid #ddd; border-radius: 6rpx; text-align: center; }
+.reason-tag.selected { border-color: #111; background: #f7f7f7; color: #111; }
+.reason-description { position: relative; padding-bottom: 28rpx; border-radius: 6rpx; background: #f7f7f7; }
+.reason-textarea { width: 100%; height: 76rpx; box-sizing: border-box; padding: 14rpx 16rpx; background: #f7f7f7; border-radius: 6rpx; font-size: 24rpx; line-height: 36rpx; }
+.reason-count { position: absolute; right: 16rpx; bottom: 8rpx; font-size: 22rpx; line-height: 28rpx; color: #999; }
+.evidence-uploader { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.upload-btn, .image-preview { width: 128rpx; height: 128rpx; box-sizing: border-box; border-radius: 4rpx; position: relative; }
+.upload-btn { border: 1rpx solid #ddd; background: #fafafa; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #777; }
+.upload-icon { font-size: 40rpx; line-height: 48rpx; font-weight: 300; }
+.upload-text { font-size: 22rpx; margin-top: 6rpx; }
+.evidence-image { width: 100%; height: 100%; border-radius: 4rpx; }
+.image-delete { position: absolute; top: -8rpx; right: -8rpx; width: 36rpx; height: 36rpx; border-radius: 50%; background: #111; color: #fff; font-size: 26rpx; display: flex; align-items: center; justify-content: center; }
+.submit-bar { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.submit-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.submit-label { font-size: 22rpx; color: #888; line-height: 32rpx; }
+.submit-amount { font-size: 38rpx; line-height: 48rpx; font-weight: 600; color: #111; word-break: break-all; }
+.submit-btn { background: #eee; border-color: #eee; color: #999; min-width: 220rpx; flex-shrink: 0; }
+.submit-btn.active { background: #111; border-color: #111; color: #fff; }

@@ -23,7 +23,7 @@
       <view><view class="label">线下可结算余额</view><view>¥{{income.settleableIncome || '0.00'}}</view></view>
       <view><view class="label">历史商家转账已付</view><view>¥{{income.legacyTransferSettled || '0.00'}}</view></view>
       <view><view class="label">历史转账处理中占用</view><view>¥{{income.legacyTransferHeld || '0.00'}}</view></view>
-      <view><view class="label">售后暂缓金额</view><view>¥{{income.afterSaleFrozen || '0.00'}}</view></view>
+      <view class="after-sale-note"><view class="label">售后暂缓金额</view><view>¥{{income.afterSaleFrozen || '0.00'}}</view></view>
     </view>
     <view class="muted" wx:if="{{income.debtAmount > 0}}">待抵扣 ¥{{income.debtAmount}}，后续收入先抵扣。</view>
     <view class="error" wx:if="{{!income.profitSharingEnabled}}">分账提现功能未开启。已有分账单可继续查询，未结算佣金保留在收入账户。</view>
@@ -55,7 +55,7 @@
     <view class="muted">{{currentRequest.sourceLabel}} · 申请时间 {{currentRequest.requestedTime}}</view>
     <view>申请快照 ¥{{currentRequest.requestedAmount}} · 已到账 ¥{{currentRequest.settledAmount}}</view>
     <view>处理中 ¥{{currentRequest.heldAmount}} · 快照未到账 ¥{{currentRequest.unpaidAmount}}</view>
-    <view class="muted">快照未到账是原申请金额与已到账的差额，含后来退款、售后或欠款抵扣的调整，不代表仍然应付。实际未结算佣金以上方收入账本为准；逐单查看原因。</view>
+    <view class="muted after-sale-note">快照未到账是原申请金额与已到账的差额，含后来退款、售后或欠款抵扣的调整，不代表仍然应付。实际未结算佣金以上方收入账本为准；逐单查看原因。</view>
     <view class="card" wx:for="{{currentRequest.items}}" wx:key="id">
       <view>订单 {{item.orderId}} · {{item.statusLabel}}</view>
       <view class="muted">原微信交易 {{item.transactionId}} · 截止 {{item.deadlineLabel}}</view>
@@ -94,7 +94,7 @@
     <view class="muted">下单时间 {{item.orderedTime}}</view>
     <view>佣金 ¥{{item.commissionAmount}} · 现金已付 ¥{{item.settledAmount}} · 退款欠款抵扣 ¥{{item.debtOffsetAmount || '0.00'}}
     <view class="muted" wx:if="{{item.debtRecoveredAmount > 0}}">本条旧佣金欠款已追回 ¥{{item.debtRecoveredAmount}}（抵扣后续佣金，不是新付款）</view></view>
-    <view class="muted">每件佣金 ¥{{item.unitCommission}} · 售后暂缓 ¥{{item.afterSaleFrozen || '0.00'}}</view>
+    <view class="muted after-sale-note">每件佣金 ¥{{item.unitCommission}} · 售后暂缓 ¥{{item.afterSaleFrozen || '0.00'}}</view>
   </view>
   <view wx:if="{{tab === 'eligibility'}}" class="card" wx:for="{{rows}}" wx:key="orderId">
     <view>订单 {{item.orderNo || item.orderId}} · {{item.eligible ? '具备微信分账提现资格' : '当前不可微信提现'}}</view>

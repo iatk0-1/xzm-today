@@ -383,3 +383,5 @@ page { background-color: #f2f2f2; }
 .order-cost-empty { padding: 48rpx 28rpx; text-align: center; }
 .order-cost-refresh-error { padding: 12rpx 28rpx; color: #b23a2e; font-size: 24rpx; }
 .order-cost-panel .panel-actions button { flex: 1; font-size: 28rpx; }
+
+@import "../../styles/afterSaleEmbedded.wxss";

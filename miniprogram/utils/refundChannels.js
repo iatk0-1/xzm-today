@@ -1,5 +1,18 @@
 const { getErrorMessage } = require('./error');
 const money = value => Number(value || 0).toFixed(2);
+// 只按实际付款构成判断，同行身份、改价版本和本次退款金额都不是依据。
+function hasOfflinePayment(order, payment) {
+  if (order && order.offlinePaidAmount != null) {
+    const amount = Number(order.offlinePaidAmount);
+    return Number.isFinite(amount) && amount > 0;
+  }
+  // 历史详情缺少订单快照时，使用后端从订单线下实付生成的标记。
+  return Boolean(payment && payment.hasOfflinePayment === true);
+}
+function shouldShowBreakdown(order, payment) {
+  return hasOfflinePayment(order, payment) && Boolean(payment
+    && (Number(payment.offlineAmount) > 0 || Number(payment.requestedOfflineAmount) > 0));
+}
 function format(value) {
   if (!value) return null;
   return { ...value, onlineAmount: money(value.onlineAmount), offlineAmount: money(value.offlineAmount),
@@ -32,4 +45,4 @@ async function preview(page, api, url, items, field) {
     return null;
   }
 }
-module.exports = { format, preview };
+module.exports = { format, preview, hasOfflinePayment, shouldShowBreakdown };

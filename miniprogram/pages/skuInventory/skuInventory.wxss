@@ -111,3 +111,5 @@ page { background: #f6f7f9; }
 .card-qty-input { flex: 0 0 80rpx; width: 80rpx; min-width: 80rpx; max-width: 80rpx; height: 56rpx; line-height: 56rpx; padding: 0 4rpx; border: 1rpx solid #b8c4d3; border-radius: 6rpx; color: #1677c8; font-size: 28rpx; text-align: center; box-sizing: border-box; }
 
 .operation-pending { padding: 20rpx; margin: 16rpx; background: #fff2d6; color: #875d16; border-radius: 12rpx; font-size: 24rpx; line-height: 1.6; }
+
+@import "../../styles/afterSaleEmbedded.wxss";

@@ -1,38 +1,88 @@
-<!-- miniprogram/pages/afterSaleDetail/afterSaleDetail.wxml -->
-<view class="page-wrapper" wx:if="{{afterSale}}">
-
-  <!-- 售后状态卡片 -->
+<view class="page-wrapper buyer-detail-page" wx:if="{{afterSale}}">
   <view class="status-card {{afterSale.status}}">
-    <view class="status-badge">{{afterSale.statusDisplay}}</view>
-    <view class="status-desc" wx:if="{{afterSale.status === 'cancelled' && afterSale.rejectReason}}">{{afterSale.rejectReason}}</view>
-    <view class="refund-amount">¥ {{afterSale.totalRefundAmount}}</view>
-    <view class="refund-channel-summary" wx:if="{{afterSale.refundPayment}}">
-      <view>线上退款 ¥{{afterSale.refundPayment.onlineAmount}} · 线下退款 ¥{{afterSale.refundPayment.offlineAmount}}</view>
-      <view wx:if="{{afterSale.status !== 'pending' && afterSale.refundPayment.hasAdjustedAmounts}}">原申请：线上 ¥{{afterSale.refundPayment.requestedOnlineAmount}} · 线下 ¥{{afterSale.refundPayment.requestedOfflineAmount}}</view>
-      <view wx:if="{{afterSale.refundPayment.offlineAmount > 0}}">线下退款请联系客服处理。</view>
-      <view wx:if="{{afterSale.refundPayment.historicalEstimate}}">历史申请渠道分摊为参考，实际金额以退款记录为准。</view>
-    </view>
-    <view class="status-desc">
-      <text wx:if="{{afterSale.type === 'refund'}}">仅退款</text>
-      <text wx:else>退货退款</text>
-      <text> · 共 {{afterSale.totalQty}} 件商品</text>
+    <view class="status-badge">{{afterSale.status === 'approved' ? '审核通过' : afterSale.statusDisplay}}</view>
+    <view class="status-hint" wx:if="{{afterSale.statusHint}}">{{afterSale.statusHint}}</view>
+    <view class="status-hint" wx:if="{{afterSale.status === 'cancelled' && afterSale.rejectReason}}">{{afterSale.rejectReason}}</view>
+    <view class="refund-caption">{{afterSale.refundAmountLabel}}</view>
+    <view class="refund-amount">¥{{afterSale.displayRefundAmount}}</view>
+    <view class="status-meta">{{afterSale.typeDisplay}} · 共 {{afterSale.totalQty}} 件商品</view>
+    <view class="status-adjustment" wx:if="{{afterSale.hasAdjustedTotal}}">原申请 ¥{{afterSale.applicationRefundAmount}} · {{afterSale.applicationTotalQty}} 件</view>
+
+    <view class="refund-channel-summary" wx:if="{{afterSale.showRefundBreakdown}}">
+      <view class="channel-amounts">
+        <view class="channel-row"><text>线上退款</text><text>¥{{afterSale.refundPayment.onlineAmount}}</text></view>
+        <view class="channel-row" wx:if="{{afterSale.showOfflineRefund}}"><text>线下退款</text><text>¥{{afterSale.refundPayment.offlineAmount}}</text></view>
+      </view>
+      <view class="channel-note" wx:if="{{afterSale.status !== 'pending' && afterSale.refundPayment.hasAdjustedAmounts}}">原申请：线上 ¥{{afterSale.refundPayment.requestedOnlineAmount}}<text wx:if="{{afterSale.showOfflineRefund}}"> · 线下 ¥{{afterSale.refundPayment.requestedOfflineAmount}}</text></view>
+      <view class="channel-note" wx:if="{{afterSale.showOfflineRefund && afterSale.refundPayment.offlineAmount > 0}}">线下退款请联系客服处理。</view>
+      <view class="channel-note" wx:if="{{afterSale.refundPayment.historicalEstimate}}">历史申请渠道分摊为参考，实际金额以退款记录为准。</view>
     </view>
   </view>
-
-  <!-- 订单信息 -->
-  <view class="section" wx:if="{{afterSale.orderId}}">
-    <view class="section-title">订单信息</view>
-    <view class="info-row">
-      <text class="info-label">订单号</text>
-      <view class="info-value-box">
-        <text class="info-value">{{afterSale.orderId}}</text>
-        <text class="copy-btn" catchtap="copyOrderNo">复制</text>
+<view class="section return-logistics-section" wx:if="{{afterSale.type === 'return_refund' && (afterSale.status !== 'pending' || afterSale.returnExpressNo)}}">
+    <view class="return-logistics-header">
+      <view><view class="section-title return-logistics-title">退货物流</view><view class="section-note" wx:if="{{afterSale.canModifyReturnShipping && !afterSale.returnExpressNo}}">寄回商品后，请填写快递公司及单号</view></view>
+      <view class="return-logistics-action" wx:if="{{afterSale.canModifyReturnShipping}}" bindtap="shipReturnGoods">
+        {{afterSale.returnExpressNo ? '修改物流' : '填写退货物流'}}
+      </view>
+    </view>
+    <view class="logistics-info" wx:if="{{afterSale.returnExpressNo}}">
+      <view class="logistics-row">
+        <text class="logistics-label">快递公司</text>
+        <text class="logistics-value">{{afterSale.returnExpressName}}</text>
+      </view>
+      <view class="logistics-row">
+        <text class="logistics-label">快递单号</text>
+        <text class="logistics-value">{{afterSale.returnExpressNo}}</text>
+        <text class="copy-btn" bindtap="copyExpressNo">复制</text>
+      </view>
+      <view class="logistics-row" wx:if="{{afterSale.returnShippedAt}}">
+        <text class="logistics-label">发货时间</text>
+        <text class="logistics-value">{{afterSale.returnShippedAtDisplay}}</text>
+      </view>
+    </view>
+    <view class="no-logistics" wx:if="{{!afterSale.returnExpressNo && !afterSale.canModifyReturnShipping}}">
+      <text>还未填写退货物流信息</text>
+    </view>
+  </view>
+<view class="section">
+    <view class="section-title">售后商品</view>
+    <view class="items-list">
+      <view class="item-row" wx:for="{{afterSale.items}}" wx:key="id">
+        <image class="item-img" src="{{item.displayImage}}" mode="aspectFill"></image>
+        <view class="item-info">
+          <view class="item-name">{{item.productName}}</view>
+          <view class="item-sku">{{item.skuSpec}} / {{item.skuSize}}</view>
+          <view class="item-detail-row">
+            <text>{{item.applicationType === 'refund' ? '仅退款' : '退货退款'}} · ×{{item.applicationQty}}</text>
+          </view>
+        </view>
+        <view class="item-refund">¥ {{item.applicationRefundAmount}}</view>
       </view>
     </view>
   </view>
-
-  <view class="section" wx:if="{{afterSale.orderDetail}}">
-    <view class="section-title">关联订单详情</view>
+<view class="section">
+    <view class="section-title">售后进度</view>
+    <view class="timeline">
+      <view class="timeline-item" wx:for="{{timelineView}}" wx:key="index">
+        <view class="timeline-node {{item.waiting ? 'waiting' : (index === 0 ? 'current' : '')}}">
+          <view class="timeline-dot"></view>
+          <view class="timeline-line" wx:if="{{index < timelineView.length - 1}}"></view>
+        </view>
+        <view class="timeline-content">
+          <view class="timeline-status">{{item.status}}</view>
+          <view class="timeline-time" wx:if="{{item.time && item.time !== '-'}}">{{item.time}}</view>
+          <view class="timeline-desc" wx:if="{{item.description}}">{{item.description}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view class="section application-section">
+    <view class="section-title">申请信息</view>
+    <view class="application-row"><text class="application-label">售后原因</text><text class="application-value">{{afterSale.reasonTitle}}</text></view>
+    <view class="application-row" wx:if="{{afterSale.reasonDescription}}"><text class="application-label">补充说明</text><text class="application-value">{{afterSale.reasonDescription}}</text></view>
+    <view class="application-row" wx:if="{{afterSale.evidenceImages.length}}"><text class="application-label">凭证图片</text><view class="evidence-images"><image class="evidence-img" wx:for="{{afterSale.evidenceImages}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewImage" data-index="{{index}}"></image></view></view>
+  </view>
+  <view class="section related-order-section" wx:if="{{afterSale.orderId || afterSale.orderDetail}}"><view class="section-title">关联订单</view><view class="related-order-card"><view class="order-disclosure" bindtap="toggleOrderDetail" aria-role="button" aria-expanded="{{showOrderDetail}}"><view class="related-order-number"><text>订单号 {{afterSale.orderId}}</text><text class="copy-btn" catchtap="copyOrderNo">复制</text></view><text class="disclosure-arrow">{{showOrderDetail ? '⌃' : '⌄'}}</text></view><view class="section-note" wx:if="{{!showOrderDetail}}">展开查看商品、收货信息及实付款</view></view><view class="order-expanded" wx:if="{{showOrderDetail}}">
     <view class="info-group">
       <view class="info-row">
         <text class="info-label">订单状态</text>
@@ -81,94 +131,7 @@
         <text class="info-value amount-strong">¥ {{afterSale.orderDetail.payAmountDisplay}}</text>
       </view>
     </view>
-  </view>
-
-  <!-- 商品信息列表 -->
-  <view class="section">
-    <view class="section-title">商品清单</view>
-    <view class="items-list">
-      <view class="item-row" wx:for="{{afterSale.items}}" wx:key="id">
-        <image class="item-img" src="{{item.displayImage}}" mode="aspectFill"></image>
-        <view class="item-info">
-          <view class="item-name">{{item.productName}}</view>
-          <view class="item-sku">{{item.skuSpec}} / {{item.skuSize}}</view>
-          <view class="item-detail-row">
-            <text class="item-qty">×{{item.applicationQty}}</text>
-            <text class="item-type">{{item.applicationType === 'refund' ? '仅退款' : '退货退款'}}</text>
-          </view>
-        </view>
-        <view class="item-refund">¥ {{item.applicationRefundAmount}}</view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 退货物流信息（仅退货退款显示） -->
-  <view class="section" wx:if="{{afterSale.type === 'return_refund'}}">
-    <view class="return-logistics-header">
-      <view class="section-title return-logistics-title">退货物流</view>
-      <view class="return-logistics-action" wx:if="{{afterSale.canModifyReturnShipping}}" bindtap="shipReturnGoods">
-        {{afterSale.returnExpressNo ? '修改' : '新增'}}
-      </view>
-    </view>
-    <view class="logistics-info" wx:if="{{afterSale.returnExpressNo}}">
-      <view class="logistics-row">
-        <text class="logistics-label">快递公司</text>
-        <text class="logistics-value">{{afterSale.returnExpressName}}</text>
-      </view>
-      <view class="logistics-row">
-        <text class="logistics-label">快递单号</text>
-        <text class="logistics-value">{{afterSale.returnExpressNo}}</text>
-        <text class="copy-btn" bindtap="copyExpressNo">复制</text>
-      </view>
-      <view class="logistics-row" wx:if="{{afterSale.returnShippedAt}}">
-        <text class="logistics-label">发货时间</text>
-        <text class="logistics-value">{{afterSale.returnShippedAtDisplay}}</text>
-      </view>
-    </view>
-    <view class="no-logistics" wx:if="{{!afterSale.returnExpressNo}}">
-      <text>还未填写退货物流信息</text>
-    </view>
-  </view>
-
-  <!-- 售后原因 -->
-  <view class="section">
-    <view class="section-title">售后原因</view>
-    <view class="reason-content">{{afterSale.reason || '未填写'}}</view>
-  </view>
-
-  <!-- 凭证图片 -->
-  <view class="section" wx:if="{{afterSale.evidenceUrls && afterSale.evidenceUrls.length > 0}}">
-    <view class="section-title">凭证图片</view>
-    <view class="evidence-images">
-      <image
-        class="evidence-img"
-        wx:for="{{afterSale.evidenceUrls.split(',') }}"
-        wx:key="*this"
-        src="{{item}}"
-        mode="aspectFill"
-        bindtap="previewImage"
-        data-index="{{index}}"></image>
-    </view>
-  </view>
-
-  <!-- 售后进度时间轴 -->
-  <view class="section">
-    <view class="section-title">售后进度</view>
-    <view class="timeline">
-      <view class="timeline-item" wx:for="{{timeline}}" wx:key="index">
-        <view class="timeline-node {{index === timeline.length - 1 ? 'last' : ''}}">
-          <view class="timeline-dot"></view>
-          <view class="timeline-line" wx:if="{{index < timeline.length - 1}}"></view>
-        </view>
-        <view class="timeline-content">
-          <view class="timeline-status">{{item.status}}</view>
-          <view class="timeline-time">{{item.time}}</view>
-          <view class="timeline-desc">{{item.description}}</view>
-        </view>
-      </view>
-    </view>
-  </view>
-
+    </view><view class="application-row secondary-meta" wx:if="{{showOrderDetail}}"><text class="application-label">售后单号</text><text class="application-value">{{afterSale.id}}</text></view><view class="application-row secondary-meta" wx:if="{{showOrderDetail && afterSale.createdAtDisplay}}"><text class="application-label">申请时间</text><text class="application-value">{{afterSale.createdAtDisplay}}</text></view></view>
   <!-- 底部操作按钮 -->
   <view class="action-bar" wx:if="{{afterSale.status === 'pending'}}">
     <view class="action-btn-group">
@@ -185,7 +148,8 @@
   <!-- 退货物流表单：先选快递公司，再填单号，一次提交 -->
   <view class="return-shipping-mask" wx:if="{{showReturnShippingModal}}" bindtap="closeReturnShippingModal" catchtouchmove="stopReturnShippingEvent">
     <view class="return-shipping-dialog" catchtap="stopReturnShippingEvent">
-      <view class="return-shipping-title">{{afterSale.returnExpressNo ? '修改退货物流' : '填写退货物流'}}</view>
+      <view class="sheet-handle"></view>
+      <view class="return-shipping-title"><text>{{afterSale.returnExpressNo ? '修改退货物流' : '填写退货物流'}}</text><text class="sheet-close" bindtap="closeReturnShippingModal" aria-role="button" aria-label="关闭退货物流">×</text></view>
       <view class="return-shipping-form">
         <view class="return-shipping-row return-express-row">
           <text class="return-shipping-label">快递公司</text>
@@ -193,17 +157,19 @@
             <text>{{returnExpressName || '请选择快递公司'}}</text>
             <text class="return-express-arrow">{{showReturnExpressOptions ? '⌃' : '⌄'}}</text>
           </view>
+
+        </view>
           <scroll-view class="return-express-options" wx:if="{{showReturnExpressOptions}}" scroll-y="true">
             <view class="return-express-option {{returnExpressCode === item.code ? 'selected' : ''}}" wx:for="{{returnExpressOptions}}" wx:key="code" data-code="{{item.code}}" bindtap="selectReturnExpress">
               <text>{{item.name}}</text>
               <text wx:if="{{returnExpressCode === item.code}}">✓</text>
             </view>
           </scroll-view>
-        </view>
         <view class="return-shipping-row">
           <text class="return-shipping-label">快递单号</text>
           <input id="return-express-no" class="return-shipping-field return-express-input" placeholder="请输入快递单号" placeholder-class="return-input-placeholder" value="{{returnExpressNo}}" maxlength="100" disabled="{{isSubmittingReturnShipping}}" bindinput="onReturnExpressNoInput" bindfocus="onReturnExpressNoFocus" />
         </view>
+        <view class="shipping-form-tip">请核对物流信息后提交</view>
         <view class="return-shipping-error" wx:if="{{returnShippingError}}">{{returnShippingError}}</view>
       </view>
       <view class="return-shipping-actions">

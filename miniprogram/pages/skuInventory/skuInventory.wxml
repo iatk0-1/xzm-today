@@ -88,7 +88,7 @@
             <text class="{{sku.abnormalQty > 0 ? 'abnormal-text' : ''}}">异常 {{sku.abnormalQty}}</text>
           </view>
           <view class="muted">空闲现货 {{sku.freeStockQty}} · 订单已配 {{sku.orderAllocatedQty}} · 待报 {{sku.customerMissingQty}} · 富余在途 {{sku.surplusTransitQty}}</view>
-          <view class="muted" wx:if="{{sku.frozenDemandQty}}">未发售后冻结 {{sku.frozenDemandQty}} · 冻结现货 {{sku.frozenStockQty}}</view>
+          <view class="muted after-sale-note" wx:if="{{sku.frozenDemandQty}}">未发售后冻结 {{sku.frozenDemandQty}} · 冻结现货 {{sku.frozenStockQty}}</view>
           <view class="muted">报单 {{sku.reportedQty}} · 已到货 {{sku.receivedQty}}<text wx:if="{{sku.reservedQty}}"> · 发货占用 {{sku.reservedQty}}</text></view>
         </view>
         <text class="no-sku" wx:if="{{!item.skus.length}}">暂无 SKU 信息</text>

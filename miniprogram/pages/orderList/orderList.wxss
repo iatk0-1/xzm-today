@@ -291,3 +291,5 @@ page { background-color: #f7f8fa; }
 }
 
 .order-times { display: flex; flex-direction: column; gap: 6rpx; min-width: 0; }
+
+@import "../../styles/afterSaleEmbedded.wxss";

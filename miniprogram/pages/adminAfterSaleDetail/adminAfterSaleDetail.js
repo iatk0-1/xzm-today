@@ -11,12 +11,18 @@ const afterSaleFulfillment = require('../../utils/afterSaleFulfillment');
 const refundChannels = require('../../utils/refundChannels');
 const afterSaleDisplay = require('../../utils/afterSaleDisplay');
 const promotionDisplay = require('../../utils/skuPromotionDisplay');
+const { getExpressName } = require('../../utils/expressCompany');
+const afterSaleSheet = require('../../utils/afterSaleSheet');
 
 Page({
   data: {
     afterSaleId: null,
     afterSale: null,
     isLoading: true,
+    showOrderDetail: false,
+    sheetBodyHeight: 380,
+    showReviewContext: false,
+    inspectionFields: [{ key: 'receivedQty', label: '实收数量' }, { key: 'acceptedQty', label: '合格数量' }],
     // 审核操作
     showReviewModal: false,
     reviewDecision: 'approve',
@@ -37,6 +43,18 @@ Page({
     logs: [],
     // 原订单发货单
     shipments: []
+  },
+
+  toggleOrderDetail: function() {
+    this.setData({ showOrderDetail: !this.data.showOrderDetail });
+  },
+
+  resizeSheet: function() {
+    afterSaleSheet.resize(this);
+  },
+
+  toggleReviewContext: function() {
+    this.setData({ showReviewContext: !this.data.showReviewContext }, () => this.resizeSheet());
   },
 
   onLoad: function(options) {
@@ -102,6 +120,7 @@ Page({
     ) || (items.length === 0 && res.status === 'approved' && res.type === 'return_refund');
     return {
       ...res,
+      ...afterSaleDisplay.summary(res, true),
       refundPayment: res.refundPayment ? refundChannels.format(res.refundPayment) : null,
       items,
       orderDetail,
@@ -112,6 +131,7 @@ Page({
       createdAtDisplay: this.formatDateTime(res.createdAt),
       updatedAtDisplay: this.formatDateTime(res.updatedAt),
       returnShippedAtDisplay: this.formatDateTime(res.returnShippedAt),
+      returnExpressName: ({ STO: '申通', YD: '韵达', OTHER: '其他' })[res.returnExpressCode] || getExpressName(res.returnExpressCode),
       evidenceImages: this.parseEvidenceUrls(res.evidenceUrls),
       hasReturnLogistics: res.type === 'return_refund',
       hasReturnShipment: Boolean(res.returnExpressNo)
@@ -199,7 +219,7 @@ Page({
     try {
       const logs = await api.get(`/after-sales/${this.data.afterSaleId}/logs?limit=50`);
       this.setData({
-        logs: logs.map(log => ({
+        logs: logs.slice().reverse().map(log => ({
           ...log,
           time: this.formatTime(log.createdAt),
           actionDisplay: this.getActionDisplay(log.action)
@@ -335,12 +355,14 @@ Page({
       });
     this.setData({
       showReviewModal: true,
+      showReviewContext: false,
       reviewDecision: decision,
       returnPurchaseOrder: false,
       reviewItems,
       rejectReason: ''
     });
     this.updateReviewRefundPreview();
+    this.resizeSheet();
   },
 
   // 隐藏审核弹窗
@@ -357,6 +379,7 @@ Page({
   // 选择审核结果
   selectDecision: function(e) {
     this.setData({ reviewDecision: e.currentTarget.dataset.decision });
+    this.resizeSheet();
   },
 
   // 输入拒绝原因
@@ -425,22 +448,25 @@ Page({
   },
 
   updateReviewRefundPreview: async function() {
+    this.resizeSheet();
     const sale = this.data.afterSale;
     if (!(Number(sale && sale.orderDetail && sale.orderDetail.offlinePaidAmount) > 0)) {
       const total = this.data.reviewItems.filter(item => item.selected).reduce((sum, item) => sum + (Number(item.reviewAmount) || 0), 0).toFixed(2);
       this.setData({ reviewQuote: { totalAmount: total, onlineAmount: total, offlineAmount: '0.00' },
         reviewItems: this.data.reviewItems.map(item => ({ ...item, onlineRefundAmount: Number(item.reviewAmount || 0).toFixed(2), offlineRefundAmount: '0.00' })) });
+      this.resizeSheet();
       return;
     }
     const quote = await refundChannels.preview(this, api, `/after-sales/${this.data.afterSaleId}/refund-preview`,
       this.data.reviewItems.filter(item => item.selected).map(item => ({ afterSaleItemId: item.id,
         orderItemId: item.orderItemId, qty: Number(item.reviewQty), refundAmount: item.reviewAmount,
         afterSaleType: item.reviewType })), 'reviewQuote');
-    if (!quote) return;
+    if (!quote) { this.resizeSheet(); return; }
     this.setData({ reviewItems: this.data.reviewItems.map(item => {
       const part = quote.items.find(row => String(row.afterSaleItemId) === String(item.id));
       return { ...item, onlineRefundAmount: part ? part.onlineAmount : '', offlineRefundAmount: part ? part.offlineAmount : '' };
     }) });
+    this.resizeSheet();
   },
 
   // 提交审核
@@ -526,7 +552,7 @@ Page({
       showReceiveModal: true,
       isReinspection: false,
       warehouseCheck: 'pass'
-    });
+    }, () => this.resizeSheet());
   },
 
   showReinspectModal: function() {
@@ -535,7 +561,7 @@ Page({
       showReceiveModal: true,
       isReinspection: true,
       warehouseCheck: 'pass'
-    });
+    }, () => this.resizeSheet());
   },
 
   // 隐藏仓库收货弹窗
@@ -551,7 +577,7 @@ Page({
 
   prepareInspection(reinspect) {
     const items = (this.data.afterSale.items || []).filter(i => i.afterSaleType === 'return_refund').map(item => ({
-      id: item.id, name: item.productName, articleNo: item.articleNo, qty: item.qty,
+      id: item.id, name: item.productName, articleNo: item.articleNo, qty: item.qty, displayImage: item.displayImage,
       receivedQty: item.inspection ? item.inspection.receivedQty : item.qty,
       acceptedQty: item.inspection ? item.inspection.acceptedQty : item.qty,
       minimumAcceptedQty: item.inspection ? item.inspection.acceptedQty : 0,
@@ -562,6 +588,18 @@ Page({
   onInspectionQtyInput(e) {
     const { index, field } = e.currentTarget.dataset;
     this.setData({ ['inspectionItems[' + Number(index) + '].' + field]: e.detail.value });
+  },
+  adjustInspectionQty(e) {
+    if (this.data.inspectionSaving) return;
+    const { index, field, delta } = e.currentTarget.dataset;
+    const item = this.data.inspectionItems[Number(index)];
+    if (!item || !['receivedQty', 'acceptedQty'].includes(field)) return;
+    const minimum = field === 'acceptedQty' ? Number(item.minimumAcceptedQty || 0)
+      : Number(item.acceptedQty || 0) + Number(item.disposedQty || 0);
+    const maximum = field === 'receivedQty' ? Number(item.qty)
+      : Number(item.receivedQty) - Number(item.disposedQty || 0);
+    const next = Math.max(minimum, Math.min(maximum, (Number(item[field]) || 0) + Number(delta)));
+    this.setData({ ['inspectionItems[' + Number(index) + '].' + field]: next });
   },
   // 提交仓库收货
   submitReceive: async function() {
@@ -601,7 +639,7 @@ Page({
       negotiatedItems,
       negotiatedReason: '',
       negotiatedNote: ''
-    });
+    }, () => this.resizeSheet());
   },
 
   hideNegotiatedRefundModal: function() {

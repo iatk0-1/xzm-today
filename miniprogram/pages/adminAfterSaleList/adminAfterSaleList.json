@@ -2,5 +2,7 @@
   "usingComponents": {},
   "navigationBarTitleText": "售后管理",
   "enablePullDownRefresh": true,
-  "backgroundTextStyle": "dark"
+  "backgroundTextStyle": "dark",
+  "navigationBarBackgroundColor": "#ffffff",
+  "navigationBarTextStyle": "black"
 }

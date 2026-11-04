@@ -129,13 +129,13 @@
       <view>原因：{{item.reason}} · 操作人 {{item.operatorId}}</view>
     </view>
   </view>
-  <view class="info-card" wx:if="{{refundPayments.length}}">
+  <view class="info-card" wx:if="{{refundPayments.length && (order.offlinePaidAmount != null ? order.offlinePaidAmount > 0 : pricing.offlineAmount > 0)}}">
     <view class="section-title">退款收款渠道明细</view>
     <view class="price-history" wx:for="{{refundPayments}}" wx:key="outRefundNo">
-      <view>线上 ¥{{item.onlineAmount}} · 线下 ¥{{item.offlineAmount}}</view>
+      <view>线上 ¥{{item.onlineAmount}}<text wx:if="{{order.offlinePaidAmount != null ? order.offlinePaidAmount > 0 : pricing.offlineAmount > 0}}"> · 线下 ¥{{item.offlineAmount}}</text></view>
       <view>线上状态：{{item.onlineStatus === 'SUCCESS' ? '已退款' : '处理中或待核对'}}</view>
     </view>
-    <view class="pricing-hint">线下退款自行处理；线上退款成功后，系统按整笔退款完成。</view>
+    <view class="pricing-hint"><text wx:if="{{order.offlinePaidAmount != null ? order.offlinePaidAmount > 0 : pricing.offlineAmount > 0}}">线下退款自行处理；</text>线上退款成功后，系统按整笔退款完成。</view>
   </view>
 
   <view class="info-card order-info-card">
@@ -233,7 +233,7 @@
 </view>
 
 <view class="panel-mask" wx:if="{{showRefundPanel}}" catchtap="closeRefundPanel"></view>
-<view class="bottom-panel" wx:if="{{showRefundPanel}}">
+<view class="bottom-panel after-sale-surface admin-refund-panel" wx:if="{{showRefundPanel}}">
   <view class="panel-header">
     <text class="panel-title">主动退款</text>
     <text class="panel-close" bindtap="closeRefundPanel">关闭</text>
@@ -250,18 +250,18 @@
         <text class="refund-limit">可退 {{refundItem.availableQty}} 件，¥ {{refundItem.availableRefundAmount}}</text>
       </view>
       <view class="refund-inputs">
-        <view class="refund-qty-stepper {{refundItem.disabled ? 'disabled' : ''}}">
+        <view class="refund-field"><text>退款数量</text><view class="after-sale-form-control">        <view class="after-sale-qty-stepper {{refundItem.disabled ? 'disabled' : ''}}">
           <view
-            class="refund-qty-btn {{refundItem.selectedQty <= 0 ? 'disabled' : ''}}"
+            class="after-sale-qty-button {{refundItem.selectedQty <= 0 ? 'disabled' : ''}}"
             data-index="{{refundIndex}}"
             catchtap="decreaseRefundQty">-</view>
-          <view class="refund-qty-value">{{refundItem.selectedQty}}</view>
+          <view class="after-sale-qty-number">{{refundItem.selectedQty}}</view>
           <view
-            class="refund-qty-btn {{refundItem.selectedQty >= refundItem.availableQty ? 'disabled' : ''}}"
+            class="after-sale-qty-button {{refundItem.selectedQty >= refundItem.availableQty ? 'disabled' : ''}}"
             data-index="{{refundIndex}}"
             catchtap="increaseRefundQty">+</view>
-        </view>
-        <input class="panel-input" type="digit" disabled="{{refundItem.disabled}}" placeholder="金额" value="{{refundItem.inputAmount}}" data-index="{{refundIndex}}" bindinput="onRefundAmountInput" />
+        </view><text class="after-sale-form-unit">件</text></view></view>
+        <view class="refund-field"><text>退款金额</text><view class="after-sale-form-control"><input class="panel-input" type="digit" disabled="{{refundItem.disabled}}" placeholder="金额" value="{{refundItem.inputAmount}}" data-index="{{refundIndex}}" bindinput="onRefundAmountInput" /><text class="after-sale-form-unit">元</text></view></view>
       </view>
     </view>
     <view class="panel-field">

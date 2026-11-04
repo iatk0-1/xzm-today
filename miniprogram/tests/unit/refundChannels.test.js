@@ -1,6 +1,23 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const channels = require('../../utils/refundChannels');
+test('线下退款展示只取决于订单实际线下付款，改价和同行身份不触发', () => {
+  for (const identity of [{}, { peerOrder: true }, { priceRevision: 3 }, { peerOrder: true, priceRevision: 3 }]) {
+    assert.equal(channels.hasOfflinePayment({ ...identity, offlinePaidAmount: '0.00' }, { hasOfflinePayment: true, offlineAmount: 20 }), false);
+    assert.equal(channels.hasOfflinePayment({ ...identity, offlinePaidAmount: '0.01' }, { hasOfflinePayment: false, offlineAmount: 0 }), true);
+  }
+  assert.equal(channels.hasOfflinePayment({ offlinePaidAmount: 'NaN' }, { hasOfflinePayment: true }), false);
+  assert.equal(channels.hasOfflinePayment(null, { hasOfflinePayment: true, offlineAmount: 0 }), true);
+  assert.equal(channels.hasOfflinePayment(null, { offlineAmount: 20 }), false);
+  assert.equal(channels.hasOfflinePayment(null, null), false);
+});
+test('没有线下退款拆分时只显示总额，原申请存在调整的线下金额仍可核对', () => {
+  assert.equal(channels.shouldShowBreakdown({ offlinePaidAmount: 0 }, { hasOfflinePayment: true, offlineAmount: 50 }), false);
+  assert.equal(channels.shouldShowBreakdown({ offlinePaidAmount: 30 }, { offlineAmount: '0.00', requestedOfflineAmount: '0.00' }), false);
+  assert.equal(channels.shouldShowBreakdown({ offlinePaidAmount: 30 }, { offlineAmount: '0.01' }), true);
+  assert.equal(channels.shouldShowBreakdown({ offlinePaidAmount: 30 }, { offlineAmount: 0, requestedOfflineAmount: 10 }), true);
+  assert.equal(channels.shouldShowBreakdown(null, null), false);
+});
 function page() { return { data: {}, setData(patch) { Object.assign(this.data, patch); } }; }
 const line = (amount = '50.00') => [{ orderItemId: '371292052173885440', qty: 1, refundAmount: amount, afterSaleType: 'refund' }];
 const response = (online, offline, token = 'quote') => ({ onlineAmount: online, offlineAmount: offline, totalAmount: Number(online) + Number(offline), items: [], token });

@@ -10,3 +10,5 @@ page { background:#f5f6f8; color:#222; } .page { padding:24rpx; } .card { backgr
 .access-card { margin-top:48rpx; }
 .settlement-status { margin-bottom:20rpx; padding:14rpx 18rpx; border-radius:10rpx; background:#edf5f0; color:#285642; font-size:27rpx; line-height:1.6; }
 .contact-button { margin-bottom:24rpx; background:#fff; color:#173e33; }
+
+@import "../../styles/afterSaleEmbedded.wxss";

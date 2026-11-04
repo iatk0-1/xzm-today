@@ -23,8 +23,10 @@ Page({
     afterSaleId: null,
     afterSale: null,
     isLoading: true,
+    showOrderDetail: false,
     // 售后进度
     timeline: [],
+    timelineView: [],
     showReturnShippingModal: false,
     returnExpressOptions: RETURN_EXPRESS_OPTIONS,
     showReturnExpressOptions: false,
@@ -33,6 +35,10 @@ Page({
     returnExpressNo: '',
     returnShippingError: '',
     isSubmittingReturnShipping: false
+  },
+
+  toggleOrderDetail: function() {
+    this.setData({ showOrderDetail: !this.data.showOrderDetail });
   },
 
   onLoad: function(options) {
@@ -61,6 +67,7 @@ Page({
       this.setData({
         afterSale: formatted,
         timeline,
+        timelineView: afterSaleDisplay.timelineView(timeline, formatted.status),
         isLoading: false
       });
     } catch (err) {
@@ -75,6 +82,7 @@ Page({
     const application = afterSaleDisplay.application(res);
     return {
       ...res,
+      ...afterSaleDisplay.summary(res),
       items: application.items,
       applicationRefundAmount: application.totalAmount,
       applicationTypeDisplay: this.getAfterSaleTypeDisplay(application.type),
@@ -109,11 +117,15 @@ Page({
   // 构建售后进度时间轴
   buildTimeline: function(afterSale) {
     const timeline = [];
+    const eventTime = (actions, first = false) => {
+      const time = afterSaleDisplay.progressTime(afterSale, actions, first);
+      return time ? this.formatTime(time) : '时间未记录';
+    };
     
     // 1. 用户申请
     timeline.push({
       status: '用户申请',
-      time: this.formatTime(afterSale.createdAt),
+      time: this.formatTime(afterSale.createdAt || afterSaleDisplay.progressTime(afterSale, ['apply'], true)),
       description: `申请${afterSale.applicationTypeDisplay || afterSale.typeDisplay}，退款 ¥${afterSale.applicationRefundAmount == null ? this.formatAmount(afterSale.totalRefundAmount) : afterSale.applicationRefundAmount}`
     });
 
@@ -121,20 +133,20 @@ Page({
     if (afterSale.status === 'approved' || afterSale.status === 'received' || afterSale.status === 'refunded') {
       timeline.push({
         status: '商家审核',
-        time: '-',
+        time: eventTime(['review_approve', 'review_items'], true),
         description: `审核通过，退款 ¥${afterSale.reviewedRefundAmount == null ? this.formatAmount(afterSale.totalRefundAmount) : afterSale.reviewedRefundAmount}，${afterSale.type === 'return_refund' ? '等待用户退货' : '等待退款处理'}`
       });
     } else if (afterSale.status === 'rejected') {
       timeline.push({
         status: '商家审核',
-        time: '-',
+        time: eventTime(['review_reject', 'review_items']),
         description: `审核拒绝：${afterSale.rejectReason || '原因未填写'}`
       });
       return timeline;
     } else if (afterSale.status === 'cancelled') {
       timeline.push({
         status: afterSale.rejectReason ? '已关闭' : '已撤销',
-        time: this.formatTime(afterSale.updatedAt),
+        time: eventTime(['cancel']),
         description: afterSale.rejectReason || '用户主动撤销申请'
       });
       return timeline;
@@ -145,7 +157,7 @@ Page({
       if (afterSale.returnExpressNo) {
         timeline.push({
           status: '用户已寄回',
-          time: afterSale.returnShippedAt ? this.formatTime(afterSale.returnShippedAt) : '-',
+          time: afterSale.returnShippedAt ? this.formatTime(afterSale.returnShippedAt) : eventTime(['ship_return']),
           description: `${this.getReturnExpressName(afterSale.returnExpressCode)}：${afterSale.returnExpressNo}`
         });
       } else if (afterSale.status === 'approved') {
@@ -162,13 +174,13 @@ Page({
       if (afterSale.warehouseCheck === 'pass') {
         timeline.push({
           status: '仓库已收货',
-          time: '-',
+          time: eventTime(['receive', 'receive_pass', 'reinspect', 'reinspect_pass']),
           description: '验收通过，等待退款'
         });
       } else if (afterSale.warehouseCheck === 'fail') {
         timeline.push({
           status: '仓库已收货',
-          time: '-',
+          time: eventTime(['receive', 'receive_fail', 'reinspect', 'reinspect_fail']),
           description: '验收不通过'
         });
       }
@@ -178,7 +190,7 @@ Page({
     if (afterSale.status === 'refunded') {
       timeline.push({
         status: '退款完成',
-        time: '-',
+        time: eventTime(['refund', 'negotiated_refund']),
         description: '退款已原路返回'
       });
     }
@@ -230,6 +242,7 @@ Page({
   formatTime: function(timeStr) {
     if (!timeStr) return '-';
     const date = parseDate(timeStr);
+    if (Number.isNaN(date.getTime())) return '-';
     return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   },
 
@@ -343,6 +356,7 @@ Page({
       this.setData({
         afterSale,
         timeline: this.buildTimeline(afterSale),
+        timelineView: afterSaleDisplay.timelineView(this.buildTimeline(afterSale), afterSale.status),
         showReturnShippingModal: false,
         returnExpressNo: ''
       });
@@ -412,9 +426,7 @@ Page({
 
   previewImage: function(e) {
     const index = e.currentTarget.dataset.index;
-    const urls = this.data.afterSale && this.data.afterSale.evidenceUrls
-      ? this.data.afterSale.evidenceUrls.split(',')
-      : [];
+      const urls = afterSaleDisplay.evidenceImages(this.data.afterSale && this.data.afterSale.evidenceUrls);
 
     if (!urls.length) {
       wx.showToast({ title: '没有图片', icon: 'none' });

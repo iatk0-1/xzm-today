@@ -171,3 +171,33 @@ test('优惠后均摊单价含半分时，部分退款后的最后一件按剩�
   assert.equal(application.data.splitItems[0].type, 'return_refund');
   assert.equal(application.data.splitItems[0].maxRefundAmount, 82.60);
 });
+
+test('申请原因和补充说明共同提交到原 reason 字段，不增加接口参数', async () => {
+  const application = page(applyConfig);
+  const item = { orderItemId: '23', productId: '24', type: 'refund', qty: 1, selectedQty: 1,
+    salePrice: 198, inputAmount: '198.00', maxRefundAmount: 198 };
+  Object.assign(application.data, { orderId: '10', order: {}, splitItems: [item], selectedItems: [item],
+    reason: '尺码不符', reasonText: ' 上身偏大，申请退货 ' });
+  global.wx.showModal = () => {};
+  await application.submitAfterSale();
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, '/after-sales');
+  assert.equal(requests[0].data.reason, '尺码不符\n上身偏大，申请退货');
+  assert.deepEqual(Object.keys(requests[0].data).sort(), ['evidenceUrls', 'items', 'orderId', 'reason', 'refundQuoteToken']);
+});
+
+test('验收加减遵守已合格、已处置和实收边界，不能重复增加已处置库存', () => {
+  const inspection = page(reviewConfig);
+  inspection.data.inspectionItems = [{ qty: 5, receivedQty: 4, acceptedQty: 2, minimumAcceptedQty: 2, disposedQty: 1 }];
+  const change = (field, delta) => inspection.adjustInspectionQty({ currentTarget: { dataset: { index: 0, field, delta } } });
+  change('acceptedQty', -1);
+  assert.equal(inspection.data.inspectionItems[0].acceptedQty, 2);
+  change('receivedQty', -1);
+  change('receivedQty', -1);
+  assert.equal(inspection.data.inspectionItems[0].receivedQty, 3);
+  change('acceptedQty', 1);
+  assert.equal(inspection.data.inspectionItems[0].acceptedQty, 2);
+  inspection.data.inspectionSaving = true;
+  change('receivedQty', 1);
+  assert.equal(inspection.data.inspectionItems[0].receivedQty, 3);
+});

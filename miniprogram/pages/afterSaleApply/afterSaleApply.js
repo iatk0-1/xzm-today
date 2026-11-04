@@ -485,7 +485,9 @@ Page({
       wx.showToast({ title: this.data.refundQuoteError || '请等待线上线下退款金额计算完成', icon: 'none' }); return;
     }
 
-    const reason = this.data.reason || this.data.reasonText || DEFAULT_AFTER_SALE_REASON;
+    // 接口仍使用原 reason 字符串，保留已选原因和用户补充说明。
+    const reason = [this.data.reason, this.data.reasonText]
+      .map(value => String(value || '').trim()).filter(Boolean).join('\n') || DEFAULT_AFTER_SALE_REASON;
 
     wx.showLoading({ title: '提交中...', mask: true });
 

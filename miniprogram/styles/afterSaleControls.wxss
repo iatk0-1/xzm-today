@@ -1,0 +1,12 @@
+.after-sale-surface { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+.after-sale-surface input, .after-sale-surface textarea, .after-sale-surface button { font-family: inherit; }
+.after-sale-form-control { width: 115px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+.after-sale-form-unit { width: 14px; flex-shrink: 0; font-size: 22rpx; color: #888; }
+/* 与购物车相同的数量控件：28px 按钮、35px 数字区和内部细分隔线。 */
+.after-sale-qty-stepper { display: flex; align-items: center; height: 28px; box-sizing: content-box; border: 1px solid #eee; border-radius: 0; flex-shrink: 0; }
+.after-sale-qty-button { width: 28px; height: 28px; display: flex; justify-content: center; align-items: center; font-family: -apple-system, sans-serif; font-size: 14px; color: #888; flex-shrink: 0; margin: 0; padding: 0; min-width: 28px; border: 0; border-radius: 0; background: transparent; line-height: 28px; box-sizing: content-box; }
+.after-sale-qty-button.disabled { color: #ccc; }
+.after-sale-qty-stepper.disabled { opacity: .55; }
+.after-sale-qty-stepper .after-sale-qty-number { width: 35px; height: 28px; display: flex; justify-content: center; align-items: center; box-sizing: content-box; padding: 0; margin: 0; font-family: "Times New Roman", Times, serif; font-size: 13px; line-height: 28px; text-align: center; color: #333; border: 0; border-left: 1px solid #eee; border-right: 1px solid #eee; border-radius: 0; background: transparent; flex-shrink: 0; }
+.after-sale-qty-stepper .after-sale-qty-button::after { border: none; }
+.after-sale-qty-stepper .after-sale-qty-button[disabled] { color: #ccc; background: transparent; }

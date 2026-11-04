@@ -86,3 +86,5 @@ page { background: #f5f6f8; color: #26313e; }
 .correction-loss.selected { border-color: #527294; background: #edf2f8; }
 .correction-result, .correction-blocked { margin: 0 24rpx 24rpx; padding: 20rpx; font-size: 24rpx; line-height: 1.9; border-radius: 10rpx; }
 .correction-result { background: #eaf5ee; color: #366c49; }.correction-blocked { background: #fff3e2; color: #936923; }
+
+@import "../../styles/afterSaleEmbedded.wxss";
