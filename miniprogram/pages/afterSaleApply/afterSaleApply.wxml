@@ -124,14 +124,23 @@
         {{item}}
       </view>
     </view>
-    <view class="reason-description">
+    <view id="reason-description" class="reason-description">
     <textarea
       class="reason-textarea"
       placeholder="补充说明（选填）"
-      value="{{reasonText}}"
+      model:value="{{reasonInputValue}}"
+      auto-height="{{true}}"
+      disable-default-padding="{{true}}"
+      adjust-position="{{false}}"
+      bindfocus="onReasonFocus"
+      bindkeyboardheightchange="onReasonKeyboardHeightChange"
       bindinput="onReasonInput"
-      maxlength="500"/>
-    <view class="reason-count">{{reasonText.length}}/500</view>
+      bind:keyboardcompositionstart="onReasonCompositionStart"
+      bind:keyboardcompositionend="onReasonCompositionEnd"
+      bindblur="onReasonBlur"
+      bindconfirm="onReasonFinish"
+      maxlength="-1"/>
+    <view class="reason-count">{{reasonLength}}/500</view>
     </view>
   </view>
 
@@ -156,6 +165,7 @@
   </view>
 
   <!-- 底部提交栏 -->
+  <view style="height: {{reasonKeyboardSpace}}px;" aria-hidden="true"></view>
   <view class="submit-bar">
     <view class="submit-info">
       <text class="submit-label">申请退款 · 已选 {{selectedItems.length}} 项</text>

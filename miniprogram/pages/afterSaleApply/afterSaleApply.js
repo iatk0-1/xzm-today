@@ -4,6 +4,7 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const refundChannels = require('../../utils/refundChannels');
+const { limitTextInput } = require('../../utils/textInputLimit');
 
 const DEFAULT_AFTER_SALE_REASON = '不想要了';
 
@@ -33,6 +34,9 @@ Page({
     refundQuote: null, refundQuoteLoading: false, refundQuoteError: '',
     reason: '',
     reasonText: '',
+    reasonInputValue: '',
+    reasonLength: 0,
+    reasonKeyboardSpace: 0,
     reasonOptions: REASON_OPTIONS,
     evidenceImages: [],
     evidenceUrls: '',
@@ -40,6 +44,7 @@ Page({
   },
 
   onLoad: function(options) {
+    this._reasonWindowInfo = wx.getWindowInfo();
     if (options.orderId) {
       this.setData({ orderId: options.orderId });
       this.loadOrderDetail(options.orderId);
@@ -52,6 +57,12 @@ Page({
   copyOrderNo: function() {
     const order = this.data.order || {};
     clipboard.copyText(order.id, '订单号');
+  },
+
+  onUnload: function() {
+    clearTimeout(this._reasonCompositionTimer);
+    this._reasonInputRevision = (this._reasonInputRevision || 0) + 1;
+    this._reasonFocused = false;
   },
 
   // 加载订单详情并拆分商品
@@ -413,8 +424,102 @@ Page({
 
   // 输入原因文本
   onReasonInput: function(e) {
-    this.setData({
-      reasonText: e.detail.value
+    this._reasonDraft = e.detail.value;
+    this._reasonDraftCursor = e.detail.cursor;
+    this._reasonInputRevision = (this._reasonInputRevision || 0) + 1;
+    // 229 是部分输入法提供的组词键值；组词阶段不回写 value，也不截断拼音。
+    if (this._reasonComposing || e.detail.isComposing === true
+        || (e.detail.keyCode === 229 && !this._reasonCompositionSettling)) return;
+    clearTimeout(this._reasonCompositionTimer);
+    this._reasonCompositionSettling = false;
+    this.commitReasonInput(e.detail.value, e.detail.cursor);
+  },
+
+  onReasonCompositionStart: function() {
+    clearTimeout(this._reasonCompositionTimer);
+    this._reasonComposing = true;
+    this._reasonCompositionSettling = false;
+    this._reasonInputRevision = (this._reasonInputRevision || 0) + 1;
+  },
+
+  onReasonCompositionEnd: function() {
+    this._reasonComposing = false;
+    this._reasonCompositionSettling = true;
+    // 原生 input 与组词结束事件的先后因平台而异，等本轮事件完成再处理。
+    const revision = this._reasonInputRevision;
+    clearTimeout(this._reasonCompositionTimer);
+    this._reasonCompositionTimer = setTimeout(() => {
+      if (this._reasonComposing || revision !== this._reasonInputRevision) return;
+      this._reasonCompositionSettling = false;
+      this.commitReasonInput(this._reasonDraft == null ? this.data.reasonText : this._reasonDraft, this._reasonDraftCursor);
+    }, 0);
+  },
+
+  onReasonFinish: function(e) {
+    clearTimeout(this._reasonCompositionTimer);
+    this._reasonComposing = false;
+    this._reasonCompositionSettling = false;
+    this.commitReasonInput(e.detail.value, e.detail.cursor);
+  },
+
+  onReasonBlur: function(e) {
+    this.onReasonFinish(e);
+    this._reasonFocused = false;
+    if (this.data.reasonKeyboardSpace) this.setData({ reasonKeyboardSpace: 0 });
+  },
+
+  onReasonFocus: function(e) {
+    this._reasonFocused = true;
+    const info = wx.getWindowInfo();
+    if (!this._reasonWindowInfo || info.windowWidth !== this._reasonWindowInfo.windowWidth) this._reasonWindowInfo = info;
+    this.onReasonKeyboardHeightChange({ detail: { height: Number(e.detail.height) || 0 } });
+  },
+
+  // 一次为完整五行腾出空间；换行时不再让键盘对齐逻辑反复上推页面。
+  onReasonKeyboardHeightChange: function(e) {
+    const height = Math.max(0, Number(e.detail.height) || 0);
+    if (!this._reasonFocused || height === this.data.reasonKeyboardSpace) return;
+    this.setData({ reasonKeyboardSpace: height }, () => {
+      if (!height) return;
+      wx.nextTick(() => this.ensureReasonVisible(height));
+    });
+  },
+
+  ensureReasonVisible: function(keyboardHeight) {
+    if (!this._reasonFocused || this.data.reasonKeyboardSpace !== keyboardHeight) return;
+    const info = wx.getWindowInfo();
+    const original = this._reasonWindowInfo || info;
+    const availableBottom = Math.min(info.windowHeight, original.windowHeight - keyboardHeight);
+    const reservedHeight = 208 * info.windowWidth / 750;
+    const query = wx.createSelectorQuery();
+    query.select('#reason-description').boundingClientRect();
+    query.selectViewport().scrollOffset();
+    query.exec(([rect, viewport]) => {
+      if (!rect || !viewport || !this._reasonFocused || this.data.reasonKeyboardSpace !== keyboardHeight) return;
+      const needed = rect.top + reservedHeight + 12 - availableBottom;
+      const offset = Math.min(needed, Math.max(0, rect.top - 12));
+      if (offset > 1) wx.pageScrollTo({ scrollTop: viewport.scrollTop + offset, duration: 0 });
+    });
+  },
+
+  commitReasonInput: function(value, cursor) {
+    const limited = limitTextInput(value, this.data.reasonText, cursor);
+    const revision = this._reasonInputRevision = (this._reasonInputRevision || 0) + 1;
+    this._reasonDraft = limited.value;
+    this._reasonDraftCursor = limited.cursor;
+    const patch = {};
+    if (limited.value !== this.data.reasonText) patch.reasonText = limited.value;
+    if (limited.length !== this.data.reasonLength) patch.reasonLength = limited.length;
+    if (!limited.truncated) {
+      // 正常输入只更新提交值和计数，不重设原生文本或光标，保留其滚动位置。
+      if (Object.keys(patch).length) this.setData(patch);
+      return;
+    }
+    if (Object.keys(patch).length) this.setData(patch);
+    // model:value 已跟随真实输入更新。只裁剪一次，不写入临时长文本、不强制定位光标。
+    wx.nextTick(() => {
+      if (revision !== this._reasonInputRevision) return;
+      if (this.data.reasonInputValue !== limited.value) this.setData({ reasonInputValue: limited.value });
     });
   },
 
@@ -486,7 +591,7 @@ Page({
     }
 
     // 接口仍使用原 reason 字符串，保留已选原因和用户补充说明。
-    const reason = [this.data.reason, this.data.reasonText]
+    const reason = [this.data.reason, limitTextInput(this.data.reasonText).value]
       .map(value => String(value || '').trim()).filter(Boolean).join('\n') || DEFAULT_AFTER_SALE_REASON;
 
     wx.showLoading({ title: '提交中...', mask: true });
