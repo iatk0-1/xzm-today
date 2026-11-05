@@ -76,6 +76,7 @@ function setup(component = 'productDetailSheet', handlers = {}) {
     selectComponent() { return child; },
     createSelectorQuery() { return { select() { return this; }, boundingClientRect(cb) { this.cb = cb; return this; }, exec() { this.cb({ height: 2100 }); } }; }
   };
+  instance.verifyPickedSkuAvailability = async () => true;
   if (component === 'productDetail') {
     instance.data.viewportHeight = 472; instance.data.contentOffset = 0; instance.data.productId = '1'; instance._ready = true;
   }
@@ -367,7 +368,7 @@ test('返回和原生返回只关闭商品窗口，先下滑动画再清理，�
 
 for (const action of ['cart', 'buy']) {
   for (const blurFirst of [false, true]) {
-    test(`心愿内半屏商品${action}：编辑数量时首次点购买按钮只收键盘，blur 优先=${blurFirst}`, () => {
+    test(`心愿内半屏商品${action}：编辑数量时首次点购买按钮只收键盘，blur 优先=${blurFirst}`, async () => {
       const { instance: detail, calls } = setup('productDetail');
       detail.data.product = { id: '1', name: '外套', coverUrl: 'cover.jpg',
         skuMatrix: [{ skuId: '11', color: '黑色', size: 'M', stock: 5, price: 99 }] };
@@ -382,7 +383,7 @@ for (const action of ['cart', 'buy']) {
       assert.equal(calls.posts.length, 0);
       assert.equal(calls.navigation.length, 0);
       detail.onSkuQuantityTouchStart(button);
-      detail.confirmSkuAction(button);
+      await detail.confirmSkuAction(button);
       if (action === 'cart') {
         assert.equal(calls.posts.length, 1);
         assert.equal(calls.posts[0].data.items[0].count, 3);
@@ -464,24 +465,25 @@ test('共用规格逻辑在弹窗选择数量并加购，防止重复提交，�
   detail.data.uniqueColors = ['黑色']; detail.data.uniqueSizes = ['M'];
   detail.openSkuPanel(tap({ action: 'cart' })); detail.skuQuantityPlus();
   detail.confirmSkuAction(tap({ action: 'cart' })); detail.confirmSkuAction(tap({ action: 'cart' }));
+  await new Promise(setImmediate);
   assert.equal(calls.posts.length, 1);
   assert.deepEqual(plain(calls.posts[0]), { url: '/cart/items/batch', data: { items: [{ productId: '360435019602202624',
     skuId: '360435019602202625', color: '黑色', size: 'M', count: 1 }] } });
   finish({}); await new Promise(setImmediate);
   assert.equal(detail.data.purchasePending, false); assert.equal(detail.data.showSku, false);
-  detail.confirmSkuAction(tap({ action: 'buy' }));
+  await detail.confirmSkuAction(tap({ action: 'buy' }));
   assert.equal(calls.navigation[0].url, '/pages/checkout/checkout');
   assert.equal(calls.storage[0].value[0].skuId, '360435019602202625');
   assert.equal(calls.storage[0].value[0].count, 1);
 });
 
-test('弹窗保留套装勾选和购买，售罄与下架阻止加购', () => {
+test('弹窗保留套装勾选和购买，售罄与下架阻止加购', async () => {
   const { instance: detail, calls } = setup('productDetail');
   detail.data.product = { id: '1', name: '套装', bundleGroups: [
     { name: '上衣', skus: [{ skuId: '11', color: '黑', size: 'M', stock: 2, price: 10 }] },
     { name: '裤子', skus: [{ skuId: '12', color: '黑', size: 'M', stock: 2, price: 20 }] }
   ] };
-  detail.openSkuPanel(tap({ action: 'buy' })); detail.confirmSkuAction(tap({ action: 'buy' }));
+  detail.openSkuPanel(tap({ action: 'buy' })); await detail.confirmSkuAction(tap({ action: 'buy' }));
   assert.equal(calls.storage[0].value[0].bundleConfig.length, 2); assert.equal(calls.storage[0].value[0].finalPrice, 30);
   detail.data.product.offSale = true; detail.confirmSkuAction(tap({ action: 'cart' }));
   assert.equal(calls.posts.length, 0);

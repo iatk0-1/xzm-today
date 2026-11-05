@@ -28,7 +28,10 @@ function setup(t, handler) {
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../utils', file + '.js'), 'utf8'), {
       module, exports: module.exports, wx, console,
       require(dependency) {
-        if (dependency.endsWith('/api')) return { post: async (url, data) => { cartRequests.push({ url, data }); return {}; } };
+        if (dependency.endsWith('/api')) return {
+          get: async url => url.endsWith('/promotions') ? [] : { product: page.data.currentProduct },
+          post: async (url, data) => { cartRequests.push({ url, data }); return {}; }
+        };
         if (dependency.endsWith('/auth')) return { getUserInfo: () => ({ id: 1 }) };
         const name = path.basename(dependency);
         if (['skuSelectionList', 'skuSelectionDraft'].includes(name)) return loadPickerUtility(name);
@@ -543,7 +546,7 @@ test('搜索卡片输入中点加购仅结束输入，正常点击打开规格�
   assert.equal(page.data.currentSkuId, 's1');
   assert.equal(page.data.currentSkuPrice, 30);
   page.skuQuantityPlus();
-  page.confirmAddToCart(event({ action: 'cart' }));
+  await page.confirmAddToCart(event({ action: 'cart' }));
   await flush();
   assert.equal(cartRequests.length, 1);
   assert.deepEqual(JSON.parse(JSON.stringify(cartRequests[0])), {

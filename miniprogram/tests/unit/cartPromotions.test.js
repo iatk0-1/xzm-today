@@ -51,7 +51,7 @@ test('勾选的跨商品一起报价，底部使用服务端优惠后货款且�
   await page.onLoad();assert.equal(page.data.originalTotalPrice, '3.00');assert.equal(page.data.totalPrice, '2.70');
   assert.equal(page.data.discountAmount, '0.30');assert.equal(page.data.totalCount, 2);assert.equal(page.data.cartQuoteReady, true);
   const request = calls.find(call => call.method === 'POST');assert.equal(request.url, '/orders/goods-quote');
-  assert.deepEqual(request.data, { items: [{ skuId: 's1', qty: 1, salePrice: 1, pool: 'main' }, { skuId: 's2', qty: 1, salePrice: 2, pool: 'main' }] });
+  assert.deepEqual(request.data, { includeReadyStock: false, items: [{ skuId: 's1', qty: 1, salePrice: 1, pool: 'main' }, { skuId: 's2', qty: 1, salePrice: 2, pool: 'main' }] });
   assert.equal(page.data.cartList[0].finalPrice, 1);assert.equal(page.data.cartList[1].finalPrice, 2);
 });
 
@@ -102,6 +102,7 @@ test('报价失败时不能把原价当成交价结算，重新加载后恢复�
   page.goToCheckout();assert.equal(navigation.length, 0);
   fail = false;await page.loadCartData();assert.equal(page.data.totalPrice, '2.80');
   page.goToCheckout();assert.equal(navigation[0], '/pages/checkout/checkout');
+  assert.equal(storage.get('checkoutSource'), 'cart');
   assert.deepEqual(storage.get('checkoutItems').map(item => item.finalPrice), [1, 2]);
 });
 

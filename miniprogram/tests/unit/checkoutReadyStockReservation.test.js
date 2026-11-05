@@ -28,6 +28,7 @@ function harness({ create, confirm = true, modal, paymentSuccess = false, ready 
       if (name.endsWith('/skuSelectionDraft')) return { clearCheckoutDrafts: items => drafts.push(items) };
       if (name.endsWith('/skuPromotionDisplay')) return require('../../utils/skuPromotionDisplay');
       if (name.endsWith('/orderPaymentTimeout')) return timeout;
+      if (name.endsWith('/readyStockPrompt')) return require('../../utils/readyStockPrompt');
       if (name.endsWith('/error')) return require('../../utils/error');
       return {};
     },
@@ -109,7 +110,8 @@ test('同SKU多行及套装按真实子项合并预期，更新报价时不重�
   ];
   assert.deepEqual(copy(page.buildReadyStockExpectation()), [{ skuId: '11', readyStockQty: 3 }, { skuId: '22', readyStockQty: 1 }]);
   page.updateReadyStockQuote([{ skuId: '11', readyStockQty: 1 }, { skuId: '22', readyStockQty: 0 }]);
-  assert.deepEqual(copy(page._checkoutQuote.items.map(line => line.readyStockQty)), [1, 0, 0]);
+  assert.deepEqual(copy(page._checkoutReadyStock.map(line => line.readyStockQty)), [1, 0, 0]);
+  assert.deepEqual(copy(page._checkoutQuote.items.map(line => line.readyStockQty)), [2, 1, 1], '现货确认只更新独立快照');
 });
 
 test('多个规格同时不足一并提示，确认期间重复点击不多单，离开页面后不重试', async () => {

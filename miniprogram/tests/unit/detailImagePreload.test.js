@@ -109,7 +109,7 @@ for (const kind of ['product', 'sheet']) {
     assert.equal(env.previews.at(-1).current, '/tmp/4');
     env.page.previewDetailImage({ currentTarget: { dataset: { index: 0 } } });
     assert.equal(env.previews.at(-1).current, '/tmp/5');
-    env.page.confirmSkuAction({ currentTarget: { dataset: { action: 'buy' } } });
+    await env.page.confirmSkuAction({ currentTarget: { dataset: { action: 'buy' } } });
     assert.equal(env.storage[0].value[0].coverUrl, url('1-blue'));
     assert.deepEqual(plain(env.page.data.product.skuMatrix).map(sku => sku.imageUrl), response.product.skuMatrix.map(sku => sku.imageUrl));
   });

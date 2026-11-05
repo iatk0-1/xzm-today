@@ -52,6 +52,8 @@ function createPage(name, skus, bundleGroups, preserveCache = false) {
   const page = Object.assign({}, pages[name]);
   page.data = JSON.parse(JSON.stringify(pages[name].data));
   page.setData = patch => Object.assign(page.data, patch);
+  // 本文件隔离验证选择、缓存及提交格式；真实库存核对另由 skuAvailability 测试覆盖。
+  page.verifyPickedSkuAvailability = async () => true;
   const product = { id: 1, coverUrl: 'cover.jpg', skuMatrix: skus, bundleGroups };
   page.data.product = product;
   if (name === 'liveRoomDetail') Object.assign(page.data, { canBuy: true, session: { status: 'live' } });
@@ -164,7 +166,7 @@ for (const name of ['index', 'search', 'detail', 'liveRoomDetail']) {
   });
 }
 
-test('仅首页打开规格弹窗触发全量预下载，切换与结算继续保留原始图片地址', t => {
+test('仅首页打开规格弹窗触发全量预下载，切换与结算继续保留原始图片地址', async t => {
   const requests = [];
   const previews = [];
   let checkout;
@@ -196,7 +198,7 @@ test('仅首页打开规格弹窗触发全量预下载，切换与结算继续�
   assert.equal(page.data.skuPanelImagePaths[skus[1].imageUrl], '/tmp/blue');
   page.previewSkuPanelImage(event({}));
   assert.equal(previews[0].current, '/tmp/blue');
-  page.confirmAddToCart(event({ action: 'buy' }));
+  await page.confirmAddToCart(event({ action: 'buy' }));
   assert.equal(checkout[0].coverUrl, skus[1].imageUrl);
 });
 
@@ -661,6 +663,7 @@ for (const name of ['index', 'search', 'detail', 'liveRoomDetail']) {
     const submit = name === 'detail' ? 'confirmSkuAction' : 'confirmAddToCart';
     const task = page[submit](event({ action: 'cart' }));
     page[submit](event({ action: 'cart' }));
+    await new Promise(setImmediate);
     assert.equal(selectionCartRequests.length, 1);
     assert.deepEqual(selectionCartRequests[0].data.items.map(item => item.count), [2, 3]);
     reject({ message: '模拟批量加购失败' });

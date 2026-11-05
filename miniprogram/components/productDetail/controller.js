@@ -575,7 +575,7 @@ function createProductDetailConfig() {
   openSkuPanel(e) {
     if (Date.now() < (this._suppressTapUntil || 0)) return;
     const product = this.data.product;
-    if (!product.id || product.offSale || product.soldOut) return;
+    if (!product.id || (!e.currentTarget.dataset.skuRefresh && (product.offSale || product.soldOut))) return;
     this.resetSkuQuantityEditing();
 
     this.setData({ isAdmin: !!auth.isAdmin(), isStallManager: !!auth.isStallManager() });

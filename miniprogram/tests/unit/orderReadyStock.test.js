@@ -63,6 +63,7 @@ function checkout(post) {
     require(name) {
       if (name.endsWith('/api')) return { post };
       if (name.endsWith('/skuPromotionDisplay')) return display;
+      if (name.endsWith('/readyStockPrompt')) return require('../../utils/readyStockPrompt');
       if (name.endsWith('/error')) return require('../../utils/error');
       return {};
     }
@@ -71,17 +72,20 @@ function checkout(post) {
     setData(patch) { Object.assign(this.data, patch); } };
 }
 
-test('结算刷新报价期间清除旧现货文案，迟到报价不能覆盖最新现货件数', async () => {
+test('刷新金额不替换已确认现货，重叠请求复用商品报价，迟到响应不覆盖结算', async () => {
   const pending = [];
   const page = checkout(() => new Promise(resolve => pending.push(resolve)));
+  page.initializeCheckoutReadyStock([{ ...normal()[0], readyStockQty: 2 }], false);
   const first = page.refreshShippingQuote();
-  assert.equal(page.data.checkoutDisplayItems[0].readyStockQty, null);
+  assert.equal(page.data.checkoutDisplayItems[0].readyStockQty, 2);
   pending.shift()(quote(2));await first;
   assert.equal(page.data.checkoutDisplayItems[0].readyStockQty, 2);
-  const stale = page.refreshShippingQuote();
-  assert.equal(page.data.checkoutDisplayItems[0].readyStockQty, null);
-  const latest = page.refreshShippingQuote();
-  pending[1](quote(1));await latest;
-  pending[0](quote(3));await stale;
-  assert.equal(page.data.checkoutDisplayItems[0].readyStockQty, 1);
+  await page.refreshShippingQuote();
+  assert.equal(pending.length, 0, '普通运费刷新不重查商品');
+  const stale = page.refreshShippingQuote({ refreshGoods: true });
+  assert.equal(page.data.checkoutDisplayItems[0].readyStockQty, 2);
+  const latest = page.refreshShippingQuote({ refreshGoods: true });
+  assert.equal(pending.length, 1);
+  pending[0](quote(0));await Promise.all([latest, stale]);
+  assert.equal(page.data.checkoutDisplayItems[0].readyStockQty, 2);
 });

@@ -148,7 +148,7 @@ Page(pageSync.wrap({
       salePrice: Number(item.finalPrice != null ? item.finalPrice : item.price), pool: 'main',
       ...(item.bundleConfig && item.bundleConfig.length ? { bundleConfig: item.bundleConfig } : {}) }));
     try {
-      const quote = await api.post('/orders/goods-quote', { items });
+      const quote = await api.post('/orders/goods-quote', { items, includeReadyStock: false });
       if (this._cartDisposed || version !== this._cartQuoteVersion) return;
       const amounts = promotionDisplay.amountSummary(quote, totalCents);
       this.setData({ totalPrice: amounts.goodsAmount, discountAmount: amounts.discountAmount,
@@ -262,6 +262,7 @@ Page(pageSync.wrap({
       wx.showToast({ title: this.data.cartQuoteError || '正在计算优惠金额，请稍候', icon: 'none' });return;
     }
     let selectedItems = this.data.cartList.filter(item => item.selected && !item.disabled && Number(item.count) > 0);
+    wx.setStorageSync('checkoutSource', 'cart');
     wx.setStorageSync('checkoutItems', selectedItems);
 
     wx.navigateTo({

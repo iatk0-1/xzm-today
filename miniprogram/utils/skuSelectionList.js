@@ -5,6 +5,32 @@ const { getSkuOptions, findSelectedSku, getSkuOptionSelection } = require('./sku
 const drafts = require('./skuSelectionDraft');
 const promotionDisplay = require('../utils/skuPromotionDisplay');
 const skuMoneyText = require('./skuMoneyText');
+const { normalizeProductImages } = require('./productImage');
+const { readyStockPrompt } = require('./readyStockPrompt');
+
+const productListFields = ['productList', 'results', 'leftColumn', 'rightColumn', 'products', 'filteredProducts'];
+
+function productSource(page, product) {
+  for (const field of productListFields) {
+    const found = Array.isArray(page.data[field]) && page.data[field].find(item => String(item.id) === String(product.id));
+    if (found) return found;
+  }
+  return page._skuUpdatedProducts && page._skuUpdatedProducts.get(String(product.id)) || product;
+}
+
+function rememberProduct(page, product) {
+  if (!page._skuUpdatedProducts) page._skuUpdatedProducts = new Map();
+  page._skuUpdatedProducts.delete(String(product.id));
+  page._skuUpdatedProducts.set(String(product.id), product);
+  if (page._skuUpdatedProducts.size > 20) page._skuUpdatedProducts.delete(page._skuUpdatedProducts.keys().next().value);
+  const patch = {};
+  for (const field of productListFields) {
+    if (Array.isArray(page.data[field]) && page.data[field].some(item => String(item.id) === String(product.id)))
+      patch[field] = page.data[field].map(item => String(item.id) === String(product.id) ? { ...item, ...product } : item);
+  }
+  if (page.data.product && String(page.data.product.id) === String(product.id)) patch.product = product;
+  if (Object.keys(patch).length) page.setData(patch);
+}
 
 const initialData = {
   pickedSkuItems: [], pickedTotalCount: 0, pickedTotalPrice: '0.00',
@@ -57,6 +83,48 @@ function decorateOptions(skus, color, quantities) {
 }
 
 function getProduct(page) { return page.data.currentProduct || page.data.product || {}; }
+
+function latestProduct(previous, response) {
+  const product = response && response.product;
+  if (!product || String(product.id) !== String(previous.id) || !Array.isArray(product.skuMatrix))
+    throw new Error('商品规格数据无效，请稍后重试');
+  const result = normalizedProduct(normalizeProductImages({ ...previous, ...product,
+    title: product.name || previous.title,
+    bundleGroups: response.bundleGroups || product.bundleGroups || null,
+    offSale: product.status != null ? String(product.status).toLowerCase() !== 'on' : !!product.offSale
+  }));
+  result.soldOut = isProductSoldOut(result);
+  return result;
+}
+
+function availabilityIssues(previous, product, selected) {
+  if (product.offSale) return { title: '商品已下架', message: '当前商品已下架，无法购买或加入购物车' };
+  const byId = new Map(product.skuMatrix.map(sku => [String(sku.skuId), sku]));
+  const stock = [], ready = [], changed = [];
+  for (const item of selected) {
+    const sku = byId.get(String(item.skuId));
+    const productName = product.name || product.title || previous.name;
+    const label = `当前「${productName}」（${item.color} / ${item.size}）`;
+    if (!sku) { stock.push(`${label}规格已失效，请重新选择`);continue; }
+    if (isSkuSoldOut(sku) || !sku.unlimitedStock && item.count > Number(sku.stock)) {
+      stock.push(`${label}库存不足，当前可售${Math.max(0, Number(sku.stock) || 0)}件`);
+    }
+    const expected = Math.min(item.count, getFreeStockQty(item));
+    const available = Math.min(item.count, getFreeStockQty(sku));
+    if (available < expected) ready.push({ productName, color: item.color, size: item.size, readyStockQty: available });
+    if (Math.round(Number(item.price) * 100) !== Math.round(Number(sku.price) * 100)
+        || item.color !== sku.color || item.size !== sku.size)
+      changed.push(`${label}价格或规格已更新，请重新确认`);
+  }
+  if (!stock.length && !changed.length && ready.length) return { confirmation: readyStockPrompt(ready) };
+  const messages = [...stock, ...ready.map(line => `当前「${line.productName}」（${line.color} / ${line.size}）现货不足，只剩现货${line.readyStockQty}件`), ...changed];
+  return messages.length ? { title: stock.length ? ready.length ? '库存及现货不足' : '库存不足' : '商品信息已更新',
+    message: messages.join('；\n') + '。\n已选规格将按最新数据更新，请调整后重试。' } : null;
+}
+
+function stockModal(title, content) {
+  return new Promise(resolve => wx.showModal({ title, content, showCancel: false, success: resolve, fail: resolve }));
+}
 
 function badgeText(count) { return count > 99 ? '99+' : String(count || 0); }
 
@@ -144,12 +212,40 @@ function applyPickerPatch(page, patch) {
 }
 
 const methods = {
+  async verifyPickedSkuAvailability() {
+    const id = String(getProduct(this).id);
+    const version = this._productVersion;
+    const current = () => !this._skuPickerDisposed && this.data.showSku
+      && String(getProduct(this).id) === id && this._productVersion === version;
+    while (current()) {
+      const product = getProduct(this);
+      const response = await api.get('/products/' + id);
+      if (!current()) return false;
+      const fresh = latestProduct(product, response);
+      const issue = availabilityIssues(product, fresh, this.data.pickedSkuItems);
+      if (!issue) { this.applySkuProductUpdate(fresh);return true; }
+      wx.hideLoading();
+      if (!issue.confirmation) {
+        await stockModal(issue.title, issue.message);
+        if (current()) this.applySkuProductUpdate(fresh);
+        return false;
+      }
+      const confirmed = await new Promise(resolve => wx.showModal({ ...issue.confirmation,
+        success: result => resolve(!!result.confirm), fail: () => resolve(false) }));
+      if (!current()) return false;
+      this.applySkuProductUpdate(fresh);
+      if (!confirmed) return false;
+      wx.showLoading({ title: '核对库存...', mask: true });
+    }
+    return false;
+  },
+
   disposeSkuPromotions() {
     this._skuPickerDisposed = true;
     this._skuOfferVersion = (this._skuOfferVersion || 0) + 1;
     this._skuQuoteVersion = (this._skuQuoteVersion || 0) + 1;
   },
-  initializePickedSkus() {
+  initializePickedSkus(quantities) {
     const product = getProduct(this);
     this._pickedDraftKey = drafts.draftKey(product.id || product._id);
     this._pickedSkus = new Map();
@@ -158,7 +254,7 @@ const methods = {
       const key = String(sku.skuId || sku.id);
       this._pickedSkus.set(key, { ...normalizedSku(sku), ...this._pickedSkus.get(key), bundleGroupName: group.bundleGroupName });
     }));
-    const cached = drafts.readDraft(this._pickedDraftKey);
+    const cached = quantities ? { quantities } : drafts.readDraft(this._pickedDraftKey);
     this._pickedQuantities = {};
     for (const [id, sku] of this._pickedSkus) {
       const quantity = quantityFor(cached.quantities[id], sku);
@@ -224,7 +320,8 @@ const methods = {
     this._skuQuoteRequest = signature;
     try {
       const value = await api.post('/orders/goods-quote', {
-        items: promotionDisplay.quoteItems(this.data.pickedSkuItems, (this.data.bundleSelections || []).length > 0)
+        items: promotionDisplay.quoteItems(this.data.pickedSkuItems, (this.data.bundleSelections || []).length > 0),
+        includeReadyStock: false
       });
       if (this._skuPickerDisposed || !this.data.showSku || version !== this._skuQuoteVersion || signature !== selectionSignature(this)) return;
       promotionDisplay.pricing(this.data.pickedSkuItems, value);
@@ -365,39 +462,50 @@ const methods = {
 
   async submitPickedSkus(e) {
     if (this.dismissSkuQuantityKeyboard(e) || this.data.purchasePending || Date.now() < (this._suppressTapUntil || 0)) return;
-    const product = getProduct(this);
+    let product = getProduct(this);
     if (!product.id || product.offSale || product.soldOut) return;
     if (product.productType === 'live') {
       if (product.convertedToProductId) return wx.navigateTo({ url: '/pages/detail/detail?id=' + product.convertedToProductId });
       const sessionStatus = this.data.session && this.data.session.status || product.sessionStatus;
       if (sessionStatus !== 'live') return wx.showToast({ title: '直播已结束，无法购买', icon: 'none' });
     }
-    const groups = this.data.bundleSelections || [];
+    let groups = this.data.bundleSelections || [];
     if (!this.data.pickedTotalCount) {
       const current = groups.length ? groups.map(group => group.selectedSku) : [this._pickedSkus.get(String(this.data.currentSkuId))];
       if (current.some(sku => !sku || isSkuSoldOut(sku))) return wx.showToast({ title: '请选择完整的可售规格', icon: 'none' });
       current.forEach(sku => this.setPickedSkuQuantity(sku.skuId, 1));
     }
-    const selected = this.data.pickedSkuItems;
+    let selected = this.data.pickedSkuItems;
     if (groups.length && groups.some(group => !selected.some(sku => group.skus.some(candidate => String(candidate.skuId) === sku.skuId)))) {
       return wx.showToast({ title: '请为套装每个子项至少选择一件商品', icon: 'none' });
     }
-    const snapshot = { key: this._pickedDraftKey, revision: this._pickedDraft.revision };
-    const checkoutItems = selected.map(sku => ({ productId: product.id, skuId: sku.skuId,
-      name: product.name || product.title, image: sku.imageUrl, coverUrl: sku.imageUrl,
-      selectedColor: sku.color, selectedSize: sku.size, price: Number(sku.price), finalPrice: Number(sku.price),
-      count: sku.count, selected: true, skuSelectionDraft: snapshot }));
-    if (groups.length) {
-      const first = checkoutItems[0];
-      const bundleConfig = selected.map(sku => ({ bundleGroupName: sku.bundleGroupName, skuId: sku.skuId,
-        color: sku.color, size: sku.size, price: Number(sku.price), imageUrl: sku.imageUrl, count: sku.count }));
-      checkoutItems.splice(0, checkoutItems.length, { ...first, count: 1, bundleConfig,
-        name: product.name, image: product.coverUrl, price: Number(this.data.pickedTotalPrice), finalPrice: Number(this.data.pickedTotalPrice) });
-    }
     const action = e.currentTarget.dataset.action || this.data.skuAction;
     this.setData({ purchasePending: true });
+    wx.showLoading({ title: action === 'buy' ? '核对库存...' : '添加中...', mask: true });
+    let stage = action === 'buy' ? 'validate' : 'submit';
     try {
+      if (action === 'buy' && !await this.verifyPickedSkuAvailability()) return;
+      product = getProduct(this);groups = this.data.bundleSelections || [];selected = this.data.pickedSkuItems;
+      if (!selected.length || groups.some(group => !selected.some(sku => group.skus.some(candidate => String(candidate.skuId) === sku.skuId)))) {
+        wx.showToast({ title: '请重新选择完整的可售规格', icon: 'none' });return;
+      }
+      const snapshot = { key: this._pickedDraftKey, revision: this._pickedDraft.revision };
+      const checkoutItems = selected.map(sku => ({ productId: product.id, skuId: sku.skuId,
+        name: product.name || product.title, image: sku.imageUrl, coverUrl: sku.imageUrl,
+        selectedColor: sku.color, selectedSize: sku.size, price: Number(sku.price), finalPrice: Number(sku.price),
+        count: sku.count, readyStockQty: Math.min(sku.count, getFreeStockQty(sku)), selected: true, skuSelectionDraft: snapshot }));
+      if (groups.length) {
+        const first = checkoutItems[0];
+        const bundleConfig = selected.map(sku => ({ bundleGroupName: sku.bundleGroupName, skuId: sku.skuId,
+          color: sku.color, size: sku.size, price: Number(sku.price), imageUrl: sku.imageUrl, count: sku.count,
+          ...(action === 'buy' ? { readyStockQty: Math.min(sku.count, getFreeStockQty(sku)) } : {}) }));
+        checkoutItems.splice(0, checkoutItems.length, { ...first, count: 1, bundleConfig,
+          readyStockQty: bundleConfig.reduce((sum, item) => sum + (item.readyStockQty || 0), 0),
+          name: product.name, image: product.coverUrl, price: Number(this.data.pickedTotalPrice), finalPrice: Number(this.data.pickedTotalPrice) });
+      }
+      stage = 'submit';
       if (action === 'buy') {
+        wx.setStorageSync('checkoutSource', 'sku');
         wx.setStorageSync('checkoutItems', checkoutItems);
         await new Promise((resolve, reject) => wx.navigateTo({ url: '/pages/checkout/checkout', success: resolve, fail: reject }));
         this.setData({ showSku: false, showPickedSkus: false });
@@ -416,10 +524,15 @@ const methods = {
       }
     } catch (err) {
       console.error('提交已选规格失败:', err);
-      wx.showToast({ title: getErrorMessage(err, action === 'buy' ? '打开结算页失败，请重试' : '添加失败，请稍后重试'), icon: 'none' });
+      const message = getErrorMessage(err, stage === 'validate' ? '库存核对失败，请稍后重试' : action === 'buy' ? '打开结算页失败，请重试' : '添加失败，请稍后重试');
+      if (action !== 'buy' && /(现货|库存).*(不足|售罄)/.test(message)) {
+        wx.hideLoading();await stockModal(/现货/.test(message) ? '现货不足' : '库存不足', message);
+      } else if (stage === 'validate') {
+        wx.hideLoading();await stockModal('库存核对失败', message);
+      } else wx.showToast({ title: message, icon: 'none' });
     } finally {
-      if (action !== 'buy') wx.hideLoading();
-      this.setData({ purchasePending: false });
+      wx.hideLoading();
+      if (!this._skuPickerDisposed) this.setData({ purchasePending: false });
     }
   }
 };
@@ -428,6 +541,31 @@ const methods = {
 function enhancePicker(config, isDetail = false) {
   const original = { ...config };
   const enhanced = { ...config, ...methods };
+  enhanced.applySkuProductUpdate = function(product) {
+    rememberProduct(this, product);
+    const quantities = { ...this._pickedQuantities };
+    const color = this.data.selectedColor, size = this.data.selectedSize;
+    const chosen = new Map((this.data.bundleSelections || []).map(group => [group.bundleGroupName,
+      group.selectedSku && String(group.selectedSku.skuId)]));
+    const action = this.data.skuAction;
+    this._pickedSkus = null;this._pickedQuantities = {};
+    this._skuQuote = null;
+    this._skuOfferVersion = (this._skuOfferVersion || 0) + 1;
+    this._skuQuoteVersion = (this._skuQuoteVersion || 0) + 1;
+    this.setData({ currentProduct: product, ...(isDetail ? { product } : {}), skuPanelImagePaths: {},
+      promotionOffers: [], promotionOffersReady: false, skuQuoteError: '', skuQuoteLoading: false });
+    original.openSkuPanel.call(this, { currentTarget: { dataset: { product, action, skuRefresh: true } } });
+    if ((this.data.bundleSelections || []).length) {
+      const groups = this.data.bundleSelections.map(group => {
+        const sku = group.skus.find(item => String(item.skuId) === chosen.get(group.bundleGroupName) && !isSkuSoldOut(item));
+        return sku ? { ...group, selectedColor: sku.color, selectedSize: sku.size } : group;
+      });
+      this.setData(this._computeBundleSelections(groups, -1, null, null));
+    } else if (findSelectedSku(product.skuMatrix, color, size)) {
+      this.setData({ selectedColor: color, selectedSize: size });this.checkSkuMatch();
+    }
+    this.initializePickedSkus(quantities);this.loadSkuPromotions();
+  };
   enhanced.openSkuPanel = function(e) {
     if (this.data.purchasePending) return;
     this._skuPickerDisposed = false;
@@ -443,7 +581,7 @@ function enhancePicker(config, isDetail = false) {
       const product = normalizedProduct(this.data.product);
       this.setData({ product, currentProduct: product, skuPanelImagePaths: {} });
     }
-    else event.currentTarget.dataset.product = normalizedProduct(e.currentTarget.dataset.product);
+    else event.currentTarget.dataset.product = normalizedProduct(productSource(this, e.currentTarget.dataset.product));
     original.openSkuPanel.call(this, event);
     this.setData({ skuAction: action });
     if (this.data.showSku) { this.initializePickedSkus();this.loadSkuPromotions(); }
