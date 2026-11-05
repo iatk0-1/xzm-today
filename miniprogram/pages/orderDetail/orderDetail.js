@@ -33,6 +33,7 @@ Page(pageSync.wrap({
   },
 
   onLoad: function(options) {
+    this._orderDetailVisible = true;
     this.fromCustomerService = options.fromCustomerService === '1';
     if (options.outTradeNo) {
       this.loadPaymentOrder(options.outTradeNo);
@@ -55,28 +56,37 @@ Page(pageSync.wrap({
     } catch (error) { wx.showToast({ title: getErrorMessage(error, '支付订单加载失败，请从订单列表进入'), icon: 'none' }); }
   },
 
+  onShow: function() {
+    this._orderDetailVisible = true;
+    const order = this.data.order;
+    if (order && order.status === 'pending' && order.createdAt) this.startCountdown(order.createdAt);
+  },
+
+  onHide: function() {
+    this._orderDetailVisible = false;
+    this.stopCountdown();
+  },
+
   onUnload: function() {
-    // 页面卸载时清除定时器
-    if (this.countdownTimer) {
-      clearInterval(this.countdownTimer);
-      this.countdownTimer = null;
-    }
+    this._orderDetailVisible = false;
+    this.stopCountdown();
   },
 
   // 改造：从后端 API 获取订单详情
-  loadOrderDetail: async function(orderId) {
-    wx.showLoading({ title: '加载中...' });
+  loadOrderDetail: async function(orderId, options = {}) {
+    const showLoading = options.silent !== true && this._orderDetailVisible !== false;
+    if (showLoading) wx.showLoading({ title: '加载中...' });
 
     try {
       await auth.ensureAuthenticated({ silent: true });
       if (this.fromCustomerService && auth.isAdmin()) {
-        wx.hideLoading();
+        if (showLoading) wx.hideLoading();
         wx.redirectTo({ url: `/pages/adminOrderDetail/adminOrderDetail?id=${orderId}` });
         return;
       }
       const res = await api.get(`/orders/${orderId}`);
       Object.assign(res, promotionDisplay.orderAmounts(res));
-      wx.hideLoading();
+      if (showLoading) wx.hideLoading();
       const pricing = (Number(res.priceRevision) > 0 || Number(res.promotionDiscount) > 0) ? await api.get(`/orders/${orderId}/pricing`) : null;
       if (pricing) (pricing.items || []).forEach(row => { row.unitPriceDisplay = (Number(row.settlementAmount) / Math.max(1, Number(row.qty || 1))).toFixed(2); });
       res.items = promotionDisplay.orderItemPrices(res, pricing);
@@ -115,11 +125,11 @@ Page(pageSync.wrap({
       if (res.status === 'pending' && res.createdAt) {
         this.startCountdown(res.createdAt);
       } else {
-        if (this.countdownTimer) { clearInterval(this.countdownTimer); this.countdownTimer = null; }
+        this.stopCountdown();
         this.setData({ countdownText: '' });
       }
     } catch (err) {
-      wx.hideLoading();
+      if (showLoading) wx.hideLoading();
       wx.showToast({ title: getErrorMessage(err, '拉取订单失败'), icon: 'none' });
       console.error(err);
     }
@@ -275,13 +285,14 @@ Page(pageSync.wrap({
 
   // 启动支付倒计时
   startCountdown: function(createdAt) {
-    if (this.countdownTimer) { clearInterval(this.countdownTimer); this.countdownTimer = null; }
+    this.stopCountdown();
+    if (this._orderDetailVisible === false) return;
     const orderTime = parseDate(createdAt).getTime();
     const timeout = paymentTimeoutMinutes(this.data && this.data.order) * 60 * 1000;
     const deadline = orderTime + timeout;
 
     // 立即计算一次
-    this.updateCountdown(deadline);
+    if (this.updateCountdown(deadline) === false) return;
 
     // 每秒更新一次
     this.countdownTimer = setInterval(() => {
@@ -289,23 +300,37 @@ Page(pageSync.wrap({
     }, 1000);
   },
 
+  stopCountdown: function() {
+    if (this.countdownTimer) clearInterval(this.countdownTimer);
+    if (this._countdownRefreshTimer) clearTimeout(this._countdownRefreshTimer);
+    this.countdownTimer = null;
+    this._countdownRefreshTimer = null;
+  },
+
   // 更新倒计时显示
   updateCountdown: function(deadline) {
+    if (this._orderDetailVisible === false || !Number.isFinite(deadline)) return false;
     const now = new Date().getTime();
     const remaining = deadline - now;
 
     if (remaining <= 0) {
       // 已超时
       this.setData({ countdownText: '订单已超时，将自动取消' });
-      if (this.countdownTimer) {
-        clearInterval(this.countdownTimer);
-        this.countdownTimer = null;
+      if (this.countdownTimer) clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+      const orderId = this.data.order && this.data.order.id;
+      const refreshKey = String(orderId) + ':' + deadline;
+      // 后端自动取消有延迟；同一次超时只核对一次，不能由 pending 响应重新启动轮询。
+      if (orderId && this._timeoutRefreshKey !== refreshKey && !this._countdownRefreshTimer) {
+        this._countdownRefreshTimer = setTimeout(() => {
+          this._countdownRefreshTimer = null;
+          if (this._orderDetailVisible === false || !this.data.order
+              || String(this.data.order.id) !== String(orderId) || this.data.order.status !== 'pending') return;
+          this._timeoutRefreshKey = refreshKey;
+          return this.loadOrderDetail(orderId, { silent: true });
+        }, 2000);
       }
-      // 刷新订单状态
-      setTimeout(() => {
-        this.loadOrderDetail(this.data.order.id);
-      }, 2000);
-      return;
+      return false;
     }
 
     // 计算剩余分钟和秒数

@@ -108,11 +108,14 @@
         </view>
 
         <view class="action-row">
-          <button class="btn-ghost" open-type="contact" catchtap="stopCardTap" bindcontact="handleCustomerServiceContact"
-            session-from="order:{{item.id}}" show-message-card="true"
-            send-message-title="{{item.customerServiceCard.title}}"
-            send-message-img="{{item.customerServiceCard.image}}"
-            send-message-path="/pages/orderDetail/orderDetail?id={{item.id}}&fromCustomerService=1">联系客服</button>
+          <view class="btn-ghost contact-action">
+            <text>联系客服</text>
+            <button class="contact-button" aria-label="联系客服" open-type="contact" catchtap="stopCardTap" bindcontact="handleCustomerServiceContact"
+              session-from="order:{{item.id}}" show-message-card="true"
+              send-message-title="{{item.customerServiceCard.title}}"
+              send-message-img="{{item.customerServiceCard.image}}"
+              send-message-path="/pages/orderDetail/orderDetail?id={{item.id}}&fromCustomerService=1"></button>
+          </view>
 
           <view class="btn-solid" wx:if="{{item.status === 'pending'}}" catchtap="payOrder" data-id="{{item.id}}">立即支付</view>
           <view class="btn-ghost" wx:if="{{item.status === 'pending'}}" catchtap="cancelOrder" data-id="{{item.id}}">取消订单</view>
