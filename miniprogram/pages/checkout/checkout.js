@@ -3,6 +3,7 @@ const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/checkout/checkout.js
 const api = require('../../utils/api');
 const promotionDisplay = require('../../utils/skuPromotionDisplay');
+const paymentTimeout = require('../../utils/orderPaymentTimeout');
 const auth = require('../../utils/auth');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const { buildPurchaseNoticeSections } = require('../../utils/purchaseNotice');
@@ -190,6 +191,64 @@ Page({
       ...(item.bundleConfig && item.bundleConfig.length ? { bundleConfig: item.bundleConfig } : {}) }));
   },
 
+  buildReadyStockExpectation: function() {
+    const lines = this._checkoutQuote && this._checkoutQuote.items;
+    if (!Array.isArray(lines) || !lines.length) return null;
+    const totals = new Map();
+    for (const line of lines) {
+      if (!line || !line.skuId || !Number.isInteger(line.readyStockQty) || line.readyStockQty < 0) return null;
+      const key = String(line.skuId);
+      totals.set(key, (totals.get(key) || 0) + line.readyStockQty);
+    }
+    return Array.from(totals, ([skuId, readyStockQty]) => ({ skuId, readyStockQty }));
+  },
+
+  updateReadyStockQuote: function(current) {
+    if (!this._checkoutQuote || !Array.isArray(this._checkoutQuote.items)) return;
+    const remaining = new Map(current.map(line => [String(line.skuId), line.readyStockQty]));
+    const items = this._checkoutQuote.items.map(line => {
+      const key = String(line.skuId);
+      if (!remaining.has(key)) return line;
+      const readyStockQty = Math.min(Number(line.quantity), remaining.get(key));
+      remaining.set(key, remaining.get(key) - readyStockQty);
+      return { ...line, readyStockQty };
+    });
+    this._checkoutQuote = { ...this._checkoutQuote, items };
+    this.recalculateGoods();
+  },
+
+  createOrderWithReadyStockConfirmation: async function(orderData) {
+    const expected = this.buildReadyStockExpectation();
+    if (expected) orderData.expectedReadyStock = expected;
+    while (!this._checkoutClosed) {
+      try {
+        return await api.post('/orders', orderData);
+      } catch (error) {
+        if (!error || error.code !== 'READY_STOCK_CHANGED') throw error;
+        const details = error.details || {};
+        const shortages = details.shortages;
+        const current = details.currentReadyStock;
+        if (!Array.isArray(shortages) || !shortages.length || !Array.isArray(current) || !current.length
+            || current.some(line => !line || !line.skuId || !Number.isInteger(line.readyStockQty) || line.readyStockQty < 0))
+          throw new Error('现货核对结果无效，请刷新结算页面后重试');
+        this.updateReadyStockQuote(current);
+        if (this._checkoutClosed) return null;
+        wx.hideLoading();
+        const content = shortages.map(line => `当前「${line.productName}」（${line.color} / ${line.size}）只剩现货${line.readyStockQty}件`).join('；\n')
+          + '。\n现货不足的部分需备货，请确认是否继续下单？';
+        const confirmed = await new Promise(resolve => wx.showModal({
+          title: '现货不足', content, confirmText: '继续下单', cancelText: '暂不下单',
+          success: result => resolve(!!result.confirm), fail: () => resolve(false)
+        }));
+        if (!confirmed || this._checkoutClosed) return null;
+        // 确认新件数后重新提交，服务端再次检查并在同一事务内锁定现货。
+        orderData.expectedReadyStock = current;
+        wx.showLoading({ title: '创建订单...', mask: true });
+      }
+    }
+    return null;
+  },
+
   refreshShippingQuote: async function() {
     const revision = this._quoteRevision = (this._quoteRevision || 0) + 1;
     this._checkoutQuote = null;
@@ -232,7 +291,7 @@ Page({
   stopShippingTipTap: function() {},
   handleCustomerServiceContact: function(e) { customerServiceNavigation.openFromContact(e); },
 
-  onUnload: function() { this._quoteRevision = (this._quoteRevision || 0) + 1; },
+  onUnload: function() { this._checkoutClosed = true; this._quoteRevision = (this._quoteRevision || 0) + 1; },
 
   // 输入商品备注
   onRemarkInput: function(e) {
@@ -344,7 +403,8 @@ Page({
 
       // 1. 创建订单
       stage = 'create';
-      const orderRes = await api.post('/orders', orderData);
+      const orderRes = await this.createOrderWithReadyStockConfirmation(orderData);
+      if (!orderRes) return;
       const orderId = orderRes.id;
       createdOrderId = orderId;
       this._createdOrderId = orderId;
@@ -381,7 +441,7 @@ Page({
           },
           fail: (err) => {
             if (err.errMsg === 'requestPayment:fail cancel') {
-              wx.showToast({ title: '您手动取消了支付', icon: 'none' });
+              wx.showModal({ title: '支付已取消', content: paymentTimeout.cancelPaymentMessage(orderRes), showCancel: false });
             } else {
               wx.showModal({
                 title: '支付失败',

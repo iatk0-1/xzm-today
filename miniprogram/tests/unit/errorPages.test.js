@@ -14,6 +14,7 @@ function checkoutHarness({ failureAt, error, paymentError } = {}) {
     require(name) {
       if (name.endsWith('/skuSelectionDraft')) return require('../../utils/skuSelectionDraft');
       if (name.endsWith('/skuPromotionDisplay')) return require('../../utils/skuPromotionDisplay');
+      if (name.endsWith('/orderPaymentTimeout')) return require('../../utils/orderPaymentTimeout');
       if (name.endsWith('/error')) return errors;
       if (name.endsWith('/purchaseNotice')) return notices;
       if (name.endsWith('/customerServiceNavigation')) return require('../../utils/customerServiceNavigation');
@@ -70,8 +71,9 @@ test('订单已创建但预支付失败要跳已有订单，保持大整数编�
 test('微信支付取消保持取消反馈，原生支付失败不会展示errMsg', async () => {
   const cancel = checkoutHarness({ paymentError: { errMsg: 'requestPayment:fail cancel' } });
   await cancel.page.submitOrderInternal();
-  assert.equal(cancel.modals.length, 0);
-  assert.equal(cancel.toasts[0].title, '您手动取消了支付');
+  assert.equal(cancel.modals.length, 1);
+  assert.equal(cancel.modals[0].title, '支付已取消');
+  assert.equal(cancel.modals[0].content, '订单只保留30分钟，到期将自动取消订单，请尽快支付哦~');
   const failure = checkoutHarness({ paymentError: { errMsg: 'requestPayment:fail system error' } });
   await failure.page.submitOrderInternal();
   assert.equal(failure.modals[0].title, '支付失败');

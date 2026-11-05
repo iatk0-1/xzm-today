@@ -15,6 +15,7 @@ function harness({ get, post, authenticate, payment } = {}) {
     require(name) {
       if (name.endsWith('/skuSelectionDraft')) return require('../../utils/skuSelectionDraft');
       if (name.endsWith('/skuPromotionDisplay')) return require('../../utils/skuPromotionDisplay');
+      if (name.endsWith('/orderPaymentTimeout')) return require('../../utils/orderPaymentTimeout');
       if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/purchaseNotice')) return notices;
       if (name.endsWith('/customerServiceNavigation')) return require('../../utils/customerServiceNavigation');

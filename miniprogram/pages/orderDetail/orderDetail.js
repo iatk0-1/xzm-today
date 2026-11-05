@@ -4,15 +4,13 @@ const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/orderDetail/orderDetail.js
 const api = require('../../utils/api');
 const promotionDisplay = require('../../utils/skuPromotionDisplay');
+const { paymentTimeoutMinutes } = require('../../utils/orderPaymentTimeout');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const orderNavigation = require('../../utils/orderNavigation');
 const { getExpressName } = require('../../utils/expressCompany');
 const customerServiceOrder = require('../../utils/customerServiceOrder');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
-
-// 支付超时时间（30 分钟）
-const PAYMENT_TIMEOUT_MINUTES = 30;
 
 Page(pageSync.wrap({
   onOrderTouchStart: orderNavigation.onTouchStart,
@@ -116,6 +114,9 @@ Page(pageSync.wrap({
       // 如果是待支付订单，启动倒计时
       if (res.status === 'pending' && res.createdAt) {
         this.startCountdown(res.createdAt);
+      } else {
+        if (this.countdownTimer) { clearInterval(this.countdownTimer); this.countdownTimer = null; }
+        this.setData({ countdownText: '' });
       }
     } catch (err) {
       wx.hideLoading();
@@ -274,8 +275,9 @@ Page(pageSync.wrap({
 
   // 启动支付倒计时
   startCountdown: function(createdAt) {
+    if (this.countdownTimer) { clearInterval(this.countdownTimer); this.countdownTimer = null; }
     const orderTime = parseDate(createdAt).getTime();
-    const timeout = PAYMENT_TIMEOUT_MINUTES * 60 * 1000; // 30 分钟超时
+    const timeout = paymentTimeoutMinutes(this.data && this.data.order) * 60 * 1000;
     const deadline = orderTime + timeout;
 
     // 立即计算一次
