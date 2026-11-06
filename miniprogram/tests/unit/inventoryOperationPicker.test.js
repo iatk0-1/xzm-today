@@ -49,6 +49,8 @@ test('数量0不处理，负数小数和超出数据库整数上限不能写入'
   assert.equal(inventory.buildOperation(input).items.length, 1);
 });
 test('切换为退供应商或普通入库时，不携带旧换货参数', () => {
+  assert.equal(inventory.changeText('abnormal_exchange_out'), '换货出库');
+  assert.equal(inventory.changeText('exchange_cancel'), '取消换货待回');
   const payload = inventory.buildOperation(data({ functionId: 'return', exchangeLines: [{ sourceSkuId: '1', targetSkuId: '99', qty: 3 }] }));
   assert.equal(payload.action, 'return');
   assert.deepEqual(payload.targets, []);

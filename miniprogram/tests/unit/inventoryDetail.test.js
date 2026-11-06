@@ -138,12 +138,12 @@ test('六个一级菜单切换保留记录选择，操作类型变化清空数�
   page.switchTab(event({ id: 'reports' })); assert.equal(page.data.functionTabs.length, 0); assert.equal(page.data.recordView, 'reports');
 });
 
-test('各类记录按业务筛选，换货未回保留原始索引，改数量不会操作错记录', async () => {
+test('各类记录按业务筛选，换货未回保留原始索引，取消不会操作错记录', async () => {
   const response = detail(); response.records = [{ skuId: response.skus[0].skuId,
     ledger: ['arrival', 'outbound', 'return_out', 'exchange_out', 'shipment', 'stocktake_loss'].map((changeType, id) => ({ id, changeType })),
     reports: [{ purchaseOrderId: '1', purpose: 'normal' }, { purchaseOrderId: '2', purpose: 'backfill' }],
-    exchanges: [{ id: 'done', qty: 2, receivedQty: 2 }, { id: 'pending', qty: 3, receivedQty: 1 }] }];
-  const { page } = load('inventoryDetail', { get: async () => response }); await page.onLoad({ id: '1' });
+    exchanges: [{ id: 'done', qty: 2, receivedQty: 2 }, { id: 'cancelled', qty: 4, receivedQty: 1, cancelled: true }, { id: 'pending', sourceSkuId: '11', targetSkuId: '22', qty: 3, receivedQty: 1 }] }];
+  const { page, writes } = load('inventoryDetail', { get: async () => response, write: async () => { response.records[0].exchanges[2].cancelled = true; } }); await page.onLoad({ id: '1' });
   page.switchTab(event({ id: 'outbound' })); page.switchFunction(event({ id: 'outbound_records' }));
   assert.deepEqual(Array.from(page.data.visibleFlows, item => item.changeType), ['outbound', 'return_out', 'exchange_out', 'shipment']);
   page.switchTab(event({ id: 'return' })); page.switchFunction(event({ id: 'return_records' }));
@@ -151,10 +151,26 @@ test('各类记录按业务筛选，换货未回保留原始索引，改数量�
   page.switchTab(event({ id: 'backfill' })); page.switchFunction(event({ id: 'backfill_records' }));
   assert.equal(page.data.visibleReports.length, 1); assert.equal(page.data.visibleReports[0].purchaseOrderId, '2');
   page.switchTab(event({ id: 'exchange' })); page.switchFunction(event({ id: 'exchange_pending' }));
-  assert.equal(page.data.visibleExchanges.length, 1); assert.equal(page.data.visibleExchanges[0].recordIndex, 1);
-  page.recordQtyChange(event({ kind: 'exchange', index: page.data.visibleExchanges[0].recordIndex, delta: 1 }));
-  assert.equal(page.data.visibleExchanges[0].receiveQty, '1'); assert.equal(page.data.exchanges[0].receiveQty, '0');
+  assert.equal(page.data.visibleExchanges.length, 1); assert.equal(page.data.visibleExchanges[0].recordIndex, 2);
+  assert.equal(page.data.exchanges[1].cancelledQty, 3);
+  page.confirm = async () => false;
+  await page.cancelExchange(event({ index: 2 })); assert.equal(writes.length, 0);
+  page.confirm = async () => true;
+  await page.cancelExchange(event({ index: page.data.visibleExchanges[0].recordIndex }));
+  assert.equal(writes.length, 1); assert.equal(writes[0].route, '/sku-inventory/exchanges/pending/cancel');
+  assert.equal(page.data.visibleExchanges.length, 0); assert.equal(page.data.exchanges[2].cancelledQty, 2);
+  await page.cancelExchange(event({ index: 1 })); await page.cancelExchange(event({ index: 0 })); assert.equal(writes.length, 1);
   page.switchTab(event({ id: 'reports' })); assert.equal(page.data.visibleReports.length, 2);
+});
+
+test('取消换货失败时保留待回记录，重试入口不会伪装为已取消', async () => {
+  const response = detail(); response.records = [{ skuId: response.skus[0].skuId,
+    exchanges: [{ id: 'pending', sourceSkuId: '11', targetSkuId: '22', qty: 3, receivedQty: 1 }] }];
+  const { page, toasts } = load('inventoryDetail', { get: async () => response, write: async () => { throw new Error('请求结果待确认'); } });
+  await page.onLoad({ id: '1' }); page.switchTab(event({ id: 'exchange' })); page.switchFunction(event({ id: 'exchange_pending' }));
+  page.confirm = async () => true; await page.cancelExchange(event({ index: 0 }));
+  assert.equal(page.data.visibleExchanges.length, 1); assert.equal(page.data.visibleExchanges[0].pendingQty, 2);
+  assert.match(toasts.at(-1), /待确认/); assert.equal(page._exchangeCancelConfirming, false);
 });
 
 test('出库不填备注可以提交，历史入库与普通出库使用各自接口参数', async () => {

@@ -5,11 +5,11 @@ const tabs = [
   { id: 'return', name: '退货' }, { id: 'reports', name: '报单记录' }
 ];
 const operations = {
-  normal: { id: 'normal', name: '入库', type: 'normal', tip: '按报单时间核销待入库，超出报单待入库的数量进入异常库存。' },
+  normal: { id: 'normal', name: '入库', type: 'normal', tip: '先按报单时间核销待入库，再自动核销本规格换货待回，剩余数量进入异常库存。' },
   history: { id: 'history', name: '历史入库', type: 'history', tip: '首次登记历史实物，不抵扣报单待入库。' },
   outbound: { id: 'outbound', name: '出库', type: 'outbound', action: 'outbound', tip: '优先扣减异常库存，不足部分扣减正常库存。' },
   backfill: { id: 'backfill', name: '补报单', type: 'backfill', tip: '仅为已入库的异常库存补报单，自动匹配异常库存并转为正常库存，不增加实物总量。' },
-  exchange: { id: 'exchange', name: '换货', type: 'outbound', action: 'exchange', tip: '优先出异常库存，不足部分出正常库存。自动带出同商品同规格的应换回数量，可改为本商品其他规格，数量随出库同步；换回前不增加现货。' },
+  exchange: { id: 'exchange', name: '换货', type: 'outbound', action: 'exchange', tip: '优先出异常库存，不足部分出正常库存。自动带出同商品同规格的应换回数量，可改为本商品其他规格，数量随出库同步。实际收货统一到入库页面办理，先抵报单，再自动抵换货。' },
   return: { id: 'return', name: '退货', type: 'outbound', action: 'return', tip: '退回供应商，优先扣减异常库存，不足部分扣减正常库存；不取消客户需求和报单待入库。' }
 };
 const functions = {
@@ -46,7 +46,7 @@ function sourceText(source) {
     return_inspection: '退货验收入库', history_confirm: '历史/盘盈确认', existing_receipt_confirm: '既有收货来源确认', exchange_in: '换回入库' }[source] || source;
 }
 function changeText(type) {
-  return { outbound: '出库', exchange_out: '换货出库', return_out: '退货出库', arrival: '报单到货入库', history_in: '历史库存入库', shipment: '发货出库', return_inspection: '退货验收入库',
+  return { outbound: '出库', exchange_cancel: '取消换货待回', exchange_out: '换货出库', return_out: '退货出库', arrival: '报单到货入库', history_in: '历史库存入库', shipment: '发货出库', return_inspection: '退货验收入库',
     stocktake_gain: '盘盈', stocktake_loss: '盘亏', abnormal_keep: '异常保留补报', abnormal_exchange_out: '换货出库',
     history_confirm: '历史/盘盈转正常', receipt_backfill: '既有收货来源补录', exchange_in: '换回入库',
     abnormal_return_out: '异常退供应商', receipt_revoke: '撤销入库', receipt_correct: '入库数量更正', shipment_cancel: '发货解绑返还' }[type] || type;

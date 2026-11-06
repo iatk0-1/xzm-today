@@ -53,7 +53,7 @@ Page({
         for (const item of records.exchanges || []) exchangeMap.set(String(item.id), { ...item,
           sourceLabel: labels.get(String(item.sourceSkuId)) || '规格 ' + item.sourceSkuId,
           targetLabel: labels.get(String(item.targetSkuId)) || '规格 ' + item.targetSkuId,
-          pendingQty: item.qty - item.receivedQty, receiveQty: '0' });
+          pendingQty: item.cancelled ? 0 : item.qty - item.receivedQty, cancelledQty: item.cancelled ? item.qty - item.receivedQty : 0 });
       }
       const latestFirst = (a, b) => dateTimestamp(b.createdAt || 0) - dateTimestamp(a.createdAt || 0);
       this.setData({ product: result.product, skus, receipts: receipts.sort(latestFirst), flows: flows.sort(latestFirst),
@@ -330,12 +330,15 @@ Page({
     this.setData({ [field]: list });
     this.filterReports();
   },
-  async receiveExchange(e) {
+  async cancelExchange(e) {
+    if (this.data.saving || this.data.quantityPending || this._exchangeCancelConfirming) return;
     const item = this.data.exchanges[Number(e.currentTarget.dataset.index)];
-    const qty = item && inventory.quantity(item.receiveQty);
-    if (!qty || qty > item.pendingQty) { wx.showToast({ title: '换回数量须为正整数，且不超过待回量', icon: 'none' }); return; }
-    if (await this.confirm('换回验收', '确认已实际收到正确规格 ' + item.targetLabel + '，共 ' + qty + ' 件？'))
-      return this.writeRecord('/sku-inventory/exchanges/' + item.id + '/receive', { qty, note: '管理员确认正确规格换回' }, [item.sourceSkuId, item.targetSkuId]);
+    if (!item || item.cancelled || item.pendingQty <= 0) return;
+    this._exchangeCancelConfirming = true;
+    try {
+      if (await this.confirm('取消换货', '取消 ' + item.targetLabel + ' 待换回的 ' + item.pendingQty + ' 件？已出库按普通出库处理，不返还库存；已换回的数量保留。'))
+        return await this.writeRecord('/sku-inventory/exchanges/' + item.id + '/cancel', { note: '管理员取消剩余换货，已出库按普通出库处理' }, [item.sourceSkuId, item.targetSkuId]);
+    } finally { this._exchangeCancelConfirming = false; }
   },
   async disposeReturn(e) {
     const item = this.data.inspections[Number(e.currentTarget.dataset.index)];

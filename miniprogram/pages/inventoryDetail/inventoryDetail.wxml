@@ -79,7 +79,9 @@
 
     <block wx:if="{{recordView === 'exchanges'}}">
       <view class="record-card" wx:for="{{visibleExchanges}}" wx:key="id"><view class="record-title">{{item.sourceLabel}} → {{item.targetLabel}}</view><view>出库 {{item.qty}} 件 · 已换回 {{item.receivedQty}} 件 · 待回 {{item.pendingQty}} 件</view><view class="muted">换货编号 {{item.id}}</view><view class="record-note" wx:if="{{item.note}}">{{item.note}}</view>
-        <view class="record-action" wx:if="{{item.pendingQty > 0}}"><view class="quantity-stepper record-stepper"><button data-kind="exchange" data-index="{{item.recordIndex}}" data-delta="-1" bindtap="recordQtyChange" disabled="{{saving || item.receiveQty <= 0}}">−</button><input type="number" value="{{item.receiveQty}}" data-kind="exchange" data-index="{{item.recordIndex}}" bindinput="recordQtyChange" disabled="{{saving}}" /><button data-kind="exchange" data-index="{{item.recordIndex}}" data-delta="1" bindtap="recordQtyChange" disabled="{{saving}}">＋</button></view><button class="record-button" bindtap="receiveExchange" data-index="{{item.recordIndex}}" disabled="{{saving || quantityPending}}">确认换回入库</button></view>
+        <view wx:if="{{item.cancelled}}" class="record-note">已取消待换回 {{item.cancelledQty}} 件，已出库按普通出库处理</view>
+        <view wx:if="{{item.pendingQty > 0}}" class="record-note">实际收货请到入库页面办理，先抵报单待入库，再自动抵换货待回。</view>
+        <button wx:if="{{item.pendingQty > 0}}" class="record-button danger-button" bindtap="cancelExchange" data-index="{{item.recordIndex}}" disabled="{{saving || quantityPending}}">取消换货</button>
       </view><view class="empty" wx:if="{{!visibleExchanges.length && !loading}}">{{functionId === 'exchange_pending' ? '暂无未回换货' : '暂无换货记录'}}</view>
     </block>
 
