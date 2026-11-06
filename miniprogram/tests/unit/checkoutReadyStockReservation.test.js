@@ -7,7 +7,7 @@ const timeout = require('../../utils/orderPaymentTimeout');
 const copy = value => JSON.parse(JSON.stringify(value));
 
 function changed(quantity, shortages) {
-  return { statusCode: 409, code: 'READY_STOCK_CHANGED', message: '商品现货不足，请确认是否继续下单', details: {
+  return { statusCode: 409, code: 'READY_STOCK_CHANGED', message: '现货数量不足，请重新下单哦~', details: {
     shortages: shortages || [{ skuId: '11', productName: '羽绒服', color: '黑色', size: 'M', expectedReadyStockQty: 2, readyStockQty: quantity }],
     currentReadyStock: [{ skuId: '11', readyStockQty: quantity }]
   } };
@@ -59,31 +59,45 @@ test('含现货下单携带结算预期，取消支付按服务端订单提示�
   assert.equal(env.modals[0].content, '含现货的订单只保留3分钟，到期将自动取消订单，请尽快支付哦~');
 });
 
-test('现货被其他订单锁住时先提示商品规格，确认剩余件数后自动重试并拉起支付', async () => {
+test('现货不足仅提示一次并更新清单，不自动重试、不创建订单、不支付', async () => {
   const env = harness({ create(body, attempt) { if (attempt === 1) throw changed(1);return { id: '12', items: [{ readyStockQty: 1 }] }; } });
   await env.page.submitOrder();
-  assert.equal(env.modals[0].title, '现货不足');assert.match(env.modals[0].content, /羽绒服.*黑色 \/ M.*只剩现货1件/);
-  assert.equal(env.modals[0].confirmText, '继续下单');
+  assert.equal(env.modals[0].title, '现货不足');assert.equal(env.modals[0].content, '现货数量不足，请重新下单哦~');
+  assert.equal(env.modals[0].showCancel, false);assert.equal(env.modals[0].confirmText, undefined);
+  assert.equal(env.calls.length, 1);assert.equal(env.payments.length, 0);assert.equal(env.drafts.length, 0);assert.equal(env.removed.length, 0);
+  assert.equal(env.page.data.checkoutDisplayItems[0].readyStockQty, 1);assert.equal(env.page.data.submitting, false);
+  await env.page.submitOrder();
   assert.deepEqual(env.calls[1].body.expectedReadyStock, [{ skuId: '11', readyStockQty: 1 }]);
-  assert.equal(env.page.data.checkoutDisplayItems[0].readyStockQty, 1);assert.equal(env.payments.length, 1);
-  assert.equal(env.page._createdOrderId, '12');await env.page.submitOrder();
-  assert.equal(env.calls.filter(call => call.url === '/orders').length, 2);
+  assert.equal(env.payments.length, 1);assert.equal(env.page._createdOrderId, '12');
 });
 
-test('现货变零选择暂不下单时不重试、不清缓存、不支付，并恢复提交按钮', async () => {
-  const env = harness({ create() { throw changed(0); }, confirm: false });await env.page.submitOrder();
-  assert.match(env.modals[0].content, /只剩现货0件/);assert.equal(env.calls.length, 1);
+test('现货变零提示后保留选择及本地缓存，恢复提交按钮', async () => {
+  const env = harness({ create() { throw changed(0); } });await env.page.submitOrder();
+  assert.equal(env.modals[0].content, '现货数量不足，请重新下单哦~');assert.equal(env.calls.length, 1);
   assert.equal(env.payments.length, 0);assert.equal(env.drafts.length, 0);assert.equal(env.removed.length, 0);
   assert.equal(env.page.data.orderCreated, false);assert.equal(env.page.data.submitting, false);
   assert.equal(env.page.data.checkoutDisplayItems[0].readyStockQty, 0);
 });
 
-test('确认期间现货再次减少需再次确认，接受全部备货后取消支付提示30分钟', async () => {
+test('再次手动下单仍会校验，新现货不足再次提示；降为零后手动重提按普通订单提示30分钟', async () => {
   const env = harness({ create(body, attempt) { if (attempt < 3) throw changed(attempt === 1 ? 1 : 0);return { id: '13', items: [{ readyStockQty: 0 }] }; } });
-  await env.page.submitOrder();assert.equal(env.modals.filter(modal => modal.title === '现货不足').length, 2);
-  assert.deepEqual(env.calls.slice(0, 3).map(call => call.body.expectedReadyStock[0].readyStockQty), [2, 1, 0]);
+  await env.page.submitOrder();assert.equal(env.calls.length, 1);assert.equal(env.payments.length, 0);
+  await env.page.submitOrder();assert.equal(env.calls.length, 2);assert.equal(env.payments.length, 0);
+  await env.page.submitOrder();assert.deepEqual(env.calls.slice(0, 3).map(call => call.body.expectedReadyStock[0].readyStockQty), [2, 1, 0]);
   assert.equal(env.payments.length, 1);assert.equal(env.drafts.length, 1);
   assert.equal(env.modals[2].content, '订单只保留30分钟，到期将自动取消订单，请尽快支付哦~');
+});
+
+for (const error of [
+  { statusCode: 400, code: 'BAD_REQUEST', message: '可用库存不足' },
+  { statusCode: 409, message: '库存数量不足' }
+]) test(`库存不足(${error.statusCode})用统一文案，不支付也不刷新金额或静默调整下单数量`, async () => {
+  const env = harness({ create() { throw error; } });let refreshes = 0;
+  env.page.refreshShippingQuote = async () => { refreshes++; };
+  await env.page.submitOrder();assert.equal(env.modals[0].title, '库存不足');
+  assert.equal(env.modals[0].content, '库存数量不足，请重新下单哦~');assert.equal(env.modals[0].showCancel, false);
+  assert.equal(env.calls.length, 1);assert.equal(env.payments.length, 0);assert.equal(env.drafts.length, 0);
+  assert.equal(env.page.data.checkoutItems[0].count, 3);assert.equal(refreshes, 0);
 });
 
 test('付款成功不弹二次现货提示，也不显示取消支付保留时间提示', async () => {
@@ -114,23 +128,24 @@ test('同SKU多行及套装按真实子项合并预期，更新报价时不重�
   assert.deepEqual(copy(page._checkoutQuote.items.map(line => line.readyStockQty)), [2, 1, 1], '现货确认只更新独立快照');
 });
 
-test('多个规格同时不足一并提示，确认期间重复点击不多单，离开页面后不重试', async () => {
+test('多个规格不足只提示固定文案，弹窗期间重复点击不多单，离开页面后不重试', async () => {
   let pending;
   const env = harness({ create() { throw changed(1, [
     { productName: '羽绒服', color: '黑色', size: 'M', readyStockQty: 1 },
     { productName: '衬衣', color: '图片色', size: '均码', readyStockQty: 0 }
   ]); }, modal(options) { pending = options; } });
   const submitting = env.page.submitOrder();await new Promise(resolve => setImmediate(resolve));
-  assert.match(pending.content, /羽绒服.*黑色 \/ M/);assert.match(pending.content, /衬衣.*图片色 \/ 均码.*0件/);
+  assert.equal(pending.content, '现货数量不足，请重新下单哦~');assert.equal(pending.showCancel, false);
   await env.page.submitOrder();assert.equal(env.calls.length, 1);
   env.page.onUnload();pending.success({ confirm: true });await submitting;
   assert.equal(env.calls.length, 1);assert.equal(env.payments.length, 0);
 });
 
-test('现货确认后金额变化沿用原核对流程，异常现货响应也不绕过确认', async () => {
+test('手动重提前金额变化沿用原流程，异常现货响应不创建订单也不支付', async () => {
   const env = harness({ create(body, attempt) { if (attempt === 1) throw changed(1);throw { statusCode: 409, message: '金额已变化' }; } });
   let refreshed = 0;env.page.refreshShippingQuote = async () => { refreshed++; };
-  await env.page.submitOrder();assert.equal(refreshed, 1);assert.equal(env.payments.length, 0);
+  await env.page.submitOrder();assert.equal(refreshed, 0);assert.equal(env.payments.length, 0);
+  await env.page.submitOrder();assert.equal(refreshed, 1);
   assert.equal(env.modals[1].title, '订单金额或状态已更新');
   const invalid = harness({ create() { throw { code: 'READY_STOCK_CHANGED', details: {} }; } });
   await invalid.page.submitOrder();assert.equal(invalid.calls.length, 1);assert.equal(invalid.payments.length, 0);

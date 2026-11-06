@@ -54,7 +54,7 @@ function setup({ source = 'sku', items = [item()], quote, create, shipping } = {
 }
 const quotes = env => env.calls.filter(call => call.url === '/orders/goods-quote');
 
-test('直接购买保留SKU核对的现货快照，选地址、切地址及重算运费不重查SKU或商品报价', async () => {
+test('直接购买保留SKU打开时的现货快照，选地址、切地址及重算运费不重查SKU或商品报价', async () => {
   const env = setup();await env.page.onLoad();
   assert.equal(quotes(env)[0].data.includeReadyStock, false);
   assert.equal(env.page.data.checkoutDisplayItems[0].readyStockQty, 2, '金额报价的新现货不覆盖已确认快照');
@@ -131,6 +131,6 @@ test('地址变更不降低预期现货，立即支付仍检测被其他订单�
     shortages: [{ productName: '羽绒服', color: '黑色', size: 'M', readyStockQty: 0 }], currentReadyStock: [{ skuId: 's1', readyStockQty: 0 }]
   } }; } });await env.page.onLoad();env.page.chooseAddress();await tick();env.page.data.purchaseNoticeAgreed = true;
   await env.page.submitOrder();assert.equal(env.calls.find(row => row.url === '/orders').data.expectedReadyStock[0].readyStockQty, 2);
-  assert.equal(env.modals[0].title, '现货不足');assert.match(env.modals[0].content, /羽绒服.*只剩现货0件/);
+  assert.equal(env.modals[0].title, '现货不足');assert.equal(env.modals[0].content, '现货数量不足，请重新下单哦~');
   assert.equal(env.page.data.checkoutDisplayItems[0].readyStockQty, 0, '用户收到提示后才更新快照');
 });

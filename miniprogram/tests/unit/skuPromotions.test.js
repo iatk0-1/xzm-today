@@ -44,7 +44,7 @@ function picker(handlers = {}) {
     }, closeSkuPanel() { this.setData({ showSku: false }); }, checkSkuMatch() {}, onUnload() {}
   });
   const page = { ...config, data: structuredClone(selection.initialData), setData(patch) { Object.assign(this.data, patch); } };
-  page.verifyPickedSkuAvailability = async () => true;
+  page.refreshSkuProduct = async function() { this.loadSkuPromotions();return true; };
   page.open = p => page.openSkuPanel({ currentTarget: { dataset: { product: p } } });
   return { page, calls, purchases };
 }

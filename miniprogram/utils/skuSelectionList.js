@@ -6,7 +6,6 @@ const drafts = require('./skuSelectionDraft');
 const promotionDisplay = require('../utils/skuPromotionDisplay');
 const skuMoneyText = require('./skuMoneyText');
 const { normalizeProductImages } = require('./productImage');
-const { readyStockPrompt } = require('./readyStockPrompt');
 
 const productListFields = ['productList', 'results', 'leftColumn', 'rightColumn', 'products', 'filteredProducts'];
 
@@ -35,6 +34,7 @@ function rememberProduct(page, product) {
 const initialData = {
   pickedSkuItems: [], pickedTotalCount: 0, pickedTotalPrice: '0.00',
   pickedCountText: '0', showPickedSkus: false, purchasePending: false, quantity: 0, skuAction: 'buy',
+  skuDataLoading: false, skuDataError: '',
   promotionOffers: [], promotionOffersReady: false, promotionOffersLoading: false, promotionOffersError: '',
   showSkuPromotions: false, skuQuoteLoading: false, skuQuoteError: '',
   pickedOriginalPrice: '0.00', pickedDiscountPrice: '0.00', pickedGoodsPrice: '0.00', pickedDiscountRows: [],
@@ -95,31 +95,6 @@ function latestProduct(previous, response) {
   }));
   result.soldOut = isProductSoldOut(result);
   return result;
-}
-
-function availabilityIssues(previous, product, selected) {
-  if (product.offSale) return { title: '商品已下架', message: '当前商品已下架，无法购买或加入购物车' };
-  const byId = new Map(product.skuMatrix.map(sku => [String(sku.skuId), sku]));
-  const stock = [], ready = [], changed = [];
-  for (const item of selected) {
-    const sku = byId.get(String(item.skuId));
-    const productName = product.name || product.title || previous.name;
-    const label = `当前「${productName}」（${item.color} / ${item.size}）`;
-    if (!sku) { stock.push(`${label}规格已失效，请重新选择`);continue; }
-    if (isSkuSoldOut(sku) || !sku.unlimitedStock && item.count > Number(sku.stock)) {
-      stock.push(`${label}库存不足，当前可售${Math.max(0, Number(sku.stock) || 0)}件`);
-    }
-    const expected = Math.min(item.count, getFreeStockQty(item));
-    const available = Math.min(item.count, getFreeStockQty(sku));
-    if (available < expected) ready.push({ productName, color: item.color, size: item.size, readyStockQty: available });
-    if (Math.round(Number(item.price) * 100) !== Math.round(Number(sku.price) * 100)
-        || item.color !== sku.color || item.size !== sku.size)
-      changed.push(`${label}价格或规格已更新，请重新确认`);
-  }
-  if (!stock.length && !changed.length && ready.length) return { confirmation: readyStockPrompt(ready) };
-  const messages = [...stock, ...ready.map(line => `当前「${line.productName}」（${line.color} / ${line.size}）现货不足，只剩现货${line.readyStockQty}件`), ...changed];
-  return messages.length ? { title: stock.length ? ready.length ? '库存及现货不足' : '库存不足' : '商品信息已更新',
-    message: messages.join('；\n') + '。\n已选规格将按最新数据更新，请调整后重试。' } : null;
 }
 
 function stockModal(title, content) {
@@ -212,36 +187,34 @@ function applyPickerPatch(page, patch) {
 }
 
 const methods = {
-  async verifyPickedSkuAvailability() {
+  async refreshSkuProduct() {
     const id = String(getProduct(this).id);
-    const version = this._productVersion;
+    const version = this._skuDataVersion = (this._skuDataVersion || 0) + 1;
     const current = () => !this._skuPickerDisposed && this.data.showSku
-      && String(getProduct(this).id) === id && this._productVersion === version;
-    while (current()) {
+      && String(getProduct(this).id) === id && this._skuDataVersion === version;
+    this.setData({ skuDataLoading: true, skuDataError: '' });
+    try {
       const product = getProduct(this);
-      const response = await api.get('/products/' + id);
+      const response = await api.get((product.productType === 'live' ? '/live-products/' : '/products/') + id);
       if (!current()) return false;
       const fresh = latestProduct(product, response);
-      const issue = availabilityIssues(product, fresh, this.data.pickedSkuItems);
-      if (!issue) { this.applySkuProductUpdate(fresh);return true; }
-      wx.hideLoading();
-      if (!issue.confirmation) {
-        await stockModal(issue.title, issue.message);
-        if (current()) this.applySkuProductUpdate(fresh);
-        return false;
-      }
-      const confirmed = await new Promise(resolve => wx.showModal({ ...issue.confirmation,
-        success: result => resolve(!!result.confirm), fail: () => resolve(false) }));
-      if (!current()) return false;
       this.applySkuProductUpdate(fresh);
-      if (!confirmed) return false;
-      wx.showLoading({ title: '核对库存...', mask: true });
+      return true;
+    } catch (error) {
+      if (current()) {
+        const message = getErrorMessage(error, '规格加载失败，请重新打开商品');
+        this.setData({ skuDataError: message });
+        wx.showToast({ title: message, icon: 'none' });
+      }
+      return false;
+    } finally {
+      if (current()) this.setData({ skuDataLoading: false });
     }
-    return false;
   },
 
   disposeSkuPromotions() {
     this._skuPickerDisposed = true;
+    this._skuDataVersion = (this._skuDataVersion || 0) + 1;
     this._skuOfferVersion = (this._skuOfferVersion || 0) + 1;
     this._skuQuoteVersion = (this._skuQuoteVersion || 0) + 1;
   },
@@ -462,6 +435,8 @@ const methods = {
 
   async submitPickedSkus(e) {
     if (this.dismissSkuQuantityKeyboard(e) || this.data.purchasePending || Date.now() < (this._suppressTapUntil || 0)) return;
+    if (this.data.skuDataLoading || this.data.skuDataError)
+      return wx.showToast({ title: this.data.skuDataLoading ? '规格加载中，请稍候' : '规格加载失败，请重新打开商品', icon: 'none' });
     let product = getProduct(this);
     if (!product.id || product.offSale || product.soldOut) return;
     if (product.productType === 'live') {
@@ -481,10 +456,8 @@ const methods = {
     }
     const action = e.currentTarget.dataset.action || this.data.skuAction;
     this.setData({ purchasePending: true });
-    wx.showLoading({ title: action === 'buy' ? '核对库存...' : '添加中...', mask: true });
-    let stage = action === 'buy' ? 'validate' : 'submit';
+    wx.showLoading({ title: action === 'buy' ? '加载中...' : '添加中...', mask: true });
     try {
-      if (action === 'buy' && !await this.verifyPickedSkuAvailability()) return;
       product = getProduct(this);groups = this.data.bundleSelections || [];selected = this.data.pickedSkuItems;
       if (!selected.length || groups.some(group => !selected.some(sku => group.skus.some(candidate => String(candidate.skuId) === sku.skuId)))) {
         wx.showToast({ title: '请重新选择完整的可售规格', icon: 'none' });return;
@@ -503,7 +476,6 @@ const methods = {
           readyStockQty: bundleConfig.reduce((sum, item) => sum + (item.readyStockQty || 0), 0),
           name: product.name, image: product.coverUrl, price: Number(this.data.pickedTotalPrice), finalPrice: Number(this.data.pickedTotalPrice) });
       }
-      stage = 'submit';
       if (action === 'buy') {
         wx.setStorageSync('checkoutSource', 'sku');
         wx.setStorageSync('checkoutItems', checkoutItems);
@@ -524,11 +496,9 @@ const methods = {
       }
     } catch (err) {
       console.error('提交已选规格失败:', err);
-      const message = getErrorMessage(err, stage === 'validate' ? '库存核对失败，请稍后重试' : action === 'buy' ? '打开结算页失败，请重试' : '添加失败，请稍后重试');
+      const message = getErrorMessage(err, action === 'buy' ? '打开结算页失败，请重试' : '添加失败，请稍后重试');
       if (action !== 'buy' && /(现货|库存).*(不足|售罄)/.test(message)) {
         wx.hideLoading();await stockModal(/现货/.test(message) ? '现货不足' : '库存不足', message);
-      } else if (stage === 'validate') {
-        wx.hideLoading();await stockModal('库存核对失败', message);
       } else wx.showToast({ title: message, icon: 'none' });
     } finally {
       wx.hideLoading();
@@ -584,7 +554,7 @@ function enhancePicker(config, isDetail = false) {
     else event.currentTarget.dataset.product = normalizedProduct(productSource(this, e.currentTarget.dataset.product));
     original.openSkuPanel.call(this, event);
     this.setData({ skuAction: action });
-    if (this.data.showSku) { this.initializePickedSkus();this.loadSkuPromotions(); }
+    if (this.data.showSku) { this.initializePickedSkus();return this.refreshSkuProduct(); }
   };
   enhanced.checkSkuMatch = function(selection = {}) {
     if (!this._pickedSkus || !this.data.showSku) return original.checkSkuMatch.call(this);
@@ -641,6 +611,7 @@ function enhancePicker(config, isDetail = false) {
     if (this.data.purchasePending) return;
     original.closeSkuPanel.call(this, e);
     if (!this.data.showSku) {
+      this._skuDataVersion = (this._skuDataVersion || 0) + 1;
       this._skuOfferVersion = (this._skuOfferVersion || 0) + 1;
       this._skuQuoteVersion = (this._skuQuoteVersion || 0) + 1;
       this.setData({ showPickedSkus: false, showSkuPromotions: false });

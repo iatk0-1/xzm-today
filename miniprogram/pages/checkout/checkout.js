@@ -216,34 +216,31 @@ Page({
     this.recalculateGoods();
   },
 
-  createOrderWithReadyStockConfirmation: async function(orderData) {
+  createOrderWithStockCheck: async function(orderData) {
     const expected = this.buildReadyStockExpectation();
     if (expected) orderData.expectedReadyStock = expected;
-    while (!this._checkoutClosed) {
-      try {
-        return await api.post('/orders', orderData);
-      } catch (error) {
-        if (!error || error.code !== 'READY_STOCK_CHANGED') throw error;
-        const details = error.details || {};
-        const shortages = details.shortages;
-        const current = details.currentReadyStock;
-        if (!Array.isArray(shortages) || !shortages.length || !Array.isArray(current) || !current.length
+    if (this._checkoutClosed) return null;
+    try {
+      return await api.post('/orders', orderData);
+    } catch (error) {
+      if (this._checkoutClosed) return null;
+      const readyShortage = error && error.code === 'READY_STOCK_CHANGED';
+      const stockShortage = /(?:可用)?库存.*(?:不足|售罄)/.test(getErrorMessage(error, ''));
+      if (!readyShortage && !stockShortage) throw error;
+      if (readyShortage) {
+        const current = error.details && error.details.currentReadyStock;
+        if (!Array.isArray(current) || !current.length
             || current.some(line => !line || !line.skuId || !Number.isInteger(line.readyStockQty) || line.readyStockQty < 0))
           throw new Error('现货核对结果无效，请刷新结算页面后重试');
         this.updateReadyStockQuote(current);
-        if (this._checkoutClosed) return null;
-        wx.hideLoading();
-        const confirmed = await new Promise(resolve => wx.showModal({
-          ...readyStockPrompt(shortages),
-          success: result => resolve(!!result.confirm), fail: () => resolve(false)
-        }));
-        if (!confirmed || this._checkoutClosed) return null;
-        // 确认新件数后重新提交，服务端再次检查并在同一事务内锁定现货。
-        orderData.expectedReadyStock = current;
-        wx.showLoading({ title: '创建订单...', mask: true });
       }
+      wx.hideLoading();
+      await new Promise(resolve => wx.showModal({
+        ...(readyShortage ? readyStockPrompt() : { title: '库存不足', content: '库存数量不足，请重新下单哦~', showCancel: false }),
+        success: resolve, fail: resolve
+      }));
+      return null;
     }
-    return null;
   },
 
   refreshShippingQuote: async function(options = {}) {
@@ -416,7 +413,7 @@ Page({
 
       // 1. 创建订单
       stage = 'create';
-      const orderRes = await this.createOrderWithReadyStockConfirmation(orderData);
+      const orderRes = await this.createOrderWithStockCheck(orderData);
       if (!orderRes) return;
       const orderId = orderRes.id;
       createdOrderId = orderId;

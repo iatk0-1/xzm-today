@@ -98,7 +98,7 @@ for (const kind of ['product', 'sheet']) {
       url('1-cover'), url('1-banner'), url('1-red'), url('1-blue'), url('1-lookbook'), url('1-detail')
     ]);
     assert.equal(Object.keys(env.page.data.imagePaths).length, 6);
-    env.page.openSkuPanel({ currentTarget: { dataset: { action: 'cart' } } });
+    await env.page.openSkuPanel({ currentTarget: { dataset: { action: 'cart' } } });
     assert.equal(env.page.data.showSku, true);
     assert.equal(env.requests.length, 6);
     env.page.selectColor({ currentTarget: { dataset: { color: '蓝色' } } });

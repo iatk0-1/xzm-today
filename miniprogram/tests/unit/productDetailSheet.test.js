@@ -76,7 +76,7 @@ function setup(component = 'productDetailSheet', handlers = {}) {
     selectComponent() { return child; },
     createSelectorQuery() { return { select() { return this; }, boundingClientRect(cb) { this.cb = cb; return this; }, exec() { this.cb({ height: 2100 }); } }; }
   };
-  instance.verifyPickedSkuAvailability = async () => true;
+  instance.refreshSkuProduct = async function() { this.loadSkuPromotions();return true; };
   if (component === 'productDetail') {
     instance.data.viewportHeight = 472; instance.data.contentOffset = 0; instance.data.productId = '1'; instance._ready = true;
   }

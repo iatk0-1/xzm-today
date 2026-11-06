@@ -541,7 +541,7 @@ test('搜索卡片输入中点加购仅结束输入，正常点击打开规格�
   assert.equal(page.data.focus, false);
   assert.equal(cartRequests.length, 0);
   page.onProductTouchStart();
-  page.openSkuPanel(event({ product }));
+  await page.openSkuPanel(event({ product }));
   assert.equal(page.data.showSku, true);
   assert.equal(page.data.currentSkuId, 's1');
   assert.equal(page.data.currentSkuPrice, 30);

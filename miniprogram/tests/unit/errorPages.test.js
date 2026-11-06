@@ -44,13 +44,13 @@ function checkoutHarness({ failureAt, error, paymentError } = {}) {
   return { page, calls, modals, toasts, redirects };
 }
 
-test('截图400/500创建订单弹窗正文严格等于后端message，提交状态归位', async () => {
+test('库存不足使用统一文案，其他服务端错误保留message，提交状态归位', async () => {
   for (const [statusCode, code, message] of [[400, 'BAD_REQUEST', '可用库存不足，available=0'], [500, 'INTERNAL_ERROR', '服务暂时不可用，请稍后重试']]) {
     const env = checkoutHarness({ failureAt: '/orders', error: { statusCode, code, message } });
     await env.page.submitOrderInternal();
     assert.equal(env.modals.length, 1);
-    assert.equal(env.modals[0].title, '订单创建失败');
-    assert.equal(env.modals[0].content, message);
+    assert.equal(env.modals[0].title, statusCode === 400 ? '库存不足' : '订单创建失败');
+    assert.equal(env.modals[0].content, statusCode === 400 ? '库存数量不足，请重新下单哦~' : message);
     assert.equal(env.calls.length, 1);
     assert.equal(env.page.data.submitting, false);
     if (statusCode === 500) assert.equal(env.redirects[0], '/pages/orderList/orderList');

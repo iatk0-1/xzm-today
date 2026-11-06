@@ -529,7 +529,7 @@ Page(pageSync.wrap({
   openSkuPanel: function(e) {
     // 先展示弹窗和默认规格，预下载不阻塞用户操作。
     this.setData({ skuPanelImagePaths: {} });
-    productSkuPanel.methods.openSkuPanel.call(this, { ...e,
+    const refreshing = productSkuPanel.methods.openSkuPanel.call(this, { ...e,
       currentTarget: { ...e.currentTarget, dataset: { ...e.currentTarget.dataset, action: 'buy' } } });
     if (!this._skuImagePreloader) this._skuImagePreloader = createSkuImagePreloader();
     const urls = collectSkuImages(this.data.currentProduct, this.data.currentSkuImage);
@@ -537,6 +537,7 @@ Page(pageSync.wrap({
       if (this._pageClosed || !this.data.showSku) return;
       this.setData({ skuPanelImagePaths: { ...this.data.skuPanelImagePaths, [url]: path } });
     });
+    return refreshing;
   },
 
   closeSkuPanel: function(e) {
