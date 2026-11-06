@@ -242,22 +242,18 @@ test('同商品换货提交保留出库与目标对应关系，成功清空数�
   assert.deepEqual(Array.from(emitted[0][1].skuIds), [source, target]);
 });
 
-test('报单选择查询目标规格，切换目标后清除旧报单，旧响应不能覆盖新规格', async () => {
-  let finish;
-  const { page, requests } = load('inventoryDetail', { get: route => route.includes('/products/') ? detail() : new Promise(resolve => { finish = resolve; }) });
-  await page.onLoad({ id: '1' }); page.switchTab(event({ id: 'exchange' })); const source = page.data.skus[0].id;
+test('换货只使用已入库库存，切换换回规格和提交均不查询或关联报单', async () => {
+  const { page, requests, writes } = load('inventoryDetail', { get: async () => detail() });
+  await page.onLoad({ id: '1' }); page.switchTab(event({ id: 'exchange' }));
+  const source = page.data.skus[0].id;
   page.rowQuantityChange(event({ skuId: source, delta: 1 }));
-  const pending = page.openRecordPicker(event({ sourceId: source }));
-  assert.match(requests.at(-1).route, new RegExp(source + '/detail$'));
+  assert.equal(Object.hasOwn(page.data.exchangeLines[0], 'report'), false);
   page.changeExchangeSpec({ ...event({ sourceId: source }), detail: { value: '1' } });
-  finish({ inventory: {}, reports: [{ purchaseOrderId: 'old', shortageQty: 2 }] }); await pending;
-  assert.equal(page.data.showRecordPicker, false); assert.equal(page.data.pickerItems.length, 0);
-  assert.equal(page.data.exchangeLines[0].report, null);
-  const second = page.openRecordPicker(event({ sourceId: source }));
-  assert.match(requests.at(-1).route, new RegExp(page.data.skus[1].id + '/detail$'));
-  finish({ inventory: {}, reports: [{ purchaseOrderId: '9007199254740999', shortageQty: 2 }, { purchaseOrderId: '2', shortageQty: 0 }] }); await second;
-  page.chooseRecord(event({ index: 1 })); assert.equal(page.data.exchangeLines[0].report, null);
-  page.chooseRecord(event({ index: 0 })); assert.equal(page.data.exchangeLines[0].report.purchaseOrderId, '9007199254740999');
+  assert.equal(requests.length, 1);
+  await page.submitOperation();
+  assert.equal(writes.length, 1); assert.equal(writes[0].payload.targets[0].skuId, page.data.skus[1].id);
+  assert.equal(Object.hasOwn(writes[0].payload.targets[0], 'purchaseOrderId'), false);
+  assert.equal(requests.some(request => request.route.endsWith('/detail')), false);
 });
 
 test('商品查询组合状态、档口、标签、关键词，翻页与切换筛选保留多选', async () => {

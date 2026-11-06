@@ -30,7 +30,7 @@ test('同商品换货保留逐行来源，多个出库规格可换回同一规�
     { sourceSkuId: '2', targetSkuId: '2', qty: 1 }
   ] });
   const payload = inventory.buildOperation(input);
-  assert.equal(payload.targets[0].sourceSkuId, '1'); assert.equal(payload.targets[0].purchaseOrderId, '9007199254740998');
+  assert.equal(payload.targets[0].sourceSkuId, '1'); assert.equal(Object.hasOwn(payload.targets[0], 'purchaseOrderId'), false);
   assert.equal(payload.targets[1].skuId, '2');
   input.exchangeLines[0].qty = 1; assert.throws(() => inventory.buildOperation(input), /数量.*一致/);
   input.exchangeLines[0].qty = 2; input.exchangeLines[0].targetSkuId = 'foreign';

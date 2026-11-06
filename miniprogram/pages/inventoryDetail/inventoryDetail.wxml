@@ -53,7 +53,6 @@
         <view class="exchange-line" wx:for="{{exchangeLines}}" wx:key="sourceSkuId">
           <view class="exchange-source">出库：{{item.sourceLabel}} · {{item.qty}} 件</view>
           <view class="exchange-target"><picker class="exchange-spec-picker" range="{{skus}}" range-key="label" value="{{item.targetIndex}}" data-source-id="{{item.sourceSkuId}}" bindchange="changeExchangeSpec" disabled="{{saving}}"><view class="exchange-spec-choice"><text>换回：{{item.targetLabel}}</text><text class="muted">更改规格 ›</text></view></picker><text class="exchange-qty">{{item.qty}} 件</text></view>
-          <view class="row-extra" data-source-id="{{item.sourceSkuId}}" bindtap="openRecordPicker"><text>{{item.report ? '关联报单 ' + (item.report.batchNo || item.report.purchaseOrderId) : '不关联报单（独立换货），点击可选择报单'}}</text><text>›</text></view>
         </view>
         <view class="exchange-total {{outgoingTotal === incomingTotal && outgoingTotal > 0 && !invalidQty ? 'balanced' : 'unbalanced'}}">出库 {{outgoingTotal}} 件 · 应换回 {{incomingTotal}} 件<view>{{invalidQty ? '请修正无效数量' : (outgoingTotal === incomingTotal ? '两边总件数一致，可跨规格换回' : '两边总件数须一致，才能提交')}}</view></view>
       </block>
@@ -89,11 +88,6 @@
   </view>
 
   <view wx:if="{{isOperating && product}}" class="submit-bar"><view class="submit-count">{{functionId === 'exchange' ? '本次出库' : '本次操作'}} <text>{{outgoingTotal}}</text> 件</view><button class="primary-button" bindtap="submitOperation" loading="{{saving}}" disabled="{{saving || loading || error || quantityPending || !outgoingTotal || invalidQty || (functionId === 'exchange' && outgoingTotal !== incomingTotal)}}">确认{{operation.name}}</button></view>
-
-  <view class="record-picker" wx:if="{{showRecordPicker}}"><view class="picker-mask" bindtap="closeRecordPicker"></view><view class="picker-panel"><view class="picker-title">选择关联报单 · {{pickerSkuLabel}}</view><view class="picker-tip">只展示应换回规格仍有待到货余额的报单。也可不关联报单，独立换货。</view><scroll-view class="picker-list" scroll-y="true">
-    <view class="picker-item {{item.disabled ? 'disabled' : ''}}" wx:for="{{pickerItems}}" wx:key="choiceId" data-index="{{index}}" bindtap="chooseRecord"><view>报单 {{item.batchNo || item.purchaseOrderId}}</view><view>已到 {{item.receivedQty}} · 待到 {{item.shortageQty}}</view><view class="muted">{{item.timeText}}</view><view class="record-note">{{item.note}}</view><view class="danger" wx:if="{{item.disabled}}">无待到货余额，不可选择</view></view>
-    <view class="empty" wx:if="{{pickerLoading}}">加载中...</view><view class="empty" wx:if="{{pickerError}}">{{pickerError}}<button bindtap="loadPickerRecords">重试</button></view><view class="empty" wx:if="{{!pickerLoading && !pickerError && !pickerItems.length}}">暂无报单，可选择独立换货</view>
-  </scroll-view><view class="picker-footer"><button bindtap="closeRecordPicker">取消</button><button bindtap="clearReport">不关联，独立换货</button></view></view></view>
 
   <view class="record-picker" wx:if="{{showSupplyEditor}}"><view class="picker-mask" bindtap="closeSupplyEditor"></view><view class="picker-panel supply-panel"><view class="picker-title">取消供应商未到供货</view><view class="picker-tip">{{supplyReport.skuLabel}} · 当前待到 {{supplyReport.shortageQty}} 件。只填写供应商确认取消/短交的数量，不减少已入库实物。</view><view class="supply-content"><view class="quantity-stepper record-stepper"><button data-delta="-1" bindtap="supplyQtyChange" disabled="{{saving || supplyQty <= 0}}">−</button><input type="number" value="{{supplyQty}}" bindinput="supplyQtyChange" disabled="{{saving}}" /><button data-delta="1" bindtap="supplyQtyChange" disabled="{{saving}}">＋</button></view><textarea value="{{supplyNote}}" bindinput="onSupplyNoteInput" placeholder="填写供应商取消或短交确认依据（选填）" disabled="{{saving}}" /></view><view class="picker-footer"><button bindtap="closeSupplyEditor" disabled="{{saving}}">取消</button><button bindtap="submitSupplyAdjustment" loading="{{saving}}" disabled="{{saving || quantityPending}}">确认调整</button></view></view></view>
   <view class="record-picker" wx:if="{{showCorrection}}">

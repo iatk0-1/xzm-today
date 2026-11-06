@@ -13,7 +13,6 @@ Page({
     functionId: 'normal', operation: inventory.operations.normal, isOperating: true, recordView: '', historyMode: false, specsExpanded: false, note: '',
     exchangeLines: [], outgoingTotal: 0, incomingTotal: 0, invalidQty: false, quantityPending: false,
     receipts: [], flows: [], exchanges: [], inspections: [], reports: [], visibleReports: [], visibleFlows: [], visibleExchanges: [],
-    showRecordPicker: false, pickerType: '', pickerSkuLabel: '', pickerLoading: false, pickerError: '', pickerItems: [],
     showCorrection: false, correctionLoading: false, correctionError: '', correctionContext: null,
     correctionReceipt: null, correctionQty: '0', correctionNote: '', correctionPreview: null
   },
@@ -25,7 +24,7 @@ Page({
     return this.loadDetail();
   },
   onShow() { this.syncPending(); },
-  onUnload() { this._disposed = true; this._detailVersion = (this._detailVersion || 0) + 1; this._pickerVersion = (this._pickerVersion || 0) + 1; this._correctionVersion = (this._correctionVersion || 0) + 1; },
+  onUnload() { this._disposed = true; this._detailVersion = (this._detailVersion || 0) + 1; this._correctionVersion = (this._correctionVersion || 0) + 1; },
   async onPullDownRefresh() {
     try { if (!this.data.saving) await this.loadDetail(); } finally { wx.stopPullDownRefresh(); }
   },
@@ -141,7 +140,7 @@ Page({
       const targetIndex = index >= 0 ? index : this.data.skus.findIndex(target => String(target.id) === String(sku.id));
       const target = this.data.skus[targetIndex];
       return { sourceSkuId: sku.id, sourceLabel: sku.label, targetSkuId: target.id, targetIndex,
-        targetLabel: target.label, qty: inventory.quantity(sku.operationQty), report: index >= 0 ? old.report : null };
+        targetLabel: target.label, qty: inventory.quantity(sku.operationQty) };
     });
     this.setData({ exchangeLines: lines });
   },
@@ -150,47 +149,8 @@ Page({
     const sourceSkuId = e.currentTarget.dataset.sourceId;
     const index = Number(e.detail.value), target = this.data.skus[index];
     if (!target) return;
-    this.closeRecordPicker();
     this.setData({ exchangeLines: this.data.exchangeLines.map(line => String(line.sourceSkuId) === String(sourceSkuId)
-      ? { ...line, targetSkuId: target.id, targetIndex: index, targetLabel: target.label, report: null } : line) });
-  },
-  async openRecordPicker(e) {
-    if (this.data.saving) return;
-    const { sourceId } = e.currentTarget.dataset;
-    const line = this.data.exchangeLines.find(item => String(item.sourceSkuId) === String(sourceId));
-    if (!line) return;
-    this._pickerContext = { skuId: line.targetSkuId, sourceSkuId: line.sourceSkuId };
-    const type = 'report';
-    this.setData({ showRecordPicker: true, pickerType: type, pickerItems: [], pickerError: '' });
-    return this.loadPickerRecords();
-  },
-  async loadPickerRecords() {
-    const context = this._pickerContext;
-    if (!context || !this.data.showRecordPicker) return;
-    const version = (this._pickerVersion || 0) + 1; this._pickerVersion = version;
-    this.setData({ pickerLoading: true, pickerError: '' });
-    try {
-      const result = await api.get('/sku-inventory/' + encodeURIComponent(context.skuId) + '/detail');
-      if (this._disposed || version !== this._pickerVersion || !this.data.showRecordPicker) return;
-      const items = (result.reports || []).map(item => ({ ...item, choiceId: item.purchaseOrderId,
-        disabled: item.shortageQty <= 0, timeText: this.formatTime(item.createdAt) }));
-      this.setData({ pickerItems: items, pickerSkuLabel: [result.inventory.spec, result.inventory.size].filter(Boolean).join(' / ') });
-    } catch (err) {
-      if (version === this._pickerVersion) this.setData({ pickerError: getErrorMessage(err, '加载记录失败') });
-    } finally { if (version === this._pickerVersion) this.setData({ pickerLoading: false }); }
-  },
-  closeRecordPicker() { this._pickerVersion = (this._pickerVersion || 0) + 1; this.setData({ showRecordPicker: false, pickerLoading: false }); },
-  chooseRecord(e) {
-    if (this.data.saving || this.data.pickerLoading) return;
-    const item = this.data.pickerItems[Number(e.currentTarget.dataset.index)];
-    if (!item || item.disabled) return;
-    this.applyRecord(item); this.closeRecordPicker();
-  },
-  clearReport() { if (!this.data.saving) { this.applyRecord(null); this.closeRecordPicker(); } },
-  applyRecord(item) {
-    const context = this._pickerContext;
-    this.setData({ exchangeLines: this.data.exchangeLines.map(line => String(line.sourceSkuId) === String(context.sourceSkuId)
-      && String(line.targetSkuId) === String(context.skuId) ? { ...line, report: item } : line) });
+      ? { ...line, targetSkuId: target.id, targetIndex: index, targetLabel: target.label } : line) });
   },
   async submitOperation() {
     if (this.data.saving || this.data.loading || !this.data.isOperating) return;

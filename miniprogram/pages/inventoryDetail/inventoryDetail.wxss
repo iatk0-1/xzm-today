@@ -37,8 +37,6 @@ page { background: #f5f6f8; color: #26313e; }
 .quantity-stepper > button::after { border: none; }
 .quantity-stepper > button[disabled] { color: #bdc4cf; background: #f8f9fb; }
 .quantity-stepper > input { flex: 0 0 62rpx; width: 62rpx; min-width: 62rpx; height: 52rpx; margin: 0 4rpx; padding: 0 2rpx; border: 1rpx solid #c9d3df; border-radius: 7rpx; text-align: center; color: #176bab; font-size: 23rpx; box-sizing: border-box; }
-.row-extra { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 14rpx 18rpx; background: #f8fafd; color: #56799c; font-size: 21rpx; line-height: 1.7; border-bottom: 1rpx solid #e8edf4; overflow-wrap: anywhere; }
-.row-extra text:first-child { min-width: 0; flex: 1; }
 .warning { color: #b77b23; }.danger { color: #bd5a4b; }
 .specs-toggle { display: flex; justify-content: space-between; align-items: center; gap: 20rpx; padding: 20rpx; background: #fff; border-radius: 12rpx; font-size: 26rpx; font-weight: 600; }
 .specs-toggle-action { color: #667589; font-size: 24rpx; font-weight: 400; }
@@ -75,7 +73,6 @@ page { background: #f5f6f8; color: #26313e; }
 .picker-panel { position: absolute; bottom: 0; left: 0; right: 0; max-height: 85vh; padding-bottom: env(safe-area-inset-bottom); background: #fff; border-radius: 24rpx 24rpx 0 0; display: flex; flex-direction: column; overflow: hidden; }
 .picker-title { flex-shrink: 0; text-align: center; font-size: 28rpx; font-weight: 600; padding: 26rpx 24rpx; border-bottom: 1rpx solid #eee; }
 .picker-tip { flex-shrink: 0; font-size: 23rpx; color: #8a929f; line-height: 1.8; padding: 18rpx 24rpx; background: #fafbfd; }
-.picker-list { height: 50vh; min-height: 0; padding: 0 24rpx; box-sizing: border-box; }
 .picker-item { padding: 24rpx 0; border-bottom: 1rpx solid #edf0f4; font-size: 25rpx; line-height: 1.8; overflow-wrap: anywhere; }.picker-item.disabled { color: #aaa; }
 .picker-footer { display: flex; border-top: 1rpx solid #eee; flex-shrink: 0; }.picker-footer button { flex: 1; padding: 0 14rpx; margin: 0; border-radius: 0; height: 88rpx; line-height: 88rpx; font-size: 25rpx; }.picker-footer button:last-child { background: #26313e; color: #fff; }
 .supply-content { padding: 28rpx; display: flex; flex-direction: column; gap: 24rpx; }

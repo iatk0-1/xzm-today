@@ -31,7 +31,7 @@ function row(item, previous = {}) {
   return {
     ...item, id: item.skuId, label: [item.spec || '默认规格', item.size].filter(Boolean).join(' / '),
     operationQty: previous.operationQty == null ? '0' : String(previous.operationQty),
-    receipt: previous.receipt || null, report: previous.report || null
+    receipt: previous.receipt || null
   };
 }
 function receiptChoice(item) {
@@ -75,8 +75,7 @@ function buildOperation(data) {
       if (!source || used.has(String(line.sourceSkuId)) || qty !== source.qty) throw new Error('应换回数量必须与对应出库数量一致');
       if (!data.skus.some(sku => String(sku.id) === String(line.targetSkuId))) throw new Error('换回规格只能选择当前商品的规格');
       used.add(String(line.sourceSkuId));
-      targets.push({ sourceSkuId: source.skuId, skuId: line.targetSkuId, qty,
-        purchaseOrderId: line.report ? line.report.purchaseOrderId : null });
+      targets.push({ sourceSkuId: source.skuId, skuId: line.targetSkuId, qty });
     }
     if (used.size !== items.length) throw new Error('请核对应换回规格和数量');
   }
