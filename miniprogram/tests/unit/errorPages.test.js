@@ -49,7 +49,7 @@ test('库存不足使用统一文案，其他服务端错误保留message，提�
     const env = checkoutHarness({ failureAt: '/orders', error: { statusCode, code, message } });
     await env.page.submitOrderInternal();
     assert.equal(env.modals.length, 1);
-    assert.equal(env.modals[0].title, statusCode === 400 ? '库存不足' : '订单创建失败');
+    assert.equal(env.modals[0].title, statusCode === 400 ? '' : '订单创建失败');
     assert.equal(env.modals[0].content, statusCode === 400 ? '库存数量不足，请重新下单哦~' : message);
     assert.equal(env.calls.length, 1);
     assert.equal(env.page.data.submitting, false);

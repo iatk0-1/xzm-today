@@ -236,7 +236,7 @@ Page({
       }
       wx.hideLoading();
       await new Promise(resolve => wx.showModal({
-        ...(readyShortage ? readyStockPrompt() : { title: '库存不足', content: '库存数量不足，请重新下单哦~', showCancel: false }),
+        ...(readyShortage ? readyStockPrompt() : { title: '', content: '库存数量不足，请重新下单哦~', showCancel: false }),
         success: resolve, fail: resolve
       }));
       return null;

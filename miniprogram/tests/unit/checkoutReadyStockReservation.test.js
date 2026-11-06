@@ -62,7 +62,7 @@ test('含现货下单携带结算预期，取消支付按服务端订单提示�
 test('现货不足仅提示一次并更新清单，不自动重试、不创建订单、不支付', async () => {
   const env = harness({ create(body, attempt) { if (attempt === 1) throw changed(1);return { id: '12', items: [{ readyStockQty: 1 }] }; } });
   await env.page.submitOrder();
-  assert.equal(env.modals[0].title, '现货不足');assert.equal(env.modals[0].content, '现货数量不足，请重新下单哦~');
+  assert.equal(env.modals[0].title, '');assert.equal(env.modals[0].content, '现货数量不足，请重新下单哦~');
   assert.equal(env.modals[0].showCancel, false);assert.equal(env.modals[0].confirmText, undefined);
   assert.equal(env.calls.length, 1);assert.equal(env.payments.length, 0);assert.equal(env.drafts.length, 0);assert.equal(env.removed.length, 0);
   assert.equal(env.page.data.checkoutDisplayItems[0].readyStockQty, 1);assert.equal(env.page.data.submitting, false);
@@ -94,7 +94,7 @@ for (const error of [
 ]) test(`库存不足(${error.statusCode})用统一文案，不支付也不刷新金额或静默调整下单数量`, async () => {
   const env = harness({ create() { throw error; } });let refreshes = 0;
   env.page.refreshShippingQuote = async () => { refreshes++; };
-  await env.page.submitOrder();assert.equal(env.modals[0].title, '库存不足');
+  await env.page.submitOrder();assert.equal(env.modals[0].title, '');
   assert.equal(env.modals[0].content, '库存数量不足，请重新下单哦~');assert.equal(env.modals[0].showCancel, false);
   assert.equal(env.calls.length, 1);assert.equal(env.payments.length, 0);assert.equal(env.drafts.length, 0);
   assert.equal(env.page.data.checkoutItems[0].count, 3);assert.equal(refreshes, 0);

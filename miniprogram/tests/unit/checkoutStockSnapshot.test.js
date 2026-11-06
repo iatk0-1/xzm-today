@@ -131,6 +131,6 @@ test('地址变更不降低预期现货，立即支付仍检测被其他订单�
     shortages: [{ productName: '羽绒服', color: '黑色', size: 'M', readyStockQty: 0 }], currentReadyStock: [{ skuId: 's1', readyStockQty: 0 }]
   } }; } });await env.page.onLoad();env.page.chooseAddress();await tick();env.page.data.purchaseNoticeAgreed = true;
   await env.page.submitOrder();assert.equal(env.calls.find(row => row.url === '/orders').data.expectedReadyStock[0].readyStockQty, 2);
-  assert.equal(env.modals[0].title, '现货不足');assert.equal(env.modals[0].content, '现货数量不足，请重新下单哦~');
+  assert.equal(env.modals[0].title, '');assert.equal(env.modals[0].content, '现货数量不足，请重新下单哦~');
   assert.equal(env.page.data.checkoutDisplayItems[0].readyStockQty, 0, '用户收到提示后才更新快照');
 });
