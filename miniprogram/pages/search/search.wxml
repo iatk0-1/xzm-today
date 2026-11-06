@@ -87,7 +87,7 @@
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="goods-info">
-            <view class="goods-title"><view class="product-card-tag" wx:if="{{showReadyStockTag || tag.type !== 'READY_STOCK'}}" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
+            <view class="goods-title"><view class="product-card-tag" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
             <view class="goods-price-row">
               <view class="goods-price">¥{{item.retailPrice || item.displayPrice}}</view>
               <view class="btn-add-cart" catchtap="openSkuPanel" data-action="cart" data-product="{{item}}" aria-label="选择规格加入购物车">
@@ -106,7 +106,7 @@
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="goods-info">
-            <view class="goods-title"><view class="product-card-tag" wx:if="{{showReadyStockTag || tag.type !== 'READY_STOCK'}}" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
+            <view class="goods-title"><view class="product-card-tag" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
             <view class="goods-price-row">
               <view class="goods-price">¥{{item.retailPrice || item.displayPrice}}</view>
               <view class="btn-add-cart" catchtap="openSkuPanel" data-action="cart" data-product="{{item}}" aria-label="选择规格加入购物车">

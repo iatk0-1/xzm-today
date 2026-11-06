@@ -24,7 +24,7 @@ function apply(page, tabs) {
   const currentMainTab = keepSelection && mainTabs.some(tab => tab.label === previous)
     ? previous : (mainTabs[0] || defaults[0]).label;
   page._navigationLoaded = true;
-  page.setData({ mainTabs, currentMainTab, showReadyStockTag: tabs.find(tab => tab.key === 'stock').visible });
+  page.setData({ mainTabs, currentMainTab });
   return currentMainTab !== previous;
 }
 

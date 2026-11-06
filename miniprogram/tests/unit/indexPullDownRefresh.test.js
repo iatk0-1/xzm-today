@@ -298,7 +298,7 @@ test('导航排序配置先于首屏查询生效，隐藏现货后旧分享链�
   assert.equal(searchCalls()[0].params.sort, 'sales');
   assert.equal(searchCalls()[0].params.stallId, 's2');
   assert.deepEqual(page.data.mainTabs.map(tab => tab.label), ['销量', '上新']);
-  assert.equal(page.data.showReadyStockTag, false);
+  assert.equal(page.data.showReadyStockTag, undefined);
   await page.handleMainTabChange(event({ tab: '现货' }));
   assert.equal(searchCalls().length, 1);
   await page.handleMainTabChange(event({ tab: '上新' }));
@@ -306,7 +306,7 @@ test('导航排序配置先于首屏查询生效，隐藏现货后旧分享链�
   assert.equal(new URL(wxCalls.navigateUrl, 'https://test.local').searchParams.get('tab'), '上新');
 });
 
-test('返回首页读取新配置，当前现货被隐藏时重查，重新显示标签无需改变商品数据', async () => {
+test('返回首页读取新配置，当前现货被隐藏时重查，恢复导航不重置商品列表', async () => {
   const page = createPage();
   page._hasLoadedHomeData = true;
   page._navigationLoaded = true;
@@ -317,11 +317,11 @@ test('返回首页读取新配置，当前现货被隐藏时重查，重新显�
   page.onShow();
   await flush();
   assert.equal(searchCalls()[0].params.sort, 'sales');
-  assert.equal(page.data.showReadyStockTag, false);
+  assert.equal(page.data.showReadyStockTag, undefined);
   requestHandler = backendStub();
   page.onShow();
   await flush();
-  assert.equal(page.data.showReadyStockTag, true);
+  assert.equal(page.data.showReadyStockTag, undefined);
   assert.equal(searchCalls().length, 1);
 });
 

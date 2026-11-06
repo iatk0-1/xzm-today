@@ -18,7 +18,7 @@ test('配置顺序决定默认选项，显式分享保留可见选项，隐藏�
   assert.equal(navigation.apply(p, tabs), true);
   assert.equal(p.data.currentMainTab, '销量');
   assert.deepEqual(p.data.mainTabs.map(tab => tab.label), ['销量', '上新']);
-  assert.equal(p.data.showReadyStockTag, false);
+  assert.equal(p.data.showReadyStockTag, undefined);
   p.data.currentMainTab = '上新';
   navigation.apply(p, tabs);
   assert.equal(p.data.currentMainTab, '上新');
@@ -31,14 +31,14 @@ test('配置顺序决定默认选项，显式分享保留可见选项，隐藏�
   assert.equal(shared.data.currentMainTab, '销量');
 });
 
-test('全部隐藏仍以默认上新查询，恢复现货时标签同步恢复', () => {
+test('全部隐藏仍以默认上新查询，导航配置不写入商品现货展示状态', () => {
   const p = page();
   navigation.apply(p, navigation.normalize({ tabs: config.tabs.map(tab => ({ ...tab, visible: false })) }));
   assert.deepEqual(p.data.mainTabs, []);
   assert.equal(p.data.currentMainTab, '上新');
-  assert.equal(p.data.showReadyStockTag, false);
+  assert.equal(p.data.showReadyStockTag, undefined);
   navigation.apply(p, navigation.defaults);
-  assert.equal(p.data.showReadyStockTag, true);
+  assert.equal(p.data.showReadyStockTag, undefined);
 });
 
 test('并发读取共用请求，失败保留已有配置，卸载后忽略迟到响应', async () => {
@@ -182,10 +182,27 @@ test('拖动入口仅在左侧手柄，页面显示自动保存状态且没有�
   assert.doesNotMatch(source, /上移|下移|保存设置|bindtap="save"/);
 });
 
-test('首页和搜索页的现货标签始终使用页面开关过滤，优惠异步返回也不能绕过', () => {
+test('导航显示配置只作用于导航，商品标签和其他现货展示保持独立', () => {
   for (const name of ['index', 'search']) {
     const source = fs.readFileSync(path.join(__dirname, '../../pages', name, name + '.wxml'), 'utf8');
-    assert.equal((source.match(/showReadyStockTag \|\| tag.type !== 'READY_STOCK'/g) || []).length, 2);
+    assert.doesNotMatch(source, /showReadyStockTag/);
+    assert.equal((source.match(/wx:for="\{\{item.cardTags\}\}"/g) || []).length, 2);
     assert.match(source, /wx:for="\{\{mainTabs\}\}"/);
   }
+});
+
+test('隐藏现货导航仍生成现货商品标签，SKU、订单和支付校验不依赖导航配置', () => {
+  const p = page();
+  navigation.apply(p, navigation.normalize(config));
+  const { cardTags } = require('../../utils/productCardTags');
+  assert.ok(cardTags({ skuMatrix: [{ stock: 5, freeStockQty: 2 }] }).some(tag => tag.type === 'READY_STOCK'));
+  for (const file of ['templates/productSkuPanel.wxml', 'pages/checkout/checkout.wxml',
+    'pages/orderList/orderList.wxml', 'pages/orderDetail/orderDetail.wxml']) {
+    const source = fs.readFileSync(path.join(__dirname, '../..', file), 'utf8');
+    assert.doesNotMatch(source, /showReadyStockTag|homeNavigation/);
+    assert.match(source, /现货/);
+  }
+  const checkout = fs.readFileSync(path.join(__dirname, '../../pages/checkout/checkout.js'), 'utf8');
+  assert.doesNotMatch(checkout, /homeNavigation|loadStock/);
+  assert.match(checkout, /if \(expected\) orderData.expectedReadyStock = expected/);
 });

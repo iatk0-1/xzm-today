@@ -89,7 +89,7 @@
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="product-info">
-            <view class="product-title"><view class="product-card-tag" wx:if="{{showReadyStockTag || tag.type !== 'READY_STOCK'}}" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
+            <view class="product-title"><view class="product-card-tag" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
             <view class="product-bottom">
               <view class="product-price-row">
                 <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
@@ -110,7 +110,7 @@
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="product-info">
-            <view class="product-title"><view class="product-card-tag" wx:if="{{showReadyStockTag || tag.type !== 'READY_STOCK'}}" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
+            <view class="product-title"><view class="product-card-tag" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
             <view class="product-bottom">
               <view class="product-price-row">
                 <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>

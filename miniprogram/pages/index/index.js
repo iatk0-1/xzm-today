@@ -22,7 +22,6 @@ Page(pageSync.wrap({
 
     currentMainTab: '上新',
     mainTabs: homeNavigation.defaults,
-    showReadyStockTag: true,
     showTag: false,
     selectedStall: '',
     stallScrollLeft: 0,

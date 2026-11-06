@@ -84,7 +84,7 @@ test('隐藏现货的导航配置先于搜索首屏生效，旧入口回退并�
   await page.onLoad({ tab: '现货', stallId: 's2' });
   assert.equal(requests[0].sort, 'sales');
   assert.equal(requests[0].stallId, 's2');
-  assert.equal(page.data.showReadyStockTag, false);
+  assert.equal(page.data.showReadyStockTag, undefined);
   assert.deepEqual(page.data.mainTabs.map(tab => tab.label), ['销量', '上新']);
 });
 

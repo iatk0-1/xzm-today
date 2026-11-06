@@ -27,7 +27,6 @@ Page({
     searchEditing: true,
     currentMainTab: '上新',
     mainTabs: homeNavigation.defaults,
-    showReadyStockTag: true,
     selectedStall: '',
     stallScrollLeft: 0,
     selectedTag: '',
