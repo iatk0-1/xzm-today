@@ -60,9 +60,16 @@ test('并发读取共用请求，失败保留已有配置，卸载后忽略迟�
   assert.equal(JSON.stringify(p.data), saved);
 });
 
-test('管理员调整页面上移下移、开关和保存实际提交同一份配置', async () => {
-  let definition, body;
-  const api = { get: async () => config, put: async (url, value) => { body = value; return value; } };
+async function editor(options = {}) {
+  let definition;
+  const writes = [], toasts = [];
+  const api = {
+    get: async () => config,
+    put: async (url, value) => {
+      writes.push(value);
+      return options.put ? options.put(value) : value;
+    }
+  };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../pages/homeNavigation/homeNavigation.js'), 'utf8'), {
     Page: value => { definition = value; },
     require(name) {
@@ -71,16 +78,108 @@ test('管理员调整页面上移下移、开关和保存实际提交同一份�
       if (name.endsWith('/homeNavigation')) return navigation;
       if (name.endsWith('/error')) return require('../../utils/error');
       throw new Error(name);
-    }, wx: { showToast() {} }
+    }, wx: { showToast(value) { toasts.push(value); }, vibrateShort() {} }
   });
   const p = { ...definition, data: structuredClone(definition.data), setData(patch) { Object.assign(this.data, patch); } };
   await p.onLoad();
-  p.move({ currentTarget: { dataset: { key: 'stock', direction: -1 } } });
-  p.toggle({ currentTarget: { dataset: { key: 'stock' } }, detail: { value: true } });
-  await p.save();
-  assert.equal(body.tabs[0].key, 'stock');
-  assert.equal(body.tabs[0].visible, true);
+  return { p, writes, toasts };
+}
+const gesture = (key, clientY, identifier = 1, ended = false) => ({
+  currentTarget: { dataset: { key } },
+  [ended ? 'changedTouches' : 'touches']: [{ identifier, clientY }]
+});
+const tabKeys = p => Array.from(p.data.tabs, tab => tab.key);
+
+test('左侧长按拖动松手自动保存，开关变更自动提交，不含布局字段', async () => {
+  const { p, writes } = await editor();
+  p.onDragStart(gesture('stock', 200));
+  p.onDragTouchMove(gesture('stock', 104));
+  assert.equal(writes.length, 0);
+  await p.onDragEnd(gesture('stock', 104, 1, true));
+  assert.deepEqual(tabKeys(p), ['stock', 'sales', 'newest']);
+  assert.equal(writes.length, 1);
+  assert.deepEqual(Object.keys(writes[0].tabs[0]), ['key', 'visible']);
+  assert.equal(p.data.dragKey, '');
+  assert.equal(p.data.saved, true);
+  await p.toggle({ currentTarget: { dataset: { key: 'stock' } }, detail: { value: true } });
+  assert.equal(writes.length, 2);
+  assert.equal(writes[1].tabs[0].visible, true);
+});
+
+test('边界拖动后能立刻回拖，使用松手坐标落位，只处理原手指', async () => {
+  const { p, writes } = await editor();
+  p.onDragStart(gesture('sales', 100));
+  p.onDragTouchMove(gesture('sales', 10000));
+  assert.equal(p.data.tabs[0].y, 192);
+  p.onDragTouchMove(gesture('sales', 148));
+  assert.equal(p.data.tabs[0].y, 48);
+  p.onDragTouchMove(gesture('sales', 300, 2));
+  assert.equal(p.data.tabs[0].y, 48);
+  await p.onDragEnd(gesture('sales', 300, 2, true));
+  assert.equal(p.data.dragKey, 'sales');
+  await p.onDragEnd(gesture('sales', 292, 1, true));
+  assert.deepEqual(tabKeys(p), ['stock', 'newest', 'sales']);
+  assert.equal(writes.length, 1);
+});
+
+test('没长按不能拖动，同一位置松手和取消拖动都复位且不保存', async () => {
+  const { p, writes } = await editor();
+  p.onDragTouchMove(gesture('sales', 250));
+  assert.equal(p.data.dragKey, '');
+  p.onDragStart(gesture('sales', 100));
+  await p.onDragEnd(gesture('sales', 110, 1, true));
+  assert.equal(p.data.tabs[0].y, 0);
+  p.onDragStart(gesture('stock', 100));
+  p.onDragTouchMove(gesture('stock', 220));
+  p.cancelDrag();
+  assert.equal(p.data.tabs[1].y, 96);
+  assert.equal(writes.length, 0);
+  assert.deepEqual(tabKeys(p), ['sales', 'stock', 'newest']);
+});
+
+test('保存期间阻止重复操作，失败后恢复最后成功保存的排序和开关', async () => {
+  let reject;
+  const { p, writes, toasts } = await editor({ put: () => new Promise((resolve, fail) => { reject = fail; }) });
+  const saving = p.toggle({ currentTarget: { dataset: { key: 'stock' } }, detail: { value: true } });
+  assert.equal(p.data.saving, true);
+  p.onDragStart(gesture('sales', 100));
+  assert.equal(p.data.dragKey, '');
+  await p.toggle({ currentTarget: { dataset: { key: 'sales' } }, detail: { value: false } });
+  assert.equal(writes.length, 1);
+  reject(new Error('模拟保存失败'));
+  await saving;
+  assert.equal(p.data.tabs[1].visible, false);
+  assert.equal(p.data.tabs[0].visible, true);
   assert.equal(p.data.saving, false);
+  assert.equal(toasts[0].title, '保存失败，已恢复');
+});
+
+test('拖动保存失败恢复顺序，切换后台取消拖动，卸载后不写页面状态', async () => {
+  const { p } = await editor({ put: async () => { throw new Error('断网'); } });
+  p.onDragStart(gesture('newest', 300));
+  await p.onDragEnd(gesture('newest', 100, 1, true));
+  assert.deepEqual(tabKeys(p), ['sales', 'stock', 'newest']);
+  p.onDragStart(gesture('newest', 300));
+  p.onDragTouchMove(gesture('newest', 100));
+  p.onHide();
+  assert.equal(p.data.dragKey, '');
+  assert.equal(p.data.tabs[2].y, 192);
+  let resolve;
+  const next = await editor({ put: value => new Promise(done => { resolve = () => done(value); }) });
+  const pending = next.p.toggle({ currentTarget: { dataset: { key: 'stock' } }, detail: { value: true } });
+  next.p.onUnload();
+  const before = JSON.stringify(next.p.data);
+  resolve();
+  await pending;
+  assert.equal(JSON.stringify(next.p.data), before);
+});
+
+test('拖动入口仅在左侧手柄，页面显示自动保存状态且没有手动保存或移动按钮', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../../pages/homeNavigation/homeNavigation.wxml'), 'utf8');
+  assert.match(source, /class="drag-handle"[^>]*catchlongpress="onDragStart"/);
+  assert.match(source, /catchtouchcancel="cancelDrag"/);
+  assert.match(source, /正在保存/);
+  assert.doesNotMatch(source, /上移|下移|保存设置|bindtap="save"/);
 });
 
 test('首页和搜索页的现货标签始终使用页面开关过滤，优惠异步返回也不能绕过', () => {
