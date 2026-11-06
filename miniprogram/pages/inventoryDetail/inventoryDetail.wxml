@@ -28,32 +28,34 @@
   <view class="product-header" wx:if="{{product}}">
     <image class="product-cover" src="{{product.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
     <view class="product-heading"><view class="product-name">{{product.name}}</view><view class="admin-product-article-no" user-select="{{true}}">货号：{{product.articleNo || '未填写'}}</view><view class="muted">商品库存详情 · {{skus.length}} 个规格</view></view>
+    <button class="history-button" bindtap="openHistory" disabled="{{saving}}">历史入库</button>
   </view>
   <scroll-view class="main-tabs" scroll-x="true" enhanced="true" show-scrollbar="false" scroll-into-view="main-{{activeTab}}" scroll-with-animation="true">
-    <view class="tab-track"><view wx:for="{{tabs}}" wx:key="id" id="main-{{item.id}}" class="main-tab {{activeTab === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="switchTab">{{item.name}}</view></view>
+    <view class="tab-track"><view wx:for="{{tabs}}" wx:key="id" id="main-{{item.id}}" class="main-tab {{!historyMode && activeTab === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="switchTab">{{item.name}}</view></view>
   </scroll-view>
-  <scroll-view class="function-tabs" scroll-x="true" enhanced="true" show-scrollbar="false" scroll-into-view="function-{{functionId}}" scroll-with-animation="true">
+  <scroll-view wx:if="{{!historyMode && functionTabs.length}}" class="function-tabs" scroll-x="true" enhanced="true" show-scrollbar="false" scroll-into-view="function-{{functionId}}" scroll-with-animation="true">
     <view class="tab-track"><view wx:for="{{functionTabs}}" wx:key="id" id="function-{{item.id}}" class="function-tab {{functionId === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="switchFunction">{{item.name}}</view></view>
   </scroll-view>
+
+  <view wx:if="{{historyMode}}" class="history-heading"><text>历史入库</text><button bindtap="closeHistory" disabled="{{saving}}">返回库存操作</button></view>
 
   <view class="pending-banner" wx:if="{{quantityPending}}"><view>上次数量操作结果待确认，请先续办原操作。</view><button bindtap="retryPendingOperation" loading="{{saving}}" disabled="{{saving}}">重试原操作</button></view>
   <view class="state" wx:if="{{loading}}">加载库存详情中...</view>
   <view class="state error" wx:if="{{error}}"><view>{{error}}</view><button bindtap="loadDetail">重新加载</button></view>
 
   <view class="content" wx:if="{{product}}">
-    <block wx:if="{{activeTab === 'operate'}}">
+    <block wx:if="{{isOperating}}">
       <view class="operation-tip">{{operation.tip}} 数量为 0 的规格不处理。</view>
       <view wx:if="{{functionId === 'backfill'}}">
         <view class="mode-options"><view class="mode-option {{backfillMode === 'existing' ? 'active' : ''}}" data-field="backfillMode" data-value="existing" bindtap="setMode">已入库，补来源</view><view class="mode-option {{backfillMode === 'first' ? 'active' : ''}}" data-field="backfillMode" data-value="first" bindtap="setMode">未记库存，首次入库</view></view>
         <view class="operation-tip {{backfillMode === 'first' ? 'attention' : ''}}">{{backfillMode === 'existing' ? '逐规格选择已有收货记录，只补来源、不增加实物。未查到记录不代表从未入库，请先核查。' : '货已收到但系统从未记过库存，本次补报并首次增加实物；已入过库请选择补来源。'}}</view>
       </view>
-      <view wx:if="{{functionId === 'loss'}}" class="mode-options"><view class="mode-option {{lossCategory === 'normal' ? 'active' : ''}}" data-field="lossCategory" data-value="normal" bindtap="setMode">减少正常库存</view><view class="mode-option {{lossCategory === 'abnormal' ? 'active' : ''}}" data-field="lossCategory" data-value="abnormal" bindtap="setMode">减少异常库存</view></view>
     </block>
 
-    <view class="section-title">{{activeTab === 'operate' && functionId === 'exchange' ? '出库规格' : '商品规格'}}</view>
-    <template is="sku-table" data="{{skus, editable: activeTab === 'operate', isTarget: false, productId, functionId, backfillMode, saving}}" />
+    <view class="section-title">{{isOperating && functionId === 'exchange' ? '出库规格' : '商品规格'}}</view>
+    <template is="sku-table" data="{{skus, editable: isOperating, isTarget: false, productId, functionId, backfillMode, saving}}" />
 
-    <block wx:if="{{activeTab === 'operate'}}">
+    <block wx:if="{{isOperating}}">
       <block wx:if="{{functionId === 'exchange'}}">
         <view class="exchange-section-title"><view class="section-title">应换回商品规格</view><button class="add-product" bindtap="addExchangeProducts" disabled="{{saving}}" aria-label="添加换回商品">＋</button></view>
         <view class="empty exchange-empty" wx:if="{{!exchangeProducts.length}}">点击右侧 ＋，查询并多选应换回的商品</view>
@@ -63,12 +65,12 @@
         </view>
         <view class="exchange-total {{outgoingTotal === incomingTotal && outgoingTotal > 0 && !invalidQty ? 'balanced' : 'unbalanced'}}">出库 {{outgoingTotal}} 件 · 应换回 {{incomingTotal}} 件<view>{{invalidQty ? '请修正无效数量' : (outgoingTotal === incomingTotal ? '两边总件数一致，可跨规格换回' : '两边总件数须一致，才能提交')}}</view></view>
       </block>
-      <view class="note-field"><text>{{operation.type === 'backfill' ? '来源和补录原因（必填）' : (operation.type === 'stocktake' || functionId === 'confirm_history' ? '调整原因（必填）' : '备注')}}</text><textarea value="{{note}}" bindinput="onNoteInput" disabled="{{saving}}" placeholder="填写收货来源、处理依据或备注" maxlength="500" auto-height="true" /></view>
+      <view class="note-field"><text>{{operation.type === 'backfill' ? '来源和补报说明（选填）' : '备注（选填）'}}</text><textarea value="{{note}}" bindinput="onNoteInput" disabled="{{saving}}" placeholder="填写收货来源、处理依据或备注" maxlength="500" auto-height="true" /></view>
       <view class="submit-bar"><view class="submit-count">{{functionId === 'exchange' ? '本次出库' : '本次操作'}} <text>{{outgoingTotal}}</text> 件</view><button class="primary-button" bindtap="submitOperation" loading="{{saving}}" disabled="{{saving || loading || error || quantityPending || !outgoingTotal || invalidQty || (functionId === 'exchange' && outgoingTotal !== incomingTotal)}}">确认{{operation.name}}</button></view>
     </block>
 
-    <block wx:if="{{activeTab === 'ledger'}}">
-      <block wx:if="{{functionId === 'receipts'}}">
+    <block wx:if="{{recordView === 'receipts' || recordView === 'flows'}}">
+      <block wx:if="{{recordView === 'receipts'}}">
         <view class="record-card {{item.revoked ? 'revoked' : ''}}" wx:for="{{receipts}}" wx:key="id">
           <view class="record-title">{{item.skuLabel}} · {{item.sourceText}} · 原录入 {{item.qty}} 件{{item.revoked ? '（已撤销）' : ''}}</view>
           <view wx:if="{{item.effectiveQty != null}}">有效实收 {{item.effectiveQty}} 件 · 本次已发 {{item.shippedQty || 0}} 件</view>
@@ -80,21 +82,16 @@
         </view>
         <view class="empty" wx:if="{{!receipts.length && !loading}}">暂无入库记录（每个规格显示最近 100 条）</view>
       </block>
-      <block wx:else><view class="record-card" wx:for="{{flows}}" wx:key="id"><view class="record-title">{{item.skuLabel}} · {{item.changeText}} · {{item.changeQty > 0 ? '+' : ''}}{{item.changeQty}} 件</view><view class="muted">{{item.beforeQty}} → {{item.afterQty}} · {{item.timeText}}</view><view class="record-note">{{item.note}}</view></view><view class="empty" wx:if="{{!flows.length && !loading}}">暂无库存流水</view></block>
+      <block wx:else><view class="record-card" wx:for="{{visibleFlows}}" wx:key="id"><view class="record-title">{{item.skuLabel}} · {{item.changeText}} · {{item.changeQty > 0 ? '+' : ''}}{{item.changeQty}} 件</view><view class="muted">{{item.beforeQty}} → {{item.afterQty}} · {{item.timeText}}</view><view class="record-note">{{item.note}}</view></view><view class="empty" wx:if="{{!visibleFlows.length && !loading}}">暂无{{activeTab === 'return' ? '退货' : '出库'}}记录</view></block>
     </block>
 
-    <block wx:if="{{activeTab === 'returns'}}">
-      <block wx:if="{{functionId === 'exchanges'}}">
-        <view class="record-card" wx:for="{{exchanges}}" wx:key="id"><view class="record-title">{{item.sourceLabel}} → {{item.targetLabel}}</view><view>出库 {{item.qty}} 件 · 已换回 {{item.receivedQty}} 件 · 待回 {{item.pendingQty}} 件</view><view class="muted">换货编号 {{item.id}}</view><view class="record-note" wx:if="{{item.note}}">{{item.note}}</view>
-          <view class="record-action" wx:if="{{item.pendingQty > 0}}"><view class="quantity-stepper record-stepper"><button data-kind="exchange" data-index="{{index}}" data-delta="-1" bindtap="recordQtyChange" disabled="{{saving || item.receiveQty <= 0}}">−</button><input type="number" value="{{item.receiveQty}}" data-kind="exchange" data-index="{{index}}" bindinput="recordQtyChange" disabled="{{saving}}" /><button data-kind="exchange" data-index="{{index}}" data-delta="1" bindtap="recordQtyChange" disabled="{{saving}}">＋</button></view><button class="record-button" bindtap="receiveExchange" data-index="{{index}}" disabled="{{saving || quantityPending}}">确认换回入库</button></view>
-        </view><view class="empty" wx:if="{{!exchanges.length && !loading}}">暂无换货记录</view>
-      </block>
-      <block wx:else>
-        <view class="record-card after-sale-surface after-sale-return-record" wx:for="{{inspections}}" wx:key="afterSaleItemId"><view class="record-title">{{item.skuLabel}} · 退件验收</view><view>实收 {{item.receivedQty}} · 合格 {{item.acceptedQty}} · 待处置不合格 {{item.rejectedQty}} · 已处置 {{item.disposedQty}}</view><view class="muted">售后商品编号 {{item.afterSaleItemId}}</view><view class="record-note">{{item.note}}</view><view class="record-action" wx:if="{{item.rejectedQty > 0}}"><view class="after-sale-qty-stepper"><button class="after-sale-qty-button" data-kind="inspection" data-index="{{index}}" data-delta="-1" bindtap="recordQtyChange" disabled="{{saving || item.disposeQty <= 0}}">-</button><input class="after-sale-qty-number" type="number" value="{{item.disposeQty}}" data-kind="inspection" data-index="{{index}}" bindinput="recordQtyChange" disabled="{{saving}}" /><button class="after-sale-qty-button" data-kind="inspection" data-index="{{index}}" data-delta="1" bindtap="recordQtyChange" disabled="{{saving}}">+</button></view><button class="record-button" bindtap="disposeReturn" data-index="{{index}}" disabled="{{saving || quantityPending}}">处置不合格退件</button></view></view><view class="empty" wx:if="{{!inspections.length && !loading}}">暂无退件验收记录；收货和复检在售后详情办理</view>
-      </block>
+    <block wx:if="{{recordView === 'exchanges'}}">
+      <view class="record-card" wx:for="{{visibleExchanges}}" wx:key="id"><view class="record-title">{{item.sourceLabel}} → {{item.targetLabel}}</view><view>出库 {{item.qty}} 件 · 已换回 {{item.receivedQty}} 件 · 待回 {{item.pendingQty}} 件</view><view class="muted">换货编号 {{item.id}}</view><view class="record-note" wx:if="{{item.note}}">{{item.note}}</view>
+        <view class="record-action" wx:if="{{item.pendingQty > 0}}"><view class="quantity-stepper record-stepper"><button data-kind="exchange" data-index="{{item.recordIndex}}" data-delta="-1" bindtap="recordQtyChange" disabled="{{saving || item.receiveQty <= 0}}">−</button><input type="number" value="{{item.receiveQty}}" data-kind="exchange" data-index="{{item.recordIndex}}" bindinput="recordQtyChange" disabled="{{saving}}" /><button data-kind="exchange" data-index="{{item.recordIndex}}" data-delta="1" bindtap="recordQtyChange" disabled="{{saving}}">＋</button></view><button class="record-button" bindtap="receiveExchange" data-index="{{item.recordIndex}}" disabled="{{saving || quantityPending}}">确认换回入库</button></view>
+      </view><view class="empty" wx:if="{{!visibleExchanges.length && !loading}}">{{functionId === 'exchange_pending' ? '暂无未回换货' : '暂无换货记录'}}</view>
     </block>
 
-    <block wx:if="{{activeTab === 'reports'}}"><view class="record-card" wx:for="{{visibleReports}}" wx:key="purchaseOrderId"><view class="record-title">{{item.skuLabel}} · 报单 {{item.batchNo || item.purchaseOrderId}}</view><view>报单 {{item.reportedQty}} 件 · 已到 {{item.receivedQty}} 件 · 待到 {{item.shortageQty}} 件</view><view class="muted">{{item.timeText}}</view><view class="record-note">{{item.note}}</view><button class="record-button danger-button" wx:if="{{item.shortageQty > 0}}" data-index="{{index}}" bindtap="adjustSupply" disabled="{{saving || quantityPending}}">确认取消未到供货/短交</button></view><view class="empty" wx:if="{{!visibleReports.length && !loading}}">暂无符合条件的报单</view></block>
+    <block wx:if="{{recordView === 'reports' || recordView === 'backfills'}}"><view class="record-card" wx:for="{{visibleReports}}" wx:key="purchaseOrderId"><view class="record-title">{{item.skuLabel}} · 报单 {{item.batchNo || item.purchaseOrderId}}</view><view>报单 {{item.reportedQty}} 件 · 已到 {{item.receivedQty}} 件 · 待到 {{item.shortageQty}} 件</view><view class="muted">{{item.timeText}}</view><view class="record-note">{{item.note}}</view><button class="record-button danger-button" wx:if="{{recordView === 'reports' && item.shortageQty > 0}}" data-index="{{index}}" bindtap="adjustSupply" disabled="{{saving || quantityPending}}">确认取消未到供货/短交</button></view><view class="empty" wx:if="{{!visibleReports.length && !loading}}">{{recordView === 'backfills' ? '暂无补单记录' : '暂无报单记录'}}</view></block>
   </view>
 
   <view class="record-picker" wx:if="{{showRecordPicker}}"><view class="picker-mask" bindtap="closeRecordPicker"></view><view class="picker-panel"><view class="picker-title">{{pickerType === 'receipt' ? '选择既有入库记录' : '选择关联报单'}} · {{pickerSkuLabel}}</view><view class="picker-tip">{{pickerType === 'receipt' ? '当前规格最近100条记录。没有可选记录时请先核查是否已经入库；首次入库需主动切换补录方式。' : '只展示应换回规格的报单，必须仍有待到货余额。可不关联报单，独立换货。'}}</view><scroll-view class="picker-list" scroll-y="true">
@@ -102,13 +99,13 @@
     <view class="empty" wx:if="{{pickerLoading}}">加载中...</view><view class="empty" wx:if="{{pickerError}}">{{pickerError}}<button bindtap="loadPickerRecords">重试</button></view><view class="empty" wx:if="{{!pickerLoading && !pickerError && !pickerItems.length}}">{{pickerType === 'receipt' ? '暂无入库记录，请先核查库存来源' : '暂无报单，可选择独立换货'}}</view>
   </scroll-view><view class="picker-footer"><button bindtap="closeRecordPicker">取消</button><button wx:if="{{pickerType === 'report'}}" bindtap="clearReport">不关联，独立换货</button></view></view></view>
 
-  <view class="record-picker" wx:if="{{showSupplyEditor}}"><view class="picker-mask" bindtap="closeSupplyEditor"></view><view class="picker-panel supply-panel"><view class="picker-title">取消供应商未到供货</view><view class="picker-tip">{{supplyReport.skuLabel}} · 当前待到 {{supplyReport.shortageQty}} 件。只填写供应商确认取消/短交的数量，不减少已入库实物。</view><view class="supply-content"><view class="quantity-stepper record-stepper"><button data-delta="-1" bindtap="supplyQtyChange" disabled="{{saving || supplyQty <= 0}}">−</button><input type="number" value="{{supplyQty}}" bindinput="supplyQtyChange" disabled="{{saving}}" /><button data-delta="1" bindtap="supplyQtyChange" disabled="{{saving}}">＋</button></view><textarea value="{{supplyNote}}" bindinput="onSupplyNoteInput" placeholder="填写供应商取消或短交确认依据（必填）" disabled="{{saving}}" /></view><view class="picker-footer"><button bindtap="closeSupplyEditor" disabled="{{saving}}">取消</button><button bindtap="submitSupplyAdjustment" loading="{{saving}}" disabled="{{saving || quantityPending}}">确认调整</button></view></view></view>
+  <view class="record-picker" wx:if="{{showSupplyEditor}}"><view class="picker-mask" bindtap="closeSupplyEditor"></view><view class="picker-panel supply-panel"><view class="picker-title">取消供应商未到供货</view><view class="picker-tip">{{supplyReport.skuLabel}} · 当前待到 {{supplyReport.shortageQty}} 件。只填写供应商确认取消/短交的数量，不减少已入库实物。</view><view class="supply-content"><view class="quantity-stepper record-stepper"><button data-delta="-1" bindtap="supplyQtyChange" disabled="{{saving || supplyQty <= 0}}">−</button><input type="number" value="{{supplyQty}}" bindinput="supplyQtyChange" disabled="{{saving}}" /><button data-delta="1" bindtap="supplyQtyChange" disabled="{{saving}}">＋</button></view><textarea value="{{supplyNote}}" bindinput="onSupplyNoteInput" placeholder="填写供应商取消或短交确认依据（选填）" disabled="{{saving}}" /></view><view class="picker-footer"><button bindtap="closeSupplyEditor" disabled="{{saving}}">取消</button><button bindtap="submitSupplyAdjustment" loading="{{saving}}" disabled="{{saving || quantityPending}}">确认调整</button></view></view></view>
   <view class="record-picker" wx:if="{{showCorrection}}">
     <view class="picker-mask" bindtap="closeReceiptCorrection"></view>
     <view class="picker-panel correction-panel">
       <view class="picker-title">入库数量更正 · {{correctionReceipt.skuLabel}}</view>
       <scroll-view class="correction-content" scroll-y="true">
-        <view class="picker-tip">填写本次真正收到的总件数。已发货记录保留，普通订单占用会重新分配；更正原录入错误，实际丢失请使用盘亏。</view>
+        <view class="picker-tip">填写本次真正收到的总件数。已发货记录保留，普通订单占用会重新分配；更正原录入错误；实际出入库请在对应操作中办理。</view>
         <view class="state" wx:if="{{correctionLoading}}">正在核对入库与报单...</view>
         <view class="state error" wx:if="{{correctionError}}">{{correctionError}}<button bindtap="loadCorrectionContext" disabled="{{saving || correctionLoading}}">刷新更正信息</button></view>
         <block wx:if="{{correctionContext}}">
@@ -119,25 +116,25 @@
               <view>正确实收数量</view>
               <view class="quantity-stepper record-stepper"><button data-delta="-1" bindtap="correctionQtyChange" disabled="{{saving || correctionLoading || correctionQty <= correctionContext.shippedQty}}">−</button><input type="number" value="{{correctionQty}}" bindinput="correctionQtyChange" disabled="{{saving || correctionLoading}}" /><button data-delta="1" bindtap="correctionQtyChange" disabled="{{saving || correctionLoading}}">＋</button></view>
               <block wx:if="{{correctionContext.losses.length}}">
-                <view>关联已用于纠错的盘亏</view><view class="muted">只勾选确实用于修正这次误录的记录，已扣过的部分不会重复扣减。实际丢失的货不要勾选。</view>
+                <view>关联历史纠错记录</view><view class="muted">只勾选确实用于修正这次误录的记录，已扣过的部分不会重复扣减。实际丢失的货不要勾选。</view>
                 <view class="correction-loss {{item.selected ? 'selected' : ''}}" wx:for="{{correctionContext.losses}}" wx:key="ledgerId" data-id="{{item.ledgerId}}" bindtap="toggleCorrectionLoss">
                   <view>{{item.selected ? '☑' : '☐'}} 正常 {{item.normalQty}} 件 · 异常 {{item.abnormalQty}} 件</view><view class="muted">{{item.timeText}} · 流水 {{item.ledgerId}}</view><view class="record-note">{{item.note}}</view>
                 </view>
               </block>
-              <view>更正原因（必填）</view><textarea value="{{correctionNote}}" bindinput="onCorrectionNoteInput" maxlength="500" placeholder="填写收货数量录错及核实依据" disabled="{{saving || correctionLoading}}" />
+              <view>更正原因（选填）</view><textarea value="{{correctionNote}}" bindinput="onCorrectionNoteInput" maxlength="500" placeholder="填写收货数量录错及核实依据" disabled="{{saving || correctionLoading}}" />
             </view>
             <view class="correction-result" wx:if="{{correctionPreview}}">
               <view>有效实收：{{correctionPreview.beforeQty}} → {{correctionPreview.afterQty}} 件</view>
               <view>更正后本次正常到货 {{correctionPreview.normalQty}} 件 · 超收异常 {{correctionPreview.abnormalQty}} 件</view>
               <view>正常实存变动 {{correctionPreview.normalStockChange}} 件 · 异常实存变动 {{correctionPreview.abnormalStockChange}} 件</view>
-              <view>已关联盘亏 {{correctionPreview.creditedLossQty}} 件，避免重复扣减</view>
+              <view>已关联历史纠错数量 {{correctionPreview.creditedLossQty}} 件，避免重复扣减</view>
               <view wx:for="{{correctionPreview.supplies}}" wx:key="purchaseOrderId">报单 {{item.purchaseOrderId}}：已到货 {{item.beforeReceivedQty}} → {{item.afterReceivedQty}} 件，剩余待到货 {{item.afterPendingQty}} 件</view>
             </view>
           </block>
           <view class="correction-history" wx:if="{{correctionContext.history.length}}"><view class="section-title">更正记录</view><view class="picker-item" wx:for="{{correctionContext.history}}" wx:key="id"><view>{{item.beforeQty}} → {{item.afterQty}} 件 · 实存变动 {{item.stockChange}} 件</view><view class="muted">{{item.timeText}} · 操作人 {{item.operator}}</view><view>{{item.note}}</view></view></view>
         </block>
       </scroll-view>
-      <view class="picker-footer"><button bindtap="closeReceiptCorrection" disabled="{{saving}}">关闭</button><button wx:if="{{!correctionPreview}}" bindtap="previewReceiptCorrection" loading="{{correctionLoading}}" disabled="{{saving || correctionLoading || quantityPending || !correctionContext || correctionContext.blockedReason}}">预览更正</button><button wx:else bindtap="submitReceiptCorrection" loading="{{saving}}" disabled="{{saving || correctionLoading || quantityPending || !correctionNote}}">确认更正</button></view>
+      <view class="picker-footer"><button bindtap="closeReceiptCorrection" disabled="{{saving}}">关闭</button><button wx:if="{{!correctionPreview}}" bindtap="previewReceiptCorrection" loading="{{correctionLoading}}" disabled="{{saving || correctionLoading || quantityPending || !correctionContext || correctionContext.blockedReason}}">预览更正</button><button wx:else bindtap="submitReceiptCorrection" loading="{{saving}}" disabled="{{saving || correctionLoading || quantityPending}}">确认更正</button></view>
     </view>
   </view>
 </view>

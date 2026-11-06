@@ -86,12 +86,14 @@ test('更正关联已经盘亏的异常后预览并提交，成功通知库存�
   assert.equal(emitted.at(-1)[1].skuIds[0], '9007199254740995');
 });
 
-test('修改更正数量或盘亏选择会清除旧预览，缺原因不可提交', async () => {
+test('修改更正数量或历史纠错选择会清除旧预览，未填原因也能提交', async () => {
   const { page, writes, toasts } = load('inventoryDetail', { get: async route => route.endsWith('/correction') ? correctionContext() : correctionDetail(),
     post: async () => ({ beforeQty: 11, afterQty: 8, previewToken: 'old-preview' }) });
   await page.onLoad({ id: '1' }); await page.openReceiptCorrection(event({ index: 0 }));
   page.correctionQtyChange({ ...event({}), detail: { value: '8' } }); await page.previewReceiptCorrection();
-  await page.submitReceiptCorrection(); assert.match(toasts.at(-1), /更正原因/); assert.equal(writes.length, 0);
+  page.confirm = async () => true;
+  await page.submitReceiptCorrection(); assert.equal(writes.length, 1); assert.equal(writes[0].payload.note, '');
+  await page.openReceiptCorrection(event({ index: 0 }));
   page.correctionQtyChange(event({ delta: 1 })); assert.equal(page.data.correctionPreview, null);
   await page.previewReceiptCorrection(); page.toggleCorrectionLoss(event({ id: '9007199254740999' }));
   assert.equal(page.data.correctionPreview, null);
@@ -116,21 +118,55 @@ test('更正失败清除预览并保留输入，不会显示成功或关闭面�
   assert.equal(page.data.showCorrection, true); assert.equal(page.data.correctionPreview, null); assert.equal(page.data.correctionQty, '8');
   assert.match(toasts.at(-1), /重新预览/);
 });
-test('主Tab与功能Tab切换保留各主Tab选择，重新选择操作清零出库草稿', async () => {
+test('六个一级菜单切换保留记录选择，操作类型变化清空数量，历史入库单独进入', async () => {
   const { page } = load('inventoryDetail', { get: async () => detail() });
   await page.onLoad({ id: '1' });
-  page.switchFunction(event({ id: 'exchange' }));
+  assert.deepEqual(Array.from(page.data.tabs, item => item.name), ['入库', '出库', '补报单', '换货', '退货', '报单记录']);
+  page.switchTab(event({ id: 'exchange' }));
+  assert.deepEqual(Array.from(page.data.functionTabs, item => item.name), ['换货', '换货记录', '换货未回']);
   page.rowQuantityChange(event({ skuId: page.data.skus[0].id, delta: 1 }));
-  assert.equal(page.data.outgoingTotal, 1);
-  page.switchTab(event({ id: 'returns' })); assert.equal(page.data.functionId, 'exchanges');
-  page.switchFunction(event({ id: 'inspections' }));
-  page.switchTab(event({ id: 'operate' })); assert.equal(page.data.functionId, 'exchange');
-  assert.equal(page.data.skus[0].operationQty, '1');
-  await page.loadDetail(event({}));
-  assert.equal(page.data.skus[0].operationQty, '1');
-  page.switchFunction(event({ id: 'history' })); assert.equal(page.data.outgoingTotal, 0);
-  page.switchTab(event({ id: 'returns' })); assert.equal(page.data.functionId, 'inspections');
+  page.switchFunction(event({ id: 'exchange_pending' })); assert.equal(page.data.isOperating, false);
+  page.switchTab(event({ id: 'inbound' })); assert.equal(page.data.functionId, 'normal');
+  assert.equal(page.data.outgoingTotal, 0);
+  page.switchTab(event({ id: 'exchange' })); assert.equal(page.data.functionId, 'exchange_pending');
+  page.openHistory(); assert.equal(page.data.functionId, 'history'); assert.equal(page.data.historyMode, true);
+  assert.equal(page.data.isOperating, true);
+  page.closeHistory(); assert.equal(page.data.functionId, 'exchange_pending'); assert.equal(page.data.historyMode, false);
+  page.switchTab(event({ id: 'exchange' })); page.switchFunction(event({ id: 'exchange' }));
+  page.rowQuantityChange(event({ skuId: page.data.skus[0].id, delta: 1 }));
+  await page.loadDetail(event({})); assert.equal(page.data.skus[0].operationQty, '1');
+  page.switchTab(event({ id: 'reports' })); assert.equal(page.data.functionTabs.length, 0); assert.equal(page.data.recordView, 'reports');
 });
+
+test('各类记录按业务筛选，换货未回保留原始索引，改数量不会操作错记录', async () => {
+  const response = detail(); response.records = [{ skuId: response.skus[0].skuId,
+    ledger: ['arrival', 'outbound', 'return_out', 'exchange_out', 'shipment', 'stocktake_loss'].map((changeType, id) => ({ id, changeType })),
+    reports: [{ purchaseOrderId: '1', purpose: 'normal' }, { purchaseOrderId: '2', purpose: 'backfill' }],
+    exchanges: [{ id: 'done', qty: 2, receivedQty: 2 }, { id: 'pending', qty: 3, receivedQty: 1 }] }];
+  const { page } = load('inventoryDetail', { get: async () => response }); await page.onLoad({ id: '1' });
+  page.switchTab(event({ id: 'outbound' })); page.switchFunction(event({ id: 'outbound_records' }));
+  assert.deepEqual(Array.from(page.data.visibleFlows, item => item.changeType), ['outbound', 'return_out', 'exchange_out', 'shipment']);
+  page.switchTab(event({ id: 'return' })); page.switchFunction(event({ id: 'return_records' }));
+  assert.deepEqual(Array.from(page.data.visibleFlows, item => item.changeType), ['return_out']);
+  page.switchTab(event({ id: 'backfill' })); page.switchFunction(event({ id: 'backfill_records' }));
+  assert.equal(page.data.visibleReports.length, 1); assert.equal(page.data.visibleReports[0].purchaseOrderId, '2');
+  page.switchTab(event({ id: 'exchange' })); page.switchFunction(event({ id: 'exchange_pending' }));
+  assert.equal(page.data.visibleExchanges.length, 1); assert.equal(page.data.visibleExchanges[0].recordIndex, 1);
+  page.recordQtyChange(event({ kind: 'exchange', index: page.data.visibleExchanges[0].recordIndex, delta: 1 }));
+  assert.equal(page.data.visibleExchanges[0].receiveQty, '1'); assert.equal(page.data.exchanges[0].receiveQty, '0');
+  page.switchTab(event({ id: 'reports' })); assert.equal(page.data.visibleReports.length, 2);
+});
+
+test('出库不填备注可以提交，历史入库与普通出库使用各自接口参数', async () => {
+  const { page, writes } = load('inventoryDetail', { get: async () => detail() }); await page.onLoad({ id: '1' });
+  page.switchTab(event({ id: 'outbound' }));
+  page.rowQuantityChange({ ...event({ skuId: page.data.skus[0].id }), detail: { value: '4' } });
+  await page.submitOperation(); assert.equal(writes[0].payload.type, 'outbound'); assert.equal(writes[0].payload.action, 'outbound');
+  assert.equal(writes[0].payload.note, '');
+  page.openHistory(); page.rowQuantityChange(event({ skuId: page.data.skus[0].id, delta: 1 }));
+  await page.submitOperation(); assert.equal(writes[1].payload.type, 'history');
+});
+
 test('多选商品带回全部规格，已有数量按规格编号保留，取消选择移除对应商品', () => {
   const { page } = load('inventoryDetail');
   page.mergeExchangeProducts([{ id: '2', name: '毛衣', skus: [{ skuId: '21', spec: '白', qty: 0 }, { skuId: '22', spec: '黑', qty: 1 }] }]);
@@ -143,19 +179,19 @@ test('多选商品带回全部规格，已有数量按规格编号保留，取�
   page.removeExchangeProduct(event({ id: '2' })); assert.equal(page.data.incomingTotal, 0);
   assert.equal(page.data.exchangeProducts[0].id, '3');
 });
-test('数量步进最小0，异常库存到顶不再增加，手输无效数量标记并禁止提交', async () => {
+test('数量步进最小0，实际库存到顶不再增加，手输无效数量标记并禁止提交', async () => {
   const { page, writes } = load('inventoryDetail', { get: async () => detail() });
-  await page.onLoad({ id: '1' }); page.switchFunction(event({ id: 'exchange' }));
+  await page.onLoad({ id: '1' }); page.switchTab(event({ id: 'exchange' })); page.switchFunction(event({ id: 'exchange' }));
   const id = page.data.skus[0].id;
   page.rowQuantityChange(event({ skuId: id, delta: -1 })); assert.equal(page.data.outgoingTotal, 0);
-  for (let index = 0; index < 3; index++) page.rowQuantityChange(event({ skuId: id, delta: 1 }));
-  assert.equal(page.data.outgoingTotal, 2);
+  for (let index = 0; index < 6; index++) page.rowQuantityChange(event({ skuId: id, delta: 1 }));
+  assert.equal(page.data.outgoingTotal, 5);
   page.rowQuantityChange({ ...event({ skuId: id }), detail: { value: '1.5' } });
   assert.equal(page.data.invalidQty, true); await page.submitOperation(); assert.equal(writes.length, 0);
 });
 test('两边总数相等才提交整笔多规格换货，成功清空数量并通知父页面', async () => {
   const { page, writes, emitted } = load('inventoryDetail', { get: async () => detail() });
-  await page.onLoad({ id: '9007199254740993' }); page.switchFunction(event({ id: 'exchange' }));
+  await page.onLoad({ id: '9007199254740993' }); page.switchTab(event({ id: 'exchange' })); page.switchFunction(event({ id: 'exchange' }));
   page.rowQuantityChange({ ...event({ skuId: page.data.skus[0].id }), detail: { value: '2' } });
   page.mergeExchangeProducts([{ id: '2', name: '毛衣', skus: [{ skuId: '21' }, { skuId: '22' }] }]);
   await page.submitOperation(); assert.equal(writes.length, 0);

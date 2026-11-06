@@ -9,10 +9,10 @@ const pageSync = require('../../utils/pageSync');
 Page({
   data: {
     productId: '', product: null, skus: [], loading: false, error: '', saving: false,
-    tabs: inventory.tabs, activeTab: 'operate', functionTabs: inventory.functions.operate,
-    functionId: 'normal', operation: inventory.functions.operate[0], lossCategory: 'normal', backfillMode: 'existing', note: '',
+    tabs: inventory.tabs, activeTab: 'inbound', functionTabs: inventory.functions.inbound,
+    functionId: 'normal', operation: inventory.operations.normal, isOperating: true, recordView: '', historyMode: false, backfillMode: 'existing', note: '',
     exchangeProducts: [], outgoingTotal: 0, incomingTotal: 0, invalidQty: false, quantityPending: false,
-    receipts: [], flows: [], exchanges: [], inspections: [], reports: [], visibleReports: [],
+    receipts: [], flows: [], exchanges: [], inspections: [], reports: [], visibleReports: [], visibleFlows: [], visibleExchanges: [],
     showRecordPicker: false, pickerType: '', pickerSkuLabel: '', pickerLoading: false, pickerError: '', pickerItems: [],
     showCorrection: false, correctionLoading: false, correctionError: '', correctionContext: null,
     correctionReceipt: null, correctionQty: '0', correctionNote: '', correctionPreview: null
@@ -69,26 +69,46 @@ Page({
     if (this.data.saving) return;
     const id = e.currentTarget.dataset.id;
     const choices = inventory.functions[id];
-    if (!choices || id === this.data.activeTab) return;
+    if (!choices || (id === this.data.activeTab && !this.data.historyMode)) return;
     this._functionDrafts = this._functionDrafts || {};
-    this._functionDrafts[this.data.activeTab] = this.data.functionId;
+    if (!this.data.historyMode) this._functionDrafts[this.data.activeTab] = this.data.functionId;
     const selected = choices.find(item => item.id === this._functionDrafts[id]) || choices[0];
-    this.setData({ activeTab: id, functionTabs: choices, functionId: selected.id, operation: id === 'operate' ? selected : this.data.operation });
-    this.filterReports(); this.updateTotals();
+    this.setData({ activeTab: id, functionTabs: choices, historyMode: false });
+    this.selectFunction(selected || { id: 'all', view: 'reports' });
   },
   switchFunction(e) {
     if (this.data.saving) return;
     const choice = this.data.functionTabs.find(item => item.id === e.currentTarget.dataset.id);
     if (!choice || choice.id === this.data.functionId) return;
-    this.setData({ functionId: choice.id, operation: this.data.activeTab === 'operate' ? choice : this.data.operation });
-    if (this.data.activeTab === 'operate') this.setData({ skus: this.data.skus.map(sku => ({ ...sku, operationQty: '0' })), note: '' });
+    this.selectFunction(choice);
+  },
+  selectFunction(choice) {
+    const operation = inventory.operations[choice.id];
+    if (operation && operation.id !== this.data.operation.id) {
+      this.setData({ skus: this.data.skus.map(sku => ({ ...sku, operationQty: '0', receipt: null })), note: '' });
+    }
+    this.setData({ functionId: choice.id, isOperating: !!operation, recordView: choice.view || '',
+      operation: operation || this.data.operation });
     this.filterReports(); this.updateTotals();
+  },
+  openHistory() {
+    if (this.data.saving || this.data.historyMode) return;
+    this._functionDrafts = this._functionDrafts || {};
+    this._functionDrafts[this.data.activeTab] = this.data.functionId;
+    this.setData({ historyMode: true });
+    this.selectFunction(inventory.operations.history);
+  },
+  closeHistory() {
+    if (this.data.saving) return;
+    const choices = inventory.functions[this.data.activeTab];
+    const selected = choices.find(item => item.id === (this._functionDrafts || {})[this.data.activeTab]) || choices[0];
+    this.setData({ historyMode: false });
+    this.selectFunction(selected || { id: 'all', view: 'reports' });
   },
   setMode(e) {
     if (this.data.saving) return;
     const { field, value } = e.currentTarget.dataset;
     if (field === 'backfillMode' && ['existing', 'first'].includes(value)) this.setData({ backfillMode: value, skus: this.data.skus.map(sku => ({ ...sku, receipt: null })) });
-    if (field === 'lossCategory' && ['normal', 'abnormal'].includes(value)) this.setData({ lossCategory: value });
   },
   onNoteInput(e) { this.setData({ note: e.detail.value }); },
   rowQuantityChange(e) {
@@ -100,8 +120,7 @@ Page({
       if (delta != null) {
         let limit = inventory.LIMIT;
         if (target !== 'exchange') {
-          if (this.data.operation.type === 'abnormal') limit = sku.abnormalQty;
-          if (this.data.functionId === 'loss') limit = this.data.lossCategory === 'abnormal' ? sku.abnormalQty : sku.qty - sku.abnormalQty;
+          if (this.data.operation.type === 'outbound') limit = sku.qty;
           if (this.data.functionId === 'backfill' && this.data.backfillMode === 'existing' && sku.receipt) limit = sku.receipt.remaining;
         }
         if (Number(value) > limit) { wx.showToast({ title: '已达到本次可操作数量上限', icon: 'none' }); return sku; }
@@ -175,7 +194,7 @@ Page({
     else this.setData({ exchangeProducts: this.data.exchangeProducts.map(product => String(product.id) === String(context.productId) ? { ...product, skus: product.skus.map(change) } : product) });
   },
   async submitOperation() {
-    if (this.data.saving || this.data.loading) return;
+    if (this.data.saving || this.data.loading || !this.data.isOperating) return;
     let payload;
     try { payload = inventory.buildOperation(this.data); }
     catch (err) { wx.showToast({ title: err.message, icon: 'none' }); return; }
@@ -210,8 +229,12 @@ Page({
     finally { this.setData({ saving: false }); this.syncPending(); }
   },
   filterReports() {
-    this.setData({ visibleReports: this.data.reports.filter(item => this.data.activeTab !== 'reports' || this.data.functionId === 'all'
-      || (this.data.functionId === 'pending' ? item.shortageQty > 0 : item.shortageQty <= 0)) });
+    const types = this.data.activeTab === 'return' ? ['return_out', 'abnormal_return_out']
+      : ['outbound', 'shipment', 'abnormal_exchange_out', 'exchange_out', 'abnormal_return_out', 'return_out'];
+    this.setData({ visibleReports: this.data.reports.filter(item => this.data.recordView !== 'backfills' || item.purpose === 'backfill'),
+      visibleFlows: this.data.flows.filter(item => types.includes(item.changeType)),
+      visibleExchanges: this.data.exchanges.map((item, recordIndex) => ({ ...item, recordIndex }))
+        .filter(item => this.data.functionId !== 'exchange_pending' || item.pendingQty > 0) });
   },
   async revokeReceipt(e) {
     const item = this.data.receipts[Number(e.currentTarget.dataset.index)];
@@ -287,10 +310,9 @@ Page({
     try { input = this.correctionInput(); } catch (err) { wx.showToast({ title: err.message, icon: 'none' }); return; }
     const receipt = this.data.correctionReceipt, preview = this.data.correctionPreview, note = this.data.correctionNote.trim();
     if (!preview) { wx.showToast({ title: '请先预览更正结果', icon: 'none' }); return; }
-    if (!note) { wx.showToast({ title: '请填写更正原因', icon: 'none' }); return; }
     this._correctionConfirming = true;
     try {
-      if (!await this.confirm('确认入库数量更正', '将本次有效实收数量从 ' + preview.beforeQty + ' 件更正为 ' + preview.afterQty + ' 件，已发货记录保留。确认关联的盘亏用于修正本次录入错误。')) return;
+      if (!await this.confirm('确认入库数量更正', '将本次有效实收数量从 ' + preview.beforeQty + ' 件更正为 ' + preview.afterQty + ' 件，已发货记录保留。请核对预览结果。')) return;
       // 确认弹窗期间如果数量被编辑，必须重新预览。
       if (this.data.correctionPreview !== preview) return;
       const success = await this.writeRecord('/sku-inventory/' + receipt.skuId + '/receipts/' + receipt.id + '/correct',
@@ -307,6 +329,7 @@ Page({
     const qtyField = kind === 'exchange' ? 'receiveQty' : 'disposeQty';
     const list = this.data[field].map((item, position) => position === Number(index) ? { ...item, [qtyField]: delta == null ? e.detail.value : String(Math.max(0, (inventory.quantity(item[qtyField]) || 0) + Number(delta))) } : item);
     this.setData({ [field]: list });
+    this.filterReports();
   },
   async receiveExchange(e) {
     const item = this.data.exchanges[Number(e.currentTarget.dataset.index)];
@@ -320,10 +343,10 @@ Page({
     const qty = item && inventory.quantity(item.disposeQty);
     if (!qty || qty > item.rejectedQty) { wx.showToast({ title: '处置数量须为正整数，且不超过不合格余额', icon: 'none' }); return; }
     const result = await new Promise(resolve => wx.showModal({ title: '处置不合格退件', editable: true, placeholderText: '填写去向、物流单号或报损原因', success: resolve, fail: () => resolve({}) }));
-    if (!result.confirm || !(result.content || '').trim()) return;
+    if (!result.confirm) return;
     const choice = await new Promise(resolve => wx.showActionSheet({ itemList: ['实际退回客户', '实际报损'], success: value => resolve(value.tapIndex), fail: () => resolve(-1) }));
     if (choice < 0) return;
-    return this.writeRecord('/sku-inventory/return-inspections/' + item.afterSaleItemId + '/dispose', { qty, action: choice === 0 ? 'return_customer' : 'scrap', note: result.content.trim() }, [item.skuId]);
+    return this.writeRecord('/sku-inventory/return-inspections/' + item.afterSaleItemId + '/dispose', { qty, action: choice === 0 ? 'return_customer' : 'scrap', note: (result.content || '').trim() }, [item.skuId]);
   },
   async adjustSupply(e) {
     const report = this.data.visibleReports[Number(e.currentTarget.dataset.index)];
@@ -339,7 +362,7 @@ Page({
   onSupplyNoteInput(e) { this.setData({ supplyNote: e.detail.value }); },
   async submitSupplyAdjustment() {
     const qty = inventory.quantity(this.data.supplyQty), report = this.data.supplyReport;
-    if (!report || !qty || qty > report.shortageQty || !this.data.supplyNote.trim()) { wx.showToast({ title: '请填写有效数量和供应商确认依据', icon: 'none' }); return; }
+    if (!report || !qty || qty > report.shortageQty) { wx.showToast({ title: '数量须为正整数，且不超过待到货数量', icon: 'none' }); return; }
     if (await this.writeRecord('/sku-inventory/supply/' + report.purchaseOrderId + '/adjust', { qty, note: this.data.supplyNote.trim() }, [report.skuId])) this.setData({ showSupplyEditor: false });
   },
   async writeRecord(path, payload, ids) {

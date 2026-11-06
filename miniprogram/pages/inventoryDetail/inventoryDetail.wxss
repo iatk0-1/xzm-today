@@ -3,6 +3,10 @@ page { background: #f5f6f8; color: #26313e; }
 .inventory-detail { padding-bottom: 40rpx; }
 .product-header { display: flex; align-items: center; gap: 26rpx; padding: 28rpx 24rpx; background: #fff; }
 .product-cover { width: 152rpx; height: 152rpx; border-radius: 14rpx; flex-shrink: 0; background: #f1f2f4; }
+.history-button { flex-shrink: 0; align-self: flex-start; margin: 0; padding: 0 16rpx; height: 58rpx; line-height: 58rpx; font-size: 23rpx; color: #26313e; background: #f3f5f8; border-radius: 10rpx; }
+.history-button::after, .history-heading button::after { border: none; }
+.history-heading { display: flex; align-items: center; justify-content: space-between; padding: 18rpx 24rpx; background: #fff; font-size: 28rpx; font-weight: 650; }
+.history-heading button { margin: 0; padding: 0 18rpx; font-size: 23rpx; line-height: 58rpx; background: #f3f5f8; }
 .product-heading { flex: 1; min-width: 0; }
 .product-name { font-size: 32rpx; font-weight: 650; line-height: 1.5; overflow-wrap: anywhere; margin-bottom: 18rpx; }
 .muted { color: #8a929e; font-size: 22rpx; line-height: 1.7; overflow-wrap: anywhere; }
@@ -10,7 +14,7 @@ page { background: #f5f6f8; color: #26313e; }
 .main-tabs { border-top: 1rpx solid #f1f2f4; }
 .function-tabs { border-bottom: 1rpx solid #e9edf2; }
 .tab-track { display: inline-flex; flex-wrap: nowrap; min-width: 100%; box-sizing: border-box; padding: 0 16rpx; }
-.main-tab { flex-shrink: 0; padding: 24rpx 25rpx 20rpx; font-size: 28rpx; color: #747d88; border-bottom: 5rpx solid transparent; }
+.main-tab { flex-shrink: 0; padding: 24rpx 20rpx 20rpx; font-size: 28rpx; color: #747d88; border-bottom: 5rpx solid transparent; }
 .main-tab.active { color: #18212c; border-bottom-color: #18212c; font-weight: 650; }
 .function-tab { flex-shrink: 0; margin: 18rpx 7rpx; padding: 13rpx 22rpx; font-size: 25rpx; background: #f3f5f8; border-radius: 25rpx; color: #6c7684; }
 .function-tab.active { background: #26313e; color: #fff; }

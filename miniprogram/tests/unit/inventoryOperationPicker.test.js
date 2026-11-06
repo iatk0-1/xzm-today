@@ -54,16 +54,19 @@ test('切换为退供应商或普通入库时，不携带旧换货参数', () =>
   assert.equal(payload.action, 'return');
   assert.deepEqual(payload.targets, []);
 });
-test('异常出库和盘亏都不能超过对应实物数量，必填操作原因', () => {
-  const input = data({ functionId: 'return' }); input.skus[0].operationQty = '3';
-  assert.throws(() => inventory.buildOperation(input), /超过异常库存/);
-  input.functionId = 'loss'; input.lossCategory = 'abnormal';
-  assert.throws(() => inventory.buildOperation(input), /超过该类实际库存/);
-  input.lossCategory = 'normal'; input.skus[0].operationQty = '4';
-  assert.throws(() => inventory.buildOperation(input), /超过该类实际库存/);
-  input.skus[0].operationQty = '1'; input.note = '';
-  assert.throws(() => inventory.buildOperation(input), /填写来源或调整原因/);
+test('出库和退货可超过异常量但不能超过实际库存，备注选填，旧菜单不可提交', () => {
+  for (const functionId of ['outbound', 'return']) {
+    const input = data({ functionId, note: '' }); input.skus[0].operationQty = '3';
+    assert.equal(inventory.buildOperation(input).items[0].qty, 3);
+    input.skus[0].operationQty = '6';
+    assert.throws(() => inventory.buildOperation(input), /超过实际库存/);
+  }
+  assert.equal(inventory.buildOperation(data({ backfillMode: 'first', note: '  ' })).note, '');
+  for (const functionId of ['gain', 'loss', 'keep', 'confirm_history']) {
+    assert.throws(() => inventory.buildOperation(data({ functionId })), /请选择库存操作/);
+  }
 });
+
 test('历史现货数量与可售库存无限标记分开，规格仍按仓库真实数量展示', () => {
   const sku = inventory.row({ skuId: '1', qty: 0, readyToShipQty: 0, unlimitedStock: true });
   assert.equal(sku.qty, 0); assert.equal(sku.operationQty, '0');
