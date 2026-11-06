@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const inventory = require('../../utils/inventoryOperations');
 function data(patch = {}) {
-  return { functionId: 'backfill', backfillMode: 'existing', note: '补收货来源', lossCategory: 'normal', exchangeProducts: [],
+  return { functionId: 'backfill', note: '补报单', exchangeLines: [],
     skus: [inventory.row({ skuId: '9007199254740993', spec: '红', size: 'M', qty: 5, abnormalQty: 2 }, { operationQty: '1' })], ...patch };
 }
 test('既有收货按未关联数量选择，撤销和不支持来源不可选', () => {
@@ -11,34 +11,33 @@ test('既有收货按未关联数量选择，撤销和不支持来源不可选',
   assert.equal(inventory.receiptChoice({ qty: 2, source: 'normal', allocations: [{ qty: 2 }] }).disabled, true);
   assert.equal(inventory.receiptChoice({ qty: 2, source: 'return_inspection' }).disabled, true);
 });
-test('未选择收货记录不能自动转首次入库，必须明确切换方式', () => {
-  assert.throws(() => inventory.buildOperation(data()), /请选择既有入库记录/);
-  const payload = inventory.buildOperation(data({ backfillMode: 'first' }));
-  assert.equal(payload.items[0].receiptId, null);
-  assert.equal(payload.items[0].skuId, '9007199254740993');
-});
-test('补来源保留长入库编号，不能超过未关联余额', () => {
-  const input = data();
-  input.skus[0].receipt = { id: '9007199254740995', remaining: 2 };
-  assert.equal(inventory.buildOperation(input).items[0].receiptId, '9007199254740995');
-  input.skus[0].operationQty = '3';
-  assert.throws(() => inventory.buildOperation(input), /超过收货可补录/);
-});
-test('多商品换货只核对总件数，允许跨规格拆分且保留报单长编号', () => {
-  const input = data({ functionId: 'exchange', skus: [
-    inventory.row({ skuId: '1', spec: '红', qty: 3, abnormalQty: 3 }, { operationQty: '2' }),
-    inventory.row({ skuId: '2', spec: '黑', qty: 1, abnormalQty: 1 }, { operationQty: '1' })
-  ], exchangeProducts: [{ name: '毛衣', skus: [
-    inventory.row({ skuId: '9007199254740997', spec: '蓝' }, { operationQty: '1' }),
-    inventory.row({ skuId: '9007199254740999', spec: '白' }, { operationQty: '2', report: { purchaseOrderId: '9007199254740998' } })
-  ] }] });
+test('补报单无需入库记录且仅限已有异常数量，空备注可提交', () => {
+  const input = data({ note: '' });
   const payload = inventory.buildOperation(input);
-  assert.equal(payload.items.reduce((sum, item) => sum + item.qty, 0), 3);
-  assert.equal(payload.targets.reduce((sum, item) => sum + item.qty, 0), 3);
-  assert.equal(payload.targets[1].purchaseOrderId, '9007199254740998');
-  input.exchangeProducts[0].skus[1].operationQty = '1';
-  assert.throws(() => inventory.buildOperation(input), /总数量必须/);
+  assert.equal(payload.items[0].receiptId, null); assert.equal(payload.backfillMode, 'abnormal');
+  assert.equal(payload.items[0].skuId, '9007199254740993'); assert.equal(payload.note, '');
+  input.skus[0].operationQty = '3'; assert.throws(() => inventory.buildOperation(input), /不能超过异常数量/);
+  input.skus[0].abnormalQty = 0; input.skus[0].operationQty = '1';
+  assert.throws(() => inventory.buildOperation(input), /不能超过异常数量/);
 });
+
+test('同商品换货保留逐行来源，多个出库规格可换回同一规格，禁止外部规格和数量不一致', () => {
+  const input = data({ functionId: 'exchange', skus: [
+    inventory.row({ skuId: '1', spec: '红', qty: 3 }, { operationQty: '2' }),
+    inventory.row({ skuId: '2', spec: '蓝', qty: 1 }, { operationQty: '1' })
+  ], exchangeLines: [
+    { sourceSkuId: '1', targetSkuId: '2', qty: 2, report: { purchaseOrderId: '9007199254740998' } },
+    { sourceSkuId: '2', targetSkuId: '2', qty: 1 }
+  ] });
+  const payload = inventory.buildOperation(input);
+  assert.equal(payload.targets[0].sourceSkuId, '1'); assert.equal(payload.targets[0].purchaseOrderId, '9007199254740998');
+  assert.equal(payload.targets[1].skuId, '2');
+  input.exchangeLines[0].qty = 1; assert.throws(() => inventory.buildOperation(input), /数量.*一致/);
+  input.exchangeLines[0].qty = 2; input.exchangeLines[0].targetSkuId = 'foreign';
+  assert.throws(() => inventory.buildOperation(input), /当前商品/);
+  input.exchangeLines = []; assert.throws(() => inventory.buildOperation(input), /核对应换回/);
+});
+
 test('数量0不处理，负数小数和超出数据库整数上限不能写入', () => {
   for (const qty of ['-1', '1.5', '1件', '2147483648']) {
     const input = data({ functionId: 'history' }); input.skus[0].operationQty = qty;
@@ -50,7 +49,7 @@ test('数量0不处理，负数小数和超出数据库整数上限不能写入'
   assert.equal(inventory.buildOperation(input).items.length, 1);
 });
 test('切换为退供应商或普通入库时，不携带旧换货参数', () => {
-  const payload = inventory.buildOperation(data({ functionId: 'return', exchangeProducts: [{ skus: [{ id: '99', operationQty: '3', report: { purchaseOrderId: '88' } }] }] }));
+  const payload = inventory.buildOperation(data({ functionId: 'return', exchangeLines: [{ sourceSkuId: '1', targetSkuId: '99', qty: 3 }] }));
   assert.equal(payload.action, 'return');
   assert.deepEqual(payload.targets, []);
 });
@@ -61,7 +60,7 @@ test('出库和退货可超过异常量但不能超过实际库存，备注选�
     input.skus[0].operationQty = '6';
     assert.throws(() => inventory.buildOperation(input), /超过实际库存/);
   }
-  assert.equal(inventory.buildOperation(data({ backfillMode: 'first', note: '  ' })).note, '');
+  assert.equal(inventory.buildOperation(data({ note: '  ' })).note, '');
   for (const functionId of ['gain', 'loss', 'keep', 'confirm_history']) {
     assert.throws(() => inventory.buildOperation(data({ functionId })), /请选择库存操作/);
   }

@@ -167,18 +167,41 @@ test('出库不填备注可以提交，历史入库与普通出库使用各自�
   await page.submitOperation(); assert.equal(writes[1].payload.type, 'history');
 });
 
-test('多选商品带回全部规格，已有数量按规格编号保留，取消选择移除对应商品', () => {
-  const { page } = load('inventoryDetail');
-  page.mergeExchangeProducts([{ id: '2', name: '毛衣', skus: [{ skuId: '21', spec: '白', qty: 0 }, { skuId: '22', spec: '黑', qty: 1 }] }]);
-  page.rowQuantityChange(event({ target: 'exchange', productId: '2', skuId: '21', delta: 1 }));
-  page.mergeExchangeProducts([{ id: '2', name: '毛衣', skus: [{ skuId: '21', spec: '白', qty: 2 }, { skuId: '22', spec: '黑', qty: 1 }] }, { id: '3', name: '裤子', skus: [{ skuId: '31', qty: 0 }] }]);
-  assert.equal(page.data.exchangeProducts[0].skus.length, 2);
-  assert.equal(page.data.exchangeProducts[0].skus[0].operationQty, '1');
-  assert.equal(page.data.exchangeProducts[0].skus[0].qty, 2);
+test('换货按出库规格自动生成，改为其他同商品规格后数量继续同步，归零移除', async () => {
+  const { page } = load('inventoryDetail', { get: async () => detail() }); await page.onLoad({ id: '1' });
+  page.switchTab(event({ id: 'exchange' })); const source = page.data.skus[0].id, target = page.data.skus[1].id;
+  page.rowQuantityChange(event({ skuId: source, delta: 1 }));
+  assert.equal(page.data.exchangeLines.length, 1); assert.equal(page.data.exchangeLines[0].targetSkuId, source);
   assert.equal(page.data.incomingTotal, 1);
-  page.removeExchangeProduct(event({ id: '2' })); assert.equal(page.data.incomingTotal, 0);
-  assert.equal(page.data.exchangeProducts[0].id, '3');
+  page.changeExchangeSpec({ ...event({ sourceId: source }), detail: { value: '1' } });
+  assert.equal(page.data.exchangeLines[0].targetSkuId, target);
+  page.rowQuantityChange(event({ skuId: source, delta: 1 }));
+  assert.equal(page.data.exchangeLines[0].qty, 2); assert.equal(page.data.exchangeLines[0].targetSkuId, target);
+  await page.loadDetail(); assert.equal(page.data.exchangeLines[0].targetSkuId, target);
+  page.rowQuantityChange({ ...event({ skuId: source }), detail: { value: '0' } });
+  assert.equal(page.data.exchangeLines.length, 0); assert.equal(page.data.incomingTotal, 0);
 });
+
+test('记录视图规格默认收起，可展开，切换记录再次收起，操作规格始终可编辑', async () => {
+  const { page } = load('inventoryDetail', { get: async () => detail() }); await page.onLoad({ id: '1' });
+  page.switchFunction(event({ id: 'receipts' })); assert.equal(page.data.specsExpanded, false);
+  page.toggleSpecs(); assert.equal(page.data.specsExpanded, true);
+  page.switchTab(event({ id: 'reports' })); assert.equal(page.data.specsExpanded, false);
+  page.toggleSpecs(); page.toggleSpecs(); assert.equal(page.data.specsExpanded, false);
+  page.switchTab(event({ id: 'outbound' })); assert.equal(page.data.isOperating, true);
+});
+
+test('补报单步进上限为异常数量，手输超过异常量不能提交，无需选择收货记录', async () => {
+  const { page, writes, toasts } = load('inventoryDetail', { get: async () => detail() }); await page.onLoad({ id: '1' });
+  page.switchTab(event({ id: 'backfill' })); const id = page.data.skus[0].id;
+  for (let i = 0; i < 3; i++) page.rowQuantityChange(event({ skuId: id, delta: 1 }));
+  assert.equal(page.data.outgoingTotal, 2);
+  page.rowQuantityChange({ ...event({ skuId: id }), detail: { value: '3' } });
+  assert.equal(page.data.invalidQty, true); await page.submitOperation(); assert.equal(writes.length, 0); assert.match(toasts.at(-1), /异常数量/);
+  page.rowQuantityChange({ ...event({ skuId: id }), detail: { value: '2' } }); await page.submitOperation();
+  assert.equal(writes[0].payload.backfillMode, 'abnormal'); assert.equal(writes[0].payload.items[0].receiptId, null);
+});
+
 test('数量步进最小0，实际库存到顶不再增加，手输无效数量标记并禁止提交', async () => {
   const { page, writes } = load('inventoryDetail', { get: async () => detail() });
   await page.onLoad({ id: '1' }); page.switchTab(event({ id: 'exchange' })); page.switchFunction(event({ id: 'exchange' }));
@@ -189,39 +212,38 @@ test('数量步进最小0，实际库存到顶不再增加，手输无效数量�
   page.rowQuantityChange({ ...event({ skuId: id }), detail: { value: '1.5' } });
   assert.equal(page.data.invalidQty, true); await page.submitOperation(); assert.equal(writes.length, 0);
 });
-test('两边总数相等才提交整笔多规格换货，成功清空数量并通知父页面', async () => {
+test('同商品换货提交保留出库与目标对应关系，成功清空数量并通知父页面', async () => {
   const { page, writes, emitted } = load('inventoryDetail', { get: async () => detail() });
-  await page.onLoad({ id: '9007199254740993' }); page.switchTab(event({ id: 'exchange' })); page.switchFunction(event({ id: 'exchange' }));
-  page.rowQuantityChange({ ...event({ skuId: page.data.skus[0].id }), detail: { value: '2' } });
-  page.mergeExchangeProducts([{ id: '2', name: '毛衣', skus: [{ skuId: '21' }, { skuId: '22' }] }]);
-  await page.submitOperation(); assert.equal(writes.length, 0);
-  page.rowQuantityChange(event({ target: 'exchange', productId: '2', skuId: '21', delta: 1 }));
-  page.rowQuantityChange(event({ target: 'exchange', productId: '2', skuId: '22', delta: 1 }));
+  await page.onLoad({ id: '9007199254740993' }); page.switchTab(event({ id: 'exchange' }));
+  const source = page.data.skus[0].id, target = page.data.skus[1].id;
+  page.rowQuantityChange({ ...event({ skuId: source }), detail: { value: '2' } });
+  page.changeExchangeSpec({ ...event({ sourceId: source }), detail: { value: '1' } });
   await page.submitOperation();
   assert.equal(writes.length, 1); assert.equal(writes[0].route, '/sku-inventory/products/9007199254740993/operations');
-  assert.equal(writes[0].payload.items[0].qty, 2); assert.equal(writes[0].payload.targets.length, 2);
-  assert.equal(page.data.outgoingTotal, 0); assert.equal(page.data.incomingTotal, 0);
-  assert.equal(emitted[0][0], 'inventoryChanged');
-  assert.deepEqual(Array.from(emitted[0][1].skuIds), ['9007199254740995', '21', '22']);
+  assert.equal(writes[0].payload.items[0].qty, 2); assert.equal(writes[0].payload.targets[0].sourceSkuId, source);
+  assert.equal(writes[0].payload.targets[0].skuId, target); assert.equal(writes[0].payload.targets[0].qty, 2);
+  assert.equal(page.data.outgoingTotal, 0); assert.equal(page.data.incomingTotal, 0); assert.equal(page.data.exchangeLines.length, 0);
+  assert.deepEqual(Array.from(emitted[0][1].skuIds), [source, target]);
 });
-test('报单选择查询指定目标规格，换货不同商品的报单不能串行', async () => {
-  const { page, requests } = load('inventoryDetail', { get: async () => ({ inventory: { spec: '白', size: 'L' }, reports: [
-    { purchaseOrderId: '9007199254740999', shortageQty: 2 }, { purchaseOrderId: '2', shortageQty: 0 }
-  ] }) });
-  page.mergeExchangeProducts([{ id: '2', name: '毛衣', skus: [{ skuId: '21' }, { skuId: '22' }] }]);
-  await page.openRecordPicker(event({ type: 'report', skuId: '21', productId: '2' }));
-  assert.equal(requests[0].route, '/sku-inventory/21/detail');
-  page.chooseRecord(event({ index: 1 })); assert.equal(page.data.exchangeProducts[0].skus[0].report, null);
-  page.chooseRecord(event({ index: 0 })); assert.equal(page.data.exchangeProducts[0].skus[0].report.purchaseOrderId, '9007199254740999');
-  assert.equal(page.data.exchangeProducts[0].skus[1].report, null);
-});
-test('关闭或切换记录选择器，迟到响应不能覆盖当前规格', async () => {
+
+test('报单选择查询目标规格，切换目标后清除旧报单，旧响应不能覆盖新规格', async () => {
   let finish;
-  const { page } = load('inventoryDetail', { get: () => new Promise(resolve => { finish = resolve; }) });
-  const pending = page.openRecordPicker(event({ type: 'receipt', skuId: '1' }));
-  page.closeRecordPicker(); finish({ inventory: {}, receipts: [{ id: 'old' }] }); await pending;
+  const { page, requests } = load('inventoryDetail', { get: route => route.includes('/products/') ? detail() : new Promise(resolve => { finish = resolve; }) });
+  await page.onLoad({ id: '1' }); page.switchTab(event({ id: 'exchange' })); const source = page.data.skus[0].id;
+  page.rowQuantityChange(event({ skuId: source, delta: 1 }));
+  const pending = page.openRecordPicker(event({ sourceId: source }));
+  assert.match(requests.at(-1).route, new RegExp(source + '/detail$'));
+  page.changeExchangeSpec({ ...event({ sourceId: source }), detail: { value: '1' } });
+  finish({ inventory: {}, reports: [{ purchaseOrderId: 'old', shortageQty: 2 }] }); await pending;
   assert.equal(page.data.showRecordPicker, false); assert.equal(page.data.pickerItems.length, 0);
+  assert.equal(page.data.exchangeLines[0].report, null);
+  const second = page.openRecordPicker(event({ sourceId: source }));
+  assert.match(requests.at(-1).route, new RegExp(page.data.skus[1].id + '/detail$'));
+  finish({ inventory: {}, reports: [{ purchaseOrderId: '9007199254740999', shortageQty: 2 }, { purchaseOrderId: '2', shortageQty: 0 }] }); await second;
+  page.chooseRecord(event({ index: 1 })); assert.equal(page.data.exchangeLines[0].report, null);
+  page.chooseRecord(event({ index: 0 })); assert.equal(page.data.exchangeLines[0].report.purchaseOrderId, '9007199254740999');
 });
+
 test('商品查询组合状态、档口、标签、关键词，翻页与切换筛选保留多选', async () => {
   const { page, requests } = load('inventoryProductSelect', { get: async (route, query) => route === '/products/query' ? { content: [
     { id: String(query.page), name: '毛衣', status: 'off', skuMatrix: [{ skuId: '9007199254740999', color: '白', size: 'L', stock: 0 }] }

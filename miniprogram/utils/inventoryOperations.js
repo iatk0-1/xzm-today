@@ -8,8 +8,8 @@ const operations = {
   normal: { id: 'normal', name: '入库', type: 'normal', tip: '按报单时间核销待入库，超出报单待入库的数量进入异常库存。' },
   history: { id: 'history', name: '历史入库', type: 'history', tip: '首次登记历史实物，不抵扣报单待入库。' },
   outbound: { id: 'outbound', name: '出库', type: 'outbound', action: 'outbound', tip: '优先扣减异常库存，不足部分扣减正常库存。' },
-  backfill: { id: 'backfill', name: '补报单', type: 'backfill', tip: '已入库只补报单来源；从未记过库存的收货，选择首次入库。' },
-  exchange: { id: 'exchange', name: '换货', type: 'outbound', action: 'exchange', tip: '优先出异常库存，不足部分出正常库存。出库和应换回总件数须一致，可跨商品和规格；换回前不增加现货。' },
+  backfill: { id: 'backfill', name: '补报单', type: 'backfill', tip: '仅为已入库的异常库存补报单，自动匹配异常库存并转为正常库存，不增加实物总量。' },
+  exchange: { id: 'exchange', name: '换货', type: 'outbound', action: 'exchange', tip: '优先出异常库存，不足部分出正常库存。自动带出同商品同规格的应换回数量，可改为本商品其他规格，数量随出库同步；换回前不增加现货。' },
   return: { id: 'return', name: '退货', type: 'outbound', action: 'return', tip: '退回供应商，优先扣减异常库存，不足部分扣减正常库存；不取消客户需求和报单待入库。' }
 };
 const functions = {
@@ -61,26 +61,27 @@ function buildOperation(data) {
     if (qty == null) throw new Error(sku.label + '：数量须为非负整数，且不能超过 ' + LIMIT);
     if (!qty) continue;
     if (operation.type === 'outbound' && qty > sku.qty) throw new Error(sku.label + '：超过实际库存数量');
-    let receiptId = null;
-    if (operation.type === 'backfill' && data.backfillMode === 'existing') {
-      if (!sku.receipt) throw new Error(sku.label + '：请选择既有入库记录');
-      if (qty > sku.receipt.remaining) throw new Error(sku.label + '：超过收货可补录数量');
-      receiptId = sku.receipt.id;
-    }
-    items.push({ skuId: sku.id, qty, receiptId });
+    if (operation.type === 'backfill' && qty > sku.abnormalQty) throw new Error(sku.label + '：补报单数量不能超过异常数量');
+    items.push({ skuId: sku.id, qty, receiptId: null });
   }
   if (!items.length) throw new Error('至少填写一个大于0的操作数量');
   const targets = [];
   if (operation.id === 'exchange') {
-    for (const product of data.exchangeProducts) for (const sku of product.skus) {
-      const qty = quantity(sku.operationQty);
-      if (qty == null) throw new Error(product.name + ' ' + sku.label + '：换回数量须为非负整数');
-      if (qty) targets.push({ skuId: sku.id, qty, purchaseOrderId: sku.report ? sku.report.purchaseOrderId : null });
+    const selected = new Map(items.map(item => [String(item.skuId), item]));
+    const used = new Set();
+    for (const line of data.exchangeLines || []) {
+      const source = selected.get(String(line.sourceSkuId));
+      const qty = quantity(line.qty);
+      if (!source || used.has(String(line.sourceSkuId)) || qty !== source.qty) throw new Error('应换回数量必须与对应出库数量一致');
+      if (!data.skus.some(sku => String(sku.id) === String(line.targetSkuId))) throw new Error('换回规格只能选择当前商品的规格');
+      used.add(String(line.sourceSkuId));
+      targets.push({ sourceSkuId: source.skuId, skuId: line.targetSkuId, qty,
+        purchaseOrderId: line.report ? line.report.purchaseOrderId : null });
     }
-    if (items.reduce((sum, item) => sum + item.qty, 0) !== targets.reduce((sum, item) => sum + item.qty, 0)) throw new Error('换回总数量必须与出库总数量一致');
+    if (used.size !== items.length) throw new Error('请核对应换回规格和数量');
   }
   return { type: operation.type, action: operation.action || null, direction: operation.direction || null,
-    category: null, backfillMode: operation.type === 'backfill' ? data.backfillMode : null,
+    category: null, backfillMode: operation.type === 'backfill' ? 'abnormal' : null,
     note, items, targets };
 }
 module.exports = { LIMIT, tabs, functions, operations, quantity, row, receiptChoice, sourceText, changeText, buildOperation };

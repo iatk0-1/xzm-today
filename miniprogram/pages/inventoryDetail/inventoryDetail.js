@@ -10,8 +10,8 @@ Page({
   data: {
     productId: '', product: null, skus: [], loading: false, error: '', saving: false,
     tabs: inventory.tabs, activeTab: 'inbound', functionTabs: inventory.functions.inbound,
-    functionId: 'normal', operation: inventory.operations.normal, isOperating: true, recordView: '', historyMode: false, backfillMode: 'existing', note: '',
-    exchangeProducts: [], outgoingTotal: 0, incomingTotal: 0, invalidQty: false, quantityPending: false,
+    functionId: 'normal', operation: inventory.operations.normal, isOperating: true, recordView: '', historyMode: false, specsExpanded: false, note: '',
+    exchangeLines: [], outgoingTotal: 0, incomingTotal: 0, invalidQty: false, quantityPending: false,
     receipts: [], flows: [], exchanges: [], inspections: [], reports: [], visibleReports: [], visibleFlows: [], visibleExchanges: [],
     showRecordPicker: false, pickerType: '', pickerSkuLabel: '', pickerLoading: false, pickerError: '', pickerItems: [],
     showCorrection: false, correctionLoading: false, correctionError: '', correctionContext: null,
@@ -85,10 +85,10 @@ Page({
   selectFunction(choice) {
     const operation = inventory.operations[choice.id];
     if (operation && operation.id !== this.data.operation.id) {
-      this.setData({ skus: this.data.skus.map(sku => ({ ...sku, operationQty: '0', receipt: null })), note: '' });
+      this.setData({ skus: this.data.skus.map(sku => ({ ...sku, operationQty: '0' })), exchangeLines: [], note: '' });
     }
     this.setData({ functionId: choice.id, isOperating: !!operation, recordView: choice.view || '',
-      operation: operation || this.data.operation });
+      operation: operation || this.data.operation, specsExpanded: false });
     this.filterReports(); this.updateTotals();
   },
   openHistory() {
@@ -105,62 +105,62 @@ Page({
     this.setData({ historyMode: false });
     this.selectFunction(selected || { id: 'all', view: 'reports' });
   },
-  setMode(e) {
-    if (this.data.saving) return;
-    const { field, value } = e.currentTarget.dataset;
-    if (field === 'backfillMode' && ['existing', 'first'].includes(value)) this.setData({ backfillMode: value, skus: this.data.skus.map(sku => ({ ...sku, receipt: null })) });
-  },
+  toggleSpecs() { this.setData({ specsExpanded: !this.data.specsExpanded }); },
   onNoteInput(e) { this.setData({ note: e.detail.value }); },
   rowQuantityChange(e) {
     if (this.data.saving) return;
-    const { target, productId, skuId, delta } = e.currentTarget.dataset;
+    const { skuId, delta } = e.currentTarget.dataset;
     const change = sku => {
       if (String(sku.id) !== String(skuId)) return sku;
       const value = delta == null ? e.detail.value : String(Math.max(0, (inventory.quantity(sku.operationQty) || 0) + Number(delta)));
       if (delta != null) {
         let limit = inventory.LIMIT;
-        if (target !== 'exchange') {
-          if (this.data.operation.type === 'outbound') limit = sku.qty;
-          if (this.data.functionId === 'backfill' && this.data.backfillMode === 'existing' && sku.receipt) limit = sku.receipt.remaining;
-        }
+        if (this.data.operation.type === 'outbound') limit = sku.qty;
+        if (this.data.functionId === 'backfill') limit = sku.abnormalQty;
         if (Number(value) > limit) { wx.showToast({ title: '已达到本次可操作数量上限', icon: 'none' }); return sku; }
       }
       return { ...sku, operationQty: value };
     };
-    if (target === 'exchange') this.setData({ exchangeProducts: this.data.exchangeProducts.map(product => String(product.id) === String(productId) ? { ...product, skus: product.skus.map(change) } : product) });
-    else this.setData({ skus: this.data.skus.map(change) });
+    this.setData({ skus: this.data.skus.map(change) });
     this.updateTotals();
   },
   updateTotals() {
     const values = this.data.skus.map(sku => inventory.quantity(sku.operationQty));
-    const incoming = this.data.exchangeProducts.flatMap(product => product.skus.map(sku => inventory.quantity(sku.operationQty)));
+    if (this.data.operation.id === 'exchange') this.syncExchangeLines();
+    const incoming = this.data.exchangeLines.map(line => inventory.quantity(line.qty));
+    const overLimit = this.data.skus.some((sku, index) => values[index] > (this.data.operation.type === 'backfill'
+      ? sku.abnormalQty : this.data.operation.type === 'outbound' ? sku.qty : inventory.LIMIT));
     this.setData({ outgoingTotal: values.reduce((sum, qty) => sum + (qty || 0), 0), incomingTotal: incoming.reduce((sum, qty) => sum + (qty || 0), 0),
-      invalidQty: values.includes(null) || (this.data.operation.id === 'exchange' && incoming.includes(null)) });
+      invalidQty: values.includes(null) || overLimit || (this.data.operation.id === 'exchange' && incoming.includes(null)) });
   },
-  addExchangeProducts() {
+  syncExchangeLines() {
+    const previous = new Map(this.data.exchangeLines.map(line => [String(line.sourceSkuId), line]));
+    const lines = this.data.skus.filter(sku => inventory.quantity(sku.operationQty) > 0).map(sku => {
+      const old = previous.get(String(sku.id));
+      const index = old ? this.data.skus.findIndex(target => String(target.id) === String(old.targetSkuId)) : -1;
+      const targetIndex = index >= 0 ? index : this.data.skus.findIndex(target => String(target.id) === String(sku.id));
+      const target = this.data.skus[targetIndex];
+      return { sourceSkuId: sku.id, sourceLabel: sku.label, targetSkuId: target.id, targetIndex,
+        targetLabel: target.label, qty: inventory.quantity(sku.operationQty), report: index >= 0 ? old.report : null };
+    });
+    this.setData({ exchangeLines: lines });
+  },
+  changeExchangeSpec(e) {
     if (this.data.saving) return;
-    wx.navigateTo({ url: '/pages/inventoryProductSelect/inventoryProductSelect',
-      events: { productsSelected: result => this.mergeExchangeProducts(result.products || []) },
-      success: result => result.eventChannel.emit('initialSelection', { products: this.data.exchangeProducts }) });
-  },
-  mergeExchangeProducts(products) {
-    const previous = new Map(this.data.exchangeProducts.map(product => [String(product.id), product]));
-    this.setData({ exchangeProducts: products.map(product => {
-      const old = previous.get(String(product.id));
-      const quantities = new Map((old ? old.skus : []).map(sku => [String(sku.id), sku]));
-      return { ...product, skus: product.skus.map(sku => inventory.row({ ...sku, skuId: sku.skuId || sku.id }, quantities.get(String(sku.skuId || sku.id)))) };
-    }) });
-    this.updateTotals();
-  },
-  removeExchangeProduct(e) {
-    if (this.data.saving) return;
-    this.setData({ exchangeProducts: this.data.exchangeProducts.filter(product => String(product.id) !== String(e.currentTarget.dataset.id)) });
-    this.updateTotals();
+    const sourceSkuId = e.currentTarget.dataset.sourceId;
+    const index = Number(e.detail.value), target = this.data.skus[index];
+    if (!target) return;
+    this.closeRecordPicker();
+    this.setData({ exchangeLines: this.data.exchangeLines.map(line => String(line.sourceSkuId) === String(sourceSkuId)
+      ? { ...line, targetSkuId: target.id, targetIndex: index, targetLabel: target.label, report: null } : line) });
   },
   async openRecordPicker(e) {
     if (this.data.saving) return;
-    const { type, skuId, productId } = e.currentTarget.dataset;
-    this._pickerContext = { type, skuId, productId };
+    const { sourceId } = e.currentTarget.dataset;
+    const line = this.data.exchangeLines.find(item => String(item.sourceSkuId) === String(sourceId));
+    if (!line) return;
+    this._pickerContext = { skuId: line.targetSkuId, sourceSkuId: line.sourceSkuId };
+    const type = 'report';
     this.setData({ showRecordPicker: true, pickerType: type, pickerItems: [], pickerError: '' });
     return this.loadPickerRecords();
   },
@@ -172,8 +172,8 @@ Page({
     try {
       const result = await api.get('/sku-inventory/' + encodeURIComponent(context.skuId) + '/detail');
       if (this._disposed || version !== this._pickerVersion || !this.data.showRecordPicker) return;
-      const items = context.type === 'receipt' ? (result.receipts || []).map(item => ({ ...inventory.receiptChoice(item), sourceText: inventory.sourceText(item.source), timeText: this.formatTime(item.createdAt) }))
-        : (result.reports || []).map(item => ({ ...item, choiceId: item.purchaseOrderId, disabled: item.shortageQty <= 0, timeText: this.formatTime(item.createdAt) }));
+      const items = (result.reports || []).map(item => ({ ...item, choiceId: item.purchaseOrderId,
+        disabled: item.shortageQty <= 0, timeText: this.formatTime(item.createdAt) }));
       this.setData({ pickerItems: items, pickerSkuLabel: [result.inventory.spec, result.inventory.size].filter(Boolean).join(' / ') });
     } catch (err) {
       if (version === this._pickerVersion) this.setData({ pickerError: getErrorMessage(err, '加载记录失败') });
@@ -189,9 +189,8 @@ Page({
   clearReport() { if (!this.data.saving) { this.applyRecord(null); this.closeRecordPicker(); } },
   applyRecord(item) {
     const context = this._pickerContext;
-    const change = sku => String(sku.id) === String(context.skuId) ? { ...sku, [context.type === 'receipt' ? 'receipt' : 'report']: item } : sku;
-    if (context.type === 'receipt') this.setData({ skus: this.data.skus.map(change) });
-    else this.setData({ exchangeProducts: this.data.exchangeProducts.map(product => String(product.id) === String(context.productId) ? { ...product, skus: product.skus.map(change) } : product) });
+    this.setData({ exchangeLines: this.data.exchangeLines.map(line => String(line.sourceSkuId) === String(context.sourceSkuId)
+      && String(line.targetSkuId) === String(context.skuId) ? { ...line, report: item } : line) });
   },
   async submitOperation() {
     if (this.data.saving || this.data.loading || !this.data.isOperating) return;
@@ -202,7 +201,7 @@ Page({
     try {
       await quantityOperation.run(api, '/sku-inventory/products/' + encodeURIComponent(this.data.productId) + '/operations', payload);
       this.notifyChanged([...payload.items, ...payload.targets].map(item => item.skuId));
-      this.setData({ exchangeProducts: this.data.exchangeProducts.map(product => ({ ...product, skus: product.skus.map(sku => ({ ...sku, operationQty: '0', report: null })) })) });
+      this.setData({ exchangeLines: [] });
       this.setData({ note: '' });
       await this.loadDetail(true);
       wx.showToast({ title: '操作成功', icon: 'success' });
