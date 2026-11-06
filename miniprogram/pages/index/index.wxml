@@ -13,18 +13,8 @@
 
     <view class="nav-bottom-row">
       <view class="nav-tabs-left">
-        <view class="tab-item {{currentMainTab === '上新' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="上新">
-          <text>上新</text>
-          <view class="line"></view>
-        </view>
-
-        <view class="tab-item {{currentMainTab === '销量' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="销量">
-          <text>销量</text>
-          <view class="line"></view>
-        </view>
-
-        <view class="tab-item {{currentMainTab === '现货' ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="现货">
-          <text>现货</text>
+        <view wx:for="{{mainTabs}}" wx:key="key" class="tab-item {{currentMainTab === item.label ? 'active' : ''}}" bindtap="handleMainTabChange" data-tab="{{item.label}}">
+          <text>{{item.label}}</text>
           <view class="line"></view>
         </view>
 
@@ -99,7 +89,7 @@
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="product-info">
-            <view class="product-title"><view class="product-card-tag" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
+            <view class="product-title"><view class="product-card-tag" wx:if="{{showReadyStockTag || tag.type !== 'READY_STOCK'}}" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
             <view class="product-bottom">
               <view class="product-price-row">
                 <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
@@ -120,7 +110,7 @@
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="product-info">
-            <view class="product-title"><view class="product-card-tag" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
+            <view class="product-title"><view class="product-card-tag" wx:if="{{showReadyStockTag || tag.type !== 'READY_STOCK'}}" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
             <view class="product-bottom">
               <view class="product-price-row">
                 <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>

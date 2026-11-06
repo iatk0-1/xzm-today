@@ -22,11 +22,9 @@
   </view>
 
   <view class="sort-row">
-    <view class="sort-tab {{currentMainTab === '上新' ? 'active' : ''}}" catchtap="handleMainTabChange" data-tab="上新">上新</view>
-    <view class="sort-tab {{currentMainTab === '销量' ? 'active' : ''}}" catchtap="handleMainTabChange" data-tab="销量">
-      <text>销量</text>
+    <view wx:for="{{mainTabs}}" wx:key="key" class="sort-tab {{currentMainTab === item.label ? 'active' : ''}}" catchtap="handleMainTabChange" data-tab="{{item.label}}">
+      <text>{{item.label}}</text>
     </view>
-    <view class="sort-tab {{currentMainTab === '现货' ? 'active' : ''}}" catchtap="handleMainTabChange" data-tab="现货">现货</view>
   </view>
 
   <view class="stall-filter-row" style="top: {{totalNavHeight}}px;">
@@ -89,7 +87,7 @@
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="goods-info">
-            <view class="goods-title"><view class="product-card-tag" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
+            <view class="goods-title"><view class="product-card-tag" wx:if="{{showReadyStockTag || tag.type !== 'READY_STOCK'}}" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
             <view class="goods-price-row">
               <view class="goods-price">¥{{item.retailPrice || item.displayPrice}}</view>
               <view class="btn-add-cart" catchtap="openSkuPanel" data-action="cart" data-product="{{item}}" aria-label="选择规格加入购物车">
@@ -108,7 +106,7 @@
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="goods-info">
-            <view class="goods-title"><view class="product-card-tag" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
+            <view class="goods-title"><view class="product-card-tag" wx:if="{{showReadyStockTag || tag.type !== 'READY_STOCK'}}" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
             <view class="goods-price-row">
               <view class="goods-price">¥{{item.retailPrice || item.displayPrice}}</view>
               <view class="btn-add-cart" catchtap="openSkuPanel" data-action="cart" data-product="{{item}}" aria-label="选择规格加入购物车">

@@ -1,6 +1,7 @@
 const { getErrorMessage } = require('../../utils/error');
 // miniprogram/pages/search/search.js
 const api = require('../../utils/api');
+const homeNavigation = require('../../utils/homeNavigation');
 const auth = require('../../utils/auth');
 const { isProductSoldOut } = require('../../utils/stock');
 const { cardTags, loadCardTags } = require('../../utils/productCardTags');
@@ -25,6 +26,8 @@ Page({
     focus: true,  // 搜索框获得焦点
     searchEditing: true,
     currentMainTab: '上新',
+    mainTabs: homeNavigation.defaults,
+    showReadyStockTag: true,
     selectedStall: '',
     stallScrollLeft: 0,
     selectedTag: '',
@@ -56,9 +59,20 @@ Page({
       selectedStall: options.stallId || '',
       selectedTag: options.tagId || ''
     });
+    this._navigationExplicitTab = ['上新', '销量', '现货'].includes(tab) || ['stock', 'sales', 'newest'].includes(options.sort);
     this.loadRecentSearches();
     this.loadStallList();
-    return this.fetchAllProducts();
+    return homeNavigation.load(this, api).then(() => {
+      this._navigationInitialized = true;
+      if (!this._pageClosed) return this.fetchAllProducts();
+    });
+  },
+
+  onShow: function() {
+    if (!this._navigationInitialized) return;
+    return homeNavigation.load(this, api).then(changed => {
+      if (changed && !this._pageClosed) return this.reloadFilteredProducts();
+    });
   },
 
   loadStallList: async function() {
@@ -82,7 +96,8 @@ Page({
 
   handleMainTabChange: function(e) {
     const tab = e.currentTarget.dataset.tab;
-    if (!['上新', '销量', '现货'].includes(tab)) return;
+    if (!this.data.mainTabs.some(item => item.label === tab)) return;
+    this._navigationExplicitTab = true;
     this.finishSearchInput();
     if (this.data.currentMainTab === tab) return this.submitChangedKeyword();
     this.setData({ currentMainTab: tab, showAllPanel: false, showHistory: false });

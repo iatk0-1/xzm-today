@@ -1,0 +1,22 @@
+<view class="page">
+  <view class="title">首页导航栏</view>
+  <view class="description">用上移、下移调整展示顺序，开关控制显示或隐藏。保存后对所有用户生效，搜索页同步调整。</view>
+  <view class="loading" wx:if="{{loading}}">正在加载导航配置...</view>
+  <view class="card" wx:if="{{tabs.length}}">
+    <view class="row" wx:for="{{tabs}}" wx:key="key">
+      <view class="info">
+        <view class="label">{{item.label}}</view>
+        <view class="state">{{item.visible ? '显示' : '隐藏'}}<text wx:if="{{item.key === 'stock'}}"> · 同步控制商品列表现货标签</text></view>
+      </view>
+      <view class="actions">
+        <button class="move" size="mini" disabled="{{loading || saving || index === 0}}" data-key="{{item.key}}" data-direction="-1" bindtap="move">上移</button>
+        <button class="move" size="mini" disabled="{{loading || saving || index === tabs.length - 1}}" data-key="{{item.key}}" data-direction="1" bindtap="move">下移</button>
+        <switch checked="{{item.visible}}" color="#111111" disabled="{{loading || saving}}" data-key="{{item.key}}" bindchange="toggle" />
+      </view>
+    </view>
+  </view>
+  <view class="hint" wx:if="{{tabs.length}}">进入首页默认选中排在最前的显示项；全部隐藏时，商品仍按上新顺序展示。</view>
+  <view class="error" wx:if="{{error}}">{{error}}</view>
+  <button wx:if="{{!tabs.length && !loading}}" bindtap="load">重新加载</button>
+  <button class="save" wx:if="{{tabs.length}}" bindtap="save" loading="{{saving}}" disabled="{{loading || saving}}">{{saving ? '保存中...' : '保存设置'}}</button>
+</view>

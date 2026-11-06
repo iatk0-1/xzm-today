@@ -2,6 +2,7 @@ const { getErrorMessage } = require('../../utils/error');
 const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/index/index.js
 const api = require('../../utils/api');
+const homeNavigation = require('../../utils/homeNavigation');
 const auth = require('../../utils/auth');
 const managementNavigation = require('../../utils/managementNavigation');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
@@ -15,13 +16,13 @@ const app = getApp();
 
 Page(pageSync.wrap({
   data: {
-    // 1. 顶部大厂导航栏适配参数
     navTop: 0,
     navHeight: 0,
     totalNavHeight: 0,
 
-    // 2. 小红书同款交互参数
     currentMainTab: '上新',
+    mainTabs: homeNavigation.defaults,
+    showReadyStockTag: true,
     showTag: false,
     selectedStall: '',
     stallScrollLeft: 0,
@@ -31,7 +32,6 @@ Page(pageSync.wrap({
     groupedStalls: [], // ✨核心：新增A-Z分组后的档口矩阵
     showAllPanel: false, // 新增：控制展开全部面板的开关
 
-    // 3. 商品与权限参数
     isAdmin: false,
     isStallManager: false,
     messageUnreadCount: 0,
@@ -42,14 +42,11 @@ Page(pageSync.wrap({
 
     ...productSkuPanel.initialData,
 
-    // 5. 分页参数
     page: 1,
     pageSize: 20,
     hasMore: true,
     loading: false,
 
-    // 6. 下拉刷新与滚动区尺寸
-    // 自定义导航栏会盖住页面级下拉刷新的转圈动画，所以列表用 scroll-view 自带刷新
     refreshing: false,
     listHeight: 0,
     listTop: 0
@@ -87,6 +84,7 @@ Page(pageSync.wrap({
     // 标签入口保持隐藏，带标签参数的分享页不主动展开标签面板。
     // 兼容旧档口分享链接；档口筛选与上新/销量排序独立。
     const currentMainTab = ['销量', '现货'].includes(shareTab) ? shareTab : '上新';
+    this._navigationExplicitTab = ['上新', '销量', '现货'].includes(shareTab);
 
     this.setData({
       currentMainTab: currentMainTab,
@@ -114,6 +112,9 @@ Page(pageSync.wrap({
     }
 
     // 从商品详情返回时保留当前分页和滚动位置，不要把列表重置到第一页。
+    homeNavigation.load(this, api).then(changed => {
+      if (changed && !this._pageClosed) return this.getProductsList(true, { silent: true });
+    });
     if (this._skipNextHomeRefresh) {
       this._skipNextHomeRefresh = false;
       return;
@@ -204,7 +205,7 @@ Page(pageSync.wrap({
   // 加载所有数据（商品、档口、标签）
   loadAllData: function() {
     return Promise.all([
-      this.getProductsList(),
+      homeNavigation.load(this, api).then(() => this.getProductsList()),
       this.loadStallList(),
       this.loadTagList()
     ]);
@@ -344,6 +345,7 @@ Page(pageSync.wrap({
       : Promise.resolve();
 
     const task = waitIdle
+      .then(() => homeNavigation.load(this, api))
       .then(() => Promise.all([
         this.getProductsList(true, { silent: true }),
         this.loadStallList(),
@@ -410,7 +412,8 @@ Page(pageSync.wrap({
   // 排序与档口筛选独立，销量统一统计全部历史，重复点击不重复查询。
   handleMainTabChange(e) {
     const tabName = e.currentTarget.dataset.tab;
-    if (!['上新', '销量', '现货'].includes(tabName)) return;
+    if (!this.data.mainTabs.some(tab => tab.label === tabName)) return;
+    this._navigationExplicitTab = true;
     if (this.data.currentMainTab === tabName) return;
     this.setData({ currentMainTab: tabName, showAllPanel: false });
     return this.getProductsList();
@@ -549,7 +552,7 @@ Page(pageSync.wrap({
     const query = [];
     const currentMainTab = this.data.currentMainTab || '上新';
 
-    if (currentMainTab !== '上新') {
+    if (currentMainTab) {
       query.push('tab=' + encodeURIComponent(currentMainTab));
     }
     if (this.data.selectedStall) {

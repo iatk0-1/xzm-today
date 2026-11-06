@@ -76,6 +76,7 @@ function backendStub(options = {}) {
   let round = 0;
 
   return async (url) => {
+    if (url === '/home-navigation') return options.navigation || { tabs: require('../../utils/homeNavigation').defaults };
     if (url === '/products/query') {
       if (options.failProducts) throw new Error('模拟网络异常');
       const content = productPages[Math.min(round, productPages.length - 1)];
@@ -141,7 +142,7 @@ test('下拉刷新：释放时重新查询商品首屏，带上当前筛选条�
   assert.deepEqual(searchCalls()[0].params, { page: 1, size: 20, sort: 'newest', stallId: 's1', tagId: 't1' });
 
   const urls = requestLog.map((item) => item.url).filter(url => !url.endsWith('/promotions')).sort();
-  assert.deepEqual(urls, ['/products/query', '/stalls', '/tags']);
+  assert.deepEqual(urls, ['/home-navigation', '/products/query', '/stalls', '/tags']);
 
   assert.deepEqual(page.data.productList.map((item) => item.id), ['p1', 'p2', 'p3']);
   assert.deepEqual(page.data.leftColumn.map((item) => item.id), ['p1', 'p3']);
@@ -172,12 +173,12 @@ test('页面重新显示：保留当前商品分页，主动下拉才刷新', as
   page.onShow();
   await flush();
 
-  assert.deepEqual(requestLog, []);
+  assert.deepEqual(requestLog.map(item => item.url), ['/home-navigation']);
   assert.equal(page.data.page, 3);
   assert.deepEqual(page.data.productList.map(item => item.id), ['old']);
 });
 
-test('首页首次初始化：page 从 1 开始时仍会发起三类查询', async () => {
+test('首页首次初始化：page 从 1 开始时读取导航并发起三类查询', async () => {
   const page = createPage();
   requestHandler = backendStub();
 
@@ -187,7 +188,7 @@ test('首页首次初始化：page 从 1 开始时仍会发起三类查询', asy
   await flush();
 
   const urls = requestLog.map((item) => item.url).filter(url => !url.endsWith('/promotions')).sort();
-  assert.deepEqual(urls, ['/products/query', '/stalls', '/tags']);
+  assert.deepEqual(urls, ['/home-navigation', '/products/query', '/stalls', '/tags']);
   assert.equal(page.hasLoadedHomeData(), true);
 });
 
@@ -286,6 +287,43 @@ test('列表滚动区尺寸：上新和销量都给常驻档口筛选行让位',
 });
 
 const event = (dataset) => ({ currentTarget: { dataset } });
+
+test('导航排序配置先于首屏查询生效，隐藏现货后旧分享链接回退到首个可见项', async () => {
+  const page = createPage();
+  page.restoreShareFilters({ tab: '现货', stallId: 's2' });
+  requestHandler = backendStub({ navigation: { tabs: [
+    { key: 'sales', visible: true }, { key: 'stock', visible: false }, { key: 'newest', visible: true }
+  ] } });
+  await page.loadAllData();
+  assert.equal(searchCalls()[0].params.sort, 'sales');
+  assert.equal(searchCalls()[0].params.stallId, 's2');
+  assert.deepEqual(page.data.mainTabs.map(tab => tab.label), ['销量', '上新']);
+  assert.equal(page.data.showReadyStockTag, false);
+  await page.handleMainTabChange(event({ tab: '现货' }));
+  assert.equal(searchCalls().length, 1);
+  await page.handleMainTabChange(event({ tab: '上新' }));
+  page.goToSearch();
+  assert.equal(new URL(wxCalls.navigateUrl, 'https://test.local').searchParams.get('tab'), '上新');
+});
+
+test('返回首页读取新配置，当前现货被隐藏时重查，重新显示标签无需改变商品数据', async () => {
+  const page = createPage();
+  page._hasLoadedHomeData = true;
+  page._navigationLoaded = true;
+  page.data.currentMainTab = '现货';
+  requestHandler = backendStub({ navigation: { tabs: [
+    { key: 'sales', visible: true }, { key: 'stock', visible: false }, { key: 'newest', visible: true }
+  ] } });
+  page.onShow();
+  await flush();
+  assert.equal(searchCalls()[0].params.sort, 'sales');
+  assert.equal(page.data.showReadyStockTag, false);
+  requestHandler = backendStub();
+  page.onShow();
+  await flush();
+  assert.equal(page.data.showReadyStockTag, true);
+  assert.equal(searchCalls().length, 1);
+});
 
 test('销量：查询全部销量，重复点击不发请求、不打开时间范围面板', async () => {
   const page = createPage();
@@ -393,7 +431,7 @@ test('首页进入搜索：带上排序和档口条件，不再传递月份范�
   page.setData({ currentMainTab: '上新' });
   page.goToSearch();
   url = new URL(wxCalls.navigateUrl, 'https://miniapp.test');
-  assert.equal(url.searchParams.get('tab'), null);
+  assert.equal(url.searchParams.get('tab'), '上新');
   assert.equal(url.searchParams.get('salesMonths'), null);
   assert.equal(url.searchParams.get('stallId'), 's&2');
 });

@@ -23,6 +23,11 @@
   ],
   "subPackages": [
     {
+      "name": "homeNavigation",
+      "root": "pages/homeNavigation",
+      "pages": ["homeNavigation"]
+    },
+    {
       "name": "productDrafts",
       "root": "pages/productDrafts",
       "pages": [

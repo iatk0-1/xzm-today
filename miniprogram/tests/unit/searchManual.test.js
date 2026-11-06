@@ -47,7 +47,8 @@ function setup(t, handler) {
       if (name.endsWith('/productSkuPanel')) {
         return loadPickerUtility('productSkuPanel');
       }
-        if (name.endsWith('/error')) return require('../../utils/error');
+        if (name.endsWith('/homeNavigation')) return require('../../utils/homeNavigation');
+      if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/api')) return {
         get: async (url, params) => {
           if (url === '/products/query') {
@@ -71,6 +72,21 @@ function setup(t, handler) {
   page.setData = (patch, callback) => { Object.assign(page.data, patch); if (callback) callback(); };
   return { page, requests, navigations, keyboardCalls, cartRequests, wx };
 }
+
+test('隐藏现货的导航配置先于搜索首屏生效，旧入口回退并保留档口', async t => {
+  const { page, requests } = setup(t, async url => {
+    if (url === '/home-navigation') return { tabs: [
+      { key: 'sales', visible: true }, { key: 'stock', visible: false }, { key: 'newest', visible: true }
+    ] };
+    if (url === '/products/query') return { content: [], hasNext: false };
+    return [];
+  });
+  await page.onLoad({ tab: '现货', stallId: 's2' });
+  assert.equal(requests[0].sort, 'sales');
+  assert.equal(requests[0].stallId, 's2');
+  assert.equal(page.data.showReadyStockTag, false);
+  assert.deepEqual(page.data.mainTabs.map(tab => tab.label), ['销量', '上新']);
+});
 
 test('输入和停顿不搜索，失焦后查询一次，重复失焦不重复记录历史', async t => {
   const { page, requests } = setup(t);

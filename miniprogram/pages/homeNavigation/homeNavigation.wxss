@@ -1,0 +1,17 @@
+page { background: #f6f6f6; color: #1a1a1a; }
+.page { padding: 36rpx 24rpx 60rpx; }
+.title { font-size: 38rpx; font-weight: 600; margin-bottom: 18rpx; }
+.description, .hint { font-size: 26rpx; line-height: 1.7; color: #777; }
+.card { background: #fff; border-radius: 24rpx; margin-top: 30rpx; padding: 0 24rpx; }
+.row { padding: 28rpx 0; border-bottom: 1rpx solid #eee; }
+.row:last-child { border-bottom: none; }
+.label { font-size: 32rpx; font-weight: 600; }
+.state { font-size: 24rpx; color: #888; margin-top: 10rpx; }
+.actions { display: flex; align-items: center; gap: 20rpx; margin-top: 22rpx; }
+.actions .move { margin: 0; font-size: 25rpx; padding: 0 24rpx; background: #f5f5f5; }
+.actions switch { margin-left: auto; }
+.hint { margin: 24rpx 4rpx; }
+.save { margin-top: 36rpx; background: #111; color: #fff; border-radius: 48rpx; font-size: 30rpx; }
+.save[disabled] { background: #ccc; color: #fff; }
+.error { color: #c43c3c; font-size: 26rpx; line-height: 1.6; margin: 24rpx 0; }
+.loading { padding: 50rpx 0; text-align: center; color: #888; }
