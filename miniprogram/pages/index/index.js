@@ -3,6 +3,7 @@ const pageSync = require('../../utils/pageSync');
 // miniprogram/pages/index/index.js
 const api = require('../../utils/api');
 const homeNavigation = require('../../utils/homeNavigation');
+const homeProductEditor = require('../../utils/homeProductEditor');
 const auth = require('../../utils/auth');
 const managementNavigation = require('../../utils/managementNavigation');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
@@ -20,8 +21,9 @@ Page(pageSync.wrap({
     navHeight: 0,
     totalNavHeight: 0,
 
-    currentMainTab: '上新',
-    mainTabs: homeNavigation.defaults,
+    currentMainTab: '首页',
+    mainTabs: [homeNavigation.homeTab, ...homeNavigation.defaults],
+    ...homeProductEditor.initialData,
     showTag: false,
     selectedStall: '',
     stallScrollLeft: 0,
@@ -52,6 +54,7 @@ Page(pageSync.wrap({
   },
 
   onLoad: function(options) {
+    this._includeHomeTab = true;
     this._pageClosed = false;
     this._isInitializingHome = false;
     this._isRefreshingHome = false;
@@ -82,13 +85,13 @@ Page(pageSync.wrap({
 
     // 标签入口保持隐藏，带标签参数的分享页不主动展开标签面板。
     // 兼容旧档口分享链接；档口筛选与上新/销量排序独立。
-    const currentMainTab = ['销量', '现货'].includes(shareTab) ? shareTab : '上新';
-    this._navigationExplicitTab = ['上新', '销量', '现货'].includes(shareTab);
+    const currentMainTab = ['首页', '上新', '销量', '现货'].includes(shareTab) ? shareTab : (stallId || tagId ? '上新' : '首页');
+    this._navigationExplicitTab = ['首页', '上新', '销量', '现货'].includes(shareTab) || !!(stallId || tagId);
 
     this.setData({
       currentMainTab: currentMainTab,
-      selectedStall: stallId,
-      selectedTag: tagId,
+      selectedStall: currentMainTab === '首页' ? '' : stallId,
+      selectedTag: currentMainTab === '首页' ? '' : tagId,
       showTag: false,
       showAllPanel: false
     });
@@ -98,6 +101,8 @@ Page(pageSync.wrap({
     customerServiceUnread.start(this);
     // 每次显示页面时检查管理员状态
     this.checkAdmin();
+
+    if (this.data.homeEditing || this.data.homeEditorLoading) return;
 
     // 首次进入时由 onLoad 负责初始化，避免 onLoad/onShow 同时发起重复请求。
     if (this._isInitializingHome || this._isRefreshingHome) {
@@ -123,6 +128,7 @@ Page(pageSync.wrap({
   },
 
   onUnload: function() {
+    this.clearHomeDrag();
     this.disposeSkuPromotions();
     this._pageClosed = true;
     if (this._skuImagePreloader) this._skuImagePreloader.stop();
@@ -132,6 +138,7 @@ Page(pageSync.wrap({
   },
 
   onHide: function() {
+    this.cancelHomeDrag();
     customerServiceUnread.stop(this);
   },
 
@@ -154,10 +161,10 @@ Page(pageSync.wrap({
     };
   },
 
-  // 档口筛选常驻，列表始终让开 88rpx 子导航。
+  // 首页浏览不占第二行；编辑工具栏和其他筛选页占 88rpx。
   updateListMetrics: function() {
     const win = this.getWindowSize();
-    const listTop = Math.round(88 * win.width / 750);
+    const listTop = this.data.currentMainTab === '首页' && !this.data.homeEditing ? 0 : Math.round(88 * win.width / 750);
     const listHeight = Math.max(200, win.height - (this.data.totalNavHeight || 0) - listTop);
 
     if (listTop === this.data.listTop && listHeight === this.data.listHeight) return;
@@ -213,6 +220,8 @@ Page(pageSync.wrap({
   // 从后端 API 获取商品列表（支持分页）
   // options.silent: 静默加载，不弹全局 loading 遮罩（下拉刷新时用原生刷新动画）
   getProductsList: function(reset = true, options = {}) {
+    if (this.data.homeEditing) return Promise.resolve();
+    this.updateListMetrics();
     const silent = options.silent === true;
 
     if (reset) {
@@ -267,17 +276,19 @@ Page(pageSync.wrap({
       };
 
       // 如果选择了档口，按档口筛选（使用 stall 参数）
-      if (selectedStall) {
+      if (selectedStall && currentMainTab !== '首页') {
         params.stallId = selectedStall;
       }
 
       // 如果选择了标签，按标签筛选（使用 tag 参数）
-      if (selectedTag) {
+      if (selectedTag && currentMainTab !== '首页') {
         params.tagId = selectedTag;
       }
 
-      const res = await api.get('/products/query', params);
-      if (queryVersion !== (this._productsQueryVersion || 0)) return;
+      const res = currentMainTab === '首页'
+        ? await api.get('/home-products', { page, size: pageSize })
+        : await api.get('/products/query', params);
+      if (this._pageClosed || queryVersion !== (this._productsQueryVersion || 0)) return;
 
       // 后端返回 PageResult: { content, page, size, totalElements, totalPages, hasNext, ... }
       const newProducts = (res.content || []).map(function(product) {
@@ -331,6 +342,10 @@ Page(pageSync.wrap({
 
   // 刷新首页数据：重新拉商品首屏、档口和标签（下拉刷新与页面级刷新共用同一套）
   refreshHomeData: function() {
+    if (this.data.homeEditing || this.data.homeEditorLoading) {
+      this.setData({ refreshing: false });
+      return Promise.resolve();
+    }
     if (this._isRefreshingHome) {
       return this._refreshingTask || Promise.resolve();
     }
@@ -406,6 +421,7 @@ Page(pageSync.wrap({
   // 检查管理员（使用本地 auth 模块）
   checkAdmin: function() {
     this.setData({ isAdmin: !!auth.isAdmin(), isStallManager: !!auth.isStallManager() });
+    if (!this.data.isAdmin && this.data.homeEditing) this.closeHomeEditor();
   },
 
   // 排序与档口筛选独立，销量统一统计全部历史，重复点击不重复查询。
@@ -414,8 +430,15 @@ Page(pageSync.wrap({
     if (!this.data.mainTabs.some(tab => tab.label === tabName)) return;
     this._navigationExplicitTab = true;
     if (this.data.currentMainTab === tabName) return;
-    this.setData({ currentMainTab: tabName, showAllPanel: false });
-    return this.getProductsList();
+    const change = () => {
+      if (this.data.homeEditing) this.closeHomeEditor();
+      this.setData({ currentMainTab: tabName, showAllPanel: false });
+      this.updateListMetrics();
+      return this.getProductsList();
+    };
+    if (this.data.homeEditorLoading || this.data.homeSaving) return;
+    if (this.data.homeEditing) return this.confirmLeaveHomeEditor().then(confirmed => confirmed && change());
+    return change();
   },
 
   closeTagPanel() {
@@ -554,15 +577,17 @@ Page(pageSync.wrap({
     if (currentMainTab) {
       query.push('tab=' + encodeURIComponent(currentMainTab));
     }
-    if (this.data.selectedStall) {
+    if (this.data.selectedStall && currentMainTab !== '首页') {
       query.push('stallId=' + encodeURIComponent(this.data.selectedStall));
     }
-    if (this.data.selectedTag) {
+    if (this.data.selectedTag && currentMainTab !== '首页') {
       query.push('tagId=' + encodeURIComponent(this.data.selectedTag));
     }
 
     return query.join('&');
   },
+
+  ...homeProductEditor.methods,
 
   onShareAppMessage: function() {
     const tabName = this.data.currentMainTab || '上新';
@@ -583,13 +608,14 @@ Page(pageSync.wrap({
     };
   }
 }, async function(changes) {
+  if (this.data.homeEditing) return;
   await pageSync.updateList(this, changes, {
     entity: 'products', field: 'productList', url: id => '/products/' + id,
     normalize: product => ({ ...product, soldOut: isProductSoldOut(product), cardTags: cardTags(product) }),
     matches: product => product.status === 'on'
       && (this.data.currentMainTab !== '现货' || (product.skuMatrix || []).some(sku => sku.freeStockQty > 0))
-      && (!this.data.selectedStall || (product.stallIds || []).some(id => String(id) === String(this.data.selectedStall)))
-      && (!this.data.selectedTag || (product.relateTagIds || []).some(id => String(id) === String(this.data.selectedTag)))
+      && (this.data.currentMainTab === '首页' || !this.data.selectedStall || (product.stallIds || []).some(id => String(id) === String(this.data.selectedStall)))
+      && (this.data.currentMainTab === '首页' || !this.data.selectedTag || (product.relateTagIds || []).some(id => String(id) === String(this.data.selectedTag)))
   });
   const byId = new Map(this.data.productList.map(item => [String(item.id), item]));
   this.setData({

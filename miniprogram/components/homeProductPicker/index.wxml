@@ -1,0 +1,22 @@
+<view wx:if="{{visible}}" class="picker-mask" catchtap="close" catchtouchmove="stop">
+  <view class="picker-sheet" catchtap="stop">
+    <view class="picker-header"><text>新增首页商品</text><view class="picker-close" bindtap="close">×</view></view>
+    <view class="picker-search"><input placeholder="搜索名称、货号、档口或标签" value="{{searchKeyword}}" bindinput="inputSearch" bindconfirm="search" confirm-type="search" /><view bindtap="search">搜索</view></view>
+    <scroll-view class="picker-status" scroll-x>
+      <view class="picker-inline"><view wx:for="{{statusTabs}}" wx:key="key" class="picker-tag {{activeStatus === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectStatus">{{item.label}}</view></view>
+    </scroll-view>
+    <view class="picker-filter"><text>档口</text><view class="picker-tag {{!selectedStall ? 'active' : ''}}" data-type="stall" data-id="all" bindtap="selectFilter">全部</view><scroll-view scroll-x><view class="picker-inline"><view class="picker-tag {{selectedStall == item.id ? 'active' : ''}}" wx:for="{{stalls}}" wx:key="id" data-type="stall" data-id="{{item.id}}" bindtap="selectFilter">{{item.name}}</view></view></scroll-view></view>
+    <view class="picker-filter"><text>标签</text><view class="picker-tag {{!selectedTag ? 'active' : ''}}" data-type="tag" data-id="all" bindtap="selectFilter">全部</view><scroll-view scroll-x><view class="picker-inline"><view class="picker-tag {{selectedTag == item.id ? 'active' : ''}}" wx:for="{{tags}}" wx:key="id" data-type="tag" data-id="{{item.id}}" bindtap="selectFilter">{{item.name}}</view></view></scroll-view></view>
+    <scroll-view class="picker-products" scroll-y bindscrolltolower="loadMore" lower-threshold="100">
+      <view class="picker-error" wx:if="{{error}}" bindtap="retry">{{error}} · 点击重试</view>
+      <view wx:for="{{products}}" wx:key="id" class="picker-product {{item.existing ? 'existing' : ''}}" data-id="{{item.id}}" bindtap="toggleProduct">
+        <view class="picker-check {{item.selected || item.existing ? 'checked' : ''}}">{{item.selected || item.existing ? '✓' : ''}}</view>
+        <image class="picker-image" src="{{item.coverUrl}}" mode="aspectFill" lazy-load />
+        <view class="picker-info"><view class="picker-name">{{item.name}}</view><view class="picker-article">货号：{{item.articleNo || '未填写'}}</view></view>
+      </view>
+      <view class="picker-empty" wx:if="{{loading}}">加载中...</view>
+      <view class="picker-empty" wx:elif="{{!products.length && !error}}">暂无符合条件的商品</view>
+    </scroll-view>
+    <view class="picker-footer"><text>已选 {{selectedCount}} 件</text><button disabled="{{!selectedCount}}" bindtap="confirm">确认添加</button></view>
+  </view>
+</view>

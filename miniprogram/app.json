@@ -17,11 +17,15 @@
     "pages/shipmentTraceDetail/shipmentTraceDetail",
     "pages/afterSaleApply/afterSaleApply",
     "pages/afterSaleDetail/afterSaleDetail",
-    "pages/publishWish/publishWish",
     "pages/wishDetail/wishDetail",
     "pages/adminSales/adminSales"
   ],
   "subPackages": [
+    {
+      "name": "publishWish",
+      "root": "pages/publishWish",
+      "pages": ["publishWish"]
+    },
     {
       "name": "homeNavigation",
       "root": "pages/homeNavigation",

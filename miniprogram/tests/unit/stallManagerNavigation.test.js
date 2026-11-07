@@ -40,6 +40,8 @@ function loadPage(name, role) {
       if (request.endsWith('/auth')) return auth;
       if (request.endsWith('/managementNavigation')) return menuModule.exports;
       if (request.endsWith('/workbench')) return require('../../utils/workbench');
+      if (request.endsWith('/homeNavigation')) return require('../../utils/homeNavigation');
+      if (request.endsWith('/homeProductEditor')) return { initialData: {}, methods: {} };
       if (request.endsWith('/pageSync')) return { wrap: config => config };
       if (request.endsWith('/customerServiceUnread')) return { start() {} };
       return {};

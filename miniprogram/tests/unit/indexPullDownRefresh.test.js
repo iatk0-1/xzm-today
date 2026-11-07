@@ -64,6 +64,8 @@ function createPage() {
 
   const page = Object.assign({}, pageConfig);
   page.data = JSON.parse(JSON.stringify(pageConfig.data));
+  // 原有排序和档口用例继续验证“上新”，独立首页行为在专门用例覆盖。
+  page.data.currentMainTab = '上新';
   page.setData = (patch, callback) => {
     Object.keys(patch).forEach((key) => { page.data[key] = patch[key]; });
     if (callback) callback();
@@ -77,7 +79,7 @@ function backendStub(options = {}) {
 
   return async (url) => {
     if (url === '/home-navigation') return options.navigation || { tabs: require('../../utils/homeNavigation').defaults };
-    if (url === '/products/query') {
+    if (url === '/products/query' || url === '/home-products') {
       if (options.failProducts) throw new Error('模拟网络异常');
       const content = productPages[Math.min(round, productPages.length - 1)];
       round += 1;
@@ -188,7 +190,10 @@ test('首页首次初始化：page 从 1 开始时读取导航并发起三类查
   await flush();
 
   const urls = requestLog.map((item) => item.url).filter(url => !url.endsWith('/promotions')).sort();
-  assert.deepEqual(urls, ['/home-navigation', '/products/query', '/stalls', '/tags']);
+  assert.deepEqual(urls, ['/home-navigation', '/home-products', '/stalls', '/tags']);
+  assert.equal(page.data.currentMainTab, '首页');
+  assert.equal(page.data.mainTabs[0].label, '首页');
+  assert.equal(page.data.listTop, 0);
   assert.equal(page.hasLoadedHomeData(), true);
 });
 
@@ -287,6 +292,27 @@ test('列表滚动区尺寸：上新和销量都给常驻档口筛选行让位',
 });
 
 const event = (dataset) => ({ currentTarget: { dataset } });
+
+test('独立首页分页和分享不继承档口或标签条件，切回上新恢复原筛选', async () => {
+  const page = createPage();
+  page._includeHomeTab = true;
+  page.setData({ currentMainTab: '首页', selectedStall: 's1', selectedTag: 't1' });
+  requestHandler = backendStub();
+  await page.getProductsList();
+  page.data.hasMore = true;
+  await page.getProductsList(false);
+  const queries = requestLog.filter(item => item.url === '/home-products');
+  assert.deepEqual(queries.map(item => item.params), [{ page: 1, size: 20 }, { page: 2, size: 20 }]);
+  assert.equal(page.data.listTop, 0);
+  const shared = new URLSearchParams(page.buildShareQuery());
+  assert.equal(shared.get('tab'), '首页');
+  assert.equal(shared.get('stallId'), null);
+  assert.equal(shared.get('tagId'), null);
+  await page.handleMainTabChange(event({ tab: '上新' }));
+  assert.equal(page.data.listTop, 44);
+  assert.equal(searchCalls().at(-1).params.stallId, 's1');
+  assert.equal(searchCalls().at(-1).params.tagId, 't1');
+});
 
 test('导航排序配置先于首屏查询生效，隐藏现货后旧分享链接回退到首个可见项', async () => {
   const page = createPage();

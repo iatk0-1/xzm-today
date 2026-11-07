@@ -1,6 +1,7 @@
 {
   "usingComponents": {
-    "product-entry-menu": "../../components/productEntryMenu/index"
+    "product-entry-menu": "../../components/productEntryMenu/index",
+    "home-product-picker": "../../components/homeProductPicker/index"
   },
   "navigationStyle": "custom",
   "enablePullDownRefresh": true,

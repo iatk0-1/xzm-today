@@ -3,6 +3,7 @@ const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
 // miniprogram/pages/adminProduct/adminProduct.js
 const api = require('../../utils/api');
+const productManagementQuery = require('../../utils/productManagementQuery');
 const auth = require('../../utils/auth');
 const draft = require('../../utils/draft');
 const { integrateProductQuickEdit } = require('../../utils/productQuickEdit');
@@ -171,17 +172,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
   },
 
   getQueryParams: function() {
-    const params = {
-      status: this.data.activeStatus,
-      page: this.data.page,
-      size: this.data.pageSize,
-      manage: true
-    };
-    const keyword = this.data.searchKeyword.trim();
-    if (keyword) params.keyword = keyword;
-    if (this.data.selectedStall) params.stallId = this.data.selectedStall;
-    if (this.data.selectedTag) params.tagId = this.data.selectedTag;
-    return params;
+    return productManagementQuery.build(this.data);
   },
 
   selectStatusTab: function(e) {

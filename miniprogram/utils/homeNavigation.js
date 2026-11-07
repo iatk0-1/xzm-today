@@ -3,6 +3,7 @@ const defaults = [
   { key: 'sales', label: '销量', visible: true },
   { key: 'stock', label: '现货', visible: true }
 ];
+const homeTab = { key: 'home', label: '首页', visible: true };
 
 function normalize(config) {
   if (!config || !Array.isArray(config.tabs) || config.tabs.length !== defaults.length) {
@@ -18,7 +19,7 @@ function normalize(config) {
 }
 
 function apply(page, tabs) {
-  const mainTabs = tabs.filter(tab => tab.visible);
+  const mainTabs = (page._includeHomeTab ? [homeTab, ...tabs] : tabs).filter(tab => tab.visible);
   const previous = page.data.currentMainTab;
   const keepSelection = page._navigationLoaded || page._navigationExplicitTab;
   const currentMainTab = keepSelection && mainTabs.some(tab => tab.label === previous)
@@ -43,4 +44,4 @@ async function load(page, api) {
   try { return await task; } finally { if (page._navigationTask === task) page._navigationTask = null; }
 }
 
-module.exports = { defaults, normalize, apply, load };
+module.exports = { defaults, homeTab, normalize, apply, load };

@@ -1,4 +1,4 @@
-<page-meta page-style="{{showAllPanel ? 'overflow: hidden;' : ''}}"></page-meta>
+<page-meta page-style="{{showAllPanel || homeDragId || showHomeProductPicker ? 'overflow: hidden;' : ''}}"></page-meta>
 <view class="container" style="padding-top: {{totalNavHeight}}px;">
 
   <view class="custom-nav-bar" style="padding-top: {{navTop}}px;">
@@ -22,14 +22,15 @@
       </view>
 
     
-      <view class="nav-cart-right" bindtap="goToCart">
-        <text>购物车</text>
+      <view class="nav-actions">
+        <view wx:if="{{isAdmin && currentMainTab === '首页'}}" class="nav-home-edit {{homeSaving || homeEditorLoading ? 'disabled' : ''}}" bindtap="toggleHomeEditor">{{homeEditorLoading ? '加载中' : homeEditing ? '取消' : '编辑'}}</view>
+        <view class="nav-cart-right" bindtap="goToCart"><text>购物车</text></view>
       </view>
     </view>
   </view>
 
   <!-- 档口筛选常驻：全部清除筛选，右侧菜单展开完整档口列表。 -->
-  <view class="sub-nav-bar" style="top: {{totalNavHeight}}px;">
+  <view wx:if="{{currentMainTab !== '首页'}}" class="sub-nav-bar" style="top: {{totalNavHeight}}px;">
     
     <view class="btn-all-switch {{!selectedStall ? 'active' : ''}}" bindtap="selectStall" data-stall="all"><view class="stall-label"><text class="stall-label-sizing" aria-hidden="true">全部</text><view class="stall-label-text"><text>全部</text></view></view></view>
     
@@ -47,6 +48,13 @@
     <view class="stall-menu-switch {{showAllPanel ? 'active' : ''}}" bindtap="toggleAllPanel" aria-label="{{showAllPanel ? '收起全部档口' : '展开全部档口'}}">
       <view class="stall-menu-arrow {{showAllPanel ? 'expanded' : ''}}"></view>
     </view>
+  </view>
+
+  <view wx:if="{{homeEditing}}" class="sub-nav-bar home-editor-toolbar {{homeSaving ? 'busy' : ''}}" style="top: {{totalNavHeight}}px;">
+    <view class="home-toolbar-button" bindtap="selectAllHomeProducts">{{homeAllSelected ? '取消全选' : '全选'}}<text wx:if="{{homeSelectedCount}}">({{homeSelectedCount}})</text></view>
+    <view class="home-toolbar-button" bindtap="openHomeProductPicker">新增商品</view>
+    <view class="home-toolbar-button {{!homeSelectedCount ? 'disabled' : ''}}" bindtap="removeHomeProducts">移除商品</view>
+    <view class="home-toolbar-button home-toolbar-save" bindtap="saveHomeProducts">{{homeSaving ? '保存中' : '保存'}}</view>
   </view>
 
   <!-- ================== 新增：展开时的高级大面板 (A-Z版) ================== -->
@@ -67,6 +75,7 @@
 
   <!-- 商品瀑布流：整块作为滚动容器，释放时触发下拉刷新（指示器落在导航栏下沿，不会被顶栏盖住） -->
   <scroll-view
+    wx:if="{{!homeEditing}}"
     class="list-scroll"
     scroll-y="{{!showAllPanel}}"
     style="height: {{listHeight}}px; margin-top: {{listTop}}px;"
@@ -80,6 +89,7 @@
   >
     <view wx:if="{{loadError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="retryProducts">{{loadError}} · 点击重试</view>
     <view class="list-loading" wx:if="{{loading && !productList.length}}">加载中...</view>
+    <view class="home-empty" wx:if="{{currentMainTab === '首页' && !loading && !loadError && !productList.length}}">暂无首页商品<text wx:if="{{isAdmin}}">，点击右上方“编辑”添加</text></view>
     <view class="waterfall-container">
       <!-- 左列 -->
       <view class="waterfall-column">
@@ -125,6 +135,25 @@
     </view>
   </scroll-view>
 
+  <scroll-view wx:else class="list-scroll home-editor-scroll" scroll-y="{{!homeDragId}}" scroll-top="{{homeEditorScrollTop}}" bindscroll="onHomeEditorScroll" style="height: {{listHeight}}px; margin-top: {{listTop}}px;">
+    <view class="home-empty" wx:if="{{!homeProducts.length}}">暂无首页商品，点击“新增商品”挑选</view>
+    <movable-area class="home-editor-area" style="height: {{homeEditorHeight}}px;">
+      <movable-view wx:for="{{homeProducts}}" wx:key="id" x="{{0}}" y="{{item.y}}" direction="vertical" disabled="{{true}}" animation="{{!homeDragId}}"
+        class="home-editor-row {{homeDragId == item.id ? 'dragging' : ''}}" style="height: {{homeRowHeight}}px;"
+        data-id="{{item.id}}" bindtap="toggleHomeProduct" bindlongpress="startHomeDrag" bindtouchmove="moveHomeDrag" bindtouchend="endHomeDrag" bindtouchcancel="cancelHomeDrag">
+        <view class="home-row-check {{item.selected ? 'checked' : ''}}">{{item.selected ? '✓' : ''}}</view>
+        <image class="home-row-image" src="{{item.coverUrl}}" mode="aspectFill" lazy-load />
+        <view class="home-row-info"><view class="home-row-name">{{item.name}}</view><view class="home-row-article">货号：{{item.articleNo || '未填写'}}</view></view>
+        <view class="home-row-actions" catchlongpress="stopPanelTouchMove">
+          <view class="home-row-arrow {{index === 0 ? 'disabled' : ''}}" catchtap="moveHomeProduct" data-id="{{item.id}}" data-direction="-1" aria-label="上移一位">↑</view>
+          <view class="home-row-arrow {{index === homeProducts.length - 1 ? 'disabled' : ''}}" catchtap="moveHomeProduct" data-id="{{item.id}}" data-direction="1" aria-label="下移一位">↓</view>
+          <view class="home-row-delete" catchtap="removeHomeProducts" data-id="{{item.id}}">删除</view>
+        </view>
+      </movable-view>
+    </movable-area>
+    <view class="home-editor-hint" wx:if="{{homeProducts.length}}">长按商品拖动排序，调整后点击保存</view>
+  </scroll-view>
+
   <!-- 自定义底部导航栏 -->
   <view class="bottom-tab-bar">
     <view class="tab-item active" bindtap="goToIndex">首页</view>
@@ -140,3 +169,4 @@
 <include src="../../templates/productSkuPanel.wxml" />
 
 <product-entry-menu id="product-entry-menu" />
+<home-product-picker visible="{{showHomeProductPicker}}" existing-ids="{{homeExistingIds}}" bindclose="closeHomeProductPicker" bindconfirm="addHomeProducts" />
