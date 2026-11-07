@@ -41,12 +41,14 @@
 
 .sku-close {
   position: absolute;
-  top: 34rpx;
-  right: 24rpx;
+  /* 点击范围向四周各扩展 20rpx，叉号大小和中心位置保持不变。 */
+  top: 14rpx;
+  right: 4rpx;
+  z-index: 2;
   font-size: 46rpx;
   color: #999;
-  width: 60rpx;
-  height: 60rpx;
+  width: 100rpx;
+  height: 100rpx;
   line-height: 1;
   display: flex;
   align-items: center;
