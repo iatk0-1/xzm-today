@@ -119,13 +119,16 @@ page { background-color: #f2f2f2; padding-bottom: 160rpx; /* 将原本的60rpx�
 .sku-matrix-section {
   background: #fff; padding: 24rpx; border-radius: 16rpx; margin-bottom: 16rpx;
 }
+.sku-section-header { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin-bottom: 16rpx; }
+.sku-section-header .label { margin-bottom: 0; flex-shrink: 0; }
+.sku-stock-sync { display: flex; align-items: center; gap: 8rpx; white-space: nowrap; font-size: 24rpx; color: #666; }
+.sku-stock-sync switch { transform: scale(0.7); transform-origin: right center; margin-left: -24rpx; flex-shrink: 0; }
 
-/* 输入项单独一行，操作按钮并排靠右放在下一行。 */
+/* 批量输入和操作按钮保持同一行，输入框随屏幕宽度伸缩。 */
 .sku-console-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 5px; margin-bottom: 6px; width: 100%; box-sizing: border-box;
+  display: flex; align-items: center; flex-wrap: nowrap;
+  gap: 8rpx; margin-bottom: 32rpx; width: 100%; box-sizing: border-box;
 }
-.sku-console-actions { display:flex; justify-content:flex-end; align-items:center; gap:5px; margin-bottom:20px; }
 
 /* 输入框：采用 flex 弹性分配空间 */
 .console-input {
@@ -134,9 +137,9 @@ page { background-color: #f2f2f2; padding-bottom: 160rpx; /* 将原本的60rpx�
   min-width: 0; /* 防止内容撑破盒子 */
 }
 
-/* 📷 图片框：固定 34px 宽度 */
+/* 图片入口与右侧按钮保持一致高度。 */
 .console-img-btn { 
-  width: 34px; height: 34px; background: #f5f5f5; border-radius: 4px; 
+  width: 68rpx; height: 34px; background: #f5f5f5; border-radius: 4px; font-size: 11px;
   display: flex; justify-content: center; align-items: center; 
   flex-shrink: 0; overflow: hidden; position: relative;
 }
@@ -147,7 +150,6 @@ page { background-color: #f2f2f2; padding-bottom: 160rpx; /* 将原本的60rpx�
   display: flex; justify-content: center; align-items: center;
   font-size: 10px; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
-.icon-camera { font-size: 14px; opacity: 0.5; }
 
 /* 动作按钮：固定宽度，文字不换行 */
 .btn-quick-fill { 

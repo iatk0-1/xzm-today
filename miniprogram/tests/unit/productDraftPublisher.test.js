@@ -38,6 +38,18 @@ function harness({ type = 'create', manager = false, data = {}, record = {}, get
   return { publish: () => module.exports.publishDraft({ id: row.id, version: 7 }), row, calls, submissions };
 }
 
+for (const type of ['create', 'edit', 'convert']) {
+  test(`${type}草稿发布保留现货同步开关，拒绝无限库存并允许0`, async () => {
+    const valid = harness({ type, data: { syncReadyStock: true } });
+    await valid.publish();
+    assert.equal(valid.submissions[0].productData.syncReadyStock, true);
+    assert.equal(valid.submissions[0].productData.skus[0].stockMain, 0);
+    const invalid = harness({ type, data: { syncReadyStock: true, skuList: [{ price: '10', stock: '' }] } });
+    await assert.rejects(invalid.publish(), /具体库存/);
+    assert.equal(invalid.submissions.length, 0);
+  });
+}
+
 for (const type of ['create', 'edit', 'convert', 'live_create', 'live_edit']) {
   test(`${type}草稿直接保存发布，携带来源、版本和原始大整数ID`, async () => {
     const env = harness({ type, data: { pricingRuleId: '30', skuList: [

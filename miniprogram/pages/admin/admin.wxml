@@ -232,11 +232,6 @@
     </view>
   </view>
 
-  <view class="form-group pricing-default-panel">
-    <view class="label">新 SKU 默认成本</view>
-    <input class="input-box" type="digit" placeholder="默认成本（可选，大于0）" value="{{costPrice}}" bindinput="onCostInput" />
-  </view>
-
   <view class="form-group pricing-panel pricing-rule-panel">
     <picker wx:if="{{!isStallManager || (selectedStalls.length && pricingRules.length > 1 && !stallPricingLoading)}}" range="{{pricingRules}}" range-key="name" bindchange="choosePricingRule">
       <view class="pricing-rule-heading">
@@ -255,23 +250,27 @@
   <view wx:if="{{editId && isBundleMode}}" class="header-hint">已有套装保留分组结构，可编辑各SKU成本、规格和库存；调整分组请先复制为新商品。</view>
 
   <view class="sku-matrix-section" wx:if="{{skuList.length > 0}}">
-    <view class="label">SKU 明细</view>
+    <view class="sku-section-header">
+      <view class="label">SKU 明细</view>
+      <view class="sku-stock-sync">
+        <text>同步为现货库存</text>
+        <switch checked="{{syncReadyStock}}" disabled="{{draftSaving || managerInactive}}" bindchange="toggleSyncReadyStock" color="#07c160" />
+      </view>
+    </view>
 
     <view class="sku-console-row">
-      <input class="console-input" type="digit" placeholder="批量成本" model:value="{{quickCost}}" />
-      <input wx:if="{{isAdmin}}" class="console-input" type="digit" placeholder="批量价格" model:value="{{quickPrice}}" />
-      <input class="console-input" type="number" placeholder="全部库存" model:value="{{quickStock}}" />
+      <input class="console-input" type="digit" placeholder="成本" model:value="{{quickCost}}" />
+      <input wx:if="{{isAdmin}}" class="console-input" type="digit" placeholder="价格" model:value="{{quickPrice}}" />
+      <input class="console-input" type="number" placeholder="库存" model:value="{{quickStock}}" />
       
       <view class="console-img-btn" bindtap="chooseQuickImage">
         <image wx:if="{{quickImage}}" src="{{quickImage}}" mode="aspectFill" catchtap="previewQuickImage"></image>
         <view wx:if="{{quickImage}}" class="console-img-del" catchtap="removeQuickImage">×</view>
-        <text wx:else class="icon-camera">📷</text>
+        <text wx:else>图片</text>
       </view>
 
-    </view>
-    <view class="sku-console-actions">
-      <view class="btn-quick-fill" bindtap="applyQuickFillAll">一键填充</view>
-      <view class="btn-advanced-batch" bindtap="applyBatch">批量设置</view>
+      <view class="btn-advanced-batch" bindtap="applyBatch">设置</view>
+      <view class="btn-quick-fill" bindtap="applyQuickFillAll">填充</view>
     </view>
 
     <view class="minimal-sku-list">
@@ -293,7 +292,7 @@
             </view>
             <view class="mini-field stock-field">
               <text class="mini-field-label">全部库存</text>
-              <input class="mini-input stock-input" type="number" placeholder="无限" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" maxlength="9" />
+              <input class="mini-input stock-input" type="number" placeholder="{{syncReadyStock ? '必填' : '无限'}}" value="{{item.stock}}" bindinput="onSkuInput" data-index="{{index}}" data-field="stock" maxlength="9" />
             </view>
 
             <view class="mini-field">

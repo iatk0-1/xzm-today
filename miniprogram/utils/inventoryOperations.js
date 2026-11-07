@@ -51,7 +51,7 @@ function sourceText(source) {
     return_inspection: '退货验收入库', history_confirm: '历史/盘盈确认', existing_receipt_confirm: '既有收货来源确认', exchange_in: '换回入库' }[source] || source;
 }
 function changeText(type) {
-  return { outbound: '出库', exchange_cancel: '取消换货待回', exchange_out: '换货出库', return_out: '退货出库', arrival: '报单到货入库', history_in: '历史库存入库', shipment: '发货出库', return_inspection: '退货验收入库',
+  return { product_stock_sync: '商品库存同步', outbound: '出库', exchange_cancel: '取消换货待回', exchange_out: '换货出库', return_out: '退货出库', arrival: '报单到货入库', history_in: '历史库存入库', shipment: '发货出库', return_inspection: '退货验收入库',
     stocktake_gain: '盘盈', stocktake_loss: '盘亏', abnormal_keep: '异常保留补报', abnormal_exchange_out: '换货出库',
     history_confirm: '历史/盘盈转正常', receipt_reconcile: '关联原报单', receipt_backfill: '既有收货来源补录', exchange_in: '换回入库',
     abnormal_return_out: '异常退供应商', receipt_revoke: '撤销入库', receipt_correct: '入库数量更正', shipment_cancel: '发货解绑返还' }[type] || type;

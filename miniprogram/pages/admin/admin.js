@@ -90,6 +90,7 @@ const pageDefinition = {
     quickPrice: '',
     quickStock: '',
     quickImage: '',
+    syncReadyStock: false,
     // 与后端一致：达到该库存值时按无限库存展示。
     unlimitedStockThreshold: stockUtils.UNLIMITED_THRESHOLD,
 
@@ -1827,6 +1828,12 @@ const pageDefinition = {
     wx.showToast({ title: '请保存商品使设置生效', icon: 'none' });
   },
 
+  toggleSyncReadyStock(e) {
+    if (!this._pricingSubmitting && !this.data.draftSaving && !this.data.managerInactive) {
+      this.setData({ syncReadyStock: !!e.detail.value });
+    }
+  },
+
   submitProduct: async function() {
     const { mediaList, title, selectedStalls, selectedTags, skuList, lookbookImgs, detailImgs, manualRelated,
             videoUrl, videoThumbPath, useVideoCover, shippingInfo, description, fabricCare, sizeChartTip, warmTips, purchaseNotice,
@@ -1839,6 +1846,15 @@ const pageDefinition = {
     }
 
     var isBundle = this.data.isBundleMode && this.data.bundleGroups.length > 0;
+    if (isBundle) this.saveActiveGroupState();
+    if (this.data.syncReadyStock) {
+      const rows = isBundle ? this.data.bundleGroups.reduce((all, group) => all.concat(group.skuList || []), []) : skuList;
+      const invalid = rows.filter(sku => !sku._toBeRemoved).some(sku => {
+        const value = String(sku.stock == null ? '' : sku.stock).trim();
+        return !/^\d+$/.test(value) || Number(value) > 999999999;
+      });
+      if (invalid) return wx.showToast({ title: '开启同步现货后，每个SKU须填写具体库存（可填0）', icon: 'none' });
+    }
     var hasSkus = isBundle
       ? this.data.bundleGroups.some(function(g) { return g.skuList && g.skuList.length > 0; })
       : skuList.length > 0;
@@ -1948,6 +1964,7 @@ const pageDefinition = {
       // 4. 构造商品请求数据
       const productData = {
         name: title,
+        syncReadyStock: !!this.data.syncReadyStock,
         articleNo: this.data.articleNo.trim(),
         promotions: promotionBinding(this.data.promotions),
         schedule: this.data.productScheduleDirty ? this.data.productSchedule : undefined,
@@ -2608,6 +2625,7 @@ const pageDefinition = {
       useVideoCover: data.useVideoCover || false,
       shippingInfo: data.shippingInfo,
       publishOnSale: data.publishOnSale,
+      syncReadyStock: !!data.syncReadyStock,
       productSchedule: data.productSchedule,
       productScheduleDirty: data.productScheduleDirty,
       description: data.description,
@@ -2693,6 +2711,7 @@ const pageDefinition = {
       useVideoCover: safeGet(draftData, 'useVideoCover', false),
       shippingInfo: safeGet(draftData, 'shippingInfo', '付款后按排单顺序发货'),
       publishOnSale: safeGet(draftData, 'publishOnSale', false),
+      syncReadyStock: safeGet(draftData, 'syncReadyStock', false) === true,
       productSchedule: safeGet(draftData, 'productSchedule', null),
       productScheduleDirty: safeGet(draftData, 'productScheduleDirty', false),
       productScheduleSummary: scheduleSummary(safeGet(draftData, 'productSchedule', null)),

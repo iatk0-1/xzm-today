@@ -66,6 +66,7 @@ async function buildProduct(record) {
       price = await prices.get(cost);
     }
     const stock = String(sku.stock == null ? '' : sku.stock).trim();
+    if (!live && data.syncReadyStock && !stock) throw new Error('开启同步现货后，每个SKU须填写具体库存（可填0）');
     if (stock && (!/^\d+$/.test(stock) || Number(stock) > 999999999)) throw new Error('库存必须为0到999999999的整数');
     return { spec: sku.color || '默认', size: sku.size || '均码', barcode: '',
       retailPrice: Number(price), costPrice: cost, stockMain: stock === '' ? 0 : Number(stock),
@@ -96,6 +97,7 @@ async function buildProduct(record) {
     sizeCategoryId: data.currentSizeCategoryId || null,
     skus: groups && !editing ? [] : skus, bundleGroups: editing ? undefined : groups,
     ...(!live ? {
+      syncReadyStock: data.syncReadyStock === true,
       articleNo: String(data.articleNo || '').trim(),
       promotions: promotionBinding(data.promotions),
       schedule: data.productScheduleDirty ? data.productSchedule : undefined,

@@ -36,6 +36,8 @@ function setup({ manager = true, userId = 8, saved, assigned = [], failPublish =
         };
       } };
       if (name.endsWith('/purchaseNotice')) return require('../../utils/purchaseNotice');
+      if (name.endsWith('/draft')) return require('../../utils/draft');
+      if (name.endsWith('/productSchedule')) return require('../../utils/productSchedule');
       if (name.endsWith('/managerFinance')) return require('../../utils/managerFinance');
       if (name.endsWith('/auth')) return {
         ensureAuthenticated: async () => {}, isStallManager: () => manager,
@@ -140,6 +142,31 @@ test('发布成功记录实际档口及账号，失败不覆盖上次记忆', as
 });
 
 for (const editId of ['', '9']) {
+  test(`现货同步${editId ? '编辑' : '新增'}默认关闭，开启必须逐规格填写具体库存，支持0`, async () => {
+    for (const stock of ['', '0', '8', '-1', '1.5', '1000000000']) {
+      const { page, submissions, toasts } = setup({ manager: false });
+      assert.equal(page.data.syncReadyStock, false);
+      Object.assign(page.data, { editId, costPrice: '5', title: '现货商品',
+        mediaList: [{ url: 'https://example.com/product.jpg' }],
+        skuList: [{ price: '10', costPrice: '5', stock, color: '白', size: 'M' }] });
+      page.toggleSyncReadyStock({ detail: { value: true } });
+      await page.submitProduct();
+      const valid = ['0', '8'].includes(stock);
+      assert.equal(submissions.length, valid ? 1 : 0);
+      if (valid) {
+        assert.equal(submissions[0].body.syncReadyStock, true);
+        assert.equal(submissions[0].body.skus[0].stockMain, Number(stock));
+        assert.equal(submissions[0].body.skus[0].isUnlimitedStock, false);
+      } else assert.ok(toasts.some(text => text.includes('具体库存')));
+    }
+    const { page, submissions } = setup({ manager: false });
+    Object.assign(page.data, { editId, costPrice: '5', title: '无限商品',
+      mediaList: [{ url: 'https://example.com/product.jpg' }], skuList: [{ price: '10', stock: '' }] });
+    await page.submitProduct();
+    assert.equal(submissions[0].body.syncReadyStock, false);
+    assert.equal(submissions[0].body.skus[0].isUnlimitedStock, true);
+  });
+
   test(`视频封面${editId ? '编辑' : '新增'}保存参数跟随勾选，缺失封面不静默保存为false`, async () => {
     for (const selected of [true, false]) {
       const { page, submissions } = setup({ manager: false });
@@ -165,3 +192,35 @@ for (const editId of ['', '9']) {
     assert.ok(toasts.includes('生成失败'));
   });
 }
+
+test('现货开关写入草稿，旧草稿默认关闭，保存期间不允许切换', () => {
+  const { page } = setup();
+  page.toggleSyncReadyStock({ detail: { value: true } });
+  const saved = page.collectDraftData();
+  assert.equal(saved.syncReadyStock, true);
+  page.restoreDraft(saved);
+  assert.equal(page.data.syncReadyStock, true);
+  page.restoreDraft({});
+  assert.equal(page.data.syncReadyStock, false);
+  page.data.draftSaving = true;
+  page.toggleSyncReadyStock({ detail: { value: true } });
+  assert.equal(page.data.syncReadyStock, false);
+});
+
+test('套装同步校验包含未显示子项，跳过已移除规格，提交前保存当前子项输入', async () => {
+  const { page, submissions, toasts } = setup({ manager: false });
+  Object.assign(page.data, { syncReadyStock: true, isBundleMode: true, activeGroupIndex: 0,
+    costPrice: '5', title: '套装', mediaList: [{ url: 'https://example.com/product.jpg' }],
+    skuList: [{ price: '10', stock: '0', costPrice: '5' }],
+    bundleGroups: [{ name: '上衣', skuList: [] }, { name: '裤子', skuList: [{ price: '10', stock: '' }] }] });
+  await page.submitProduct();
+  assert.equal(submissions.length, 0);
+  assert.equal(page.data.bundleGroups[0].skuList[0].stock, '0');
+  assert.ok(toasts.some(text => text.includes('具体库存')));
+  page.data.bundleGroups[1].skuList = [{ price: '10', costPrice: '5', stock: '2' }, { stock: '', _toBeRemoved: true }];
+  await page.submitProduct();
+  assert.equal(submissions.length, 1);
+  assert.equal(submissions[0].body.syncReadyStock, true);
+  assert.equal(submissions[0].body.bundleGroups[0].skus[0].stockMain, 0);
+  assert.equal(submissions[0].body.bundleGroups[1].skus[0].stockMain, 2);
+});
