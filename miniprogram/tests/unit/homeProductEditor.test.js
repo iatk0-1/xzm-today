@@ -214,3 +214,79 @@ test('快速切换选品筛选丢弃旧响应，名称和货号搜索去掉两�
   assert.deepEqual(Array.from(picker.data.products, item => item.id), ['new']);
   assert.equal(picker.data.hasMore, false);
 });
+
+test('弹窗全选查询当前筛选全部分页，排除已添加商品，取消全选保留其他筛选的选择', async () => {
+  const env = setup({ get: async (url, params) => ({
+    content: params.page === 1 ? [{ id: '1', name: '商品1', costPrice: 12 }, { id: '2', name: '已添加' }]
+      : [{ id: '3', name: '商品3' }], hasNext: params.page === 1
+  }) });
+  const picker = env.picker();
+  picker._selected = new Map([['outside', { id: 'outside', name: '其他筛选已选' }]]);
+  Object.assign(picker.data, { existingIds: ['2'], activeStatus: 'off', searchKeyword: ' 货号123 ',
+    selectedStall: '42', selectedTag: '43' });
+  await picker.toggleSelectAll();
+  assert.deepEqual(env.reads.map(({ params }) => params.page), [1, 2]);
+  for (const { params } of env.reads) {
+    assert.equal(params.size, 100); assert.equal(params.manage, true);
+    assert.equal(params.status, 'off'); assert.equal(params.keyword, '货号123');
+    assert.equal(params.stallId, '42'); assert.equal(params.tagId, '43');
+  }
+  assert.deepEqual(Array.from(picker._selected.keys()), ['outside', '1', '3']);
+  assert.equal(picker._selected.get('1').costPrice, undefined);
+  assert.equal(picker.data.selectedCount, 3);
+  assert.equal(picker.data.allSelected, true);
+  assert.equal(picker.data.hasMore, false);
+  assert.equal(picker.data.selectingAll, false);
+  await picker.toggleSelectAll();
+  assert.deepEqual(Array.from(picker._selected.keys()), ['outside']);
+  assert.equal(picker.data.allSelected, false);
+  assert.equal(picker.data.selectedCount, 1);
+  assert.equal(env.reads.length, 2);
+});
+
+test('全选加载期间阻止重复全选、单选和确认，后续分页失败保留原选择', async () => {
+  let resolveFirst;
+  const env = setup({ get: (url, params) => {
+    if (params.page === 1) return new Promise(resolve => { resolveFirst = resolve; });
+    throw new Error('模拟第二页失败');
+  } });
+  const picker = env.picker();
+  picker._selected = new Map([['1', { id: '1' }]]);
+  picker.data.products = [{ id: '1' }]; picker.refreshSelection();
+  const pending = picker.toggleSelectAll();
+  await picker.toggleSelectAll();
+  picker.toggleProduct(event({ id: '1' })); picker.confirm();
+  assert.equal(env.reads.length, 1);
+  assert.equal(picker.events.length, 0);
+  assert.equal(picker.data.selectingAll, true);
+  resolveFirst({ content: [{ id: '2' }], hasNext: true }); await pending;
+  assert.deepEqual(Array.from(picker._selected.keys()), ['1']);
+  assert.deepEqual(Array.from(picker.data.products, item => item.id), ['1']);
+  assert.equal(picker.data.selectedCount, 1);
+  assert.equal(picker.data.selectingAll, false);
+});
+
+test('全选过程中切换筛选取消旧任务，迟到响应不能勾选新列表', async () => {
+  let resolveAll;
+  const env = setup({ get: (url, params) => params.status === 'off'
+    ? Promise.resolve({ content: [{ id: 'new' }], hasNext: false })
+    : new Promise(resolve => { resolveAll = resolve; }) });
+  const picker = env.picker(); picker._selected = new Map();
+  const pending = picker.toggleSelectAll();
+  await picker.selectStatus(event({ key: 'off' }));
+  resolveAll({ content: [{ id: 'old' }], hasNext: true }); await pending;
+  assert.deepEqual(Array.from(picker.data.products, item => item.id), ['new']);
+  assert.equal(picker.data.selectedCount, 0);
+  assert.equal(picker.data.selectingAll, false);
+  assert.equal(picker.data.allSelected, false);
+  assert.equal(env.reads.length, 2);
+});
+
+test('手动勾选可选商品后同步全选状态，只有已添加商品时不亮全选', () => {
+  const env = setup(); const picker = env.picker(); picker._selected = new Map();
+  Object.assign(picker.data, { products: [{ id: '1' }, { id: '2', existing: true }], hasMore: false });
+  picker.toggleProduct(event({ id: '1' })); assert.equal(picker.data.allSelected, true);
+  picker.toggleProduct(event({ id: '1' })); assert.equal(picker.data.allSelected, false);
+  picker.setData({ products: [{ id: '2', existing: true }] }); picker.refreshSelection();
+  assert.equal(picker.data.allSelected, false);
+});

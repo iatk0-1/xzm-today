@@ -17,6 +17,15 @@
       <view class="picker-empty" wx:if="{{loading}}">加载中...</view>
       <view class="picker-empty" wx:elif="{{!products.length && !error}}">暂无符合条件的商品</view>
     </scroll-view>
-    <view class="picker-footer"><text>已选 {{selectedCount}} 件</text><button disabled="{{!selectedCount}}" bindtap="confirm">确认添加</button></view>
+    <view class="picker-footer">
+      <view class="picker-selection">
+        <view class="picker-select-all {{loading || selectingAll ? 'disabled' : ''}}" bindtap="toggleSelectAll">
+          <view class="picker-check {{allSelected ? 'checked' : ''}}">{{allSelected ? '✓' : ''}}</view>
+          <text>{{selectingAll ? '全选中' : allSelected ? '取消全选' : '全选'}}</text>
+        </view>
+        <text class="picker-selected-count">已选 {{selectedCount}} 件</text>
+      </view>
+      <button class="picker-confirm" disabled="{{!selectedCount || selectingAll}}" bindtap="confirm">确认添加</button>
+    </view>
   </view>
 </view>
