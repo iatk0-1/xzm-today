@@ -96,10 +96,11 @@
         <view class="product-item" wx:for="{{leftColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
           <view class="product-image-wrap">
             <image class="product-img" src="{{item.coverUrl || item.image}}" mode="widthFix" lazy-load="true"></image>
+            <view class="product-card-tag product-card-promotion" wx:if="{{item.cardTags.length && item.cardTags[0].type !== 'READY_STOCK'}}"><text class="product-card-tag-label">{{item.cardTags[0].label}}</text></view>
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="product-info">
-            <view class="product-title"><view class="product-card-tag" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
+            <view class="product-title"><block wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><view class="product-card-tag" wx:if="{{tag.type === 'READY_STOCK'}}"><text class="product-card-tag-label">{{tag.label}}</text></view></block><text>{{item.name || item.title}}</text></view>
             <view class="product-bottom">
               <view class="product-price-row">
                 <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>
@@ -117,10 +118,11 @@
         <view class="product-item" wx:for="{{rightColumn}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
           <view class="product-image-wrap">
             <image class="product-img" src="{{item.coverUrl || item.image}}" mode="widthFix" lazy-load="true"></image>
+            <view class="product-card-tag product-card-promotion" wx:if="{{item.cardTags.length && item.cardTags[0].type !== 'READY_STOCK'}}"><text class="product-card-tag-label">{{item.cardTags[0].label}}</text></view>
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="product-info">
-            <view class="product-title"><view class="product-card-tag" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
+            <view class="product-title"><block wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><view class="product-card-tag" wx:if="{{tag.type === 'READY_STOCK'}}"><text class="product-card-tag-label">{{tag.label}}</text></view></block><text>{{item.name || item.title}}</text></view>
             <view class="product-bottom">
               <view class="product-price-row">
                 <view class="product-price">¥{{item.retailPrice || item.displayPrice}}</view>

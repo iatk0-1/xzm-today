@@ -84,10 +84,11 @@
         <view class="goods-item" wx:for="{{leftColumn}}" wx:key="id" catchtap="goToDetail" data-id="{{item.id}}">
           <view class="goods-image-wrap">
             <image class="goods-img" src="{{item.coverUrl || item.image}}" mode="widthFix" lazy-load="true"></image>
+            <view class="product-card-tag product-card-promotion" wx:if="{{item.cardTags.length && item.cardTags[0].type !== 'READY_STOCK'}}"><text class="product-card-tag-label">{{item.cardTags[0].label}}</text></view>
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="goods-info">
-            <view class="goods-title"><view class="product-card-tag" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
+            <view class="goods-title"><block wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><view class="product-card-tag" wx:if="{{tag.type === 'READY_STOCK'}}"><text class="product-card-tag-label">{{tag.label}}</text></view></block><text>{{item.name || item.title}}</text></view>
             <view class="goods-price-row">
               <view class="goods-price">¥{{item.retailPrice || item.displayPrice}}</view>
               <view class="btn-add-cart" catchtap="openSkuPanel" data-action="cart" data-product="{{item}}" aria-label="选择规格加入购物车">
@@ -103,10 +104,11 @@
         <view class="goods-item" wx:for="{{rightColumn}}" wx:key="id" catchtap="goToDetail" data-id="{{item.id}}">
           <view class="goods-image-wrap">
             <image class="goods-img" src="{{item.coverUrl || item.image}}" mode="widthFix" lazy-load="true"></image>
+            <view class="product-card-tag product-card-promotion" wx:if="{{item.cardTags.length && item.cardTags[0].type !== 'READY_STOCK'}}"><text class="product-card-tag-label">{{item.cardTags[0].label}}</text></view>
             <view class="sold-out-overlay" wx:if="{{item.soldOut}}"><text>售罄</text></view>
           </view>
           <view class="goods-info">
-            <view class="goods-title"><view class="product-card-tag" wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><text class="product-card-tag-label">{{tag.label}}</text></view><text>{{item.name || item.title}}</text></view>
+            <view class="goods-title"><block wx:for="{{item.cardTags}}" wx:for-item="tag" wx:key="type"><view class="product-card-tag" wx:if="{{tag.type === 'READY_STOCK'}}"><text class="product-card-tag-label">{{tag.label}}</text></view></block><text>{{item.name || item.title}}</text></view>
             <view class="goods-price-row">
               <view class="goods-price">¥{{item.retailPrice || item.displayPrice}}</view>
               <view class="btn-add-cart" catchtap="openSkuPanel" data-action="cart" data-product="{{item}}" aria-label="选择规格加入购物车">

@@ -28,3 +28,34 @@
   transform: scaleX(0.82);
   transform-origin: center;
 }
+
+/* 优惠只展示优先级最高的一项：首单在前；现货仍放在商品标题前。 */
+.product-card-promotion {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  height: 40rpx;
+  margin: 0;
+  padding: 0 16rpx 0 12rpx;
+  background-color: transparent;
+  border-radius: 0;
+  pointer-events: none;
+}
+
+/* 只倾斜底色，文字沿用原来的字体、字号和收窄比例；左边由图片容器裁齐。 */
+.product-card-promotion::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 6rpx;
+  bottom: 0;
+  left: -8rpx;
+  background-color: #ff3350;
+  border-radius: 0 0 6rpx 0;
+  transform: skewX(-16deg);
+}
+
+.product-card-promotion .product-card-tag-label {
+  position: relative;
+}
