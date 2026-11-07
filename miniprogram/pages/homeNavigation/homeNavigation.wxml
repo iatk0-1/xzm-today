@@ -1,9 +1,14 @@
 <page-meta page-style="{{dragKey ? 'overflow: hidden;' : ''}}"></page-meta>
 <view class="page">
   <view class="title">首页导航栏</view>
-  <view class="description">首页、上新、销量、现货均可长按左侧图标拖动排序，开关控制显示或隐藏，调整后自动保存。</view>
+  <view class="description">长按左侧图标拖动排序，两列开关分别控制非管理员、管理员可见，调整后自动保存。</view>
   <view class="loading" wx:if="{{loading}}">正在加载导航配置...</view>
   <view class="card" wx:if="{{tabs.length}}">
+    <view class="table-header">
+      <view class="name-heading">导航项</view>
+      <view class="visibility-column">非管理员可见</view>
+      <view class="visibility-column">管理员可见</view>
+    </view>
     <movable-area class="navigation-area" style="height: {{listHeight}}px;">
     <movable-view class="row {{dragKey === item.key ? 'dragging' : ''}}" wx:for="{{tabs}}" wx:key="key"
       x="{{0}}" y="{{item.y}}" direction="vertical" disabled="{{true}}" animation="{{dragKey !== item.key}}">
@@ -11,14 +16,18 @@
         catchtouchmove="onDragTouchMove" catchtouchend="onDragEnd" catchtouchcancel="cancelDrag">☰</view>
       <view class="info">
         <view class="label">{{item.label}}</view>
-        <view class="state">{{item.visible ? '显示' : '隐藏'}}</view>
       </view>
-      <switch checked="{{item.visible}}" color="#111111" disabled="{{loading || saving || dragKey}}" data-key="{{item.key}}" bindchange="toggle" />
+      <view class="visibility-column">
+        <switch checked="{{item.visible}}" color="#111111" disabled="{{loading || saving || dragKey}}" data-key="{{item.key}}" data-field="visible" bindchange="toggle" />
+      </view>
+      <view class="visibility-column">
+        <switch checked="{{item.adminVisible}}" color="#111111" disabled="{{loading || saving || dragKey}}" data-key="{{item.key}}" data-field="adminVisible" bindchange="toggle" />
+      </view>
     </movable-view>
     </movable-area>
   </view>
   <view class="save-state {{saving ? 'saving' : ''}}" wx:if="{{tabs.length}}">{{saving ? '正在保存...' : dragKey ? '松手自动保存' : saved ? '已自动保存' : '调整后自动保存'}}</view>
-  <view class="hint" wx:if="{{tabs.length}}">打开首页默认选中排在最前的显示项。搜索页同步上新、销量、现货的顺序和开关；全部隐藏时按上新展示商品。</view>
+  <view class="hint" wx:if="{{tabs.length}}">按当前身份使用对应列的开关，打开首页默认选中排在最前的可见项。搜索页同步上新、销量、现货的顺序和对应开关；当前身份全部隐藏时按上新展示商品。</view>
   <view class="error" wx:if="{{error}}">{{error}}</view>
   <button wx:if="{{!tabs.length && !loading}}" bindtap="load">重新加载</button>
 </view>

@@ -98,7 +98,7 @@ test('左侧长按拖动松手自动保存，开关变更自动提交，不含�
   await p.onDragEnd(gesture('stock', 104, 1, true));
   assert.deepEqual(tabKeys(p), ['stock', 'sales', 'newest', 'home']);
   assert.equal(writes.length, 1);
-  assert.deepEqual(Object.keys(writes[0].tabs[0]), ['key', 'visible']);
+  assert.deepEqual(Object.keys(writes[0].tabs[0]), ['key', 'visible', 'adminVisible']);
   assert.equal(p.data.dragKey, '');
   assert.equal(p.data.saved, true);
   await p.toggle({ currentTarget: { dataset: { key: 'stock' } }, detail: { value: true } });
@@ -229,6 +229,61 @@ test('导航配置拒绝缺项、重复项和未知项，旧三项配置保留�
     { tabs: tabs.map(tab => tab.key === 'home' ? { ...tab, visible: null } : tab) },
     { tabs: tabs.map(tab => tab.key === 'home' ? { ...tab, key: 'unknown' } : tab) }
   ]) assert.throws(() => navigation.normalize(invalid));
+});
+
+test('两类身份独立使用可见开关，隐藏当前项自动回退，搜索不展示首页项', () => {
+  const tabs = [
+    { key: 'home', visible: false, adminVisible: true },
+    { key: 'stock', visible: false, adminVisible: true },
+    { key: 'sales', visible: true, adminVisible: false },
+    { key: 'newest', visible: true, adminVisible: false }
+  ];
+  const p = page(); p._includeHomeTab = true;
+  navigation.apply(p, tabs, false);
+  assert.deepEqual(p.data.mainTabs.map(tab => tab.key), ['sales', 'newest']);
+  assert.equal(p.data.currentMainTab, '销量');
+  navigation.apply(p, tabs, true);
+  assert.deepEqual(p.data.mainTabs.map(tab => tab.key), ['home', 'stock']);
+  assert.equal(p.data.currentMainTab, '首页');
+  navigation.apply(p, tabs, false);
+  assert.equal(p.data.currentMainTab, '销量');
+  const search = page();
+  navigation.apply(search, tabs, true);
+  assert.deepEqual(search.data.mainTabs.map(tab => tab.key), ['stock']);
+  navigation.apply(search, tabs.map(tab => ({ ...tab, adminVisible: false })), true);
+  assert.deepEqual(search.data.mainTabs, []);
+  assert.equal(search.data.currentMainTab, '上新');
+});
+
+test('读取时使用响应落地时的当前身份，旧配置沿用原状态，非法管理员开关被拒绝', async () => {
+  for (const tab of navigation.normalize(config)) assert.equal(tab.adminVisible, tab.visible);
+  for (const value of [null, 'true', 1]) {
+    assert.throws(() => navigation.normalize({ tabs: config.tabs.map(tab => ({ ...tab, adminVisible: value })) }));
+  }
+  const p = page();
+  let resolve, admin = false;
+  const task = navigation.load(p, { get: () => new Promise(done => { resolve = done; }) }, () => admin);
+  admin = true;
+  resolve({ tabs: config.tabs.map(tab => ({ ...tab, visible: false, adminVisible: true })) });
+  await task;
+  assert.deepEqual(p.data.mainTabs.map(tab => tab.key), ['sales', 'stock', 'newest']);
+});
+
+test('管理员开关独立自动保存，拖动携带两列状态，失败恢复两列开关', async () => {
+  const { p, writes } = await editor();
+  await p.toggle({ currentTarget: { dataset: { key: 'stock', field: 'adminVisible' } }, detail: { value: true } });
+  assert.equal(writes[0].tabs[1].adminVisible, true);
+  assert.equal(writes[0].tabs[1].visible, false);
+  await p.toggle({ currentTarget: { dataset: { key: 'stock', field: 'visible' } }, detail: { value: true } });
+  assert.equal(writes[1].tabs[1].adminVisible, true);
+  p.onDragStart(gesture('stock', 200));
+  await p.onDragEnd(gesture('stock', 104, 1, true));
+  assert.equal(writes[2].tabs[0].key, 'stock');
+  assert.equal(writes[2].tabs[0].adminVisible, true);
+  const failed = await editor({ put: async () => { throw new Error('模拟断网'); } });
+  await failed.p.toggle({ currentTarget: { dataset: { key: 'stock', field: 'adminVisible' } }, detail: { value: true } });
+  assert.equal(failed.p.data.tabs[1].adminVisible, false);
+  assert.equal(failed.p.data.tabs[1].visible, false);
 });
 
 test('导航显示配置只作用于导航，商品标签和其他现货展示保持独立', () => {

@@ -116,7 +116,7 @@ Page(pageSync.wrap({
     }
 
     // 从商品详情返回时保留当前分页和滚动位置，不要把列表重置到第一页。
-    homeNavigation.load(this, api).then(changed => {
+    homeNavigation.load(this, api, auth.isAdmin).then(changed => {
       if (changed && !this._pageClosed) return this.getProductsList(true, { silent: true });
     });
     if (this._skipNextHomeRefresh) {
@@ -211,7 +211,7 @@ Page(pageSync.wrap({
   // 加载所有数据（商品、档口、标签）
   loadAllData: function() {
     return Promise.all([
-      homeNavigation.load(this, api).then(() => this.getProductsList()),
+      homeNavigation.load(this, api, auth.isAdmin).then(() => this.getProductsList()),
       this.loadStallList(),
       this.loadTagList()
     ]);
@@ -359,7 +359,7 @@ Page(pageSync.wrap({
       : Promise.resolve();
 
     const task = waitIdle
-      .then(() => homeNavigation.load(this, api))
+      .then(() => homeNavigation.load(this, api, auth.isAdmin))
       .then(() => Promise.all([
         this.getProductsList(true, { silent: true }),
         this.loadStallList(),

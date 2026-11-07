@@ -61,7 +61,7 @@ Page({
     this._navigationExplicitTab = ['上新', '销量', '现货'].includes(tab) || ['stock', 'sales', 'newest'].includes(options.sort);
     this.loadRecentSearches();
     this.loadStallList();
-    return homeNavigation.load(this, api).then(() => {
+    return homeNavigation.load(this, api, auth.isAdmin).then(() => {
       this._navigationInitialized = true;
       if (!this._pageClosed) return this.fetchAllProducts();
     });
@@ -69,7 +69,7 @@ Page({
 
   onShow: function() {
     if (!this._navigationInitialized) return;
-    return homeNavigation.load(this, api).then(changed => {
+    return homeNavigation.load(this, api, auth.isAdmin).then(changed => {
       if (changed && !this._pageClosed) return this.reloadFilteredProducts();
     });
   },

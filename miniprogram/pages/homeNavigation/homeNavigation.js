@@ -78,8 +78,10 @@ Page({
   toggle(event) {
     if (!this._authorized || this.data.loading || this.data.saving || this._drag) return;
     const key = event.currentTarget.dataset.key;
-    if (!this.data.tabs.some(tab => tab.key === key && tab.visible !== event.detail.value)) return;
-    this.setData({ tabs: this.data.tabs.map(tab => tab.key === key ? { ...tab, visible: event.detail.value } : tab) });
+    const field = event.currentTarget.dataset.field || 'visible';
+    if (!['visible', 'adminVisible'].includes(field) || typeof event.detail.value !== 'boolean') return;
+    if (!this.data.tabs.some(tab => tab.key === key && tab[field] !== event.detail.value)) return;
+    this.setData({ tabs: this.data.tabs.map(tab => tab.key === key ? { ...tab, [field]: event.detail.value } : tab) });
     return this.save();
   },
   async save() {
@@ -87,7 +89,7 @@ Page({
         || this.data.tabs.length !== navigation.configurationDefaults.length) return;
     this.setData({ saving: true, error: '', saved: false });
     try {
-      const tabs = this.data.tabs.map(({ key, visible }) => ({ key, visible }));
+      const tabs = this.data.tabs.map(({ key, visible, adminVisible }) => ({ key, visible, adminVisible }));
       const saved = navigation.normalize(await api.put('/home-navigation', { tabs }));
       this._savedTabs = saved;
       if (!this._pageClosed) this.setData({ tabs: positionTabs(saved), saved: true });
