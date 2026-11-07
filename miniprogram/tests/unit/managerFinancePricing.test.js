@@ -196,6 +196,64 @@ test('负责人恢复当前档口分配的有效规则', async () => {
   assert.equal(page.data.publishOnSale, true);
 });
 
+for (const manager of [false, true]) {
+  test(`${manager ? '负责人' : '管理员'}新增商品记住现货开关的开启和关闭，下次进入恢复且不产生未保存修改`, async () => {
+    const { page, storage } = editorChoiceHarness(manager);
+    await page.onLoad({});
+    assert.equal(page.data.syncReadyStock, false);
+    page.toggleSyncReadyStock({ detail: { value: true } });
+    assert.equal(storage.get('product_editor_choices:42').syncReadyStock, true);
+    page.setData({ syncReadyStock: false });
+    await page.onLoad({});
+    assert.equal(page.data.syncReadyStock, true);
+    assert.equal(page.hasUnsavedDraftChanges(), false);
+    page.toggleSyncReadyStock({ detail: { value: false } });
+    assert.equal(storage.get('product_editor_choices:42').syncReadyStock, false);
+    page.setData({ syncReadyStock: true });
+    await page.onLoad({});
+    assert.equal(page.data.syncReadyStock, false);
+  });
+}
+
+test('编辑商品默认关闭现货同步，编辑时切换不覆盖新增记忆，新增草稿优先自己的设置', async () => {
+  const { page, storage } = editorChoiceHarness();
+  storage.set('product_editor_choices:42', { syncReadyStock: true, pricingRuleId: '40' });
+  page.loadProductForEdit = async () => {};
+  await page.onLoad({ editId: '10' });
+  assert.equal(page.data.syncReadyStock, false);
+  page.toggleSyncReadyStock({ detail: { value: true } });
+  page.toggleSyncReadyStock({ detail: { value: false } });
+  assert.equal(storage.get('product_editor_choices:42').syncReadyStock, true);
+  page.setData({ editId: '' });
+  await page.onLoad({});
+  assert.equal(page.data.syncReadyStock, true);
+  await page.restoreDraft({ title: '新增草稿', syncReadyStock: false });
+  assert.equal(page.data.syncReadyStock, false);
+  assert.equal(storage.get('product_editor_choices:42').syncReadyStock, true);
+});
+
+test('现货开关记忆按账号隔离，旧缓存和非布尔值默认关闭，保存期间忽略切换', async () => {
+  for (const cached of [{}, { syncReadyStock: 'true' }, { syncReadyStock: 1 }]) {
+    const { page, storage } = editorChoiceHarness();
+    storage.set('product_editor_choices:42', cached);
+    await page.onLoad({});
+    assert.equal(page.data.syncReadyStock, false);
+  }
+  const { page, storage, auth } = editorChoiceHarness();
+  storage.set('product_editor_choices:42', { syncReadyStock: true });
+  auth.getUserInfo = () => ({ userId: '43' });
+  await page.onLoad({});
+  assert.equal(page.data.syncReadyStock, false);
+  page.data.draftSaving = true;
+  page.toggleSyncReadyStock({ detail: { value: true } });
+  assert.equal(page.data.syncReadyStock, false);
+  assert.equal(storage.has('product_editor_choices:43'), false);
+  page.data.draftSaving = false;
+  page.toggleSyncReadyStock({ detail: { value: true } });
+  assert.equal(storage.get('product_editor_choices:43').syncReadyStock, true);
+  assert.equal(storage.get('product_editor_choices:42').syncReadyStock, true);
+});
+
 function pricingEvent(index, side, value) {
   return {
     currentTarget: { dataset: { index, side, boundary: index + ':' + side } },

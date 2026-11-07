@@ -299,6 +299,9 @@ function integrateProductPricing(page, { allowAdminManualPricing = false, rememb
     if (!this._editorDraftRestored && typeof savedChoices.publishOnSale === 'boolean') {
       this.setData({ publishOnSale: savedChoices.publishOnSale });
     }
+    if (!this._editorDraftRestored && 'syncReadyStock' in this.data) {
+      this.setData({ syncReadyStock: this._restoreEditorChoices && savedChoices.syncReadyStock === true });
+    }
     try {
       if (this.data.isStallManager) {
         const profile = await api.get('/stall-managers/mine');
@@ -319,6 +322,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false, rememb
         if (this._restoreEditorChoices && !this._editorDraftRestored) {
           const saved = this.readEditorChoices();
           if (typeof saved.publishOnSale === 'boolean') this.setData({ publishOnSale: saved.publishOnSale });
+          if ('syncReadyStock' in this.data) this.setData({ syncReadyStock: saved.syncReadyStock === true });
           if (!this.data.isStallManager && typeof saved.pricingRuleId === 'string') {
             const rule = this.data.pricingRules.find(item => String(item.id) === saved.pricingRuleId);
             if (rule) this.showRule(rule.id === '' ? null : rule, '上次选择');
@@ -538,6 +542,19 @@ function integrateProductPricing(page, { allowAdminManualPricing = false, rememb
     page.togglePublishStatus = function(event) {
       originalTogglePublish.call(this, event);
       this.saveEditorChoice({ publishOnSale: this.data.publishOnSale });
+    };
+  }
+
+  if (rememberEditorChoices && page.toggleSyncReadyStock) {
+    const originalToggleSync = page.toggleSyncReadyStock;
+    page.toggleSyncReadyStock = function(event) {
+      const previous = this.data.syncReadyStock;
+      originalToggleSync.call(this, event);
+      // 仅记住新增商品的手动选择；编辑时的临时开关不覆盖新增偏好。
+      if (!this.data.editId && !(this.data.editMode && this.data.productId) && !this.data.convertFromLiveProductId
+          && this.data.syncReadyStock !== previous) {
+        this.saveEditorChoice({ syncReadyStock: this.data.syncReadyStock });
+      }
     };
   }
 
