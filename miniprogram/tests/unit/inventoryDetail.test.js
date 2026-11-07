@@ -173,6 +173,17 @@ test('取消换货失败时保留待回记录，重试入口不会伪装为已�
   assert.match(toasts.at(-1), /待确认/); assert.equal(page._exchangeCancelConfirming, false);
 });
 
+test('换货记录展示真实创建时间并倒序排列，时间格式与入库记录一致', async () => {
+  const response = detail(), older = '2026-11-07T10:30:00+08:00', newer = '2026-11-07T11:30:00+08:00';
+  response.records = [{ skuId: response.skus[0].skuId,
+    receipts: [{ id: 'receipt', source: 'normal', qty: 1, createdAt: newer }],
+    exchanges: [{ id: 'old', qty: 1, receivedQty: 0, createdAt: older }, { id: 'new', qty: 1, receivedQty: 0, createdAt: newer }] }];
+  const { page } = load('inventoryDetail', { get: async () => response }); await page.onLoad({ id: '1' });
+  assert.equal(page.data.exchanges[0].id, 'new');
+  assert.equal(page.data.exchanges[0].timeText, page.data.receipts[0].timeText);
+  assert.notEqual(page.data.exchanges[0].timeText, page.data.exchanges[1].timeText);
+});
+
 test('出库不填备注可以提交，历史入库与普通出库使用各自接口参数', async () => {
   const { page, writes } = load('inventoryDetail', { get: async () => detail() }); await page.onLoad({ id: '1' });
   page.switchTab(event({ id: 'outbound' }));

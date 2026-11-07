@@ -65,14 +65,16 @@
           <view wx:if="{{item.effectiveQty != null}}">有效实收 {{item.effectiveQty}} 件 · 本次已发 {{item.shippedQty || 0}} 件</view>
           <view class="muted">{{item.timeText}} · 入库编号 {{item.id}}</view><view class="record-note" wx:if="{{item.note}}">{{item.note}}</view>
           <view class="muted" wx:for="{{item.allocations}}" wx:for-item="allocation" wx:key="purchaseOrderId">报单 {{allocation.batchNo || allocation.purchaseOrderId}} · {{allocation.qty}} 件</view>
-          <button wx:if="{{!item.revoked && (item.source === 'normal' || item.source === 'history')}}" class="record-button" bindtap="openReceiptCorrection" data-index="{{index}}" disabled="{{saving || quantityPending}}">更正入库数量 / 查看更正记录</button>
-          <button wx:if="{{!item.revoked}}" class="record-button danger-button" bindtap="revokeReceipt" data-index="{{index}}" disabled="{{saving || quantityPending || !item.canRevoke}}">撤销本次入库</button>
+          <view wx:if="{{!item.revoked}}" class="receipt-actions">
+            <button wx:if="{{item.source === 'normal' || item.source === 'history'}}" class="record-button" bindtap="openReceiptCorrection" data-index="{{index}}" disabled="{{saving || quantityPending}}">查看/更正记录</button>
+            <button class="record-button danger-button" bindtap="revokeReceipt" data-index="{{index}}" disabled="{{saving || quantityPending || !item.canRevoke}}">撤销入库</button>
+          </view>
           <view class="record-note" wx:if="{{!item.revoked && !item.canRevoke}}">{{item.revokeBlockedReason || '此记录暂不可整笔撤销，请核查后续业务'}}</view>
         </view>
         <view class="empty" wx:if="{{!receipts.length && !loading}}">暂无入库记录（每个规格显示最近 100 条）</view>
       </block>
       <block wx:else>
-        <view class="record-card" wx:for="{{visibleFlows}}" wx:key="id"><view class="record-title">{{item.skuLabel}} · {{item.changeText}} · {{item.changeQty > 0 ? '+' : ''}}{{item.changeQty}} 件</view><view class="muted">{{item.beforeQty}} → {{item.afterQty}} · {{item.timeText}}</view><view class="record-note" wx:if="{{item.note}}">{{item.note}}</view></view>
+        <view class="record-card" wx:for="{{visibleFlows}}" wx:key="id"><view class="record-title">{{item.skuLabel}} · {{item.changeText}} · {{item.changeQty > 0 ? '+' : ''}}{{item.changeQty}} 件</view><view class="muted">{{item.beforeQty}} → {{item.afterQty}}</view><view class="muted">{{item.timeText}}</view><view class="record-note" wx:if="{{item.note}}">{{item.note}}</view></view>
         <view class="empty" wx:if="{{!visibleFlows.length && !ledgerLoading && !ledgerError}}">暂无{{ledgerTitle}}</view>
         <view class="state" wx:if="{{ledgerLoading}}">加载{{ledgerTitle}}中...</view>
         <view class="state error" wx:if="{{ledgerError}}">{{ledgerError}}<button bindtap="loadMoreFlows">重新加载</button></view>
@@ -82,7 +84,7 @@
     </block>
 
     <block wx:if="{{recordView === 'exchanges'}}">
-      <view class="record-card" wx:for="{{visibleExchanges}}" wx:key="id"><view class="record-title">{{item.sourceLabel}} → {{item.targetLabel}}</view><view>出库 {{item.qty}} 件 · 已换回 {{item.receivedQty}} 件 · 待回 {{item.pendingQty}} 件</view><view class="muted">换货编号 {{item.id}}</view><view class="record-note" wx:if="{{item.note}}">{{item.note}}</view>
+      <view class="record-card" wx:for="{{visibleExchanges}}" wx:key="id"><view class="record-title">{{item.sourceLabel}} → {{item.targetLabel}}</view><view>出库 {{item.qty}} 件 · 已换回 {{item.receivedQty}} 件 · 待回 {{item.pendingQty}} 件</view><view class="muted">{{item.timeText}}</view><view class="record-note" wx:if="{{item.note}}">{{item.note}}</view>
         <view wx:if="{{item.cancelled}}" class="record-note">已取消待换回 {{item.cancelledQty}} 件，已出库按普通出库处理</view>
         <view wx:if="{{item.pendingQty > 0}}" class="record-note">实际收货请到入库页面办理，先抵报单待入库，再自动抵换货待回。</view>
         <button wx:if="{{item.pendingQty > 0}}" class="record-button danger-button" bindtap="cancelExchange" data-index="{{item.recordIndex}}" disabled="{{saving || quantityPending}}">取消换货</button>

@@ -52,12 +52,12 @@ Page({
         for (const item of records.returnInspections || []) inspections.push({ ...item, skuLabel: label });
         for (const item of records.exchanges || []) exchangeMap.set(String(item.id), { ...item,
           sourceLabel: labels.get(String(item.sourceSkuId)) || '规格 ' + item.sourceSkuId,
-          targetLabel: labels.get(String(item.targetSkuId)) || '规格 ' + item.targetSkuId,
+          targetLabel: labels.get(String(item.targetSkuId)) || '规格 ' + item.targetSkuId, timeText: this.formatTime(item.createdAt),
           pendingQty: item.cancelled ? 0 : item.qty - item.receivedQty, cancelledQty: item.cancelled ? item.qty - item.receivedQty : 0 });
       }
       const latestFirst = (a, b) => dateTimestamp(b.createdAt || 0) - dateTimestamp(a.createdAt || 0);
       this.setData({ product: result.product, skus, receipts: receipts.sort(latestFirst),
-        inspections: inspections.map(item => ({ ...item, disposeQty: '0' })), reports: reports.sort(latestFirst), exchanges: [...exchangeMap.values()], loading: false });
+        inspections: inspections.map(item => ({ ...item, disposeQty: '0' })), reports: reports.sort(latestFirst), exchanges: [...exchangeMap.values()].sort(latestFirst), loading: false });
       wx.setNavigationBarTitle({ title: result.product.name });
       this.filterReports(); this.updateTotals();
       if (this.data.recordView === 'flows') await this.loadLedger(true);

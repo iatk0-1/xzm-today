@@ -54,7 +54,7 @@ page { background: #f5f6f8; color: #26313e; }
 .submit-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 100; padding: 20rpx 24rpx; padding-bottom: calc(20rpx + env(safe-area-inset-bottom)); background: #fff; border-top: 1rpx solid #e5e9ef; box-shadow: 0 -6rpx 20rpx rgba(38,49,62,.05); }
 .submit-actions { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; }
 .footer-note { margin-bottom: 20rpx; }
-.footer-note-options { display: flex; align-items: center; justify-content: space-between; gap: 8rpx; margin-bottom: 14rpx; }
+.footer-note-options { display: flex; align-items: center; justify-content: flex-start; gap: 8rpx; margin-bottom: 14rpx; }
 .footer-note-label { flex-shrink: 0; font-size: 25rpx; }
 .note-choice { padding: 10rpx 14rpx; border: 1rpx solid #e0e5ec; border-radius: 10rpx; background: #f5f6f8; color: #657183; font-size: 23rpx; white-space: nowrap; }
 .note-choice.selected { background: #26313e; color: #fff; border-color: #26313e; }
@@ -70,6 +70,8 @@ page { background: #f5f6f8; color: #26313e; }
 .revoked { opacity: .6; }
 .record-button { margin: 14rpx 0 0; font-size: 23rpx; padding: 0 20rpx; line-height: 64rpx; background: #edf2f8; color: #527294; border-radius: 9rpx; }
 .danger-button { color: #b66556; background: #fff2ed; }
+.receipt-actions { display: flex; align-items: center; gap: 14rpx; margin-top: 14rpx; }
+.receipt-actions .record-button { flex: 1; min-width: 0; margin: 0; padding: 0 12rpx; white-space: nowrap; }
 .record-action { display: flex; align-items: center; gap: 24rpx; padding-top: 18rpx; }.record-action .record-button { flex: 1; margin: 0; }
 .record-stepper { width: 230rpx; flex-basis: 230rpx; }.record-stepper > button { flex-basis: 60rpx; width: 60rpx; min-width: 60rpx; height: 64rpx; line-height: 60rpx; }.record-stepper > input { flex-basis: 96rpx; width: 96rpx; height: 64rpx; }
 .empty, .state { padding: 46rpx 20rpx; text-align: center; font-size: 25rpx; color: #9098a5; line-height: 1.8; }.state.error { color: #b26c58; }.state button { margin-top: 20rpx; font-size: 24rpx; }
