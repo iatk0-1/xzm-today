@@ -2,7 +2,7 @@ const LIMIT = 2147483647;
 const tabs = [
   { id: 'inbound', name: '入库' }, { id: 'outbound', name: '出库' },
   { id: 'backfill', name: '补报单' }, { id: 'exchange', name: '换货' },
-  { id: 'return', name: '退货' }, { id: 'reports', name: '报单记录' }
+  { id: 'return', name: '退货' }, { id: 'reports', name: '报单记录' }, { id: 'ledger', name: '库存流水' }
 ];
 const operations = {
   normal: { id: 'normal', name: '入库', type: 'normal', tip: '先按报单时间核销待入库，再自动核销本规格换货待回，剩余数量进入异常库存。' },
@@ -18,8 +18,13 @@ const functions = {
   backfill: [operations.backfill, { id: 'backfill_records', name: '补单记录', view: 'backfills' }],
   exchange: [operations.exchange, { id: 'exchanges', name: '换货记录', view: 'exchanges' }, { id: 'exchange_pending', name: '换货未回', view: 'exchanges' }],
   return: [operations.return, { id: 'return_records', name: '退货记录', view: 'flows' }],
-  reports: []
+  reports: [], ledger: []
 };
+const noteOptions = {
+  inbound: [{ id: 'normal', name: '正常入库' }, { id: 'history', name: '历史入库' }, { id: 'extra', name: '多件' }, { id: 'other', name: '其他' }],
+  outbound: [{ id: 'wechat', name: '微信开单' }, { id: 'offline', name: '线下开单' }, { id: 'short', name: '少件' }, { id: 'other', name: '其他' }]
+};
+function isPhysicalReceipt(item) { return ['normal', 'history', 'exchange_in', 'return_inspection', 'stocktake_gain'].includes(item.source); }
 function quantity(value) {
   const text = String(value == null ? '' : value).trim();
   if (!text) return 0;
@@ -48,13 +53,16 @@ function sourceText(source) {
 function changeText(type) {
   return { outbound: '出库', exchange_cancel: '取消换货待回', exchange_out: '换货出库', return_out: '退货出库', arrival: '报单到货入库', history_in: '历史库存入库', shipment: '发货出库', return_inspection: '退货验收入库',
     stocktake_gain: '盘盈', stocktake_loss: '盘亏', abnormal_keep: '异常保留补报', abnormal_exchange_out: '换货出库',
-    history_confirm: '历史/盘盈转正常', receipt_backfill: '既有收货来源补录', exchange_in: '换回入库',
+    history_confirm: '历史/盘盈转正常', receipt_reconcile: '关联原报单', receipt_backfill: '既有收货来源补录', exchange_in: '换回入库',
     abnormal_return_out: '异常退供应商', receipt_revoke: '撤销入库', receipt_correct: '入库数量更正', shipment_cancel: '发货解绑返还' }[type] || type;
 }
 function buildOperation(data) {
-  const operation = operations[data.functionId];
+  const operation = data.functionId === 'normal' && data.inboundReason === 'history' ? operations.history : operations[data.functionId];
   if (!operation) throw new Error('请选择库存操作功能');
-  const note = (data.note || '').trim();
+  const text = (data.note || '').trim();
+  const options = data.functionId === 'normal' ? noteOptions.inbound : data.functionId === 'outbound' ? noteOptions.outbound : null;
+  const reason = options && (options.find(item => item.id === (data.functionId === 'normal' ? data.inboundReason : data.outboundReason)) || options[0]);
+  const note = reason ? reason.name + (text ? '：' + text : '') : text;
   const items = [];
   for (const sku of data.skus) {
     const qty = quantity(sku.operationQty);
@@ -83,4 +91,4 @@ function buildOperation(data) {
     category: null, backfillMode: operation.type === 'backfill' ? 'abnormal' : null,
     note, items, targets };
 }
-module.exports = { LIMIT, tabs, functions, operations, quantity, row, receiptChoice, sourceText, changeText, buildOperation };
+module.exports = { LIMIT, tabs, functions, operations, noteOptions, isPhysicalReceipt, quantity, row, receiptChoice, sourceText, changeText, buildOperation };

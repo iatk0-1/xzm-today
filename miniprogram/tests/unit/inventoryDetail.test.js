@@ -118,10 +118,10 @@ test('更正失败清除预览并保留输入，不会显示成功或关闭面�
   assert.equal(page.data.showCorrection, true); assert.equal(page.data.correctionPreview, null); assert.equal(page.data.correctionQty, '8');
   assert.match(toasts.at(-1), /重新预览/);
 });
-test('六个一级菜单切换保留记录选择，操作类型变化清空数量，历史入库单独进入', async () => {
+test('七个一级菜单切换保留记录选择，操作类型变化清空数量，流水独立展示', async () => {
   const { page } = load('inventoryDetail', { get: async () => detail() });
   await page.onLoad({ id: '1' });
-  assert.deepEqual(Array.from(page.data.tabs, item => item.name), ['入库', '出库', '补报单', '换货', '退货', '报单记录']);
+  assert.deepEqual(Array.from(page.data.tabs, item => item.name), ['入库', '出库', '补报单', '换货', '退货', '报单记录', '库存流水']);
   page.switchTab(event({ id: 'exchange' }));
   assert.deepEqual(Array.from(page.data.functionTabs, item => item.name), ['换货', '换货记录', '换货未回']);
   page.rowQuantityChange(event({ skuId: page.data.skus[0].id, delta: 1 }));
@@ -129,9 +129,8 @@ test('六个一级菜单切换保留记录选择，操作类型变化清空数�
   page.switchTab(event({ id: 'inbound' })); assert.equal(page.data.functionId, 'normal');
   assert.equal(page.data.outgoingTotal, 0);
   page.switchTab(event({ id: 'exchange' })); assert.equal(page.data.functionId, 'exchange_pending');
-  page.openHistory(); assert.equal(page.data.functionId, 'history'); assert.equal(page.data.historyMode, true);
-  assert.equal(page.data.isOperating, true);
-  page.closeHistory(); assert.equal(page.data.functionId, 'exchange_pending'); assert.equal(page.data.historyMode, false);
+  await page.switchTab(event({ id: 'ledger' })); assert.equal(page.data.functionTabs.length, 0);
+  assert.equal(page.data.recordView, 'flows'); assert.equal(page.data.ledgerScope, 'all');
   page.switchTab(event({ id: 'exchange' })); page.switchFunction(event({ id: 'exchange' }));
   page.rowQuantityChange(event({ skuId: page.data.skus[0].id, delta: 1 }));
   await page.loadDetail(event({})); assert.equal(page.data.skus[0].operationQty, '1');
@@ -143,10 +142,11 @@ test('各类记录按业务筛选，换货未回保留原始索引，取消不�
     ledger: ['arrival', 'outbound', 'return_out', 'exchange_out', 'shipment', 'stocktake_loss'].map((changeType, id) => ({ id, changeType })),
     reports: [{ purchaseOrderId: '1', purpose: 'normal' }, { purchaseOrderId: '2', purpose: 'backfill' }],
     exchanges: [{ id: 'done', qty: 2, receivedQty: 2 }, { id: 'cancelled', qty: 4, receivedQty: 1, cancelled: true }, { id: 'pending', sourceSkuId: '11', targetSkuId: '22', qty: 3, receivedQty: 1 }] }];
-  const { page, writes } = load('inventoryDetail', { get: async () => response, write: async () => { response.records[0].exchanges[2].cancelled = true; } }); await page.onLoad({ id: '1' });
-  page.switchTab(event({ id: 'outbound' })); page.switchFunction(event({ id: 'outbound_records' }));
-  assert.deepEqual(Array.from(page.data.visibleFlows, item => item.changeType), ['outbound', 'return_out', 'exchange_out', 'shipment']);
-  page.switchTab(event({ id: 'return' })); page.switchFunction(event({ id: 'return_records' }));
+  const { page, writes } = load('inventoryDetail', { get: async (route, query) => route.endsWith('/ledger')
+    ? { content: response.records[0].ledger.filter(item => query.scope === 'outbound' ? item.changeType === 'outbound' : ['return_out', 'abnormal_return_out'].includes(item.changeType)), hasNext: false } : response, write: async () => { response.records[0].exchanges[2].cancelled = true; } }); await page.onLoad({ id: '1' });
+  page.switchTab(event({ id: 'outbound' })); await page.switchFunction(event({ id: 'outbound_records' }));
+  assert.deepEqual(Array.from(page.data.visibleFlows, item => item.changeType), ['outbound']);
+  page.switchTab(event({ id: 'return' })); await page.switchFunction(event({ id: 'return_records' }));
   assert.deepEqual(Array.from(page.data.visibleFlows, item => item.changeType), ['return_out']);
   page.switchTab(event({ id: 'backfill' })); page.switchFunction(event({ id: 'backfill_records' }));
   assert.equal(page.data.visibleReports.length, 1); assert.equal(page.data.visibleReports[0].purchaseOrderId, '2');
@@ -178,9 +178,53 @@ test('出库不填备注可以提交，历史入库与普通出库使用各自�
   page.switchTab(event({ id: 'outbound' }));
   page.rowQuantityChange({ ...event({ skuId: page.data.skus[0].id }), detail: { value: '4' } });
   await page.submitOperation(); assert.equal(writes[0].payload.type, 'outbound'); assert.equal(writes[0].payload.action, 'outbound');
-  assert.equal(writes[0].payload.note, '');
-  page.openHistory(); page.rowQuantityChange(event({ skuId: page.data.skus[0].id, delta: 1 }));
-  await page.submitOperation(); assert.equal(writes[1].payload.type, 'history');
+  assert.equal(writes[0].payload.note, '微信开单');
+  page.switchTab(event({ id: 'inbound' })); page.onNoteCategoryChange(event({ id: 'history' })); page.rowQuantityChange(event({ skuId: page.data.skus[0].id, delta: 1 }));
+  await page.submitOperation(); assert.equal(writes[1].payload.type, 'history'); assert.equal(writes[1].payload.note, '历史入库');
+});
+
+test('入库出库备注默认值、补充文字和成功后重置，历史入库只通过备注选项办理', async () => {
+  const { page, writes } = load('inventoryDetail', { get: async () => detail() }); await page.onLoad({ id: '1' });
+  assert.equal(page.data.noteCategory, 'normal'); assert.equal(page.data.fixedNote, true);
+  page.onNoteInput({ detail: { value: '  到货核对完毕  ' } });
+  page.rowQuantityChange(event({ skuId: page.data.skus[0].id, delta: 1 })); await page.submitOperation();
+  assert.equal(writes[0].payload.type, 'normal'); assert.equal(writes[0].payload.note, '正常入库：到货核对完毕');
+  page.onNoteCategoryChange(event({ id: 'history' })); assert.equal(page.data.operation.type, 'history');
+  page.onNoteCategoryChange(event({ id: 'extra' })); assert.equal(page.data.operation.type, 'normal');
+  page.rowQuantityChange(event({ skuId: page.data.skus[0].id, delta: 1 })); await page.submitOperation();
+  assert.equal(writes[1].payload.note, '多件'); assert.equal(page.data.noteCategory, 'normal');
+  page.switchTab(event({ id: 'outbound' })); assert.equal(page.data.noteCategory, 'wechat');
+  page.onNoteCategoryChange(event({ id: 'offline' })); page.onNoteInput({ detail: { value: '店内提走' } });
+  page.rowQuantityChange(event({ skuId: page.data.skus[0].id, delta: 1 })); await page.submitOperation();
+  assert.equal(writes[2].payload.note, '线下开单：店内提走'); assert.equal(page.data.noteCategory, 'wechat');
+  page.switchFunction(event({ id: 'outbound_records' })); assert.equal(page.data.fixedNote, false);
+});
+
+test('入库记录排除补报和转正常的虚拟入库单，真实收货记录保留', async () => {
+  const response = detail(); response.records = [{ skuId: response.skus[0].skuId,
+    receipts: ['normal', 'history', 'exchange_in', 'return_inspection', 'stocktake_gain', 'abnormal_keep', 'existing_receipt_confirm', 'history_confirm'].map((source, id) => ({ id, source, qty: 1 })) }];
+  const { page } = load('inventoryDetail', { get: async () => response }); await page.onLoad({ id: '1' });
+  assert.deepEqual(Array.from(page.data.receipts, item => item.source), ['normal', 'history', 'exchange_in', 'return_inspection', 'stocktake_gain']);
+});
+
+test('流水分页包含所有变动类型，翻页失败可重试原页，不混入其他栏目响应', async () => {
+  let failNext = true;
+  const { page, requests } = load('inventoryDetail', { get: async (route, query) => {
+    if (!route.endsWith('/ledger')) return detail();
+    if (query.page === 1) return { content: [{ id: '1', changeType: 'arrival' }, { id: '2', changeType: 'exchange_cancel' }], hasNext: true };
+    if (failNext) { failNext = false; throw new Error('流水查询失败'); }
+    return { content: [{ id: '2', changeType: 'exchange_cancel' }, { id: '3', changeType: 'stocktake_loss' }], hasNext: false };
+  } });
+  await page.onLoad({ id: '1' }); await page.switchTab(event({ id: 'ledger' }));
+  assert.equal(requests.at(-1).query.scope, 'all'); assert.equal(page.data.visibleFlows.length, 2);
+  await page.onReachBottom(); assert.equal(page.data.ledgerPage, 1); assert.equal(page.data.visibleFlows.length, 2);
+  await page.loadMoreFlows(); assert.equal(requests.at(-1).query.page, 2); assert.equal(page.data.visibleFlows.length, 3);
+  assert.equal(page.data.ledgerHasNext, false); assert.equal(page.data.visibleFlows[1].changeText, '取消换货待回');
+  let finish;
+  const late = load('inventoryDetail', { get: route => route.endsWith('/ledger') ? new Promise(resolve => { finish = resolve; }) : detail() });
+  await late.page.onLoad({ id: '1' }); const pending = late.page.switchTab(event({ id: 'ledger' }));
+  late.page.switchTab(event({ id: 'outbound' })); finish({ content: [{ id: 'old' }], hasNext: false }); await pending;
+  assert.equal(late.page.data.activeTab, 'outbound'); assert.equal(late.page.data.visibleFlows.length, 0); assert.equal(late.page.data.ledgerLoading, false);
 });
 
 test('换货按出库规格自动生成，改为其他同商品规格后数量继续同步，归零移除', async () => {

@@ -10,9 +10,11 @@ Page({
   data: {
     productId: '', product: null, skus: [], loading: false, error: '', saving: false,
     tabs: inventory.tabs, activeTab: 'inbound', functionTabs: inventory.functions.inbound,
-    functionId: 'normal', operation: inventory.operations.normal, isOperating: true, recordView: '', historyMode: false, specsExpanded: false, note: '',
+    functionId: 'normal', operation: inventory.operations.normal, isOperating: true, recordView: '', specsExpanded: false, note: '', fixedNote: true,
+    inboundReason: 'normal', outboundReason: 'wechat', noteCategory: 'normal', noteOptions: inventory.noteOptions.inbound,
     exchangeLines: [], outgoingTotal: 0, incomingTotal: 0, invalidQty: false, quantityPending: false,
-    receipts: [], flows: [], exchanges: [], inspections: [], reports: [], visibleReports: [], visibleFlows: [], visibleExchanges: [],
+    receipts: [], exchanges: [], inspections: [], reports: [], visibleReports: [], visibleFlows: [], visibleExchanges: [],
+    ledgerPage: 0, ledgerHasNext: true, ledgerLoading: false, ledgerError: '', ledgerScope: 'all', ledgerTitle: '库存流水',
     showCorrection: false, correctionLoading: false, correctionError: '', correctionContext: null,
     correctionReceipt: null, correctionQty: '0', correctionNote: '', correctionPreview: null
   },
@@ -24,7 +26,7 @@ Page({
     return this.loadDetail();
   },
   onShow() { this.syncPending(); },
-  onUnload() { this._disposed = true; this._detailVersion = (this._detailVersion || 0) + 1; this._correctionVersion = (this._correctionVersion || 0) + 1; },
+  onUnload() { this._ledgerVersion = (this._ledgerVersion || 0) + 1; this._disposed = true; this._detailVersion = (this._detailVersion || 0) + 1; this._correctionVersion = (this._correctionVersion || 0) + 1; },
   async onPullDownRefresh() {
     try { if (!this.data.saving) await this.loadDetail(); } finally { wx.stopPullDownRefresh(); }
   },
@@ -40,13 +42,12 @@ Page({
       if (this._disposed || version !== this._detailVersion) return;
       const previous = new Map((resetQuantities === true ? [] : this.data.skus).map(sku => [String(sku.id), sku]));
       const skus = (result.skus || []).map(item => inventory.row(item, previous.get(String(item.skuId))));
-      const receipts = [], flows = [], inspections = [], reports = [], exchangeMap = new Map();
+      const receipts = [], inspections = [], reports = [], exchangeMap = new Map();
       const labels = new Map(skus.map(sku => [String(sku.id), sku.label]));
       for (const records of result.records || []) {
         const label = labels.get(String(records.skuId)) || [records.spec, records.size].filter(Boolean).join(' / ');
-        for (const item of records.receipts || []) receipts.push({ ...inventory.receiptChoice(item), skuId: records.skuId, skuLabel: label,
+        for (const item of (records.receipts || []).filter(inventory.isPhysicalReceipt)) receipts.push({ ...inventory.receiptChoice(item), skuId: records.skuId, skuLabel: label,
           sourceText: inventory.sourceText(item.source), timeText: this.formatTime(item.createdAt) });
-        for (const item of records.ledger || []) flows.push({ ...item, skuLabel: label, changeText: inventory.changeText(item.changeType), timeText: this.formatTime(item.createdAt) });
         for (const item of records.reports || []) reports.push({ ...item, skuId: records.skuId, skuLabel: label, timeText: this.formatTime(item.createdAt) });
         for (const item of records.returnInspections || []) inspections.push({ ...item, skuLabel: label });
         for (const item of records.exchanges || []) exchangeMap.set(String(item.id), { ...item,
@@ -55,10 +56,11 @@ Page({
           pendingQty: item.cancelled ? 0 : item.qty - item.receivedQty, cancelledQty: item.cancelled ? item.qty - item.receivedQty : 0 });
       }
       const latestFirst = (a, b) => dateTimestamp(b.createdAt || 0) - dateTimestamp(a.createdAt || 0);
-      this.setData({ product: result.product, skus, receipts: receipts.sort(latestFirst), flows: flows.sort(latestFirst),
+      this.setData({ product: result.product, skus, receipts: receipts.sort(latestFirst),
         inspections: inspections.map(item => ({ ...item, disposeQty: '0' })), reports: reports.sort(latestFirst), exchanges: [...exchangeMap.values()], loading: false });
       wx.setNavigationBarTitle({ title: result.product.name });
       this.filterReports(); this.updateTotals();
+      if (this.data.recordView === 'flows') await this.loadLedger(true);
     } catch (err) {
       if (this._disposed || version !== this._detailVersion) return;
       this.setData({ loading: false, error: getErrorMessage(err, '加载商品库存详情失败') });
@@ -68,41 +70,67 @@ Page({
     if (this.data.saving) return;
     const id = e.currentTarget.dataset.id;
     const choices = inventory.functions[id];
-    if (!choices || (id === this.data.activeTab && !this.data.historyMode)) return;
+    if (!choices || id === this.data.activeTab) return;
     this._functionDrafts = this._functionDrafts || {};
-    if (!this.data.historyMode) this._functionDrafts[this.data.activeTab] = this.data.functionId;
+    this._functionDrafts[this.data.activeTab] = this.data.functionId;
     const selected = choices.find(item => item.id === this._functionDrafts[id]) || choices[0];
-    this.setData({ activeTab: id, functionTabs: choices, historyMode: false });
-    this.selectFunction(selected || { id: 'all', view: 'reports' });
+    this.setData({ activeTab: id, functionTabs: choices });
+    return this.selectFunction(selected || { id: 'all', view: id === 'ledger' ? 'flows' : 'reports' });
   },
   switchFunction(e) {
     if (this.data.saving) return;
     const choice = this.data.functionTabs.find(item => item.id === e.currentTarget.dataset.id);
     if (!choice || choice.id === this.data.functionId) return;
-    this.selectFunction(choice);
+    return this.selectFunction(choice);
   },
   selectFunction(choice) {
+    this._ledgerVersion = (this._ledgerVersion || 0) + 1;
     const operation = inventory.operations[choice.id];
     if (operation && operation.id !== this.data.operation.id) {
-      this.setData({ skus: this.data.skus.map(sku => ({ ...sku, operationQty: '0' })), exchangeLines: [], note: '' });
+      this.setData({ skus: this.data.skus.map(sku => ({ ...sku, operationQty: '0' })), exchangeLines: [], note: '', inboundReason: 'normal', outboundReason: 'wechat' });
     }
+    const fixedNote = !!operation && ['normal', 'outbound'].includes(choice.id);
+    const options = choice.id === 'outbound' ? inventory.noteOptions.outbound : inventory.noteOptions.inbound;
+    const category = choice.id === 'outbound' ? this.data.outboundReason : this.data.inboundReason;
+    const shownOperation = operation && choice.id === 'normal' && category === 'history'
+      ? { ...inventory.operations.history, id: 'normal', name: '入库' } : operation;
     this.setData({ functionId: choice.id, isOperating: !!operation, recordView: choice.view || '',
-      operation: operation || this.data.operation, specsExpanded: false });
+      operation: shownOperation || this.data.operation, specsExpanded: false, fixedNote, noteOptions: options, noteCategory: category,
+      ledgerLoading: false, ledgerError: '' });
     this.filterReports(); this.updateTotals();
+    if (choice.view === 'flows') return this.loadLedger(true);
   },
-  openHistory() {
-    if (this.data.saving || this.data.historyMode) return;
-    this._functionDrafts = this._functionDrafts || {};
-    this._functionDrafts[this.data.activeTab] = this.data.functionId;
-    this.setData({ historyMode: true });
-    this.selectFunction(inventory.operations.history);
+  onNoteCategoryChange(e) {
+    if (this.data.saving || !this.data.fixedNote) return;
+    const id = e.currentTarget.dataset.id;
+    if (!this.data.noteOptions.some(item => item.id === id)) return;
+    const field = this.data.functionId === 'normal' ? 'inboundReason' : 'outboundReason';
+    const operation = this.data.functionId === 'normal'
+      ? (id === 'history' ? { ...inventory.operations.history, id: 'normal', name: '入库' } : inventory.operations.normal) : inventory.operations.outbound;
+    this.setData({ [field]: id, noteCategory: id, operation });
   },
-  closeHistory() {
-    if (this.data.saving) return;
-    const choices = inventory.functions[this.data.activeTab];
-    const selected = choices.find(item => item.id === (this._functionDrafts || {})[this.data.activeTab]) || choices[0];
-    this.setData({ historyMode: false });
-    this.selectFunction(selected || { id: 'all', view: 'reports' });
+  onReachBottom() { if (this.data.recordView === 'flows') return this.loadMoreFlows(); },
+  loadMoreFlows() { return this.loadLedger(false); },
+  async loadLedger(reset = false) {
+    if (this.data.recordView !== 'flows' || !this.data.productId || (!reset && (this.data.ledgerLoading || !this.data.ledgerHasNext))) return;
+    const version = reset ? (this._ledgerVersion || 0) + 1 : this._ledgerVersion;
+    this._ledgerVersion = version;
+    const scope = this.data.activeTab === 'outbound' ? 'outbound' : this.data.activeTab === 'return' ? 'return' : 'all';
+    const page = reset ? 1 : this.data.ledgerPage + 1;
+    const title = scope === 'outbound' ? '出库记录' : scope === 'return' ? '退货记录' : '库存流水';
+    if (reset) this.setData({ visibleFlows: [], ledgerPage: 0, ledgerHasNext: true });
+    this.setData({ ledgerLoading: true, ledgerError: '', ledgerScope: scope, ledgerTitle: title });
+    try {
+      const result = await api.get('/sku-inventory/products/' + encodeURIComponent(this.data.productId) + '/ledger', { scope, page, size: 30 });
+      if (this._disposed || version !== this._ledgerVersion || this.data.recordView !== 'flows') return;
+      const rows = (result.content || []).map(item => ({ ...item, skuLabel: [item.spec || '默认规格', item.size].filter(Boolean).join(' / '),
+        changeText: inventory.changeText(item.changeType), timeText: this.formatTime(item.createdAt) }));
+      const combined = reset ? rows : this.data.visibleFlows.concat(rows);
+      this.setData({ visibleFlows: [...new Map(combined.map(item => [String(item.id), item])).values()], ledgerPage: page,
+        ledgerHasNext: !!result.hasNext, ledgerLoading: false });
+    } catch (err) {
+      if (version === this._ledgerVersion) this.setData({ ledgerLoading: false, ledgerError: getErrorMessage(err, '加载' + title + '失败') });
+    }
   },
   toggleSpecs() { this.setData({ specsExpanded: !this.data.specsExpanded }); },
   onNoteInput(e) { this.setData({ note: e.detail.value }); },
@@ -162,7 +190,9 @@ Page({
       await quantityOperation.run(api, '/sku-inventory/products/' + encodeURIComponent(this.data.productId) + '/operations', payload);
       this.notifyChanged([...payload.items, ...payload.targets].map(item => item.skuId));
       this.setData({ exchangeLines: [] });
-      this.setData({ note: '' });
+      this.setData({ note: '', inboundReason: 'normal', outboundReason: 'wechat',
+        noteCategory: this.data.functionId === 'outbound' ? 'wechat' : 'normal',
+        operation: this.data.functionId === 'normal' ? inventory.operations.normal : this.data.operation });
       await this.loadDetail(true);
       wx.showToast({ title: '操作成功', icon: 'success' });
     } catch (err) { wx.showToast({ title: getErrorMessage(err, '操作失败，结果不明时请重试原操作'), icon: 'none' }); }
@@ -188,10 +218,7 @@ Page({
     finally { this.setData({ saving: false }); this.syncPending(); }
   },
   filterReports() {
-    const types = this.data.activeTab === 'return' ? ['return_out', 'abnormal_return_out']
-      : ['outbound', 'shipment', 'abnormal_exchange_out', 'exchange_out', 'abnormal_return_out', 'return_out'];
     this.setData({ visibleReports: this.data.reports.filter(item => this.data.recordView !== 'backfills' || item.purpose === 'backfill'),
-      visibleFlows: this.data.flows.filter(item => types.includes(item.changeType)),
       visibleExchanges: this.data.exchanges.map((item, recordIndex) => ({ ...item, recordIndex }))
         .filter(item => this.data.functionId !== 'exchange_pending' || item.pendingQty > 0) });
   },

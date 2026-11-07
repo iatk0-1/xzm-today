@@ -18,20 +18,18 @@
   </view>
 </template>
 
-<view class="inventory-detail {{isOperating && product ? 'has-submit-bar' : ''}}">
+<view class="inventory-detail {{isOperating && product ? 'has-submit-bar' : ''}} {{fixedNote && isOperating ? 'has-note-footer' : ''}}">
   <view class="product-header" wx:if="{{product}}">
     <image class="product-cover" src="{{product.coverUrl || '/images/default-goods-image.png'}}" mode="aspectFill" />
     <view class="product-heading"><view class="product-name">{{product.name}}</view><view class="admin-product-article-no" user-select="{{true}}">货号：{{product.articleNo || '未填写'}}</view><view class="muted">商品库存详情 · {{skus.length}} 个规格</view></view>
-    <button class="history-button" bindtap="openHistory" disabled="{{saving}}">历史入库</button>
   </view>
   <scroll-view class="main-tabs" scroll-x="true" enhanced="true" show-scrollbar="false" scroll-into-view="main-{{activeTab}}" scroll-with-animation="true">
-    <view class="tab-track"><view wx:for="{{tabs}}" wx:key="id" id="main-{{item.id}}" class="main-tab {{!historyMode && activeTab === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="switchTab">{{item.name}}</view></view>
+    <view class="tab-track"><view wx:for="{{tabs}}" wx:key="id" id="main-{{item.id}}" class="main-tab {{activeTab === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="switchTab">{{item.name}}</view></view>
   </scroll-view>
-  <scroll-view wx:if="{{!historyMode && functionTabs.length}}" class="function-tabs" scroll-x="true" enhanced="true" show-scrollbar="false" scroll-into-view="function-{{functionId}}" scroll-with-animation="true">
+  <scroll-view wx:if="{{functionTabs.length}}" class="function-tabs" scroll-x="true" enhanced="true" show-scrollbar="false" scroll-into-view="function-{{functionId}}" scroll-with-animation="true">
     <view class="tab-track"><view wx:for="{{functionTabs}}" wx:key="id" id="function-{{item.id}}" class="function-tab {{functionId === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="switchFunction">{{item.name}}</view></view>
   </scroll-view>
 
-  <view wx:if="{{historyMode}}" class="history-heading"><text>历史入库</text><button bindtap="closeHistory" disabled="{{saving}}">返回库存操作</button></view>
 
   <view class="pending-banner" wx:if="{{quantityPending}}"><view>上次数量操作结果待确认，请先续办原操作。</view><button bindtap="retryPendingOperation" loading="{{saving}}" disabled="{{saving}}">重试原操作</button></view>
   <view class="state" wx:if="{{loading}}">加载库存详情中...</view>
@@ -56,7 +54,7 @@
         </view>
         <view class="exchange-total {{outgoingTotal === incomingTotal && outgoingTotal > 0 && !invalidQty ? 'balanced' : 'unbalanced'}}">出库 {{outgoingTotal}} 件 · 应换回 {{incomingTotal}} 件<view>{{invalidQty ? '请修正无效数量' : (outgoingTotal === incomingTotal ? '两边总件数一致，可跨规格换回' : '两边总件数须一致，才能提交')}}</view></view>
       </block>
-      <view class="note-field"><text>{{operation.type === 'backfill' ? '来源和补报说明（选填）' : '备注（选填）'}}</text><textarea value="{{note}}" bindinput="onNoteInput" disabled="{{saving}}" placeholder="填写收货来源、处理依据或备注" maxlength="500" auto-height="true" /></view>
+      <view wx:if="{{!fixedNote}}" class="note-field"><text>{{operation.type === 'backfill' ? '来源和补报说明（选填）' : '备注（选填）'}}</text><textarea value="{{note}}" bindinput="onNoteInput" disabled="{{saving}}" placeholder="填写收货来源、处理依据或备注" maxlength="500" auto-height="true" /></view>
 
     </block>
 
@@ -73,7 +71,14 @@
         </view>
         <view class="empty" wx:if="{{!receipts.length && !loading}}">暂无入库记录（每个规格显示最近 100 条）</view>
       </block>
-      <block wx:else><view class="record-card" wx:for="{{visibleFlows}}" wx:key="id"><view class="record-title">{{item.skuLabel}} · {{item.changeText}} · {{item.changeQty > 0 ? '+' : ''}}{{item.changeQty}} 件</view><view class="muted">{{item.beforeQty}} → {{item.afterQty}} · {{item.timeText}}</view><view class="record-note">{{item.note}}</view></view><view class="empty" wx:if="{{!visibleFlows.length && !loading}}">暂无{{activeTab === 'return' ? '退货' : '出库'}}记录</view></block>
+      <block wx:else>
+        <view class="record-card" wx:for="{{visibleFlows}}" wx:key="id"><view class="record-title">{{item.skuLabel}} · {{item.changeText}} · {{item.changeQty > 0 ? '+' : ''}}{{item.changeQty}} 件</view><view class="muted">{{item.beforeQty}} → {{item.afterQty}} · {{item.timeText}}</view><view class="record-note" wx:if="{{item.note}}">{{item.note}}</view></view>
+        <view class="empty" wx:if="{{!visibleFlows.length && !ledgerLoading && !ledgerError}}">暂无{{ledgerTitle}}</view>
+        <view class="state" wx:if="{{ledgerLoading}}">加载{{ledgerTitle}}中...</view>
+        <view class="state error" wx:if="{{ledgerError}}">{{ledgerError}}<button bindtap="loadMoreFlows">重新加载</button></view>
+        <button class="load-more" wx:if="{{ledgerHasNext && !ledgerLoading && !ledgerError}}" bindtap="loadMoreFlows">加载更多</button>
+        <view class="ledger-end" wx:if="{{!ledgerHasNext && visibleFlows.length}}">已显示全部{{ledgerTitle}}</view>
+      </block>
     </block>
 
     <block wx:if="{{recordView === 'exchanges'}}">
@@ -87,7 +92,13 @@
     <block wx:if="{{recordView === 'reports' || recordView === 'backfills'}}"><view class="record-card" wx:for="{{visibleReports}}" wx:key="purchaseOrderId"><view class="record-title">{{item.skuLabel}} · 报单 {{item.batchNo || item.purchaseOrderId}}</view><view>报单 {{item.reportedQty}} 件 · 已到 {{item.receivedQty}} 件 · 待到 {{item.shortageQty}} 件</view><view class="muted">{{item.timeText}}</view><view class="record-note">{{item.note}}</view><button class="record-button danger-button" wx:if="{{recordView === 'reports' && item.shortageQty > 0}}" data-index="{{index}}" bindtap="adjustSupply" disabled="{{saving || quantityPending}}">确认取消未到供货/短交</button></view><view class="empty" wx:if="{{!visibleReports.length && !loading}}">{{recordView === 'backfills' ? '暂无补单记录' : '暂无报单记录'}}</view></block>
   </view>
 
-  <view wx:if="{{isOperating && product}}" class="submit-bar"><view class="submit-count">{{functionId === 'exchange' ? '本次出库' : '本次操作'}} <text>{{outgoingTotal}}</text> 件</view><button class="primary-button" bindtap="submitOperation" loading="{{saving}}" disabled="{{saving || loading || error || quantityPending || !outgoingTotal || invalidQty || (functionId === 'exchange' && outgoingTotal !== incomingTotal)}}">确认{{operation.name}}</button></view>
+  <view wx:if="{{isOperating && product}}" class="submit-bar">
+    <view wx:if="{{fixedNote}}" class="footer-note">
+      <view class="footer-note-options"><text class="footer-note-label">备注：</text><view wx:for="{{noteOptions}}" wx:key="id" class="note-choice {{noteCategory === item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="onNoteCategoryChange">{{item.name}}</view></view>
+      <textarea class="footer-note-input" value="{{note}}" bindinput="onNoteInput" disabled="{{saving}}" placeholder="补充备注（选填）" maxlength="500" />
+    </view>
+    <view class="submit-actions"><view class="submit-count">{{functionId === 'exchange' ? '本次出库' : '本次操作'}} <text>{{outgoingTotal}}</text> 件</view><button class="primary-button" bindtap="submitOperation" loading="{{saving}}" disabled="{{saving || loading || error || quantityPending || !outgoingTotal || invalidQty || (functionId === 'exchange' && outgoingTotal !== incomingTotal)}}">确认{{operation.name}}</button></view>
+  </view>
 
   <view class="record-picker" wx:if="{{showSupplyEditor}}"><view class="picker-mask" bindtap="closeSupplyEditor"></view><view class="picker-panel supply-panel"><view class="picker-title">取消供应商未到供货</view><view class="picker-tip">{{supplyReport.skuLabel}} · 当前待到 {{supplyReport.shortageQty}} 件。只填写供应商确认取消/短交的数量，不减少已入库实物。</view><view class="supply-content"><view class="quantity-stepper record-stepper"><button data-delta="-1" bindtap="supplyQtyChange" disabled="{{saving || supplyQty <= 0}}">−</button><input type="number" value="{{supplyQty}}" bindinput="supplyQtyChange" disabled="{{saving}}" /><button data-delta="1" bindtap="supplyQtyChange" disabled="{{saving}}">＋</button></view><textarea value="{{supplyNote}}" bindinput="onSupplyNoteInput" placeholder="填写供应商取消或短交确认依据（选填）" disabled="{{saving}}" /></view><view class="picker-footer"><button bindtap="closeSupplyEditor" disabled="{{saving}}">取消</button><button bindtap="submitSupplyAdjustment" loading="{{saving}}" disabled="{{saving || quantityPending}}">确认调整</button></view></view></view>
   <view class="record-picker" wx:if="{{showCorrection}}">
