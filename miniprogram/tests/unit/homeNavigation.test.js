@@ -64,7 +64,7 @@ async function editor(options = {}) {
   let definition;
   const writes = [], toasts = [];
   const api = {
-    get: async () => config,
+    get: async () => options.config || { tabs: [...config.tabs, { key: 'home', visible: false }] },
     put: async (url, value) => {
       writes.push(value);
       return options.put ? options.put(value) : value;
@@ -96,7 +96,7 @@ test('左侧长按拖动松手自动保存，开关变更自动提交，不含�
   p.onDragTouchMove(gesture('stock', 104));
   assert.equal(writes.length, 0);
   await p.onDragEnd(gesture('stock', 104, 1, true));
-  assert.deepEqual(tabKeys(p), ['stock', 'sales', 'newest']);
+  assert.deepEqual(tabKeys(p), ['stock', 'sales', 'newest', 'home']);
   assert.equal(writes.length, 1);
   assert.deepEqual(Object.keys(writes[0].tabs[0]), ['key', 'visible']);
   assert.equal(p.data.dragKey, '');
@@ -110,7 +110,7 @@ test('边界拖动后能立刻回拖，使用松手坐标落位，只处理原�
   const { p, writes } = await editor();
   p.onDragStart(gesture('sales', 100));
   p.onDragTouchMove(gesture('sales', 10000));
-  assert.equal(p.data.tabs[0].y, 192);
+  assert.equal(p.data.tabs[0].y, 288);
   p.onDragTouchMove(gesture('sales', 148));
   assert.equal(p.data.tabs[0].y, 48);
   p.onDragTouchMove(gesture('sales', 300, 2));
@@ -118,7 +118,7 @@ test('边界拖动后能立刻回拖，使用松手坐标落位，只处理原�
   await p.onDragEnd(gesture('sales', 300, 2, true));
   assert.equal(p.data.dragKey, 'sales');
   await p.onDragEnd(gesture('sales', 292, 1, true));
-  assert.deepEqual(tabKeys(p), ['stock', 'newest', 'sales']);
+  assert.deepEqual(tabKeys(p), ['stock', 'newest', 'sales', 'home']);
   assert.equal(writes.length, 1);
 });
 
@@ -134,7 +134,7 @@ test('没长按不能拖动，同一位置松手和取消拖动都复位且不�
   p.cancelDrag();
   assert.equal(p.data.tabs[1].y, 96);
   assert.equal(writes.length, 0);
-  assert.deepEqual(tabKeys(p), ['sales', 'stock', 'newest']);
+  assert.deepEqual(tabKeys(p), ['sales', 'stock', 'newest', 'home']);
 });
 
 test('保存期间阻止重复操作，失败后恢复最后成功保存的排序和开关', async () => {
@@ -158,7 +158,7 @@ test('拖动保存失败恢复顺序，切换后台取消拖动，卸载后不�
   const { p } = await editor({ put: async () => { throw new Error('断网'); } });
   p.onDragStart(gesture('newest', 300));
   await p.onDragEnd(gesture('newest', 100, 1, true));
-  assert.deepEqual(tabKeys(p), ['sales', 'stock', 'newest']);
+  assert.deepEqual(tabKeys(p), ['sales', 'stock', 'newest', 'home']);
   p.onDragStart(gesture('newest', 300));
   p.onDragTouchMove(gesture('newest', 100));
   p.onHide();
@@ -180,6 +180,55 @@ test('拖动入口仅在左侧手柄，页面显示自动保存状态且没有�
   assert.match(source, /catchtouchcancel="cancelDrag"/);
   assert.match(source, /正在保存/);
   assert.doesNotMatch(source, /上移|下移|保存设置|bindtap="save"/);
+});
+
+test('旧三项配置升级为四行管理项，首页开关和拖动排序都自动保存', async () => {
+  const { p, writes } = await editor({ config });
+  assert.deepEqual(tabKeys(p), ['home', 'sales', 'stock', 'newest']);
+  assert.equal(p.data.listHeight, 384);
+  assert.equal(p.data.tabs[0].visible, true);
+  await p.toggle({ currentTarget: { dataset: { key: 'home' } }, detail: { value: false } });
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].tabs.length, 4);
+  assert.equal(writes[0].tabs[0].visible, false);
+  p.onDragStart(gesture('home', 100));
+  await p.onDragEnd(gesture('home', 292, 1, true));
+  assert.deepEqual(tabKeys(p), ['sales', 'stock', 'home', 'newest']);
+  assert.equal(writes.length, 2);
+  assert.equal(writes[1].tabs[2].key, 'home');
+  assert.equal(writes[1].tabs[2].visible, false);
+});
+
+test('首页按保存顺序展示和选择默认项，首页隐藏后自动切换，搜索排除独立首页项', () => {
+  const tabs = navigation.normalize({ tabs: [
+    { key: 'stock', visible: false }, { key: 'sales', visible: true },
+    { key: 'home', visible: true }, { key: 'newest', visible: true }
+  ] });
+  const p = page(); p._includeHomeTab = true;
+  navigation.apply(p, tabs);
+  assert.deepEqual(p.data.mainTabs.map(tab => tab.label), ['销量', '首页', '上新']);
+  assert.equal(p.data.currentMainTab, '销量');
+  p.data.currentMainTab = '首页';
+  navigation.apply(p, tabs.map(tab => tab.key === 'home' ? { ...tab, visible: false } : tab));
+  assert.deepEqual(p.data.mainTabs.map(tab => tab.label), ['销量', '上新']);
+  assert.equal(p.data.currentMainTab, '销量');
+  const search = page(); navigation.apply(search, tabs);
+  assert.deepEqual(search.data.mainTabs.map(tab => tab.label), ['销量', '上新']);
+  navigation.apply(p, tabs.map(tab => ({ ...tab, visible: false })));
+  assert.deepEqual(p.data.mainTabs, []);
+  assert.equal(p.data.currentMainTab, '上新');
+});
+
+test('导航配置拒绝缺项、重复项和未知项，旧三项配置保留原有开关和顺序', () => {
+  const tabs = navigation.normalize(config);
+  assert.equal(tabs[0].key, 'home');
+  assert.deepEqual(tabs.slice(1).map(({ key, visible }) => ({ key, visible })), config.tabs);
+  for (const invalid of [
+    { tabs: [] }, { tabs: tabs.slice(0, 3) },
+    { tabs: tabs.map(tab => tab.key === 'stock' ? { ...tab, key: 'home' } : tab) },
+    { tabs: tabs.map(tab => tab.key === 'home' ? { ...tab, visible: null } : tab) },
+    { tabs: tabs.map(tab => tab.key === 'home' ? { ...tab, key: 'unknown' } : tab) }
+  ]) assert.throws(() => navigation.normalize(invalid));
 });
 
 test('导航显示配置只作用于导航，商品标签和其他现货展示保持独立', () => {

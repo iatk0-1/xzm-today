@@ -83,7 +83,8 @@ Page({
     return this.save();
   },
   async save() {
-    if (!this._authorized || this.data.loading || this.data.saving || this._drag || this.data.tabs.length !== 3) return;
+    if (!this._authorized || this.data.loading || this.data.saving || this._drag
+        || this.data.tabs.length !== navigation.configurationDefaults.length) return;
     this.setData({ saving: true, error: '', saved: false });
     try {
       const tabs = this.data.tabs.map(({ key, visible }) => ({ key, visible }));

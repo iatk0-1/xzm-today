@@ -59,7 +59,7 @@ const touch = (id, y, identifier = 1, ended = false) => ({ ...event({ id }),
 const ids = page => Array.from(page.data.homeProducts, item => String(item.id));
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
-test('首页始终第一位且默认选中，旧导航配置和搜索页维持三个筛选项', () => {
+test('旧导航配置在最前补入默认首页，搜索页维持原来的三个筛选项', () => {
   const tabs = navigation.normalize({ tabs: navigation.defaults.slice().reverse() });
   const p = { _includeHomeTab: true, data: { currentMainTab: '首页' }, setData(value) { Object.assign(this.data, value); } };
   navigation.apply(p, tabs);

@@ -4,22 +4,30 @@ const defaults = [
   { key: 'stock', label: '现货', visible: true }
 ];
 const homeTab = { key: 'home', label: '首页', visible: true };
+const configurationDefaults = [homeTab, ...defaults];
 
 function normalize(config) {
-  if (!config || !Array.isArray(config.tabs) || config.tabs.length !== defaults.length) {
+  if (!config || !Array.isArray(config.tabs)
+      || ![defaults.length, configurationDefaults.length].includes(config.tabs.length)) {
     throw new Error('首页导航配置不完整');
   }
   const seen = new Set();
-  return config.tabs.map(tab => {
-    const entry = tab && defaults.find(item => item.key === tab.key);
+  const tabs = config.tabs.map(tab => {
+    const entry = tab && configurationDefaults.find(item => item.key === tab.key);
     if (!entry || seen.has(tab.key) || typeof tab.visible !== 'boolean') throw new Error('首页导航配置无效');
     seen.add(tab.key);
     return { ...entry, visible: tab.visible };
   });
+  // 兼容升级前的三项配置，首页默认显示在最前，原有三项顺序和开关保持不变。
+  if (tabs.length === defaults.length) {
+    if (seen.has('home')) throw new Error('首页导航配置不完整');
+    return [{ ...homeTab }, ...tabs];
+  }
+  return tabs;
 }
 
 function apply(page, tabs) {
-  const mainTabs = (page._includeHomeTab ? [homeTab, ...tabs] : tabs).filter(tab => tab.visible);
+  const mainTabs = normalize({ tabs }).filter(tab => tab.visible && (page._includeHomeTab || tab.key !== 'home'));
   const previous = page.data.currentMainTab;
   const keepSelection = page._navigationLoaded || page._navigationExplicitTab;
   const currentMainTab = keepSelection && mainTabs.some(tab => tab.label === previous)
@@ -44,4 +52,4 @@ async function load(page, api) {
   try { return await task; } finally { if (page._navigationTask === task) page._navigationTask = null; }
 }
 
-module.exports = { defaults, homeTab, normalize, apply, load };
+module.exports = { defaults, homeTab, configurationDefaults, normalize, apply, load };

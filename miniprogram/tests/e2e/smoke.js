@@ -49,9 +49,9 @@ async function run() {
     assert.ok(Array.isArray(data.productList), 'productList must be an array');
     assert.ok(Array.isArray(data.leftColumn), 'leftColumn must be an array');
     assert.ok(Array.isArray(data.rightColumn), 'rightColumn must be an array');
-    assert.equal(data.currentMainTab, '首页', '默认进入独立配置的首页');
-    assert.equal(data.mainTabs[0].label, '首页', '首页筛选固定第一位');
-    assert.equal(data.listTop, 0, '首页浏览不显示第二行档口筛选');
+    const defaultTab = data.mainTabs.length ? data.mainTabs[0].label : '上新';
+    assert.equal(data.currentMainTab, defaultTab, '默认进入管理员配置的首个可见筛选项');
+    assert.equal(data.listTop === 0, defaultTab === '首页', '仅独立首页浏览隐藏第二行档口筛选');
     assert.ok(!data.loadError, '首页商品接口应加载成功，首次配置允许为空');
 
     step('tapping cart entry');

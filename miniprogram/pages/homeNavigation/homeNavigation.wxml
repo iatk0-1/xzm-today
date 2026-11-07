@@ -1,7 +1,7 @@
 <page-meta page-style="{{dragKey ? 'overflow: hidden;' : ''}}"></page-meta>
 <view class="page">
   <view class="title">首页导航栏</view>
-  <view class="description">“首页”固定显示在首页第一位。下方三个筛选项可长按左侧图标拖动排序，开关控制显示或隐藏，调整后自动保存，首页和搜索页同步调整。</view>
+  <view class="description">首页、上新、销量、现货均可长按左侧图标拖动排序，开关控制显示或隐藏，调整后自动保存。</view>
   <view class="loading" wx:if="{{loading}}">正在加载导航配置...</view>
   <view class="card" wx:if="{{tabs.length}}">
     <movable-area class="navigation-area" style="height: {{listHeight}}px;">
@@ -18,7 +18,7 @@
     </movable-area>
   </view>
   <view class="save-state {{saving ? 'saving' : ''}}" wx:if="{{tabs.length}}">{{saving ? '正在保存...' : dragKey ? '松手自动保存' : saved ? '已自动保存' : '调整后自动保存'}}</view>
-  <view class="hint" wx:if="{{tabs.length}}">打开首页默认进入“首页”商品列表；搜索页默认选中下方排在最前的显示项。</view>
+  <view class="hint" wx:if="{{tabs.length}}">打开首页默认选中排在最前的显示项。搜索页同步上新、销量、现货的顺序和开关；全部隐藏时按上新展示商品。</view>
   <view class="error" wx:if="{{error}}">{{error}}</view>
   <button wx:if="{{!tabs.length && !loading}}" bindtap="load">重新加载</button>
 </view>
