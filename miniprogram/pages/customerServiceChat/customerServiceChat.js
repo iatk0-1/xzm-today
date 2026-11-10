@@ -327,12 +327,8 @@ Page({
     if (page === 'pages/orderDetail/orderDetail') {
       const match = /(?:\?|&)id=(\d+)/.exec(raw);
       if (!match) { wx.showToast({ title: '订单链接缺少编号', icon: 'none' }); return; }
-      if (auth.isAdmin()) {
-        wx.navigateTo({ url: '/pages/adminOrderDetail/adminOrderDetail?id=' + match[1] });
-      } else {
-        wx.navigateTo({ url: '/pages/customerServiceOrderDetail/customerServiceOrderDetail?sessionId='
-          + this.data.id + '&orderId=' + match[1] });
-      }
+      wx.navigateTo({ url: '/pages/customerServiceOrderDetail/customerServiceOrderDetail?sessionId='
+        + this.data.id + '&orderId=' + match[1] });
       return;
     }
     wx.navigateTo({ url: '/' + raw.replace(/^\//, '') });

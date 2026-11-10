@@ -8,7 +8,7 @@ const navigation = require('../../utils/homeNavigation');
 function setup(options = {}) {
   const writes = [], reads = [], modals = [], timers = new Map();
   let role = 'admin', definition;
-  const auth = { isAdmin: () => role === 'admin' };
+  const auth = { isAdmin: () => role === 'admin', canAccessMenu: code => role === 'admin' && code === 'homeProducts' };
   const api = {
     async get(url, params) {
       reads.push({ url, params });

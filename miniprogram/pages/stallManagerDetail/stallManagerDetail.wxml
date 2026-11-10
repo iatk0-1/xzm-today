@@ -8,7 +8,7 @@
   <view class="card" wx:if="{{profile}}">
     <view class="profile-heading">
       <view class="title profile-name">{{profile.nickname || '未设置昵称'}}</view>
-      <view class="active-control"><text>{{profile.active ? '上线' : '下线'}}</text><switch checked="{{activeChecked}}" disabled="{{busy}}" color="#1f2933" bindchange="toggleActive" /></view>
+      <view class="active-control"><text>{{profile.active ? '在岗' : '已停用'}}</text><button wx:if="{{canAssignRoles}}" size="mini" disabled="{{busy}}" bindtap="toggleActive">角色授权</button></view>
     </view>
     <view class="muted">{{profile.phone || '未绑定手机'}} · 负责人编号 {{userId}}</view>
   </view>
@@ -82,14 +82,14 @@
   <view class="card" wx:if="{{tab === 'profile'}}">
     <view class="section-heading">
       <view class="title">已分配档口</view>
-      <button class="assign-add" disabled="{{busy || !profile}}" bindtap="openAssignments" aria-label="分配新档口">＋</button>
+      <button wx:if="{{canAssignRoles}}" class="assign-add" disabled="{{busy || !profile}}" bindtap="openAssignments" aria-label="分配新档口">＋</button>
     </view>
     <view class="muted assignment-hint">展示本负责人创建的商品，分配和移除后自动保存。</view>
-    <view class="assignment-empty" wx:if="{{!assignedStalls.length}}">暂无已分配档口，点击右上角＋分配</view>
+    <view class="assignment-empty" wx:if="{{!assignedStalls.length}}">暂无已分配档口{{canAssignRoles ? '，点击右上角＋分配' : ''}}</view>
     <view class="assigned-stall" wx:for="{{assignedStalls}}" wx:key="id" bindtap="openStall" data-id="{{item.id}}">
       <view class="stall-heading">
         <view class="stall-name">{{item.name}}</view>
-        <button class="assignment-remove" disabled="{{busy}}" catchtap="removeAssignment" data-id="{{item.id}}" aria-label="移除档口分配">删除</button>
+        <button wx:if="{{canAssignRoles}}" class="assignment-remove" disabled="{{busy}}" catchtap="removeAssignment" data-id="{{item.id}}" aria-label="移除档口分配">删除</button>
       </view>
       <view class="muted" wx:if="{{item.previewLoading}}">商品加载中...</view>
       <view class="muted" wx:elif="{{item.previewError}}">商品预览加载失败，点击档口查看</view>
@@ -106,7 +106,7 @@
     </view>
     <view class="payment-label">操作备注（选填）</view>
     <textarea class="compact-textarea" placeholder="补充分配或上下线操作说明" value="{{reason}}" maxlength="1000" data-field="reason" bindinput="input" />
-    <view class="muted">下线期间新订单不计佣；历史佣金继续完成结算，已完成订单可按原微信交易分账提现。</view>
+    <view class="muted">解除角色后停止负责人任职。解绑全部档口后，保留角色的负责人仍可查看历史佣金。</view>
     <view class="receiver-summary">
       <view class="receiver-title">分账接收关系</view>
       <button class="receiver-action {{receiver.registered ? 'registered' : ''}}" disabled="{{busy}}" bindtap="openReceiver">{{receiverSummary}}<text class="receiver-arrow">›</text></button>

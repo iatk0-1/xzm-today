@@ -2,7 +2,7 @@
 
   <view class="status-header">
     <view class="status-title">{{order.statusDisplay}}</view>
-    <view class="status-desc change-request-status" wx:if="{{order.status === 'pending' || order.status === 'stocking' || order.status === 'paid'}}" bindtap="chooseAddressForChange">申请修改收件信息</view>
+    <view class="status-desc change-request-status" wx:if="{{canMyOrders && (order.status === 'pending' || order.status === 'stocking' || order.status === 'paid')}}" bindtap="chooseAddressForChange">申请修改收件信息</view>
     <view class="status-desc" wx:if="{{changeRequestSummary}}">修改申请：{{changeRequestSummary}}</view>
     <view class="status-desc" wx:if="{{order.status === 'pending'}}">
       <text>请尽快完成支付，超时将自动取消</text>
@@ -55,7 +55,7 @@
         <view class="goods-remark">
           <text class="remark-tag">备注</text>
           <text class="remark-text copyable-text" user-select="{{true}}">{{item.remark || '暂无备注'}}</text>
-          <text class="remark-edit" wx:if="{{order.status === 'pending' || order.status === 'stocking' || order.status === 'paid'}}" catchtap="editItemRemark" data-index="{{index}}">修改备注</text>
+          <text class="remark-edit" wx:if="{{canMyOrders && (order.status === 'pending' || order.status === 'stocking' || order.status === 'paid')}}" catchtap="editItemRemark" data-index="{{index}}">修改备注</text>
         </view>
       </view>
     </view>
@@ -198,7 +198,7 @@
         <view class="after-sale-reason" wx:if="{{item.reason}}">{{item.reason}}</view>
         <view class="after-sale-footer">
           <view class="after-sale-time">{{item.createdAt}}</view>
-          <view class="after-sale-cancel" wx:if="{{item.status === 'pending'}}" catchtap="cancelAfterSale" data-id="{{item.id}}">撤销申请</view>
+          <view class="after-sale-cancel" wx:if="{{canMyOrders && (item.status === 'pending')}}" catchtap="cancelAfterSale" data-id="{{item.id}}">撤销申请</view>
         </view>
       </view>
     </view>
@@ -211,11 +211,11 @@
       send-message-img="{{customerServiceCard.image}}"
       send-message-path="/pages/orderDetail/orderDetail?id={{order.id}}&fromCustomerService=1">联系客服</button>
 
-    <view class="btn-solid" wx:if="{{order.status === 'pending'}}" bindtap="payOrder">立即支付</view>
-    <view id="cancel-order-btn" class="btn-ghost" wx:if="{{order.status === 'pending'}}" bindtap="cancelOrder">取消订单</view>
+    <view class="btn-solid" wx:if="{{canMyOrders && (order.status === 'pending')}}" bindtap="payOrder">立即支付</view>
+    <view id="cancel-order-btn" class="btn-ghost" wx:if="{{canMyOrders && (order.status === 'pending')}}" bindtap="cancelOrder">取消订单</view>
 
-    <view class="btn-solid" wx:if="{{order.canConfirmReceipt}}" bindtap="confirmReceipt">确认收货</view>
-    <view class="btn-ghost" wx:if="{{order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped' || order.status === 'shipped' || order.status === 'completed'}}" bindtap="requestRefund">申请售后</view>
+    <view class="btn-solid" wx:if="{{canMyOrders && (order.canConfirmReceipt)}}" bindtap="confirmReceipt">确认收货</view>
+    <view class="btn-ghost" wx:if="{{canMyOrders && (order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped' || order.status === 'shipped' || order.status === 'completed')}}" bindtap="requestRefund">申请售后</view>
   </view>
 
 </view>

@@ -1,0 +1,23 @@
+<view class="page">
+  <view wx:if="{{error}}" class="error" role="alert">{{error}}<button size="mini" bindtap="load" disabled="{{saving}}">刷新</button></view>
+  <view wx:if="{{editor}}" class="card editor">
+    <view class="card-heading"><text class="title">编辑菜单</text><button size="mini" bindtap="closeEditor" disabled="{{saving}}">关闭</button></view>
+    <text class="label">菜单名称</text>
+    <input value="{{editor.name}}" maxlength="80" data-field="name" bindinput="inputField" disabled="{{saving}}" />
+    <text class="label">显示排序</text>
+    <input value="{{editor.sortOrder}}" type="number" data-field="sortOrder" bindinput="inputField" disabled="{{saving}}" />
+    <view class="setting"><view><text>启用菜单</text><text class="hint">停用后，该菜单的访问权限立即收回</text></view><switch checked="{{editor.enabled}}" data-field="enabled" bindchange="toggle" disabled="{{saving}}" /></view>
+    <view class="setting"><view><text>可分配给普通用户</text><text class="hint">{{editor.userCapable ? '允许在普通用户角色中勾选' : '这项功能仅供经营管理岗位使用'}}</text></view><switch checked="{{editor.userAssignable}}" disabled="{{saving || !editor.userCapable}}" data-field="userAssignable" bindchange="toggle" /></view>
+    <view class="setting"><view><text>支持指定档口</text><text class="hint">{{editor.stallCapable ? '允许在按档口分配的角色中勾选' : '这项功能按全局范围生效'}}</text></view><switch checked="{{editor.stallAssignable}}" disabled="{{saving || !editor.stallCapable}}" data-field="stallAssignable" bindchange="toggle" /></view>
+    <text wx:if="{{editor.businessKey}}" class="hint">这项菜单还需要对应的特殊业务角色。</text>
+    <button class="primary" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存菜单</button>
+  </view>
+  <view class="search"><input placeholder="搜索菜单名称" value="{{keyword}}" bindinput="inputSearch" /></view>
+  <view wx:if="{{loading}}" class="empty">正在加载菜单…</view>
+  <view wx:elif="{{!filteredMenus.length}}" class="empty">没有匹配的菜单</view>
+  <view wx:for="{{filteredMenus}}" wx:key="code" class="card menu-item" data-code="{{item.code}}" bindtap="edit">
+    <view class="item-heading"><text class="name">{{item.name}}</text><text class="status {{item.enabled ? '' : 'disabled'}}">{{item.enabled ? '已启用' : '已停用'}}</text></view>
+    <view class="tags"><text>{{item.userAssignable ? '普通用户可用' : '经营管理岗位'}}</text><text>{{item.stallAssignable ? '支持指定档口' : '全局范围'}}</text><text wx:if="{{item.businessKey}}">特殊业务角色</text></view>
+    <view class="hint">排序 {{item.sortOrder}}<text class="edit-link">编辑 ›</text></view>
+  </view>
+</view>

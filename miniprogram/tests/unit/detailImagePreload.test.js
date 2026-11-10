@@ -40,7 +40,8 @@ function setup(kind = 'product') {
           get: async (address, params) => { gets.push(address); return handler(address, params); }, post: async () => ({})
         };
         if (name.endsWith('/auth')) return {
-          isAdmin: () => false, isStallManager: () => false, getUserInfo: () => ({}), ensureAuthenticated: async () => {}
+          isAdmin: () => false, isStallManager: () => false, canAccessMenu: () => false,
+          getUserInfo: () => ({}), ensureAuthenticated: async () => {}
         };
         if (name.endsWith('/shareImage')) return { createShareImage: async () => '' };
         if (name.endsWith('/pageSync')) return { wrap: config => config };
@@ -114,7 +115,7 @@ for (const kind of ['product', 'sheet']) {
     assert.deepEqual(plain(env.page.data.product.skuMatrix).map(sku => sku.imageUrl), response.product.skuMatrix.map(sku => sku.imageUrl));
   });
 
-  test(`${kind}：套装顶层分组的所有规格图片也在打开弹窗前下载`, async () => {
+  test(`${kind}：历史套装详情仍可预览图片，购买弹窗按下线规则关闭`, async () => {
     const env = setup(kind);
     const response = product();
     response.bundleGroups = [{ name: '上衣', skus: [
@@ -127,8 +128,11 @@ for (const kind of ['product', 'sheet']) {
     env.finishAll();
     assert.ok(env.requests.some(request => request.url === url('bundle-green')));
     assert.ok(env.requests.some(request => request.url === url('bundle-yellow')));
-    env.page.openSkuPanel({ currentTarget: { dataset: { action: 'cart' } } });
-    assert.equal(env.page.data.bundleSelections[0].selectedSku.imageUrl, url('bundle-green'));
+    await env.page.openSkuPanel({ currentTarget: { dataset: { action: 'cart' } } });
+    assert.equal(env.page.data.showSku, false);
+    assert.equal(env.page.data.bundleSelections.length, 0);
+    await env.page.confirmSkuAction({ currentTarget: { dataset: { action: 'buy' } } });
+    assert.equal(env.storage.length, 0);
     assert.equal(env.page.resolvePreloadedImage(url('bundle-yellow')), '/tmp/3');
   });
 

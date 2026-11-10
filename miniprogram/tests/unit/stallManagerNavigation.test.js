@@ -10,6 +10,11 @@ function loadPage(name, role) {
   const navigations = [];
   const toasts = [];
   const auth = {
+    getRoleLabel: code => ({ admin: '管理员', stall_manager: '档口负责人', user: '普通用户' }[code]),
+    getPermissionSnapshot: () => ({ menus: require('../../utils/workbench').getOrderedEntries(role).map(entry => ({ code: entry.id, name: entry.label })) }),
+    loadPermissionSnapshot: async () => {},
+    canAccessMenu: code => code === 'wishManage' ? role === 'admin'
+      : require('../../utils/workbench').getOrderedEntries(role).some(entry => entry.id === code),
     ROLE_LABELS: { user: '普通用户', stall_manager: '档口负责人', admin: '管理员' },
     getUserInfo: () => ({ role }),
     isAdmin: () => role === 'admin',
@@ -38,6 +43,7 @@ function loadPage(name, role) {
     require(request) {
         if (request.endsWith('/error')) return require('../../utils/error');
       if (request.endsWith('/auth')) return auth;
+      if (request.endsWith('/permissions')) return { applyPagePermissions(page) { page.setData({ canCreateProduct: role !== 'user' }); } };
       if (request.endsWith('/managementNavigation')) return menuModule.exports;
       if (request.endsWith('/workbench')) return require('../../utils/workbench');
       if (request.endsWith('/homeNavigation')) return require('../../utils/homeNavigation');
@@ -52,6 +58,7 @@ function loadPage(name, role) {
   const page = { ...pageConfig, data: { ...pageConfig.data } };
   page.selectComponent = id => id === '#product-entry-menu' ? productMenu : null;
   page.setData = patch => Object.assign(page.data, patch);
+  page.data.canCreateProduct = role !== 'user';
   if (page.checkAdmin) page.checkAdmin();
   else {
     page.loadContact = () => {};
@@ -61,7 +68,7 @@ function loadPage(name, role) {
 }
 
 function evaluateCondition(expression, data) {
-  return vm.runInNewContext(expression, { isAdmin: data.isAdmin, isStallManager: data.isStallManager });
+  return vm.runInNewContext(expression, { ...data });
 }
 
 for (const name of ['index', 'market', 'messages', 'user']) {
@@ -110,7 +117,7 @@ test('浮动菜单点外部关闭、阻止内部穿透，离开主页面收起�
 test('菜单展开后角色切换为普通用户，旧菜单也不能新增商品或打开草稿箱', async () => {
   for (const action of ['createProduct', 'openDrafts']) {
     const fixture = loadPage('user', 'admin');fixture.page.goToCreateProduct();
-    await fixture.page.switchRole();fixture.sheet.success({ tapIndex: 0 });fixture.navigations.length = 0;
+    await fixture.page.switchRole();await fixture.page.chooseRole({ currentTarget: { dataset: { code: 'user' } } });fixture.navigations.length = 0;
     fixture.productMenu[action]();
     assert.equal(fixture.productMenu.data.visible, false);
     assert.deepEqual(fixture.navigations, []);assert.equal(fixture.toasts.at(-1), '无权限');
@@ -170,7 +177,7 @@ for (const role of ['admin', 'stall_manager']) {
   test(`${role} 切换成普通用户后隐藏整个工作台，旧入口和加号均不能继续跳转`, async () => {
     const fixture = loadPage('user', role);
     await fixture.page.switchRole();
-    fixture.sheet.success({ tapIndex: 0 });
+    await fixture.page.chooseRole({ currentTarget: { dataset: { code: 'user' } } });
     assert.equal(fixture.page.data.currentRoleLabel, '普通用户');
     assert.equal(evaluateCondition(workbenchCondition, fixture.page.data), false);
     assert.deepEqual(fixture.navigations, ['/pages/user/user']);

@@ -111,7 +111,7 @@ Page(pageSync.wrap({
 
   checkAdmin: function() {
     this.setData({ isStallManager: !!auth.isStallManager() });
-    if (auth.isAdmin()) {
+    if (auth.canAccessMenu('wishManage')) {
       this.setData({ isAdmin: true });
     } else {
       this.setData({ isAdmin: false });
@@ -318,7 +318,7 @@ Page(pageSync.wrap({
 
   toggleWishManagement: async function() {
     if (this.data.deletingWishes) return;
-    if (!auth.isAdmin()) {
+    if (!auth.canAccessMenu('wishManage')) {
       this.checkAdmin();
       wx.showToast({ title: '仅管理员可管理心愿', icon: 'none' });
       return;
@@ -341,7 +341,7 @@ Page(pageSync.wrap({
   },
 
   toggleWishSelection: function(e) {
-    if (!auth.isAdmin() || !this.data.managingWishes || this.data.deletingWishes) return;
+    if (!auth.canAccessMenu('wishManage') || !this.data.managingWishes || this.data.deletingWishes) return;
     const id = String(e.currentTarget.dataset.id);
     const wish = this.data.wishes.find(item => String(item.id) === id);
     if (!wish || !wish.canDelete) {
@@ -356,7 +356,7 @@ Page(pageSync.wrap({
   },
 
   toggleSelectAllWishes: function() {
-    if (!auth.isAdmin() || this.data.deletingWishes || !this.data.managingWishes) return;
+    if (!auth.canAccessMenu('wishManage') || this.data.deletingWishes || !this.data.managingWishes) return;
     // 全选当前已加载、且当前身份有删除权限的心愿；新加载的卡片仍可单独勾选。
     const selectedWishIds = this.data.allWishesSelected ? []
       : this.data.wishes.filter(wish => wish.canDelete).map(wish => String(wish.id));
@@ -365,7 +365,7 @@ Page(pageSync.wrap({
   },
 
   deleteSelectedWishes: async function() {
-    if (!auth.isAdmin() || !this.data.managingWishes || this.data.deletingWishes) return;
+    if (!auth.canAccessMenu('wishManage') || !this.data.managingWishes || this.data.deletingWishes) return;
     const wishIds = this.data.selectedWishIds.slice();
     if (!wishIds.length) {
       wx.showToast({ title: '请先选择心愿', icon: 'none' });

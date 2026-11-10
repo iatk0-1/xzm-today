@@ -5,10 +5,12 @@ const Module = require('node:module');
 let pageConfig;
 let responses = [];
 const queries = [];
+const urls = [];
 let destination;
 let preview;
 let toast;
 let managedProduct;
+let canEditProduct = true;
 
 global.Page = config => { pageConfig = config; };
 global.wx = {
@@ -22,6 +24,7 @@ Module._load = function(request, ...args) {
   if (request.endsWith('utils/api')) {
     return {
       get: async (url, params) => {
+        urls.push(url);
         if (url.includes('?manage=true')) return managedProduct;
         if (url === '/picking-list/recommend/search/query') {
           queries.push(params);
@@ -31,7 +34,8 @@ Module._load = function(request, ...args) {
       }
     };
   }
-  if (request.endsWith('utils/auth')) return { ensureAuthenticated: async () => {}, isStallManager: () => false };
+  if (request.endsWith('utils/auth')) return { ensureAuthenticated: async () => {}, isStallManager: () => false,
+    canAccessMenu: () => canEditProduct };
   return originalLoad.call(this, request, ...args);
 };
 require('../../pages/pickingList/pickingList.js');
@@ -65,6 +69,32 @@ test('从关联订单列表返回后保留推荐列表、勾选和已加载页�
   assert.deepEqual(queries.map(params => params.page), [1, 2]);
 });
 
+test('订单变化后通过拣货接口刷新当前筛选，不读取越权整单，保留待报数量', async () => {
+  const page = { ...pageConfig, data: JSON.parse(JSON.stringify(pageConfig.data)) };
+  page.setData = (patch, callback) => { Object.assign(page.data, patch); if (callback) callback(); };
+  page.loadFilterOptions = () => {};
+  responses = [
+    { content: [{ skuId: '11', recommendQty: 2, costPrice: 10 }], hasNext: false },
+    { content: [{ skuId: '11', recommendQty: 3, costPrice: 10 }, { skuId: '22', recommendQty: 1 }], hasNext: false }
+  ];
+  page.onLoad();
+  await new Promise(resolve => setImmediate(resolve));
+  page.toggleSelect({ currentTarget: { dataset: { index: 0 } } });
+  await page.createPurchaseOrder();
+  page.setOrderQty(0, '7');
+  page.setData({ selectedStall: '2', selectedTag: '3' });
+  urls.length = 0;
+  require('../../utils/pageSync').publish('orders', '99');
+  await page.onShow();
+  page.onUnload();
+  assert.deepEqual(urls, ['/picking-list/recommend/search/query']);
+  assert.equal(queries.at(-1).stallId, '2');
+  assert.equal(queries.at(-1).tagId, '3');
+  assert.deepEqual(page.data.recommendList.map(item => item.skuId), ['11', '22']);
+  assert.equal(page.data.orderPreviewList[0].qty, '7');
+  assert.equal(page.data.showOrderModal, true);
+});
+
 test('报单弹窗按预览列表索引预览图片并打开正确商品编辑页', async () => {
   const page = { ...pageConfig, data: JSON.parse(JSON.stringify(pageConfig.data)) };
   page.setData = patch => Object.assign(page.data, patch);
@@ -88,6 +118,16 @@ test('报单弹窗按预览列表索引预览图片并打开正确商品编辑�
   page.data.orderPreviewList[0].defaultImageUrl = '/images/default-goods-image.png';
   page.previewOrderProductImage(event);
   assert.equal(toast, '暂无可预览图片');
+});
+
+test('只有拣货菜单时商品链接进入只读详情，不打开商品编辑器', () => {
+  const page = { ...pageConfig, data: JSON.parse(JSON.stringify(pageConfig.data)) };
+  page.data.orderPreviewList = [{ productId: '9007199254740993' }];
+  canEditProduct = false;
+  try {
+    page.editOrderProduct({ currentTarget: { dataset: { index: 0 } } });
+    assert.equal(destination, '/pages/detail/detail?id=9007199254740993');
+  } finally { canEditProduct = true; }
 });
 
 test('商品编辑保存返回后同步成本和图片，保留弹窗数量及其他商品', async () => {

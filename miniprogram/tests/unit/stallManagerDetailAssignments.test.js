@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function harness(name, { get, put } = {}) {
+function harness(name, { get, put, canManage = true } = {}) {
   let definition;
   const calls = [], navigations = [];
   const api = {
@@ -15,7 +15,7 @@ function harness(name, { get, put } = {}) {
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, `../../pages/${name}/${name}.js`), 'utf8'), {
     Page: config => { definition = config; },
     require: module => module.endsWith('/error') ? require('../../utils/error') : module.endsWith('/api') ? api : module.endsWith('/auth')
-      ? { ensureAuthenticated: async () => {}, isAdmin: () => true, getUserInfo: () => ({ userId: '7' }) }
+      ? { ensureAuthenticated: async () => {}, isAdmin: () => true, getUserInfo: () => ({ userId: '7' }), canAccessMenu: () => canManage }
       : module.endsWith('/autoSearch') ? { wrap: config => config } : finance,
     wx: { showToast() {}, stopPullDownRefresh() {}, navigateTo: ({ url }) => navigations.push(url) },
     console
@@ -138,7 +138,7 @@ test('移除最后一个档口发送空列表，保存失败保留原分配与�
   assert.equal(page.data.error, '保存失败');
 });
 
-test('保存期间重复移除不重复请求，上下线失败开关回到服务端状态', async () => {
+test('保存期间重复移除不重复请求，负责人身份调整转到用户授权页面', async () => {
   let resolve;
   const { page, calls } = harness('stallManagerDetail', { put: () => new Promise(done => { resolve = done; }) });
   page.data.userId = '42';
@@ -149,12 +149,28 @@ test('保存期间重复移除不重复请求，上下线失败开关回到服�
   assert.equal(calls.length, 1);
   resolve(profile([3]));
   await pending;
-  const failed = harness('stallManagerDetail', { put: () => { throw new Error('下线失败'); } });
-  failed.page.applyProfile(profile([2]), stalls);
-  await failed.page.toggleActive({ detail: { value: false } });
-  assert.equal(failed.calls[0].body.active, false);
-  assert.equal(failed.page.data.activeChecked, true);
-  assert.equal(failed.page.data.profile.active, true);
+  const identity = harness('stallManagerDetail');
+  identity.page.data.userId = '42';
+  identity.page.applyProfile(profile([2]), stalls);
+  identity.page.toggleActive();
+  assert.equal(identity.calls.length, 0);
+  assert.equal(identity.navigations[0], '/pages/permissionMembers/index?userId=42');
+  assert.equal(identity.page.data.profile.active, true);
+});
+
+test('只有负责人财务菜单的岗位不能调整角色或档口，新增负责人使用统一用户授权入口', async () => {
+  const reader = harness('stallManagerDetail', { canManage: false });
+  reader.page.data.userId = '42';
+  reader.page.applyProfile(profile([2]), stalls);
+  reader.page.openAssignments();
+  await reader.page.removeAssignment(event(2));
+  reader.page.toggleActive();
+  assert.equal(reader.calls.length, 0);
+  assert.equal(reader.navigations.length, 0);
+  const manager = harness('stallManagers');
+  manager.page.searchUsers();
+  assert.equal(manager.navigations[0], '/pages/permissionMembers/index');
+  assert.equal(manager.calls.length, 0);
 });
 
 test('档口预览按负责人和档口查询，迟到的预览不会复活已移除的档口', async () => {
@@ -189,17 +205,20 @@ test('保存前发出的刷新迟到时不能覆盖已成功保存的分配', as
   assert.equal(page.data.assignmentIds.length, 0);
 });
 
-test('档口跳转保留负责人筛选，商品跳转进入商品详情', () => {
-  const { page, navigations } = harness('stallManagerDetail');
+test('负责人档口在本页筛选商品，不依赖档口管理菜单，商品跳转进入详情', async () => {
+  const { page, calls, navigations } = harness('stallManagerDetail', {
+    get: url => url === '/tags/all' ? [] : { content: [], totalElements: 0, totalPages: 0 }
+  });
   page.data.userId = '42';
   page.applyProfile(profile([2]), stalls);
-  page.openStall(event(2));
-  const query = new URL('https://miniapp.test' + navigations[0]).searchParams;
-  assert.equal(query.get('id'), '2');
-  assert.equal(query.get('managerId'), '42');
-  assert.equal(query.get('name'), '二号档口');
+  await page.openStall(event(2));
+  assert.equal(page.data.tab, 'products');
+  assert.equal(page.data.stallFilter, '2');
+  const query = calls.find(call => call.url === '/stall-managers/42/commission-products');
+  assert.equal(query.params.stallId, '2');
+  assert.equal(navigations.length, 0);
   page.openProduct(event(9));
-  assert.equal(navigations[1], '/pages/detail/detail?id=9');
+  assert.equal(navigations[0], '/pages/detail/detail?id=9');
 });
 
 test('负责人档口列表搜索、状态和分页始终走负责人接口，末页停止加载', async () => {

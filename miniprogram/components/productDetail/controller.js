@@ -575,10 +575,17 @@ function createProductDetailConfig() {
   openSkuPanel(e) {
     if (Date.now() < (this._suppressTapUntil || 0)) return;
     const product = this.data.product;
+    if (product.productType === 'live' || product.liveSessionId || (product.bundleGroups || []).length
+        || (product.skuMatrix || []).some(sku => sku.bundleGroupId || sku.bundleGroupName)) {
+      this.setData({ showSku: false, currentProduct: null });
+      wx.showToast({ title: '该商品类型已下线', icon: 'none' });
+      return;
+    }
     if (!product.id || (!e.currentTarget.dataset.skuRefresh && (product.offSale || product.soldOut))) return;
     this.resetSkuQuantityEditing();
 
-    this.setData({ isAdmin: !!auth.isAdmin(), isStallManager: !!auth.isStallManager() });
+    this.setData({ isAdmin: !!auth.isAdmin() && auth.canAccessMenu('productManage'),
+      isStallManager: !!auth.isStallManager() && auth.canAccessMenu('productManage') });
 
     const action = e.currentTarget.dataset.action || 'buy';
 

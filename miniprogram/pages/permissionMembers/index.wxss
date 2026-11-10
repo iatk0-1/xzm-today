@@ -1,0 +1,15 @@
+@import "../../utils/permissionManagement.wxss";
+.toolbar { display: flex; align-items: center; gap: 16rpx; margin-bottom: 22rpx; }
+.toolbar input { flex: 1; min-width: 0; }
+.toolbar button { margin: 0; flex-shrink: 0; }
+.user-row { display: flex; align-items: center; gap: 18rpx; padding: 24rpx; background: #fff; border: 2rpx solid transparent; border-radius: 12rpx; margin-bottom: 12rpx; }
+.user-row.selected { border-color: #23754a; background: #eef7f1; }
+.avatar { width: 76rpx; height: 76rpx; border-radius: 50%; flex-shrink: 0; background: #edf2f6; }
+.user-info { flex: 1; min-width: 0; }
+.choose { flex-shrink: 0; color: #23754a; font-size: 24rpx; }
+.member-card { margin-top: 28rpx; }
+.membership { padding: 26rpx 0; border-bottom: 1rpx solid #edf0f3; }
+.member-actions { display: flex; gap: 14rpx; margin-top: 16rpx; }
+.member-actions button { margin: 0; }
+.danger { color: #b3261e; }
+.stall-choice { display: flex; align-items: center; gap: 14rpx; padding: 22rpx 0; border-bottom: 1rpx solid #edf0f3; font-size: 28rpx; }

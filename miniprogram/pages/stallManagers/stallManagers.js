@@ -4,8 +4,8 @@ const auth = require('../../utils/auth');
 
 Page({
   data: {
-    keyword: '', managers: [], users: [], page: 1,
-    hasNext: false, loading: false, adding: false, error: ''
+    keyword: '', managers: [], page: 1,
+    hasNext: false, loading: false, error: ''
   },
   async onLoad() {
     try {
@@ -57,26 +57,8 @@ Page({
         + encodeURIComponent(String(event.currentTarget.dataset.id))
     });
   },
-  async searchUsers() {
-    if (!this._authorized) return;
-    try {
-      const users = await api.get('/stall-managers/users', { keyword: this.data.keyword });
-      this.setData({ users: users.content || users || [], adding: true });
-    } catch (error) {
-      wx.showToast({ title: getErrorMessage(error, '搜索用户失败'), icon: 'none' });
-    }
-  },
-  async add(event) {
-    if (this.data.loading) return;
-    this.setData({ loading: true });
-    try {
-      await api.post('/stall-managers', { userId: String(event.currentTarget.dataset.id) });
-      this.setData({ adding: false, users: [] });
-    } catch (error) {
-      wx.showToast({ title: getErrorMessage(error, '新增负责人失败'), icon: 'none' });
-    } finally {
-      this.setData({ loading: false });
-    }
-    await this.load(true);
+  searchUsers() {
+    if (!auth.canAccessMenu('memberManage')) return wx.showToast({ title: '当前角色没有用户授权权限', icon: 'none' });
+    wx.navigateTo({ url: '/pages/permissionMembers/index' });
   }
 });

@@ -6,6 +6,7 @@ function label(count) {
 }
 
 async function refresh(page) {
+  if (!auth.canAccessMenu('messages') && !auth.canAccessMenu('customerService')) return;
   try {
     await auth.ensureAuthenticated({ silent: true });
     const result = await api.get('/wechat/customer-service/unread');
@@ -20,6 +21,10 @@ async function refresh(page) {
 
 function start(page) {
   stop(page);
+  if (!auth.canAccessMenu('messages') && !auth.canAccessMenu('customerService')) {
+    page.setData({ messageUnreadCount: 0, messageUnreadLabel: '0' });
+    return;
+  }
   page._messageUnreadVisible = true;
   refresh(page);
   page._messageUnreadPoll = setInterval(() => refresh(page), 10000);

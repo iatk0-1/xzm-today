@@ -1,5 +1,5 @@
 <view class="admin-detail-wrapper" wx:if="{{!isLoading && order}}">
-  <view class="unbind-pending-banner" wx:if="{{pendingShipmentUnbind}}">
+  <view class="unbind-pending-banner" wx:if="{{pendingShipmentUnbind && canEditShipping}}">
     <view class="unbind-preview-title">有发货解绑等待确认</view>
     <view>原请求 {{pendingShipmentUnbind.requestId}}</view>
     <view>请保留原请求核查，避免重新办理另一笔解绑。</view>
@@ -11,7 +11,7 @@
   <view class="status-header">
     <view class="status-title">{{order.statusDisplay}}</view>
     <view class="peer-order-tag" wx:if="{{order.peerOrder}}">同行订单 · 不参与佣金</view>
-    <button class="btn-admin-refund" wx:if="{{order.status === 'pending'}}" bindtap="openPricePanel">修改价格</button>
+    <button class="btn-admin-refund" wx:if="{{canManageOrders && order.status === 'pending'}}" bindtap="openPricePanel">修改价格</button>
     <view class="status-desc" wx:if="{{order.status === 'pending'}}">待支付</view>
     <view class="status-desc" wx:if="{{order.status === 'stocking'}}">备货中</view>
     <view class="status-desc" wx:if="{{order.status === 'paid'}}">待发货</view>
@@ -20,7 +20,7 @@
     <view class="status-desc" wx:if="{{order.status === 'completed'}}">交易完成</view>
     <button
       class="btn-admin-refund"
-      wx:if="{{order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped' || order.status === 'shipped' || order.status === 'completed'}}"
+      wx:if="{{canRefundOrder && (order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped' || order.status === 'shipped' || order.status === 'completed')}}"
       bindtap="openRefundPanel">
       主动退款
     </button>
@@ -35,7 +35,7 @@
       </view>
       <view class="detail-row"><text class="copyable-text" user-select="{{true}}">{{order.recipientAddress}}</text></view>
       <view class="address-actions">
-        <view class="contact-buyer-btn" bindtap="openRecipientEditor" wx:if="{{order.status === 'pending' || order.status === 'stocking' || order.status === 'paid'}}">修改收件信息</view>
+        <view class="contact-buyer-btn" bindtap="openRecipientEditor" wx:if="{{canEditOrderRecipient && (order.status === 'pending' || order.status === 'stocking' || order.status === 'paid')}}">修改收件信息</view>
         <view class="copy-recipient-btn" catchtap="copyRecipientInfo">复制收货信息</view>
       </view>
     </view>
@@ -73,7 +73,7 @@
           <text class="remark-tag">备注</text>
           <text class="remark-text copyable-text" user-select="{{true}}">{{item.remark}}</text>
         </view>
-        <view class="goods-remark admin-remark-row" catchtap="openAdminRemarkEditor" data-index="{{itemIndex}}">
+        <view class="goods-remark admin-remark-row" wx:if="{{canEditOrderRecipient || item.adminRemark}}" catchtap="openAdminRemarkEditor" data-index="{{itemIndex}}">
           <text class="remark-tag admin-remark-tag">管理员备注</text>
           <text class="remark-text admin-remark-text">{{item.adminRemark || '点击添加'}}</text>
         </view>
@@ -106,7 +106,7 @@
       </view>
       <view class="money-row" wx:if="{{order.peerOrder || order.priceRevision > 0}}"><text class="money-label">线下已收</text><text class="money-val">¥ {{order.offlinePaidAmount}}</text></view>
       <view class="money-row" wx:if="{{order.peerOrder || order.priceRevision > 0}}"><text class="money-label">成交总额</text><text class="money-val final">¥ {{order.settlementTotalDisplay}}</text></view>
-      <button size="mini" wx:if="{{order.shippingRefundStatus === 'failed'}}" bindtap="retryShippingRefund">重试运费退款</button>
+      <button size="mini" wx:if="{{canManageOrders && order.shippingRefundStatus === 'failed'}}" bindtap="retryShippingRefund">重试运费退款</button>
     </view>
   </view>
 
@@ -189,8 +189,8 @@
 
         <view class="waybill-actions" wx:if="{{(order.status === 'paid' || order.status === 'shipped' || order.status === 'partial_shipped') && item.expressNo}}">
           <button class="btn-preview" bindtap="previewWaybill" data-url="{{item.pdfShowUrl}}" wx:if="{{item.pdfShowUrl}}">预览面单</button>
-          <button class="btn-partial-unbind" bindtap="openPartialUnbindPanel" data-shipment-index="{{shipmentIndex}}" disabled="{{unbindSaving}}">解绑本单商品</button>
-          <button class="btn-cancel-waybill" bindtap="cancelWaybill" data-shipment-id="{{item.id}}" disabled="{{unbindLoading || unbindSaving}}">解绑整个包裹</button>
+          <button wx:if="{{canEditShipping}}" class="btn-partial-unbind" bindtap="openPartialUnbindPanel" data-shipment-index="{{shipmentIndex}}" disabled="{{unbindSaving}}">解绑本单商品</button>
+          <button wx:if="{{canEditShipping}}" class="btn-cancel-waybill" bindtap="cancelWaybill" data-shipment-id="{{item.id}}" disabled="{{unbindLoading || unbindSaving}}">解绑整个包裹</button>
         </view>
 
         <view class="logistics-trace" wx:if="{{logisticsTraceMap[item.id] && logisticsTraceMap[item.id].nodes && logisticsTraceMap[item.id].nodes.length > 0}}">
@@ -232,8 +232,8 @@
   <text>加载中...</text>
 </view>
 
-<view class="panel-mask" wx:if="{{showRefundPanel}}" catchtap="closeRefundPanel"></view>
-<view class="bottom-panel after-sale-surface admin-refund-panel" wx:if="{{showRefundPanel}}">
+<view class="panel-mask" wx:if="{{showRefundPanel && canRefundOrder}}" catchtap="closeRefundPanel"></view>
+<view class="bottom-panel after-sale-surface admin-refund-panel" wx:if="{{showRefundPanel && canRefundOrder}}">
   <view class="panel-header">
     <text class="panel-title">主动退款</text>
     <text class="panel-close" bindtap="closeRefundPanel">关闭</text>
@@ -290,8 +290,8 @@
   <view class="panel-actions admin-remark-actions"><button class="panel-btn secondary" bindtap="closeAdminRemarkEditor">取消</button><button class="panel-btn danger" bindtap="saveAdminRemark">保存</button></view>
 </view>
 
-<view class="panel-mask" wx:if="{{showPartialUnbindPanel}}" catchtap="closePartialUnbindPanel"></view>
-<view class="bottom-panel" wx:if="{{showPartialUnbindPanel}}">
+<view class="panel-mask" wx:if="{{showPartialUnbindPanel && canEditShipping}}" catchtap="closePartialUnbindPanel"></view>
+<view class="bottom-panel" wx:if="{{showPartialUnbindPanel && canEditShipping}}">
   <view class="panel-header">
     <text class="panel-title">解绑当前订单商品</text>
     <text class="panel-close" bindtap="closePartialUnbindPanel">关闭</text>
@@ -316,7 +316,7 @@
   </view>
 </view>
 
-<view class="panel-mask" wx:if="{{showUnbindPreview}}" catchtap="closeUnbindPreview"></view>
+<view class="panel-mask" wx:if="{{showUnbindPreview && canEditShipping}}" catchtap="closeUnbindPreview"></view>
 <view class="bottom-panel unbind-preview-panel" wx:if="{{showUnbindPreview && unbindPreview}}">
   <view class="panel-header">
     <text class="panel-title">核对整个包裹解绑范围</text>
@@ -348,8 +348,8 @@
   </view>
 </view>
 
-<view class="panel-mask" wx:if="{{showPricePanel && !showCostPanel}}" catchtap="closePricePanel"></view>
-<view class="bottom-panel price-panel" wx:if="{{showPricePanel && !showCostPanel}}">
+<view class="panel-mask" wx:if="{{showPricePanel && !showCostPanel && canManageOrders}}" catchtap="closePricePanel"></view>
+<view class="bottom-panel price-panel" wx:if="{{showPricePanel && !showCostPanel && canManageOrders}}">
   <view class="price-panel-header">
     <view class="panel-title">修改订单价格</view>
     <button class="price-cost-shortcut" size="mini" bindtap="openOrderCostPanel" disabled="{{priceSaving}}">快捷设置商品成本</button>

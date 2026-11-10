@@ -1,0 +1,9 @@
+@import "../../utils/permissionManagement.wxss";
+.toolbar { display: flex; align-items: center; gap: 16rpx; margin-bottom: 22rpx; }
+.toolbar input { flex: 1; min-width: 0; }
+.toolbar button { margin: 0; flex-shrink: 0; }
+.menu-heading { font-size: 30rpx; font-weight: 600; margin: 30rpx 0 14rpx; }
+.menu-choice { display: flex; align-items: center; gap: 12rpx; padding: 22rpx 0; border-bottom: 1rpx solid #edf0f3; font-size: 28rpx; }
+.menu-choice > view { flex: 1; }
+.menu-choice.unavailable { color: #7f8992; }
+.edit-button { margin: 20rpx 0 0; }

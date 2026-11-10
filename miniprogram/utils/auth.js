@@ -5,6 +5,7 @@ const config = require('./config');
 
 const REFRESH_BUFFER_MS = 5 * 60 * 1000;
 let authRecoveryPromise = null;
+let permissionRead = null;
 
 /**
  * 获取存储的 Token
@@ -96,6 +97,7 @@ async function syncUserInfoIfNeeded(session) {
   const profile = await api.request({
     url: '/users/me',
     method: 'GET',
+    activeRole: 'user',
     skipAuthRefresh: true
   });
   return mergeUserInfo({
@@ -321,16 +323,94 @@ function getOpenid() {
 // 账户可选角色由后端授予，role 表示当前浏览和操作身份。
 const ROLE_LABELS = { user: '普通用户', stall_manager: '档口负责人', admin: '管理员' };
 
+function getRoleLabel(code) {
+  const info = getUserInfo() || {};
+  const role = (info.roleDefinitions || []).find(item => item.code === code);
+  return role ? role.name : ROLE_LABELS[code] || '自定义角色';
+}
+
+function getPermissionSnapshot() {
+  const info = getUserInfo() || {};
+  const snapshot = info.permissionSnapshot;
+  return snapshot && snapshot.currentRole && snapshot.currentRole.code === info.role ? snapshot : null;
+}
+
+function canAccessMenu(code) {
+  const snapshot = getPermissionSnapshot();
+  return !!(snapshot && snapshot.menus.some(menu => menu.enabled !== false && menu.code === code));
+}
+
+async function loadPermissionSnapshot() {
+  const info = getUserInfo() || {};
+  const userId = info.userId || info.id;
+  const role = info.selectedRole || info.role || 'user';
+  const key = String(userId) + ':' + role;
+  if (permissionRead && permissionRead.key === key) return permissionRead.promise;
+  const read = { key };
+  read.promise = (async () => {
+    let selected = role;
+    let snapshot;
+    try {
+      snapshot = await api.request({ url: '/iam/me', activeRole: selected });
+    } catch (err) {
+      if (!err || err.statusCode !== 403 || selected === 'user') throw err;
+      selected = 'user';
+      snapshot = await api.request({ url: '/iam/me', activeRole: selected });
+    }
+    if (!snapshot || !snapshot.currentRole || !Array.isArray(snapshot.roles) || !Array.isArray(snapshot.menus)) {
+      throw new Error('角色权限数据不完整，请重新打开页面');
+    }
+    const current = getUserInfo() || {};
+    if (String(current.userId || current.id) !== String(userId)
+        || (current.selectedRole || current.role || 'user') !== role) return snapshot;
+    current.role = snapshot.currentRole.code;
+    current.selectedRole = snapshot.currentRole.code;
+    current.availableRoles = snapshot.roles.map(item => item.code);
+    current.roleDefinitions = snapshot.roles;
+    current.permissionSnapshot = snapshot;
+    current.permissionRevision = (current.permissionRevision || 0) + 1;
+    wx.setStorageSync(config.USER_INFO_KEY, current);
+    return snapshot;
+  })().finally(() => {
+    if (permissionRead === read) permissionRead = null;
+  });
+  permissionRead = read;
+  return read.promise;
+}
+
+async function requireMenu(code) {
+  await ensureAuthenticated({ silent: true });
+  const snapshot = await loadPermissionSnapshot();
+  if (!canAccessMenu(code)) throw new Error('当前角色无权访问该功能');
+  return snapshot;
+}
+
+async function refreshAfterDenied() {
+  try {
+    await loadPermissionSnapshot();
+    const navigation = require('./permissions');
+    navigation.checkCurrentPage();
+  } catch (error) {
+    console.warn('刷新角色权限失败:', error);
+  }
+}
+
 async function loadAvailableRoles() {
   const roles = await api.get('/auth/roles');
+  if (!Array.isArray(roles)) throw new Error('可切换角色数据不完整');
   const info = getUserInfo() || {};
   info.availableRoles = roles;
+  if (info.role === 'admin' && roles.includes('super_admin')) {
+    info.role = 'super_admin';
+    info.selectedRole = 'super_admin';
+  }
   if (!roles.includes(info.role)) {
     info.role = 'user';
     info.selectedRole = 'user';
   }
   wx.setStorageSync(config.USER_INFO_KEY, info);
-  return roles;
+  const snapshot = await loadPermissionSnapshot();
+  return snapshot.roles.map(role => role.code);
 }
 
 function selectRole(role) {
@@ -338,17 +418,22 @@ function selectRole(role) {
   if (!info || !(info.availableRoles || []).includes(role)) throw new Error('当前账户不具备所选角色');
   info.role = role;
   info.selectedRole = role;
+  delete info.permissionSnapshot;
   wx.setStorageSync(config.USER_INFO_KEY, info);
 }
 
 function isAdmin() {
   const userInfo = getUserInfo();
-  return userInfo && userInfo.role === 'admin';
+  if (!userInfo) return false;
+  const snapshot = getPermissionSnapshot();
+  if (snapshot) return snapshot.currentRole.kind !== 'USER' && snapshot.currentRole.businessKey !== 'STALL_MANAGER';
+  return userInfo.role === 'admin' || userInfo.role === 'super_admin';
 }
 
 function isStallManager() {
   const userInfo = getUserInfo();
-  return !!(userInfo && userInfo.role === 'stall_manager');
+  const snapshot = getPermissionSnapshot();
+  return snapshot ? snapshot.currentRole.businessKey === 'STALL_MANAGER' : !!(userInfo && userInfo.role === 'stall_manager');
 }
 
 /**
@@ -403,6 +488,12 @@ function ensureLogin() {
 }
 
 module.exports = {
+  getRoleLabel,
+  getPermissionSnapshot,
+  canAccessMenu,
+  loadPermissionSnapshot,
+  requireMenu,
+  refreshAfterDenied,
   ROLE_LABELS,
   loadAvailableRoles,
   selectRole,

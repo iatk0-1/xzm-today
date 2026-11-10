@@ -6,6 +6,7 @@ const { getDefaultSkuSelection, getSkuOptions } = require('../../utils/skuSelect
 const pages = {};
 let pickerAccount = 1;
 let selectionCartRequests = [];
+const selectionToasts = [];
 let selectionCartHandler = async () => ({});
 global.getApp = () => ({});
 const selectionStorage = new Map();
@@ -13,7 +14,7 @@ global.wx = {
   getStorageSync: key => selectionStorage.get(key),
   setStorageSync: (key, value) => selectionStorage.set(key, structuredClone(value)),
   removeStorageSync: key => selectionStorage.delete(key),
-  showToast() {}, showLoading() {}, hideLoading() {},
+  showToast(value) { selectionToasts.push(value.title); }, showLoading() {}, hideLoading() {},
   navigateTo(options) { if (options.success) options.success(); }
 };
 let keyboardHides = 0;
@@ -49,6 +50,7 @@ function event(dataset) {
 
 function createPage(name, skus, bundleGroups, preserveCache = false) {
   if (!preserveCache) selectionStorage.clear();
+  selectionToasts.length = 0;
   const page = Object.assign({}, pages[name]);
   page.data = JSON.parse(JSON.stringify(pages[name].data));
   page.setData = patch => Object.assign(page.data, patch);
@@ -56,7 +58,10 @@ function createPage(name, skus, bundleGroups, preserveCache = false) {
   page.refreshSkuProduct = async function() { this.loadSkuPromotions();return true; };
   const product = { id: 1, coverUrl: 'cover.jpg', skuMatrix: skus, bundleGroups };
   page.data.product = product;
-  if (name === 'liveRoomDetail') Object.assign(page.data, { canBuy: true, session: { status: 'live' } });
+  if (name === 'liveRoomDetail') {
+    product.productType = 'live';
+    Object.assign(page.data, { canBuy: true, session: { status: 'live' } });
+  }
   if (name === 'search') Object.assign(page.data, { focus: false, searchEditing: false });
   page.open = () => page.openSkuPanel(event({ product, action: 'cart' }));
   return page;
@@ -100,7 +105,7 @@ test('现货角标只认未售罄的正常空闲库存，不从可售库存、�
   assert.equal(legacy.sizeOptions[0].hasReadyStock, true);
 });
 
-for (const name of ['index', 'search', 'detail', 'liveRoomDetail']) {
+for (const name of ['index', 'search', 'detail']) {
   test(`${name}：颜色汇总可售现货，尺码现货随颜色切换，售罄禁选与件数角标不变`, () => {
     const page = createPage(name, readyStockSkus());
     page.open();
@@ -134,7 +139,7 @@ for (const name of ['index', 'search', 'detail', 'liveRoomDetail']) {
     }
   });
 
-  test(`${name}：套装现货角标按子项和当前颜色判断，矩阵现货与已选件数同时保留`, () => {
+  test(`${name}：套装残留分组及现货数据无法开启规格和加购`, async () => {
     const first = readyStockSkus();
     const second = [
       { skuId: 101, color: '红色', size: 'S', stock: 20, freeStockQty: 0, price: 10 },
@@ -144,25 +149,13 @@ for (const name of ['index', 'search', 'detail', 'liveRoomDetail']) {
       skus: skus.map(({ skuId, freeStockQty, ...sku }) => ({ ...sku, id: skuId })) }));
     const page = createPage(name, [...first, ...second], groups);
     page.open();
-    page.setPickedSkuQuantity(3, 120);
-    page.setPickedSkuQuantity(4, 2);
-    const group = () => page.data.bundleSelections[0];
-    assert.deepEqual(group().colorOptions.map(item => item.hasReadyStock), [true, true, false]);
-    assert.deepEqual(group().sizeOptions.map(item => item.hasReadyStock), [false, false, true]);
-    page.selectBundleSize(event({ index: 0, size: 'M' }));
-    assert.equal(group().selectedSize, 'S');
-    page.selectBundleColor(event({ index: 0, color: '蓝色' }));
-    assert.deepEqual(group().sizeOptions.map(item => item.hasReadyStock), [true, false, false]);
-    assert.equal(group().quantity, 2);
-    page.selectBundleSize(event({ index: 0, size: 'M' }));
-    assert.equal(group().selectedSize, 'M');
-    page.selectBundleColor(event({ index: 0, color: '红色' }));
-    assert.equal(group().selectedSize, 'S');
-    assert.equal(group().sizeOptions.find(item => item.value === 'M').hasReadyStock, false);
-    assert.equal(group().colorOptions[0].pickedCountText, '99+');
-    assert.equal(page.data.pickedTotalCount, 122);
-    const other = page.data.bundleSelections[1];
-    assert.ok([...other.colorOptions, ...other.sizeOptions].every(item => !item.hasReadyStock), '不借用其他子项的现货');
+    assert.equal(page.data.showSku, false);
+    assert.equal(page.data.bundleSelections.length, 0);
+    assert.ok(selectionToasts.includes('该商品类型已下线'));
+    const before = selectionCartRequests.length;
+    await page[name === 'detail' ? 'confirmSkuAction' : 'confirmAddToCart'](event({ action: 'cart' }));
+    assert.equal(selectionCartRequests.length, before);
+    assert.equal(selectionStorage.has('checkoutItems'), false);
   });
 }
 
@@ -455,108 +448,90 @@ for (const name of ['index', 'search', 'detail']) {
     }
   });
 
-  test(`${name}：套装各子项跳过缺货规格，缺货子项不会计入已选`, () => {
+  test(`${name}：套装包含售罄子项时仍整体拒绝购买`, async () => {
     const groups = [
       { name: '上衣', skus: makeSkus() },
       { name: '裤子', skus: makeSkus([0, 0, 0, 0, 0, 0]).map(sku => ({ ...sku, skuId: sku.skuId + 100 })) }
     ];
     const page = createPage(name, groups.flatMap(group => group.skus), groups);
     page.open();
-    const [top, pants] = page.data.bundleSelections;
-    assert.equal(top.selectedColor, '白色');
-    assert.equal(top.selectedSize, 'M');
-    assert.equal(top.selectedSku.skuId, 5);
-    assert.equal(top.colorOptions.find(item => item.value === '黑色').disabled, true);
-    assert.equal(top.sizeOptions.find(item => item.value === 'S').disabled, true);
-    assert.equal(pants.selectedSku, null);
-    assert.equal(pants.selectedColor, '');
-    assert.equal(pants.selectedSize, '');
-    assert.equal(page.data.bundleAllSelected, true);
-    if (name === 'index') {
-      assert.equal(page.data.bundleTotalCount, 0);
-      assert.equal(page.data.bundleTotalPrice, '0.00');
-    }
-    page.selectBundleColor(event({ index: 0, color: '黑色' }));
-    page.selectBundleSize(event({ index: 0, size: 'S' }));
-    page.selectBundleColor(event({ index: 1, color: '白色' }));
-    assert.equal(page.data.bundleSelections[0].selectedSku.skuId, 5);
-    assert.equal(page.data.bundleSelections[1].selectedSku, null);
+    assert.equal(page.data.showSku, false);
+    assert.equal(page.data.bundleSelections.length, 0);
+    assert.ok(selectionToasts.includes('该商品类型已下线'));
+    const before = selectionCartRequests.length;
+    await page[name === 'detail' ? 'confirmSkuAction' : 'confirmAddToCart'](event({ action: 'cart' }));
+    assert.equal(selectionCartRequests.length, before);
+    assert.equal(selectionStorage.has('checkoutItems'), false);
   });
 
-  test(`${name}：套装切颜色时自动切到可售尺码`, () => {
+  test(`${name}：套装包含可售颜色尺码仍按下线规则拒绝`, async () => {
     const skus = makeSkus([0, 8, 0, 2, 0, 6]);
     const page = createPage(name, skus, [{ name: '上衣', skus }]);
     page.open();
-    page.selectBundleColor(event({ index: 0, color: '白色' }));
-    const selection = page.data.bundleSelections[0];
-    assert.equal(selection.selectedColor, '白色');
-    assert.equal(selection.selectedSize, 'S');
-    assert.equal(selection.selectedSku.skuId, 4);
-    assert.equal(selection.sizeOptions.find(item => item.value === 'M').disabled, true);
+    assert.equal(page.data.showSku, false);
+    assert.equal(page.data.bundleSelections.length, 0);
+    assert.ok(selectionToasts.includes('该商品类型已下线'));
+    const before = selectionCartRequests.length;
+    await page[name === 'detail' ? 'confirmSkuAction' : 'confirmAddToCart'](event({ action: 'cart' }));
+    assert.equal(selectionCartRequests.length, before);
+    assert.equal(selectionStorage.has('checkoutItems'), false);
   });
 
-  test(`${name}：套装兼容 stockMain 和无限库存字段`, () => {
+  test(`${name}：旧 stockMain 和无限库存套装禁止新购买`, async () => {
     const skus = [
       { id: 1, spec: '黑色', size: 'S', stockMain: 0 },
       { id: 2, spec: '白色', size: 'M', stockMain: 0, isUnlimitedStock: true, retailPrice: 30 }
     ];
     const page = createPage(name, [], [{ name: '上衣', skus }]);
     page.open();
-    const selection = page.data.bundleSelections[0];
-    assert.equal(selection.selectedSku.skuId, 2);
-    assert.equal(selection.selectedSku.unlimitedStock, true);
-    assert.equal(selection.selectedSku.price, 30);
+    assert.equal(page.data.showSku, false);
+    assert.equal(page.data.bundleSelections.length, 0);
+    assert.ok(selectionToasts.includes('该商品类型已下线'));
+    const before = selectionCartRequests.length;
+    await page[name === 'detail' ? 'confirmSkuAction' : 'confirmAddToCart'](event({ action: 'cart' }));
+    assert.equal(selectionCartRequests.length, before);
+    assert.equal(selectionStorage.has('checkoutItems'), false);
   });
 }
 
-test('首页套装保留再次点击取消子项的交互，取消后不再计价', () => {
+test('首页残留套装状态无法恢复选择或提交', async () => {
   const skus = makeSkus();
   const page = createPage('index', skus, [{ name: '上衣', skus }]);
   page.open();
-  page.selectBundleColor(event({ index: 0, color: '白色' }));
-  assert.equal(page.data.bundleSelections[0].selectedSku, null);
-  assert.equal(page.data.bundleTotalCount, 0);
-  assert.equal(page.data.bundleTotalPrice, '0.00');
-  assert.equal(page.data.bundleAllSelected, false);
-  page.selectBundleColor(event({ index: 0, color: '白色' }));
-  assert.equal(page.data.bundleSelections[0].selectedSku.skuId, 5);
-  assert.equal(page.data.bundleTotalCount, 0);
+  assert.equal(page.data.showSku, false);
+  assert.equal(page.data.bundleSelections.length, 0);
+  assert.ok(selectionToasts.includes('该商品类型已下线'));
+  const before = selectionCartRequests.length;
+  await page.confirmAddToCart(event({ action: 'cart' }));
+  assert.equal(selectionCartRequests.length, before);
+  assert.equal(selectionStorage.has('checkoutItems'), false);
 });
 
 for (const name of ['index', 'search']) {
-  test(`${name}：套装数量编辑不提前校验，失焦统一更新库存限制、件数和总价`, () => {
+  test(`${name}：套装旧数量编辑入口不能开启新交易`, async () => {
     const skus = makeSkus();
     const page = createPage(name, skus, [{ name: '上衣', skus }]);
     page.open();
-    for (const [input, expected] of [['', 0], ['0', 0], ['99', 5], ['3', 3]]) {
-      const e = { currentTarget: { id: 'bundle-quantity-0', dataset: { index: 0 } }, detail: { value: input } };
-      page.skuQuantityInputFocus(e);
-      page.bundleInput(e);
-      assert.equal(page.data.bundleSelections[0].quantity, input);
-      page.bundleInputBlur(e);
-      assert.equal(page.data.bundleSelections[0].quantity, expected);
-      assert.equal(page.data.bundleTotalCount, expected);
-      assert.equal(page.data.bundleTotalPrice, (24 * expected).toFixed(2));
-    }
+    assert.equal(page.data.showSku, false);
+    assert.equal(page.data.bundleSelections.length, 0);
+    assert.ok(selectionToasts.includes('该商品类型已下线'));
+    const before = selectionCartRequests.length;
+    await page[name === 'detail' ? 'confirmSkuAction' : 'confirmAddToCart'](event({ action: 'cart' }));
+    assert.equal(selectionCartRequests.length, before);
+    assert.equal(selectionStorage.has('checkoutItems'), false);
   });
 
-  test(`${name}：套装数量失焦后同一次点击不触发加减、选规格和购买`, () => {
-    for (const action of ['bundleMinus', 'bundlePlus', 'selectBundleColor', 'selectBundleSize', 'previewBundleImage', 'confirmAddToCart']) {
-      const skus = makeSkus();
-      const page = createPage(name, skus, [{ name: '上衣', skus }]);
-      page.open();
-      const input = { currentTarget: { id: 'bundle-quantity-0', dataset: { index: 0 } }, detail: { value: '3' } };
-      page.skuQuantityInputFocus(input);
-      page.bundleInput(input);
-      const button = { target: { id: 'other' }, currentTarget: { dataset: { index: 0, color: '白色', size: 'L', action: 'buy', url: 'image.jpg' } } };
-      page.onSkuQuantityTouchStart(button);
-      page.bundleInputBlur(input);
-      page[action](button);
-      assert.equal(page.data.showSku, true, action);
-      assert.equal(page.data.bundleSelections[0].quantity, 3, action);
-      assert.equal(page.data.bundleSelections[0].selectedSku.skuId, 5, action);
-      assert.equal(page.data.bundleTotalPrice, '72.00', action);
-    }
+  test(`${name}：套装旧数量按钮回调不能生成新交易`, async () => {
+    const skus = makeSkus();
+    const page = createPage(name, skus, [{ name: '上衣', skus }]);
+    page.open();
+    assert.equal(page.data.showSku, false);
+    assert.equal(page.data.bundleSelections.length, 0);
+    assert.ok(selectionToasts.includes('该商品类型已下线'));
+    const before = selectionCartRequests.length;
+    await page[name === 'detail' ? 'confirmSkuAction' : 'confirmAddToCart'](event({ action: 'cart' }));
+    assert.equal(selectionCartRequests.length, before);
+    assert.equal(selectionStorage.has('checkoutItems'), false);
   });
 }
 
@@ -585,7 +560,7 @@ for (const name of ['index', 'search', 'detail']) {
     assert.equal(page.data.currentSkuFreeStockQty, 0);
   });
 
-  test(`${name}：套装从规格矩阵读取空闲现货，切换子项规格同步更新`, () => {
+  test(`${name}：套装规格矩阵包含空闲现货仍禁止新购买`, async () => {
     const skus = [
       { skuId: 1, color: '红色', size: 'M', stock: 10, freeStockQty: 2, price: 20 },
       { skuId: 2, color: '蓝色', size: 'M', stock: 10, freeStockQty: 0, price: 20 }
@@ -593,13 +568,17 @@ for (const name of ['index', 'search', 'detail']) {
     const bundleGroups = [{ name: '上衣', skus: skus.map(({ freeStockQty, skuId, ...sku }) => ({ ...sku, id: skuId })) }];
     const page = createPage(name, skus, bundleGroups);
     page.open();
-    assert.equal(page.data.bundleSelections[0].selectedSku.freeStockQty, 2);
-    page.selectBundleColor(event({ index: 0, color: '蓝色' }));
-    assert.equal(page.data.bundleSelections[0].selectedSku.freeStockQty, 0);
+    assert.equal(page.data.showSku, false);
+    assert.equal(page.data.bundleSelections.length, 0);
+    assert.ok(selectionToasts.includes('该商品类型已下线'));
+    const before = selectionCartRequests.length;
+    await page[name === 'detail' ? 'confirmSkuAction' : 'confirmAddToCart'](event({ action: 'cart' }));
+    assert.equal(selectionCartRequests.length, before);
+    assert.equal(selectionStorage.has('checkoutItems'), false);
   });
 }
 
-for (const name of ['index', 'search', 'detail', 'liveRoomDetail']) {
+for (const name of ['index', 'search', 'detail']) {
   test(`${name}：各规格数量独立保存，切回恢复件数，清单与颜色尺码角标同步`, () => {
     const skus = ['红色', '黑色'].flatMap((color, i) => ['S', 'M'].map((size, j) => ({
       skuId: i * 2 + j + 1, color, size, stock: 200, price: i ? 0.2 : 0.1
@@ -750,24 +729,24 @@ test('件数角标超过99显示99+；仅单颜色或单尺码隐藏对应角标
   assert.equal(mixed.sizeOptions.find(item => item.value === '均码').pickedCount, 2);
 });
 
-test('全部商品购买弹窗直接复用首页模板及样式，直播结束后不能打开购买', () => {
+test('在用商品详情复用规格模板，退休直播页面退出小程序路由', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   for (const [template, styles] of [
-    ['components/productDetail/overlays.wxml', 'components/productDetail/index.wxss'],
-    ['pages/liveRoomDetail/detail.wxml', 'pages/liveRoomDetail/detail.wxss']
+    ['components/productDetail/overlays.wxml', 'components/productDetail/index.wxss']
   ]) {
     assert.ok(fs.readFileSync(path.join(__dirname, '../..', template), 'utf8').includes('../../templates/productSkuPanel.wxml'));
     assert.ok(fs.readFileSync(path.join(__dirname, '../..', styles), 'utf8').includes('../../styles/productSkuPanel.wxss'));
   }
   const page = createPage('liveRoomDetail', [{ skuId: 1, stock: 5, price: 10 }]);
-  page.data.canBuy = false;
   page.open();
   assert.equal(page.data.showSku, false);
+  const app = require('../../app.json');
+  assert.equal(app.subPackages.some(pkg => pkg.root === 'pages/liveRoomDetail'), false);
 });
 
-for (const name of ['index', 'search', 'detail', 'liveRoomDetail']) {
-  test(`${name}：套装同一子项可选多个规格，完整清单合并提交一组套装`, async () => {
+for (const name of ['index', 'search', 'detail']) {
+  test(`${name}：多规格套装清单不能绕过下线进入购物车`, async () => {
     selectionCartRequests = [];
     selectionCartHandler = async () => ({});
     const skus = [
@@ -777,18 +756,17 @@ for (const name of ['index', 'search', 'detail', 'liveRoomDetail']) {
     ];
     const page = createPage(name, skus);
     page.open();
-    page.setPickedSkuQuantity(11, 2); page.setPickedSkuQuantity(12, 3); page.setPickedSkuQuantity(21, 1);
-    page.selectBundleColor(event({ index: 0, color: '黑色' }));
-    assert.equal(page.data.bundleSelections[0].quantity, 3);
-    assert.equal(page.data.pickedTotalPrice, '76.00');
+    assert.equal(page.data.showSku, false);
+    assert.equal(page.data.bundleSelections.length, 0);
+    assert.ok(selectionToasts.includes('该商品类型已下线'));
+    const before = selectionCartRequests.length;
     await page[name === 'detail' ? 'confirmSkuAction' : 'confirmAddToCart'](event({ action: 'cart' }));
-    assert.equal(selectionCartRequests[0].data.items.length, 1);
-    assert.deepEqual(selectionCartRequests[0].data.items[0].bundleConfig.map(item => item.count), [2, 3, 1]);
-    assert.equal(page.data.pickedTotalCount, 0);
+    assert.equal(selectionCartRequests.length, before);
+    assert.equal(selectionStorage.has('checkoutItems'), false);
   });
 }
 
-for (const name of ['index', 'search', 'detail', 'liveRoomDetail']) {
+for (const name of ['index', 'search', 'detail']) {
   test(`${name}：已选入口切换展开收起，保留规格弹窗、件数和金额`, () => {
     const page = createPage(name, [{ skuId: 1, color: '红色', size: 'M', stock: 5, price: 20 }]);
     page.open(); page.setPickedSkuQuantity(1, 2);
@@ -813,6 +791,28 @@ test('首页购买入口与搜索加购入口分别保存默认操作', () => {
   assert.equal(search.data.skuAction, 'cart');
 });
 
+for (const name of ['index', 'search', 'detail']) {
+  test(`${name}：普通商品面板切到退休商品后清理旧面板，旧回调不误购原商品`, async () => {
+    for (const retired of [{ productType: 'live' }, { bundleGroups: [{ name: '历史套装', skus: [] }] }]) {
+      const page = createPage(name, [{ skuId: 1, color: '红色', size: 'M', stock: 5, price: 20 }]);
+      page.open();
+      page.setPickedSkuQuantity(1, 2);
+      assert.equal(page.data.showSku, true);
+      const retiredProduct = { id: 2, skuMatrix: [], ...retired };
+      page.data.product = retiredProduct;
+      page.openSkuPanel(event({ product: retiredProduct, action: 'buy' }));
+      assert.equal(page.data.showSku, false);
+      assert.equal(page.data.currentProduct, null);
+      const before = selectionCartRequests.length;
+      const submit = name === 'detail' ? 'confirmSkuAction' : 'confirmAddToCart';
+      await page[submit](event({ action: 'cart' }));
+      await page[submit](event({ action: 'buy' }));
+      assert.equal(selectionCartRequests.length, before);
+      assert.equal(selectionStorage.has('checkoutItems'), false);
+    }
+  });
+}
+
 test('详情根据外层按钮选择动作，重新从规格选择器进入恢复默认购买', () => {
   const page = createPage('detail', [{ skuId: 1, color: '红色', size: 'M', stock: 5, price: 20 }]);
   page.openSkuPanel(event({ action: 'cart' }));
@@ -823,14 +823,24 @@ test('详情根据外层按钮选择动作，重新从规格选择器进入恢�
   assert.equal(page.data.skuAction, 'buy');
 });
 
-test('直播加购和购买入口保存对应的默认操作', () => {
-  const page = createPage('liveRoomDetail', [{ skuId: 1, color: '红色', size: 'M', stock: 5, price: 20 }]);
-  page.open(); assert.equal(page.data.skuAction, 'cart');
-  page.closeSkuPanel(); page.openSkuPanel(event({ product: page.data.product, action: 'buy' }));
-  assert.equal(page.data.skuAction, 'buy');
+test('退休直播在各场次状态及已转普通商品情况下都拒绝旧购买按钮', async () => {
+  for (const status of ['pending', 'live', 'ended']) {
+    for (const convertedToProductId of [null, 'converted-product']) {
+      const page = createPage('liveRoomDetail', [{ skuId: 1, color: '红色', size: 'M', stock: 5, price: 20 }]);
+      page.data.session.status = status;
+      page.data.product.convertedToProductId = convertedToProductId;
+      const before = selectionCartRequests.length;
+      page.open();
+      assert.equal(page.data.showSku, false);
+      await page.confirmAddToCart(event({ action: 'cart' }));
+      await page.confirmAddToCart(event({ action: 'buy' }));
+      assert.equal(selectionCartRequests.length, before);
+      assert.equal(selectionStorage.has('checkoutItems'), false);
+    }
+  }
 });
 
-for (const name of ['index', 'search', 'detail', 'liveRoomDetail']) {
+for (const name of ['index', 'search', 'detail']) {
   test(`${name}：切换规格每个渲染状态都保留完整件数，不出现角标先消失再补回的中间帧`, () => {
     const skus = makeSkus([20, 20, 20, 20, 20, 20]);
     const page = createPage(name, skus);
@@ -864,27 +874,17 @@ for (const name of ['index', 'search', 'detail', 'liveRoomDetail']) {
     assert.equal(frames.length, 2, '重复选择相同规格不触发无意义重绘');
   });
 
-  test(`${name}：套装切换子项规格时所有角标持续存在，总件数不经过错误中间值`, () => {
+  test(`${name}：套装多个子项的旧角标元数据不能恢复购买`, async () => {
     const top = makeSkus([20, 20, 20, 20, 20, 20]);
     const pants = top.map(sku => ({ ...sku, skuId: sku.skuId + 100 }));
     const page = createPage(name, [...top, ...pants], [{ name: '上衣', skus: top }, { name: '裤子', skus: pants }]);
     page.open();
-    [...top, ...pants].forEach(sku => page.setPickedSkuQuantity(sku.skuId, 2));
-    const frames = [];
-    page.setData = patch => { Object.assign(page.data, patch); frames.push(structuredClone(page.data)); };
-    page.selectBundleColor(event({ index: 0, color: '白色' }));
-    assert.equal(frames.length, 1);
-    page.selectBundleSize(event({ index: 0, size: 'M' }));
-    assert.equal(frames.length, 2);
-    for (const data of frames) {
-      assert.equal(data.pickedTotalCount, 24);
-      assert.equal(data.bundleTotalCount, 24);
-      for (const group of data.bundleSelections) {
-        assert.equal(group.quantity, 2);
-        assert.deepEqual(group.colorOptions.map(option => option.pickedCount), [6, 6]);
-        assert.deepEqual(group.sizeOptions.map(option => option.pickedCount), [2, 2, 2]);
-        assert.ok([...group.colorOptions, ...group.sizeOptions].every(option => option.showPickedCount === true));
-      }
-    }
+    assert.equal(page.data.showSku, false);
+    assert.equal(page.data.bundleSelections.length, 0);
+    assert.ok(selectionToasts.includes('该商品类型已下线'));
+    const before = selectionCartRequests.length;
+    await page[name === 'detail' ? 'confirmSkuAction' : 'confirmAddToCart'](event({ action: 'cart' }));
+    assert.equal(selectionCartRequests.length, before);
+    assert.equal(selectionStorage.has('checkoutItems'), false);
   });
 }

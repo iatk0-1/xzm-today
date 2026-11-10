@@ -334,7 +334,7 @@ Page(pageSync.wrap({
       this.setData({ canDelete: false, canEdit: false });
       return;
     }
-    var isAdmin = userInfo.role === 'admin';
+    var isAdmin = auth.canAccessMenu('wishManage');
     // createdBy 存储的是 userId 的字符串形式
     var isCreator = wish.createdBy && String(userInfo.userId) === String(wish.createdBy);
     this.setData({ canDelete: !!(isAdmin || isCreator), canEdit: !!(isAdmin || isCreator) });

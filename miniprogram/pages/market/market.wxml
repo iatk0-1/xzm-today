@@ -105,12 +105,12 @@
 
   <!-- 自定义底部导航栏 -->
   <view class="bottom-tab-bar">
-    <view class="tab-item" bindtap="goToIndex">首页</view>
+    <view class="tab-item" wx:if="{{canBrowse}}" bindtap="goToIndex">首页</view>
     <view class="tab-item active">市集</view>
-    <view class="tab-item admin-portal" wx:if="{{isAdmin || isStallManager}}" bindtap="goToCreateProduct">
+    <view class="tab-item admin-portal" wx:if="{{canCreateProduct}}" bindtap="goToCreateProduct">
       <view class="red-plus-btn">+</view>
     </view>
-    <view class="tab-item" bindtap="goToMessages"><view class="message-tab-label">信息<text wx:if="{{messageUnreadCount > 0}}" class="message-tab-badge">{{messageUnreadLabel}}</text></view></view>
+    <view class="tab-item" wx:if="{{canMessages}}" bindtap="goToMessages"><view class="message-tab-label">信息<text wx:if="{{messageUnreadCount > 0}}" class="message-tab-badge">{{messageUnreadLabel}}</text></view></view>
     <view class="tab-item" bindtap="goToUser">我</view>
   </view>
 

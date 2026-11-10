@@ -477,14 +477,16 @@ test('共用规格逻辑在弹窗选择数量并加购，防止重复提交，�
   assert.equal(calls.storage[0].value[0].count, 1);
 });
 
-test('弹窗保留套装勾选和购买，售罄与下架阻止加购', async () => {
+test('历史套装详情展示保留，旧购买按钮不能生成结算或加入购物车', async () => {
   const { instance: detail, calls } = setup('productDetail');
   detail.data.product = { id: '1', name: '套装', bundleGroups: [
     { name: '上衣', skus: [{ skuId: '11', color: '黑', size: 'M', stock: 2, price: 10 }] },
     { name: '裤子', skus: [{ skuId: '12', color: '黑', size: 'M', stock: 2, price: 20 }] }
   ] };
   detail.openSkuPanel(tap({ action: 'buy' })); await detail.confirmSkuAction(tap({ action: 'buy' }));
-  assert.equal(calls.storage[0].value[0].bundleConfig.length, 2); assert.equal(calls.storage[0].value[0].finalPrice, 30);
+  assert.equal(detail.data.showSku, false);
+  assert.equal(detail.data.product.bundleGroups.length, 2);
+  assert.equal(calls.storage.length, 0);
   detail.data.product.offSale = true; detail.confirmSkuAction(tap({ action: 'cart' }));
   assert.equal(calls.posts.length, 0);
 });

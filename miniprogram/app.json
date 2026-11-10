@@ -2,8 +2,6 @@
   "pages": [
     "pages/index/index",
     "pages/messages/messages",
-    "pages/customerServiceChat/customerServiceChat",
-    "pages/customerServiceStaff/customerServiceStaff",
     "pages/customerServiceOrderDetail/customerServiceOrderDetail",
     "pages/detail/detail",
     "pages/market/market",
@@ -21,6 +19,31 @@
     "pages/adminSales/adminSales"
   ],
   "subPackages": [
+    {
+      "name": "customerServiceChat",
+      "root": "pages/customerServiceChat",
+      "pages": ["customerServiceChat"]
+    },
+    {
+      "name": "customerServiceStaff",
+      "root": "pages/customerServiceStaff",
+      "pages": ["customerServiceStaff"]
+    },
+    {
+      "name": "permissionMenus",
+      "root": "pages/permissionMenus",
+      "pages": ["index"]
+    },
+    {
+      "name": "permissionRoles",
+      "root": "pages/permissionRoles",
+      "pages": ["index"]
+    },
+    {
+      "name": "permissionMembers",
+      "root": "pages/permissionMembers",
+      "pages": ["index"]
+    },
     {
       "name": "publishWish",
       "root": "pages/publishWish",
@@ -194,13 +217,6 @@
       ]
     },
     {
-      "name": "liveRoomPublish",
-      "root": "pages/liveRoomPublish",
-      "pages": [
-        "publish"
-      ]
-    },
-    {
       "name": "skuInventory",
       "root": "pages/skuInventory",
       "pages": [
@@ -275,20 +291,6 @@
       "root": "pages/manualShip",
       "pages": [
         "manualShip"
-      ]
-    },
-    {
-      "name": "liveRoomList",
-      "root": "pages/liveRoomList",
-      "pages": [
-        "index"
-      ]
-    },
-    {
-      "name": "liveRoomDetail",
-      "root": "pages/liveRoomDetail",
-      "pages": [
-        "detail"
       ]
     }
   ],

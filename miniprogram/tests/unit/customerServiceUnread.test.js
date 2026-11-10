@@ -9,7 +9,7 @@ Module._load = function(request, ...rest) {
     return { get: async () => ({ totalUnreadCount: unreadCount }) };
   }
   if (request === './auth') {
-    return { ensureAuthenticated: async () => {} };
+    return { ensureAuthenticated: async () => {}, canAccessMenu: code => code === 'messages' };
   }
   return originalLoad.call(this, request, ...rest);
 };

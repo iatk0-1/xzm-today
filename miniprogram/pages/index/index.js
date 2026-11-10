@@ -556,6 +556,7 @@ Page(pageSync.wrap({
     this.setData({ skuPanelImagePaths: {} });
     const refreshing = productSkuPanel.methods.openSkuPanel.call(this, { ...e,
       currentTarget: { ...e.currentTarget, dataset: { ...e.currentTarget.dataset, action: 'buy' } } });
+    if (!this.data.showSku || !this.data.currentProduct) return refreshing;
     if (!this._skuImagePreloader) this._skuImagePreloader = createSkuImagePreloader();
     const urls = collectSkuImages(this.data.currentProduct, this.data.currentSkuImage);
     this._skuImagePreloader.start(urls, (url, path) => {

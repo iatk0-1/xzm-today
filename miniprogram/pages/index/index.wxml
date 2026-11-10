@@ -23,8 +23,8 @@
 
     
       <view class="nav-actions">
-        <view wx:if="{{isAdmin && currentMainTab === '首页'}}" class="nav-home-edit {{homeSaving || homeEditorLoading ? 'disabled' : ''}}" bindtap="toggleHomeEditor">{{homeEditorLoading ? '加载中' : homeEditing ? '取消' : '编辑'}}</view>
-        <view class="nav-cart-right" bindtap="goToCart"><text>购物车</text></view>
+        <view wx:if="{{canManageHome && currentMainTab === '首页'}}" class="nav-home-edit {{homeSaving || homeEditorLoading ? 'disabled' : ''}}" bindtap="toggleHomeEditor">{{homeEditorLoading ? '加载中' : homeEditing ? '取消' : '编辑'}}</view>
+        <view class="nav-cart-right" wx:if="{{canCart}}" bindtap="goToCart"><text>购物车</text></view>
       </view>
     </view>
   </view>
@@ -89,7 +89,7 @@
   >
     <view wx:if="{{loadError}}" style="padding:24rpx;color:#b42318;text-align:center" bindtap="retryProducts">{{loadError}} · 点击重试</view>
     <view class="list-loading" wx:if="{{loading && !productList.length}}">加载中...</view>
-    <view class="home-empty" wx:if="{{currentMainTab === '首页' && !loading && !loadError && !productList.length}}">暂无首页商品<text wx:if="{{isAdmin}}">，点击右上方“编辑”添加</text></view>
+    <view class="home-empty" wx:if="{{currentMainTab === '首页' && !loading && !loadError && !productList.length}}">暂无首页商品<text wx:if="{{canManageHome}}">，点击右上方“编辑”添加</text></view>
     <view class="waterfall-container">
       <!-- 左列 -->
       <view class="waterfall-column">
@@ -158,12 +158,12 @@
 
   <!-- 自定义底部导航栏 -->
   <view class="bottom-tab-bar">
-    <view class="tab-item active" bindtap="goToIndex">首页</view>
-    <view class="tab-item" bindtap="goToMarket">市集</view>
-    <view class="tab-item admin-portal" wx:if="{{isAdmin || isStallManager}}" bindtap="goToCreateProduct">
+    <view class="tab-item active" wx:if="{{canBrowse}}" bindtap="goToIndex">首页</view>
+    <view class="tab-item" wx:if="{{canMarket}}" bindtap="goToMarket">市集</view>
+    <view class="tab-item admin-portal" wx:if="{{canCreateProduct}}" bindtap="goToCreateProduct">
       <view class="red-plus-btn">+</view>
     </view>
-    <view class="tab-item" bindtap="goToMessages"><view class="message-tab-label">信息<text wx:if="{{messageUnreadCount > 0}}" class="message-tab-badge">{{messageUnreadLabel}}</text></view></view>
+    <view class="tab-item" wx:if="{{canMessages}}" bindtap="goToMessages"><view class="message-tab-label">信息<text wx:if="{{messageUnreadCount > 0}}" class="message-tab-badge">{{messageUnreadLabel}}</text></view></view>
     <view class="tab-item" bindtap="goToUser">我</view>
   </view>
 </view>

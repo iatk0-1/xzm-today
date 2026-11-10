@@ -16,6 +16,9 @@ function fixture(options = {}) {
   const cache = new Map(options.cache || []);
   const requests = [], navigations = [], toasts = [];
   const auth = {
+    getRoleLabel: code => ({ admin: '管理员', stall_manager: '档口负责人', user: '普通用户' }[code]),
+    getPermissionSnapshot: () => ({ menus: workbench.getOrderedEntries(info.role).map(entry => ({ code: entry.id, name: entry.label })) }),
+    canAccessMenu: code => workbench.getOrderedEntries(info.role).some(entry => entry.id === code),
     ROLE_LABELS: { admin: '管理员', stall_manager: '档口负责人', user: '普通用户' },
     getUserInfo: () => info,
     isAdmin: () => info.role === 'admin', isStallManager: () => info.role === 'stall_manager'
@@ -46,6 +49,7 @@ function fixture(options = {}) {
         if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/workbench')) return workbench;
       if (name.endsWith('/auth')) return auth;
+      if (name.endsWith('/permissions')) return { applyPagePermissions() {} };
       if (name.endsWith('/api')) return api;
       if (name.endsWith('/managementNavigation')) return module.exports;
       if (name.endsWith('/customerServiceUnread')) return { stop() {} };

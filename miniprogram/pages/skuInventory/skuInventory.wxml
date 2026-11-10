@@ -53,7 +53,7 @@
       </view>
       <view class="inventory-action-buttons">
         <button class="batch-receive-btn" bindtap="openBatchReceiveModal" disabled="{{!pendingReceiveItems.length && !batchRetryPending}}">{{batchRetryPending ? '入库待确认' : '批量入库'}}</button>
-        <button class="stock-shipping-btn" bindtap="openShippingModal">按照库存发货</button>
+        <button wx:if="{{canUseStockShipping}}" class="stock-shipping-btn" bindtap="openShippingModal">按照库存发货</button>
       </view>
     </view>
   </view>

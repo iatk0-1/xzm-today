@@ -204,7 +204,10 @@ test('可切换角色由服务端提供，不能切换未授予角色', async ()
       [config.TOKEN_KEY]: 'access-valid',
       [config.USER_INFO_KEY]: { userId: 7, openid: 'openid-7', role: 'stall_manager' }
     },
-    requestHandler: () => ({ statusCode: 200, data: ['user', 'stall_manager'] })
+    requestHandler: options => ({ statusCode: 200, data: options.url.endsWith('/auth/roles') ? ['user', 'stall_manager'] : {
+      roles: [{ code: 'user' }, { code: 'stall_manager', businessKey: 'STALL_MANAGER' }],
+      currentRole: { code: options.header['X-Active-Role'], businessKey: 'STALL_MANAGER' }, menus: []
+    } })
   });
   await env.auth.loadAvailableRoles();
   assert.throws(() => env.auth.selectRole('admin'), /不具备/);
@@ -220,7 +223,9 @@ test('负责人资格撤销后，获取角色列表恢复普通用户', async ()
       [config.TOKEN_KEY]: 'access-valid',
       [config.USER_INFO_KEY]: { userId: 7, openid: 'openid-7', role: 'stall_manager', selectedRole: 'stall_manager' }
     },
-    requestHandler: () => ({ statusCode: 200, data: ['user'] })
+    requestHandler: options => ({ statusCode: 200, data: options.url.endsWith('/auth/roles') ? ['user'] : {
+      roles: [{ code: 'user' }], currentRole: { code: 'user', kind: 'USER' }, menus: []
+    } })
   });
   await env.auth.loadAvailableRoles();
   assert.equal(env.requests[0].header['X-Active-Role'], '');

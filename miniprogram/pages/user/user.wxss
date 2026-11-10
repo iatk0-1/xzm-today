@@ -409,3 +409,13 @@ page {
 .role-switch-btn:active {
   opacity: 0.7;
 }
+.role-picker-mask { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .4); display: flex; align-items: flex-end; }
+.role-picker-panel { width: 100%; box-sizing: border-box; padding: 28rpx 24rpx calc(24rpx + env(safe-area-inset-bottom)); background: #fff; border-radius: 24rpx 24rpx 0 0; }
+.role-picker-title { font-size: 32rpx; font-weight: 600; margin: 0 16rpx 24rpx; }
+.role-picker-options { max-height: 60vh; }
+.role-picker-option { display: flex; justify-content: space-between; align-items: center; gap: 20rpx; padding: 20rpx 16rpx; background: #fff; font-size: 30rpx; text-align: left; line-height: 1.5; }
+.role-picker-option::after, .role-picker-cancel::after { border: 0; }
+.role-picker-option.selected { color: #c23f32; background: #fff5f3; }
+.role-picker-name { flex: 1; min-width: 0; word-break: break-all; }
+.role-picker-state { flex-shrink: 0; }
+.role-picker-cancel { margin-top: 20rpx; background: #f4f4f4; font-size: 28rpx; }

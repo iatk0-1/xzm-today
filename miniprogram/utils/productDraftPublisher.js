@@ -16,6 +16,12 @@ function remote(value, label, required = false) {
 
 async function buildProduct(record) {
   const data = record.draftData || {};
+  if (record.draftType.startsWith('live_') || record.draftType === 'convert') {
+    throw new Error('直播功能已下线');
+  }
+  if (data.isBundleMode || (data.bundleGroups || []).length) {
+    throw new Error('套装商品功能已下线，请创建普通商品');
+  }
   const live = record.draftType.startsWith('live_');
   const editing = ['edit', 'live_edit'].includes(record.draftType);
   const manual = auth.isAdmin() && !auth.isStallManager() && !live;

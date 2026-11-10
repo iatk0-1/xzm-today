@@ -1,0 +1,29 @@
+<view class="page">
+  <view wx:if="{{error}}" class="error" role="alert">{{error}}<button size="mini" bindtap="load" disabled="{{saving}}">刷新</button></view>
+  <view wx:if="{{editor}}" class="card editor">
+    <view class="card-heading"><text class="title">{{editor.code ? '编辑角色' : '创建角色'}}</text><button size="mini" bindtap="closeEditor" disabled="{{saving}}">关闭</button></view>
+    <text class="label">角色名称</text>
+    <input placeholder="例如：仓库发货员" value="{{editor.name}}" maxlength="80" bindinput="inputName" disabled="{{saving}}" />
+    <view class="setting"><view><text>启用角色</text><text class="hint">停用后，成员将无法继续使用这个身份</text></view><switch checked="{{editor.enabled}}" disabled="{{saving || editor.kind === 'USER'}}" data-field="enabled" bindchange="toggleSetting" /></view>
+    <view class="setting"><view><text>按档口分配</text><text class="hint">开启后，给用户分配角色时需选择档口</text></view><switch checked="{{editor.stallScoped}}" disabled="{{saving || editor.kind === 'USER' || editor.businessKey === 'STALL_MANAGER' || editor.manageMembers}}" data-field="stallScoped" bindchange="toggleSetting" /></view>
+    <view wx:if="{{isSuper && editor.kind !== 'USER' && editor.kind !== 'SPECIAL'}}" class="setting"><view><text>管理角色和成员</text><text class="hint">成员可在此角色的菜单范围内安排业务岗位</text></view><switch checked="{{editor.manageMembers}}" disabled="{{saving || editor.stallScoped}}" data-field="manageMembers" bindchange="toggleSetting" /></view>
+    <view class="menu-heading">可用菜单</view>
+    <view wx:if="{{editor.manageMembers}}" class="hint">勾选的菜单也是这个管理员角色能向下分配的上限。特殊业务菜单可用于授权对应角色，使用时仍需对应业务身份。</view>
+    <view wx:if="{{editor.kind === 'USER'}}" class="hint">此角色人人默认拥有，只能选择用户侧入口。</view>
+    <view wx:if="{{editor.businessKey === 'STALL_MANAGER'}}" class="hint">保留档口负责人的商品归属、佣金和结算规则。</view>
+    <view wx:for="{{choices}}" wx:key="code" class="menu-choice {{!item.allowed ? 'unavailable' : ''}}" data-code="{{item.code}}" bindtap="toggleMenu">
+      <checkbox checked="{{item.checked}}" disabled="{{saving || (!item.allowed && !item.checked)}}" color="#23754a" />
+      <view><text>{{item.name}}</text><text wx:if="{{item.reason}}" class="hint">{{item.reason}}{{item.checked ? '，请取消此项后保存' : ''}}</text><text wx:elif="{{item.businessKey && editor.manageMembers}}" class="hint">用于授权特殊业务角色</text></view>
+    </view>
+    <button class="primary" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存角色</button>
+  </view>
+  <view class="toolbar"><input placeholder="搜索角色名称" value="{{keyword}}" bindinput="inputSearch" /><button class="primary" size="mini" bindtap="create" disabled="{{loading || saving}}">创建角色</button></view>
+  <view wx:if="{{loading}}" class="empty">正在加载角色…</view>
+  <view wx:elif="{{!filteredRoles.length}}" class="empty">没有匹配的角色</view>
+  <view wx:for="{{filteredRoles}}" wx:key="code" class="card">
+    <view class="item-heading"><text class="name">{{item.name}}</text><text class="status {{item.enabled ? '' : 'disabled'}}">{{item.enabled ? '已启用' : '已停用'}}</text></view>
+    <view class="hint">{{item.description}}</view>
+    <view class="hint">{{item.stallScoped ? '按用户分配指定档口' : '全部档口范围'}} · {{item.kind === 'SUPER_ADMIN' ? '完整管理权限' : item.menuCount + ' 项菜单'}}</view>
+    <button wx:if="{{item.kind !== 'SUPER_ADMIN'}}" class="edit-button" size="mini" data-code="{{item.code}}" bindtap="edit" disabled="{{saving}}">编辑角色</button>
+  </view>
+</view>

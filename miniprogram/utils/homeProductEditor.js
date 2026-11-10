@@ -14,7 +14,7 @@ const touchOf = (event, identifier) => {
 };
 
 const methods = {
-  canEditHome() { return this.data.homeEditing && auth.isAdmin() && !this.data.homeSaving && !this.data.homeEditorLoading; },
+  canEditHome() { return this.data.homeEditing && auth.canAccessMenu('homeProducts') && !this.data.homeSaving && !this.data.homeEditorLoading; },
   setHomeProducts(products, dirty = true) {
     const selected = products.filter(item => item.selected).length;
     this.setData({
@@ -26,7 +26,7 @@ const methods = {
     });
   },
   async toggleHomeEditor() {
-    if (!auth.isAdmin() || this.data.currentMainTab !== '首页' || this.data.homeSaving || this.data.homeEditorLoading) return;
+    if (!auth.canAccessMenu('homeProducts') || this.data.currentMainTab !== '首页' || this.data.homeSaving || this.data.homeEditorLoading) return;
     if (this._isInitializingHome || this._isRefreshingHome) return;
     if (this.data.homeEditing) {
       if (await this.confirmLeaveHomeEditor()) this.closeHomeEditor();
@@ -38,7 +38,7 @@ const methods = {
       // 等待浏览请求结束，避免编辑途中迟到响应重新铺回瀑布流。
       if (this._productsTask) await this._productsTask;
       const result = await api.get('/home-products/manage');
-      if (this._pageClosed || session !== this._homeEditSession || !auth.isAdmin() || this.data.currentMainTab !== '首页') return;
+      if (this._pageClosed || session !== this._homeEditSession || !auth.canAccessMenu('homeProducts') || this.data.currentMainTab !== '首页') return;
       const rowHeight = 168 * this.getWindowSize().width / 750;
       this.setData({ homeEditing: true, homeRevision: result.revision, homeDirty: false,
         homeRowHeight: rowHeight, homeEditorScrollTop: 0, showAllPanel: false });
@@ -82,7 +82,7 @@ const methods = {
     try {
       // 全选重新查询完整首页名单，不受浏览页分页限制，也不覆盖本地增删和排序。
       const result = await api.get('/home-products/manage');
-      if (this._pageClosed || session !== this._homeEditSession || !auth.isAdmin()) return;
+      if (this._pageClosed || session !== this._homeEditSession || !auth.canAccessMenu('homeProducts')) return;
       if (String(result.revision) !== String(this.data.homeRevision)) {
         throw new Error('首页商品已被其他管理员修改，请退出编辑后重新加载');
       }

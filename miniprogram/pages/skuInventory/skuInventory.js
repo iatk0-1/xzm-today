@@ -44,7 +44,7 @@ Page(autoSearch.wrap({
     stallList: [], tagList: [], selectedStall: '', selectedTag: '',
     quantityRetryPending: false, unbindReviewAvailable: false,
     saving: false, showShippingModal: false, shippingLoading: false,
-    shippingProducts: [], matching: false,
+    shippingProducts: [], matching: false, canUseStockShipping: false,
     selectedCount: 0, allSelected: false,
     pendingReceiveItems: [], pendingReceiveTotal: 0, pendingReceiveProductCount: 0,
     showBatchReceiveModal: false, batchReceiveItems: [], batchReceiveSource: 'normal',
@@ -53,6 +53,8 @@ Page(autoSearch.wrap({
 
   onLoad() { this.setData({ today: beijingParts().date, quantityRetryPending: !!quantityOperation.pending() }); this.loadProducts(); this.loadFilterOptions(); this.restoreBatchReceive(); },
   onShow() {
+    const canUseStockShipping = auth.canAccessMenu('shipping');
+    this.setData({ canUseStockShipping, ...(!canUseStockShipping ? { showShippingModal: false } : {}) });
     this.syncQuantityPending();
     if (this._inventoryChangedIds && this._inventoryChangedIds.size) {
       const ids = [...this._inventoryChangedIds]; this._inventoryChangedIds.clear();
@@ -549,6 +551,11 @@ Page(autoSearch.wrap({
     return !field || product.skus.some(sku => sku[field] > 0);
   },
   async openShippingModal() {
+    if (!auth.canAccessMenu('shipping')) {
+      this.setData({ showShippingModal: false });
+      wx.showToast({ title: '当前角色无权进行发货操作', icon: 'none' });
+      return;
+    }
     if (this.data.shippingLoading) return;
     this.setData({ showShippingModal: true, shippingLoading: true, shippingProducts: [] });
     try {
@@ -576,6 +583,11 @@ Page(autoSearch.wrap({
     this.setData({ shippingProducts });
   },
   async goToStockShipping() {
+    if (!auth.canAccessMenu('shipping')) {
+      this.setData({ showShippingModal: false });
+      wx.showToast({ title: '当前角色无权进行发货操作', icon: 'none' });
+      return;
+    }
     if (this.data.matching) return;
     const skus = this.data.shippingProducts.flatMap(product => product.skus.filter(sku => sku.selected));
     if (!skus.length) { wx.showToast({ title: '请至少选择一个规格', icon: 'none' }); return; }
@@ -588,15 +600,18 @@ Page(autoSearch.wrap({
       if (!result.items || !result.items.length) {
         wx.showToast({ title: '暂无匹配的已报单未发货商品', icon: 'none' }); return;
       }
-      const navigate = () => wx.navigateTo({
-        url: '/pages/adminOrder/adminOrder?fromInventory=1',
-        success: res => {
-          res.eventChannel.emit('inventoryShipmentItems', result);
-          this._refreshAfterShipping = true;
-          this.setData({ showShippingModal: false });
-        },
-        fail: () => wx.showToast({ title: '打开发货页面失败，请重试', icon: 'none' })
-      });
+      const navigate = () => {
+        if (!auth.canAccessMenu('shipping')) return;
+        wx.navigateTo({
+          url: '/pages/adminOrder/adminOrder?fromInventory=1',
+          success: res => {
+            res.eventChannel.emit('inventoryShipmentItems', result);
+            this._refreshAfterShipping = true;
+            this.setData({ showShippingModal: false });
+          },
+          fail: () => wx.showToast({ title: '打开发货页面失败，请重试', icon: 'none' })
+        });
+      };
       const unmatched = (result.unmatched || []).reduce((sum, item) => sum + item.qty, 0);
       if (unmatched) {
         wx.showModal({ title: '部分库存暂无可发订单', content: '有 ' + unmatched + ' 件未匹配到订单，是否继续发货已匹配的商品？',

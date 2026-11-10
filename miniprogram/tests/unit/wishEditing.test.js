@@ -11,6 +11,7 @@ function setup(role = 'admin', filename = 'publishWish') {
   const controls = { get: async () => ({ content: [], hasNext: false }),
     extract: async () => 'http://tmp/first-frame.jpg', selectedVideo: null };
   const auth = { isAdmin: () => role === 'admin', isStallManager: () => role === 'stall_manager',
+    canAccessMenu: code => role === 'admin' && code === 'wishManage',
     getUserInfo: () => ({ userId: '7', role }), ensureAuthenticated: async () => {} };
   const api = {
     get: async (url, data) => { calls.gets.push({ url, data }); return controls.get(url, data); },

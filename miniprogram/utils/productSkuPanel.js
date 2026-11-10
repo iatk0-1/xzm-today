@@ -37,6 +37,13 @@ module.exports = {
   openSkuPanel(e) {
     this.resetSkuQuantityEditing();
     const product = e.currentTarget.dataset.product;
+    if (product.productType === 'live' || product.liveSessionId
+        || (product.bundleGroups || []).length
+        || (product.skuMatrix || []).some(sku => sku.bundleGroupId || sku.bundleGroupName)) {
+      this.setData({ showSku: false, currentProduct: null });
+      wx.showToast({ title: '该商品类型已下线', icon: 'none' });
+      return;
+    }
 
     // Build bundle groups from API or from skuMatrix
     var bundleGroups = product.bundleGroups;

@@ -17,15 +17,25 @@ const entries = [
   { id: 'income', label: '我的佣金与结算', url: '/pages/managerIncome/managerIncome', roles: ['stall_manager'] },
   { id: 'applications', label: '用户申请审批管理', url: '/pages/adminChangeRequestManage/adminChangeRequestManage', roles: ['admin'] },
   { id: 'shippingTemplates', label: '快递运费模板', url: '/pages/shippingTemplates/shippingTemplates', roles: ['admin'] },
-  { id: 'productDrafts', label: '商品草稿', url: '/pages/productDrafts/index', roles: ['admin', 'stall_manager'] }
+  { id: 'productDrafts', label: '商品草稿', url: '/pages/productDrafts/index', roles: ['admin', 'stall_manager'] },
+  { id: 'customerService', label: '客服管理', url: '/pages/customerServiceStaff/customerServiceStaff', roles: [] },
+  { id: 'wishManage', label: '心愿管理', url: '/pages/adminWish/adminWish', roles: [] },
+  { id: 'purchase', label: '采购订单', url: '/pages/purchaseOrders/purchaseOrders', roles: [] },
+  { id: 'homeProducts', label: '首页商品编排', url: '/pages/index/index', roles: [] },
+  { id: 'menuConfig', label: '菜单配置', url: '/pages/permissionMenus/index', roles: [] },
+  { id: 'roleManage', label: '角色管理', url: '/pages/permissionRoles/index', roles: [] },
+  { id: 'memberManage', label: '用户授权', url: '/pages/permissionMembers/index', roles: [] }
 ];
 
 function findEntry(id) {
   return entries.find(entry => entry.id === id);
 }
 
-function getOrderedEntries(role, savedOrder) {
-  const allowed = entries.filter(entry => entry.roles.includes(role));
+function getOrderedEntries(role, savedOrder, menus) {
+  const allowed = Array.isArray(menus)
+    ? menus.filter(menu => menu.enabled !== false && findEntry(menu.code))
+      .map(menu => ({ ...findEntry(menu.code), label: menu.name || findEntry(menu.code).label }))
+    : entries.filter(entry => entry.roles.includes(role));
   const ids = Array.isArray(savedOrder) ? savedOrder : [];
   const ordered = [];
   for (const id of ids) {
@@ -37,7 +47,7 @@ function getOrderedEntries(role, savedOrder) {
 }
 
 function getStorageKey(info) {
-  if (!info || !['admin', 'stall_manager'].includes(info.role)) return '';
+  if (!info || !info.role || info.role === 'user') return '';
   const account = info.userId || info.id || info.openid;
   return account ? `workbenchOrder:v1:${String(account)}:${info.role}` : '';
 }

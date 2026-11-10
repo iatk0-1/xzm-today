@@ -12,19 +12,20 @@
         <!-- 已绑定手机号：显示手机号，点击可重新授权 -->
         <view class="user-tag" wx:if="{{isPhoneBound}}" catchtap="requestPhoneAuth">手机号：{{phone}}</view>
         <!-- 未绑定手机号：使用官方按钮直接触发授权 -->
-        <button wx:else class="user-tag-btn unbound" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" catchtap="stopPropagation" disabled="{{phoneBinding}}">
+        <button wx:elif="{{canProfile}}" class="user-tag-btn unbound" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" catchtap="stopPropagation" disabled="{{phoneBinding}}">
           {{phoneBinding ? '绑定中...' : '未绑定手机号，点击去绑定'}}
         </button>
+        <view wx:else class="user-tag">未绑定手机号</view>
         <view class="role-row" wx:if="{{hasMultipleRoles}}">
           <view class="user-tag role-switch-btn" catchtap="switchRole">{{currentRoleLabel}}</view>
           <button size="mini" class="user-tag-btn role-switch-btn" catchtap="switchRole">切换</button>
         </view>
       </view>
-      <view class="edit-icon" bindtap="goToEditProfile">✏️</view>
+      <view wx:if="{{canProfile}}" class="edit-icon" bindtap="goToEditProfile">✏️</view>
     </view>
   </view>
 
-  <view class="order-section">
+  <view class="order-section" wx:if="{{canMyOrders}}">
     <view class="section-header" bindtap="goToOrderList" data-status="all">
       <text class="title">我的订单</text>
       <text class="view-all">查看全部 ></text>
@@ -55,7 +56,7 @@
   </view>
 
   <view class="menu-list">
-    <view class="menu-item" bindtap="goToAddress">
+    <view class="menu-item" wx:if="{{canAddresses}}" bindtap="goToAddress">
       <text>收货地址</text>
       <text class="arrow">></text>
     </view>
@@ -65,7 +66,7 @@
     </button>
   </view>
 
-  <view class="workbench-section" wx:if="{{isAdmin || isStallManager}}">
+  <view class="workbench-section" wx:if="{{workbenchItems.length > 0}}">
     <view class="workbench-header">
       <view class="workbench-title">工作台</view>
       <text class="workbench-hint">{{workbenchDraggingId ? '松手保存位置' : workbenchSaving ? '正在同步排序...' : '长按按钮可拖动排序'}}</text>
@@ -89,15 +90,27 @@
   </view>
 
   <view class="bottom-tab-bar">
-    <view class="tab-item" bindtap="goToIndex">首页</view>
-    <view class="tab-item" bindtap="goToMarket">市集</view>
-    <view class="tab-item admin-portal" wx:if="{{isAdmin || isStallManager}}" bindtap="goToCreateProduct">
+    <view class="tab-item" wx:if="{{canBrowse}}" bindtap="goToIndex">首页</view>
+    <view class="tab-item" wx:if="{{canMarket}}" bindtap="goToMarket">市集</view>
+    <view class="tab-item admin-portal" wx:if="{{canCreateProduct}}" bindtap="goToCreateProduct">
       <view class="red-plus-btn">+</view>
     </view>
-    <view class="tab-item" bindtap="goToMessages"><view class="message-tab-label">信息<text wx:if="{{messageUnreadCount > 0}}" class="message-tab-badge">{{messageUnreadLabel}}</text></view></view>
+    <view class="tab-item" wx:if="{{canMessages}}" bindtap="goToMessages"><view class="message-tab-label">信息<text wx:if="{{messageUnreadCount > 0}}" class="message-tab-badge">{{messageUnreadLabel}}</text></view></view>
     <view class="tab-item active">我</view>
   </view>
 
 </view>
 
 <product-entry-menu id="product-entry-menu" />
+<view wx:if="{{showRolePicker}}" class="role-picker-mask" catchtap="closeRolePicker" catchtouchmove="stopRolePickerTouch">
+  <view class="role-picker-panel" catchtap="stopRolePickerTouch" role="dialog" aria-label="切换角色">
+    <view class="role-picker-title">切换角色</view>
+    <scroll-view scroll-y class="role-picker-options">
+      <button wx:for="{{roleOptions}}" wx:key="code" class="role-picker-option {{item.selected ? 'selected' : ''}}"
+        data-code="{{item.code}}" bindtap="chooseRole" disabled="{{rolePicking}}">
+        <text class="role-picker-name">{{item.name}}</text><text class="role-picker-state" wx:if="{{item.selected}}">当前角色</text>
+      </button>
+    </scroll-view>
+    <button class="role-picker-cancel" bindtap="closeRolePicker" disabled="{{rolePicking}}">取消</button>
+  </view>
+</view>

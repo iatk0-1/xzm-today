@@ -120,16 +120,18 @@ test('打开刷新发现售罄、规格删除、下架，保留原售罄禁购�
   }
 });
 
-test('打开刷新套装各子项，保留选择数量并将最新现货写入结算子项', async () => {
+test('历史套装规格入口关闭，不发刷新请求或生成新结算', async () => {
   const initial = product([sku({ bundleGroupId: 1, bundleGroupName: '上衣', freeStockQty: 2 }),
     sku({ skuId: '22', color: '白色', bundleGroupId: 2, bundleGroupName: '裤子', freeStockQty: 2 })]);
   const fresh = plain(initial);fresh.skuMatrix[0].freeStockQty = 0;
   const env = harness('detail', { product: initial, fresh });
-  env.page.setPickedSkuQuantity('11', 2);env.page.setPickedSkuQuantity('22', 1);await env.ready;
-  assert.deepEqual(plain(env.page.data.pickedSkuItems.map(row => [row.skuId, row.count, row.freeStockQty])), [['11', 2, 0], ['22', 1, 2]]);
-  await env.page.buy();const bundle = env.storage.get('checkoutItems')[0];
-  assert.deepEqual(bundle.bundleConfig.map(row => row.readyStockQty), [0, 1]);assert.equal(bundle.readyStockQty, 1);
-  assert.equal(productReads(env).length, 1);
+  await env.ready;
+  await env.page.buy();await env.page.cart();
+  assert.equal(env.page.data.showSku, false);
+  assert.equal(env.storage.has('checkoutItems'), false);
+  assert.equal(env.navigation.length, 0);
+  assert.equal(productReads(env).length, 0);
+  assert.ok(env.toasts.some(toast => toast.title === '该商品类型已下线'));
 });
 
 test('打开刷新失败或返回无效数据，阻止用旧数据购买；重新打开后可重新加载', async () => {
@@ -160,11 +162,14 @@ test('加入购物车被服务器拒绝时提示但不重拉SKU、不自动重�
   assert.equal(env.calls.filter(call => call.url === '/cart/items/batch').length, 1);assert.equal(productReads(env).length, 1);
 });
 
-test('直播商品打开时使用直播详情接口，刷新后购买不二次校验', async () => {
+test('直播商品入口拒绝刷新、购买和加购，旧回调也不产生新交易', async () => {
   const initial = { ...product(), productType: 'live', sessionStatus: 'live' };
-  const env = harness('list', { product: initial });await env.ready;await env.page.buy();
-  assert.equal(productReads(env).length, 1);assert.equal(productReads(env)[0].url, '/live-products/' + initial.id);
-  assert.equal(env.navigation.length, 1);
+  const env = harness('list', { product: initial });await env.ready;await env.page.buy();await env.page.cart();
+  assert.equal(productReads(env).length, 0);
+  assert.equal(env.calls.some(call => call.method === 'POST'), false);
+  assert.equal(env.navigation.length, 0);
+  assert.equal(env.storage.has('checkoutItems'), false);
+  assert.ok(env.toasts.some(toast => toast.title === '该商品类型已下线'));
 });
 
 test('刷新期间切换具体规格，结果到达后保留当前选择与对应件数', async () => {

@@ -224,13 +224,13 @@ test('发送中重复触发键盘发送不会覆盖下一条草稿或重复提�
   postResult = {};
 });
 
-test('管理员打开订单卡片进入管理详情，普通客服进入客服详情，商品仍进入商品详情', () => {
+test('客服订单卡片始终打开会话约束详情，通用管理身份不会跳转订单管理', () => {
   const page = createPage();
   navigations.length = 0;
   const card = pagePath => ({ currentTarget: { dataset: { metadata: { PagePath: pagePath } } } });
   currentUserIsAdmin = true;
   page.openMiniProgramCard(card('pages/orderDetail/orderDetail?id=317504652948017152'));
-  assert.equal(navigations.at(-1), '/pages/adminOrderDetail/adminOrderDetail?id=317504652948017152');
+  assert.equal(navigations.at(-1), '/pages/customerServiceOrderDetail/customerServiceOrderDetail?sessionId=1&orderId=317504652948017152');
   page.openMiniProgramCard(card('pages/detail/detail?id=123'));
   assert.equal(navigations.at(-1), '/pages/detail/detail?id=123');
   currentUserIsAdmin = false;

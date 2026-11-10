@@ -438,7 +438,13 @@ const methods = {
     if (this.data.skuDataLoading || this.data.skuDataError)
       return wx.showToast({ title: this.data.skuDataLoading ? '规格加载中，请稍候' : '规格加载失败，请重新打开商品', icon: 'none' });
     let product = getProduct(this);
+    if (product.productType === 'live' || product.liveSessionId || (product.bundleGroups || []).length
+        || (product.skuMatrix || []).some(sku => sku.bundleGroupId || sku.bundleGroupName)) {
+      this.setData({ showSku: false });
+      return wx.showToast({ title: '该商品类型已下线', icon: 'none' });
+    }
     if (!product.id || product.offSale || product.soldOut) return;
+    if (!this._pickedSkus) return wx.showToast({ title: '请先重新打开商品选择规格', icon: 'none' });
     if (product.productType === 'live') {
       if (product.convertedToProductId) return wx.navigateTo({ url: '/pages/detail/detail?id=' + product.convertedToProductId });
       const sessionStatus = this.data.session && this.data.session.status || product.sessionStatus;

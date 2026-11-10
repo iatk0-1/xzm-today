@@ -76,6 +76,18 @@
   "packOptions": {
     "ignore": [
       {
+        "value": "pages/liveRoomPublish",
+        "type": "folder"
+      },
+      {
+        "value": "pages/liveRoomList",
+        "type": "folder"
+      },
+      {
+        "value": "pages/liveRoomDetail",
+        "type": "folder"
+      },
+      {
         "value": ".DS_Store",
         "type": "file"
       },

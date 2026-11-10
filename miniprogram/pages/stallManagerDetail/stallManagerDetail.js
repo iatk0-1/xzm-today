@@ -18,7 +18,7 @@ Page({
     settlementPage: 1, settlementHasNext: false, settlementKeyword: '', settlementStartDate: '', settlementEndDate: '',
     settlementStallOptions: [{ value: '', label: '全部档口' }], settlementStallIndex: 0, voucherImages: [],
     pendingAdminRequest: null, currentWithdrawal: null, adminRequestMissing: false, adminRequestUncertain: false,
-    stalls: [], assignedStalls: [], assignmentIds: [], reason: '', income: {}, incomeDetailsVisible: false, activeChecked: false,
+    stalls: [], assignedStalls: [], assignmentIds: [], reason: '', income: {}, incomeDetailsVisible: false,
     assignmentVisible: false, availableStalls: [], newAssignmentIds: [],
     rows: [], page: 1, hasNext: false, totalElements: 0,
     keyword: '', filterStatus: '', commissionFilter: '', stallFilter: '',
@@ -90,7 +90,7 @@ Page({
     const stallOptions = [{ value: '', label: '全部档口' }].concat(assignedStalls.map(stall => ({ value: String(stall.id), label: stall.name })));
     const stallFilterIndex = Math.max(0, stallOptions.findIndex(item => item.value === this.data.stallFilter));
     this.setData({
-      profile, activeChecked: !!profile.active, stalls, assignmentIds: ids, assignedStalls,
+      profile, stalls, assignmentIds: ids, assignedStalls,
       stallOptions, stallFilterIndex, stallFilter: stallOptions[stallFilterIndex].value,
       availableStalls: stalls.filter(stall => !ids.includes(String(stall.id)))
         .map(stall => ({ ...stall, selected: false })), newAssignmentIds: []
@@ -181,6 +181,7 @@ Page({
 
   openAssignments() {
     if (this.data.busy || !this.data.profile) return;
+    if (!auth.canAccessMenu('memberManage')) return wx.showToast({ title: '当前角色没有用户授权权限', icon: 'none' });
     this.setData({ assignmentVisible: true, newAssignmentIds: [], error: '',
       availableStalls: this.data.availableStalls.map(stall => ({ ...stall, selected: false })) });
   },
@@ -218,6 +219,7 @@ Page({
   },
 
   async updateAssignments(ids, action) {
+    if (!auth.canAccessMenu('memberManage')) return wx.showToast({ title: '当前角色没有用户授权权限', icon: 'none' });
     await this.mutate('更新档口分配', async () => {
       const profile = await api.put(this.base('assignments'), {
         stallIds: ids,
@@ -228,13 +230,12 @@ Page({
     });
   },
 
-  openStall(event) {
+  async openStall(event) {
     const stall = this.data.assignedStalls.find(item => String(item.id) === String(event.currentTarget.dataset.id));
     if (!stall) return;
-    this._refreshOnShow = true;
-    wx.navigateTo({ url: '/pages/adminCatalogProducts/adminCatalogProducts?type=stall&id=' + encodeURIComponent(String(stall.id))
-      + '&name=' + encodeURIComponent(stall.name) + '&managerId=' + encodeURIComponent(this.data.userId)
-      + '&managerName=' + encodeURIComponent(this.data.profile.nickname || this.data.userId) });
+    this.setData({ stallFilter: String(stall.id),
+      stallFilterIndex: Math.max(0, this.data.stallOptions.findIndex(item => item.value === String(stall.id))) });
+    await this.changeTab({ currentTarget: { dataset: { tab: 'products' } } });
   },
 
   openProduct(event) {
@@ -242,18 +243,10 @@ Page({
     wx.navigateTo({ url: '/pages/detail/detail?id=' + encodeURIComponent(String(event.currentTarget.dataset.id)) });
   },
 
-  async toggleActive(event) {
+  toggleActive() {
     if (!this.data.profile) return;
-    const active = !!event.detail.value;
-    this.setData({ activeChecked: active });
-    await this.mutate(active ? '负责人上线' : '负责人下线', async () => {
-      const profile = await api.put(this.base('active'), {
-        active,
-        reason: this.data.reason.trim() || (active ? '管理员通过开关将负责人上线' : '管理员通过开关将负责人下线')
-      });
-      this.applyProfile(profile);
-    });
-    this.setData({ activeChecked: !!this.data.profile.active });
+    if (!auth.canAccessMenu('memberManage')) return wx.showToast({ title: '当前角色没有用户授权权限', icon: 'none' });
+    wx.navigateTo({ url: '/pages/permissionMembers/index?userId=' + encodeURIComponent(String(this.data.userId)) });
   },
 
   async loadList(reset) {

@@ -2,6 +2,7 @@ const { getErrorMessage } = require('./utils/error');
 // miniprogram/app.js
 const auth = require('./utils/auth');
 const api = require('./utils/api');
+if (typeof Page === 'function') Page = require('./utils/permissions').install(Page);
 
 App({
   onLaunch: function () {

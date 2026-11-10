@@ -142,6 +142,11 @@ const pageDefinition = {
   },
 
   async onLoad(options) {
+    if (options.convertFromLiveProductId || options.sessionId) {
+      this._productLoadFailed = true;
+      wx.showToast({ title: '直播功能已下线', icon: 'none' });
+      return;
+    }
     this._productLoadFailed = false;
     try {
       await auth.ensureAuthenticated({ silent: true });
@@ -153,9 +158,9 @@ const pageDefinition = {
     }
 
     this.setData({ isStallManager: auth.isStallManager() });
-    if (auth.isStallManager()) {
+    if (auth.isStallManager() || this.data.isStallScoped) {
       try {
-        const stalls = await api.get('/stall-managers/stalls/mine');
+        const stalls = await api.get(auth.isStallManager() ? '/stall-managers/stalls/mine' : '/stalls/all');
         this.setData({ assignedStalls: stalls || [], recentStalls: stalls || [] });
       } catch (err) {
         this._productLoadFailed = true;
@@ -167,7 +172,7 @@ const pageDefinition = {
     if (history) this.setData({ historyTags: history });
     this.refreshGrid();
     // 加载历史档口和标签
-    if (!auth.isStallManager()) this.loadRecentStallsAndTags();
+    if (!auth.isStallManager() && !this.data.isStallScoped) this.loadRecentStallsAndTags();
     // 加载尺码类型和尺码
     await this.loadSizeCategories();
 
@@ -232,6 +237,9 @@ const pageDefinition = {
     wx.showLoading({ title: '加载中...' });
     try {
       const res = await api.get(`/products/${productId}?manage=true`);
+      if ((res.bundleGroups || []).length || res.productType === 'live' || res.liveSessionId) {
+        throw new Error('直播和套装商品功能已下线');
+      }
 
       // 后端返回格式：{ product: {...}, skus: [{id, spec, size, ...}] }
       const product = normalizeProductImages(res.product || res);
@@ -1041,7 +1049,7 @@ const pageDefinition = {
   },
 
   searchStalls: async function(keyword) {
-    if (auth.isStallManager()) {
+    if (auth.isStallManager() || this.data.isStallScoped) {
       const matches = (this.data.assignedStalls || []).filter(s => s.name.includes(keyword.trim()));
       const selectedIds = (this.data.selectedStalls || []).map(s => String(s.id));
       this.setData({ stallSearchResults: matches.filter(s => !selectedIds.includes(String(s.id))),
@@ -1124,7 +1132,7 @@ const pageDefinition = {
       }
 
       let stalls = saved.stalls;
-      if (auth.isStallManager()) {
+      if (auth.isStallManager() || this.data.isStallScoped) {
         // 使用当前分配名单里的资料，过滤已收回的档口并更新名称。
         const selectedIds = new Set(stalls.filter(Boolean).map(stall => String(stall.id)));
         stalls = (this.data.assignedStalls || []).filter(stall => selectedIds.has(String(stall.id)));
@@ -1872,7 +1880,10 @@ const pageDefinition = {
     if (!hasMediaOrVideoCover || !title || !hasSkus) {
       return wx.showToast({ title: '封面/名称/尺码颜色不能为空', icon: 'none' });
     }
-    if (this.data.isStallManager && selectedStalls.some(s =>
+    if (this.data.isStallScoped && !selectedStalls.length) {
+      return wx.showToast({ title: '请选择已分配给您的档口', icon: 'none' });
+    }
+    if ((this.data.isStallManager || this.data.isStallScoped) && selectedStalls.some(s =>
       !(this.data.assignedStalls || []).some(a => String(a.id) === String(s.id)))) {
       return wx.showToast({ title: '请选择已分配给您的档口', icon: 'none' });
     }

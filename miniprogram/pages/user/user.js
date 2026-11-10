@@ -13,6 +13,9 @@ Page({
     currentRoleLabel: '普通用户',
     availableRoles: [],
     hasMultipleRoles: false,
+    showRolePicker: false,
+    roleOptions: [],
+    rolePicking: false,
     isAdmin: false,
     isStallManager: false,
     workbenchItems: [],
@@ -110,8 +113,9 @@ Page({
   // 检查是否为主理人
   checkAdmin: function() {
     const info = auth.getUserInfo() || {};
+    require('../../utils/permissions').applyPagePermissions(this);
     this.setData({
-      currentRoleLabel: auth.ROLE_LABELS[info.role] || '普通用户',
+      currentRoleLabel: auth.getRoleLabel(info.role),
       isStallManager: auth.isStallManager()
     });
     if (auth.isAdmin()) {
@@ -124,19 +128,22 @@ Page({
 
   loadWorkbench: function(info) {
     const scope = workbench.getStorageKey(info);
-    if (this._workbenchRole === info.role && this._workbenchScope === scope) return;
+    if (this._workbenchRole === info.role && this._workbenchScope === scope
+        && this._workbenchPermissionRevision === info.permissionRevision) return;
     this.cancelWorkbenchDrag();
     this._workbenchOrderVersion = (this._workbenchOrderVersion || 0) + 1;
     this.setData({ workbenchSaving: false });
     this._workbenchRole = info.role;
     this._workbenchScope = scope;
+    this._workbenchPermissionRevision = info.permissionRevision;
     let savedOrder;
     try {
       if (scope && wx.getStorageSync) savedOrder = wx.getStorageSync(scope);
     } catch (err) {
       console.error('读取工作台排序失败:', err);
     }
-    this.setWorkbenchLayout(workbench.getOrderedEntries(info.role, savedOrder));
+    const snapshot = auth.getPermissionSnapshot();
+    this.setWorkbenchLayout(workbench.getOrderedEntries(info.role, savedOrder, snapshot ? snapshot.menus : []));
     this.measureWorkbench();
     this.refreshWorkbenchOrder();
   },
@@ -153,7 +160,8 @@ Page({
       if (this._workbenchScope !== scope || workbench.getStorageKey(auth.getUserInfo()) !== scope
           || this._workbenchOrderVersion !== read.version || this._workbenchDrag || this._workbenchHidden) return;
       if (!response || response.role !== info.role || response.userId !== String(info.userId || info.id) || !Array.isArray(response.entries)) return;
-      const items = workbench.getOrderedEntries(info.role, response.entries);
+      const snapshot = auth.getPermissionSnapshot();
+      const items = workbench.getOrderedEntries(info.role, response.entries, snapshot ? snapshot.menus : []);
       this.setWorkbenchLayout(items);
       this.cacheWorkbenchOrder(scope, items);
     } catch (err) {
@@ -186,7 +194,8 @@ Page({
       if (!response || response.role !== drag.role || response.userId !== String(info.userId || info.id) || !Array.isArray(response.entries)) {
         throw new Error('工作台排序保存响应无效');
       }
-      const saved = workbench.getOrderedEntries(drag.role, response.entries);
+      const snapshot = auth.getPermissionSnapshot();
+      const saved = workbench.getOrderedEntries(drag.role, response.entries, snapshot ? snapshot.menus : []);
       this.setWorkbenchLayout(saved);
       this.cacheWorkbenchOrder(drag.scope, saved);
     } catch (err) {
@@ -243,7 +252,7 @@ Page({
     const id = e.currentTarget.dataset.entry;
     const entry = workbench.findEntry(id);
     const index = this.data.workbenchItems.findIndex(item => item.id === id);
-    if (!entry || !entry.roles.includes(info.role) || index < 0) return;
+    if (!entry || !auth.canAccessMenu(id) || index < 0) return;
     const item = this.data.workbenchItems[index];
     this._workbenchOrderVersion = (this._workbenchOrderVersion || 0) + 1;
     this._workbenchDrag = {
@@ -308,23 +317,47 @@ Page({
       const roles = await auth.loadAvailableRoles();
       this.setData({ availableRoles: roles, hasMultipleRoles: roles.some(role => role !== 'user') });
       this.checkAdmin();
-      wx.showActionSheet({
-        itemList: roles.map(role => auth.ROLE_LABELS[role]),
-        success: result => {
-          auth.selectRole(roles[result.tapIndex]);
-          this.checkAdmin();
-          this.loadUserInfo();
-          // 重新创建页面，清掉旧角色的列表、分页和管理页面栈。
-          wx.reLaunch({ url: '/pages/user/user' });
-        }
-      });
+      this.setData({ showRolePicker: true,
+        roleOptions: roles.map(code => ({ code, name: auth.getRoleLabel(code), selected: code === (auth.getUserInfo() || {}).role })) });
     } catch (err) {
       wx.showToast({ title: getErrorMessage(err, '获取可切换角色失败'), icon: 'none' });
     }
   },
 
+  closeRolePicker() {
+    if (!this.data.rolePicking) this.setData({ showRolePicker: false });
+  },
+
+  stopRolePickerTouch() {},
+
+  async chooseRole(event) {
+    if (this.data.rolePicking) return;
+    const code = event.currentTarget.dataset.code;
+    const previous = { ...(auth.getUserInfo() || {}) };
+    this.setData({ rolePicking: true });
+    try {
+      auth.selectRole(code);
+      await auth.loadPermissionSnapshot();
+      this.checkAdmin();
+      this.loadUserInfo();
+      this.setData({ showRolePicker: false });
+      wx.reLaunch({ url: '/pages/user/user' });
+    } catch (err) {
+      const current = auth.getUserInfo() || {};
+      if (String(current.userId || current.id) === String(previous.userId || previous.id)
+          && current.selectedRole === code) {
+        wx.setStorageSync(config.USER_INFO_KEY, previous);
+        this.checkAdmin();
+      }
+      wx.showToast({ title: getErrorMessage(err, '切换角色失败，请重试'), icon: 'none' });
+    } finally {
+      this.setData({ rolePicking: false });
+    }
+  },
+
   // 跳转到编辑资料页面
   goToEditProfile: function() {
+    if (!auth.canAccessMenu('profile')) return wx.showToast({ title: '当前角色没有个人资料权限', icon: 'none' });
     wx.navigateTo({
       url: '/pages/editProfile/editProfile'
     });
@@ -348,6 +381,7 @@ Page({
 
   // 获取手机号（微信官方回调）
   onGetPhoneNumber: async function(e) {
+    if (!auth.canAccessMenu('profile')) return wx.showToast({ title: '当前角色没有个人资料权限', icon: 'none' });
     const errMsg = e.detail.errMsg || '';
 
     // ── 用户取消或拒绝授权 ──
@@ -449,6 +483,10 @@ Page({
 
   // 基础工具跳转
   goToAddress: function() {
+    if (!auth.canAccessMenu('addresses')) {
+      wx.showToast({ title: '当前角色无权使用收货地址', icon: 'none' });
+      return;
+    }
     wx.chooseAddress({
       success: () => {
         wx.showToast({ title: '地址已同步', icon: 'success' });

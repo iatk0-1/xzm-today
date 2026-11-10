@@ -1,0 +1,24 @@
+page { background: #f4f6f8; color: #18212b; }
+.page { padding: 24rpx 24rpx 80rpx; }
+.card { background: #fff; border-radius: 16rpx; padding: 26rpx; margin-bottom: 20rpx; }
+.card-heading, .item-heading, .setting { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.card-heading button { margin: 0; }
+.title { font-size: 34rpx; font-weight: 600; }
+.label { display: block; font-size: 26rpx; margin: 24rpx 0 10rpx; color: #536273; }
+input { background: #eef2f5; min-height: 76rpx; padding: 0 18rpx; border-radius: 10rpx; box-sizing: border-box; }
+.search { margin-bottom: 22rpx; }
+.setting { padding: 26rpx 0; border-bottom: 1rpx solid #edf0f3; }
+.setting > view { flex: 1; min-width: 0; }
+.setting switch { flex-shrink: 0; }
+.hint { display: block; font-size: 24rpx; color: #68788a; line-height: 1.7; margin-top: 8rpx; }
+.name { font-size: 30rpx; font-weight: 600; overflow-wrap: anywhere; }
+.status { color: #23754a; flex-shrink: 0; font-size: 24rpx; }
+.status.disabled { color: #8a5550; }
+.tags { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 18rpx; }
+.tags text { background: #edf2f6; border-radius: 6rpx; padding: 5rpx 12rpx; font-size: 23rpx; color: #536273; }
+.edit-link { float: right; color: #265d85; }
+button { font-size: 28rpx; }
+button.primary { margin-top: 28rpx; background: #18212b; color: #fff; }
+.empty { padding: 60rpx 20rpx; text-align: center; color: #68788a; font-size: 28rpx; }
+.error { background: #fff0ee; color: #b3261e; padding: 20rpx; margin-bottom: 20rpx; border-radius: 10rpx; line-height: 1.7; }
+.error button { margin: 12rpx 0 0; }

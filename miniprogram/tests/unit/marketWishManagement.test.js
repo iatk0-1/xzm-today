@@ -8,7 +8,7 @@ function setup(admin = true) {
   let config;
   const calls = { posts: [], navigation: [], toasts: [], reloads: [], modals: 0 };
   const controls = { confirm: true, post: async (url, data) => ({ count: data.wishIds.length, wishIds: data.wishIds }) };
-  const auth = { getUserInfo: () => ({ userId: '7' }), isAdmin: () => admin,
+  const auth = { getUserInfo: () => ({ userId: '7' }), isAdmin: () => admin, canAccessMenu: code => auth.isAdmin() && code === 'wishManage',
     isStallManager: () => false, ensureAuthenticated: async () => {} };
   const context = { console: { log() {}, error() {} }, Page: value => { config = value; },
     wx: { showLoading() {}, hideLoading() {},

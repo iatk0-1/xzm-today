@@ -3,7 +3,7 @@ const workbench = require('./workbench');
 
 // 四个主页面的加号统一打开浮动菜单，打开及选择时都按当前角色校验权限。
 function openProductMenu(page) {
-  if (!auth.isAdmin() && !auth.isStallManager()) {
+  if (!auth.canAccessMenu('productManage') && !auth.canAccessMenu('productDrafts')) {
     wx.showToast({ title: '无权限', icon: 'none' });
     return;
   }
@@ -12,7 +12,7 @@ function openProductMenu(page) {
 }
 
 function openProductCreate() {
-  if (!auth.isAdmin() && !auth.isStallManager()) {
+  if (!auth.canAccessMenu('productManage')) {
     wx.showToast({ title: '无权限', icon: 'none' });
     return;
   }
@@ -26,8 +26,7 @@ function openWorkbenchEntry(name) {
     wx.showToast({ title: '工作台入口不存在', icon: 'none' });
     return;
   }
-  const role = auth.isAdmin() ? 'admin' : auth.isStallManager() ? 'stall_manager' : 'user';
-  if (!entry.roles.includes(role)) {
+  if (!auth.canAccessMenu(name)) {
     wx.showToast({ title: '无权限', icon: 'none' });
     return;
   }

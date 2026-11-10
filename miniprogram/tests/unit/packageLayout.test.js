@@ -30,6 +30,18 @@ test('测试、npm 源码、源码映射和依赖清单不进入代码包，构�
   assert.ok(packedFiles.has('miniprogram_npm/cos-wx-sdk-v5/index.js'), 'COS 上传依赖必须保留');
 });
 
+test('已下线直播页面退出路由和发布包，权限管理页面完整放入分包', () => {
+  const retired = ['pages/liveRoomPublish', 'pages/liveRoomList', 'pages/liveRoomDetail'];
+  for (const root of retired) {
+    assert.equal(Array.from(layout.routes).some(route => isInside(route, root)), false, root);
+    assert.equal(Array.from(packedFiles).some(file => isInside(file, root)), false, root);
+  }
+  for (const root of ['pages/permissionMenus', 'pages/permissionRoles', 'pages/permissionMembers']) {
+    assert.ok(layout.routes.has(root + '/index'));
+    assert.equal(owner(root + '/index').root, root);
+  }
+});
+
 test('页面、组件、模板和样式只引用主包或本分包内的文件', () => {
   const errors = [];
   function checkReference(source, reference, extensions) {

@@ -32,7 +32,7 @@ Module._load = function(request, ...rest) {
     };
   }
   if (request.endsWith('utils/auth')) {
-    return { ensureAuthenticated: async () => {}, isAdmin: () => false, isStallManager: () => false };
+    return { ensureAuthenticated: async () => {}, isAdmin: () => false, isStallManager: () => false, canAccessMenu: () => false };
   }
   return originalLoad.call(this, request, ...rest);
 };

@@ -90,7 +90,9 @@ Page(autoSearch.wrap(pageSync.wrap({
       wx.showToast({ title: '商品信息不完整，请刷新列表后重试', icon: 'none' });
       return;
     }
-    wx.navigateTo({ url: '/pages/admin/admin?editId=' + encodeURIComponent(String(item.productId)) });
+    const canEdit = auth.canAccessMenu('productManage') || auth.canAccessMenu('productDrafts');
+    wx.navigateTo({ url: (canEdit ? '/pages/admin/admin?editId=' : '/pages/detail/detail?id=')
+      + encodeURIComponent(String(item.productId)) });
   },
 
   async refreshOrderProduct(productId) {
@@ -798,11 +800,9 @@ Page(autoSearch.wrap(pageSync.wrap({
     await this.refreshOrderProduct(change.id);
   }
   const skuIds = changes.filter(item => item.entity === 'picking-skus').map(item => item.id);
-  for (const change of changes.filter(item => item.entity === 'orders')) {
-    const order = await api.get('/orders/' + change.id);
-    (order.items || []).forEach(item => skuIds.push(item.skuId));
-  }
-  await this.refreshSkuRecommendations(skuIds);
+  // 订单变化可能使新SKU进入推荐，按当前档口和标签重查，不读取整单数据。
+  if (changes.some(item => item.entity === 'orders')) await this.loadRecommendations(true);
+  else await this.refreshSkuRecommendations(skuIds);
   // 返回编辑页后继续显示弹窗中的实际报单数量，不能被列表推荐数量覆盖。
   if (this.data.showOrderModal) this.updateOrderPreview(this.data.orderPreviewList);
 }), {

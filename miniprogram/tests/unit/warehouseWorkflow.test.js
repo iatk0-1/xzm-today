@@ -5,6 +5,7 @@ let captured;
 global.Page = config => { captured = config; };
 const requests = [];
 let handler;
+let shippingAllowed = true;
 const toasts = [];
 const api = {
   get: async (url, data) => { requests.push({ method: 'GET', url, data }); return handler(url, data); },
@@ -13,7 +14,8 @@ const api = {
 const originalLoad = Module._load;
 Module._load = function(request, ...args) {
   if (request.endsWith('utils/api')) return api;
-  if (request.endsWith('utils/auth')) return { ensureAuthenticated: async () => {} };
+  if (request.endsWith('utils/auth')) return { ensureAuthenticated: async () => {},
+    canAccessMenu: code => code !== 'shipping' || shippingAllowed };
   if (request.endsWith('utils/clipboard')) return {};
   return originalLoad.call(this, request, ...args);
 };
@@ -30,7 +32,54 @@ function page(config) {
 }
 test.beforeEach(() => {
   requests.length = 0; toasts.length = 0;
+  shippingAllowed = true;
   global.wx = { showToast: value => toasts.push(value.title), showModal: value => value.success({ confirm: true }) };
+});
+
+test('仅库存菜单隐藏跨菜单发货入口，旧点击和旧弹窗提交均不读取或匹配发货数据', async () => {
+  shippingAllowed = false;
+  const inventory = page(inventoryConfig);
+  inventory.syncQuantityPending = () => {};
+  inventory.onShow();
+  assert.equal(inventory.data.canUseStockShipping, false);
+  inventory.setData({ showShippingModal: true, shippingProducts: [{ skus: [{ id: '11', selected: true, shipQty: 1, shippableQty: 5 }] }] });
+  await inventory.openShippingModal();
+  await inventory.goToStockShipping();
+  assert.equal(inventory.data.showShippingModal, false);
+  assert.equal(requests.length, 0);
+  assert.ok(toasts.every(title => title.includes('无权')));
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const template = fs.readFileSync(path.resolve(__dirname, '../../pages/skuInventory/skuInventory.wxml'), 'utf8');
+  assert.match(template, /<button[^>]*wx:if="\{\{canUseStockShipping\}\}"[^>]*bindtap="openShippingModal"/);
+});
+
+test('同时拥有库存和发货菜单显示入口，收回发货菜单后关闭已打开的跨菜单弹窗', () => {
+  const inventory = page(inventoryConfig);
+  inventory.syncQuantityPending = () => {};
+  inventory.onShow();
+  assert.equal(inventory.data.canUseStockShipping, true);
+  inventory.setData({ showShippingModal: true });
+  shippingAllowed = false;
+  inventory.onShow();
+  assert.equal(inventory.data.canUseStockShipping, false);
+  assert.equal(inventory.data.showShippingModal, false);
+});
+
+test('匹配库存期间收回发货权限，迟到结果不能继续跳转发货页面', async () => {
+  let release;
+  let navigations = 0;
+  handler = () => new Promise(resolve => { release = resolve; });
+  global.wx.navigateTo = () => { navigations++; };
+  const inventory = page(inventoryConfig);
+  inventory.setData({ shippingProducts: [{ skus: [{ id: '11', selected: true, shipQty: 1, shippableQty: 5 }] }] });
+  const pending = inventory.goToStockShipping();
+  await new Promise(resolve => setImmediate(resolve));
+  shippingAllowed = false;
+  release({ items: [{ item: { skuId: '11' }, shipQty: 1 }], unmatched: [] });
+  await pending;
+  assert.equal(navigations, 0);
+  assert.equal(inventory.data.matching, false);
 });
 
 test('档口和标签筛选与关键词及库存 Tab 组合，翻页保留条件，全部仅清除对应筛选', async () => {

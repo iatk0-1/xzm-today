@@ -1,0 +1,34 @@
+<view class="page">
+  <view wx:if="{{error}}" class="error" role="alert">{{error}}<button size="mini" bindtap="load" disabled="{{saving}}">刷新</button></view>
+  <view class="toolbar"><input placeholder="用户昵称、手机号或编号" value="{{keyword}}" maxlength="80" bindinput="inputSearch" bindconfirm="search" /><button class="primary" size="mini" loading="{{searching}}" disabled="{{loading || searching || saving}}" bindtap="search">搜索</button></view>
+  <view wx:if="{{loading}}" class="empty">正在加载授权资料…</view>
+  <view wx:elif="{{searched && !users.length}}" class="empty">没有找到匹配的用户</view>
+  <view wx:for="{{users}}" wx:key="id" class="user-row {{selectedUser.id === item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="selectUser">
+    <image wx:if="{{item.avatarUrl}}" class="avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
+    <view class="user-info"><text class="name">{{item.nickname || '未设置昵称'}}</text><text class="hint">{{item.phone || '未绑定手机号'}} · 编号 {{item.id}}</text></view><text class="choose">{{selectedUser.id === item.id ? '已选择' : '选择 ›'}}</text>
+  </view>
+  <view wx:if="{{selectedUser}}" class="card member-card">
+    <text class="title">{{selectedUser.nickname || '未设置昵称'}}的角色</text>
+    <view wx:if="{{membersLoading}}" class="empty">正在读取角色…</view>
+    <view wx:for="{{memberships}}" wx:key="code" class="membership">
+      <view class="item-heading"><text class="name">{{item.role.name}}</text><text wx:if="{{!item.role.enabled}}" class="status disabled">已停用</text></view>
+      <text class="hint">{{item.description}}</text>
+      <text wx:if="{{item.role.stallScoped}}" class="hint">负责档口：{{item.stallNames || '当前无可管理档口'}}</text>
+      <text wx:elif="{{item.role.kind !== 'USER'}}" class="hint">全部档口范围</text>
+      <view wx:if="{{item.manageable}}" class="member-actions"><button wx:if="{{item.role.stallScoped && item.role.enabled}}" size="mini" data-code="{{item.role.code}}" bindtap="editMember" disabled="{{saving}}">调整档口</button><button size="mini" class="danger" data-code="{{item.role.code}}" bindtap="revoke" disabled="{{saving}}">解除角色</button></view>
+      <text wx:elif="{{item.role.kind !== 'USER'}}" class="hint">此角色由更高授权范围的管理员维护</text>
+    </view>
+    <picker wx:if="{{roleOptions.length}}" mode="selector" range="{{roleOptions}}" range-key="name" bindchange="selectRole" disabled="{{saving || membersLoading}}"><button class="primary" disabled="{{saving || membersLoading}}">分配新角色</button></picker>
+    <text wx:elif="{{!membersLoading}}" class="hint">当前可分配的角色均已授予。需要新岗位时可前往角色管理创建。</text>
+  </view>
+  <view wx:if="{{editor}}" class="card editor">
+    <view class="card-heading"><text class="title">{{editor.existing ? '调整' : '分配'}}{{editor.role.name}}</text><button size="mini" bindtap="closeEditor" disabled="{{saving}}">关闭</button></view>
+    <view wx:if="{{editor.role.stallScoped}}">
+      <text class="hint">{{editor.existing ? '可解绑全部档口。角色身份继续保留，之后可手动解除。' : '请选择这名用户以该角色负责的档口。'}}</text>
+      <view wx:if="{{!stallChoices.length}}" class="empty">暂无有效档口，请先创建档口</view>
+      <view wx:for="{{stallChoices}}" wx:key="id" class="stall-choice" data-id="{{item.id}}" bindtap="toggleStall"><checkbox checked="{{item.checked}}" disabled="{{saving}}" color="#23754a" /><text>{{item.name}}</text></view>
+    </view>
+    <text wx:else class="hint">这个角色使用全部档口范围，保存后用户可切换到该身份。</text>
+    <button class="primary" bindtap="save" loading="{{saving}}" disabled="{{saving}}">保存授权</button>
+  </view>
+</view>

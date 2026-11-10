@@ -39,8 +39,13 @@ function harness({ type = 'create', manager = false, data = {}, record = {}, get
 }
 
 for (const type of ['create', 'edit', 'convert']) {
-  test(`${type}草稿发布保留现货同步开关，拒绝无限库存并允许0`, async () => {
+  test(`${type}草稿的现货发布遵循普通商品支持范围`, async () => {
     const valid = harness({ type, data: { syncReadyStock: true } });
+    if (type === 'convert') {
+      await assert.rejects(valid.publish(), /直播功能已下线/);
+      assert.equal(valid.submissions.length, 0);
+      return;
+    }
     await valid.publish();
     assert.equal(valid.submissions[0].productData.syncReadyStock, true);
     assert.equal(valid.submissions[0].productData.skus[0].stockMain, 0);
@@ -51,10 +56,16 @@ for (const type of ['create', 'edit', 'convert']) {
 }
 
 for (const type of ['create', 'edit', 'convert', 'live_create', 'live_edit']) {
-  test(`${type}草稿直接保存发布，携带来源、版本和原始大整数ID`, async () => {
+  test(`${type}草稿按支持场景发布，退休类型明确拒绝`, async () => {
     const env = harness({ type, data: { pricingRuleId: '30', skuList: [
       { skuId: '9007199254740993333', bundleGroupId: '77', price: '19.90', costPrice: '10', stock: '0' }
     ] } });
+    if (['convert', 'live_create', 'live_edit'].includes(type)) {
+      await assert.rejects(env.publish(), /直播功能已下线/);
+      assert.equal(env.submissions.length, 0);
+      assert.equal(env.calls.some(call => call[0] === 'post'), false);
+      return;
+    }
     await env.publish();
     const body = env.submissions[0];
     assert.equal(body.draftType, type);
@@ -91,24 +102,32 @@ test('管理员普通商品保留手填价和高级资料，视频封面、零�
   assert.equal(env.calls.some(call => call[0] === 'post'), false);
 });
 
-test('负责人按当前分配规则重算每组成本，套装新建保留分组、编辑保留SKU身份', async () => {
+test('负责人发布普通商品按当前分配规则重算多规格成本，编辑保留SKU身份', async () => {
   for (const type of ['create', 'edit']) {
     const env = harness({ type, manager: true, get: async () => [{ id: '30', enabled: true,
-      segments: [{ lower: 0, upper: null, formula: 'x+5' }] }], data: { pricingRuleId: '30', isBundleMode: true,
-      bundleGroups: [{ id: '77', name: '上衣', skuList: [{ skuId: '11', price: '99', costPrice: '10', stock: '0' }] },
-        { id: '78', name: '裤子', skuList: [{ skuId: '12', price: '99', costPrice: '20', stock: '' },
-          { costPrice: '坏成本', _toBeRemoved: true }] }] } });
+      segments: [{ lower: 0, upper: null, formula: 'x+5' }] }], data: { pricingRuleId: '30',
+      skuList: [{ skuId: '11', price: '99', costPrice: '10', stock: '0' },
+        { skuId: '12', price: '99', costPrice: '20', stock: '' },
+        { costPrice: '坏成本', _toBeRemoved: true }] } });
     await env.publish();
     const body = env.submissions[0].productData;
     assert.equal(body.retailPrice, 15);
     assert.equal(body.displayPrice, '15 - 25');
-    if (type === 'create') {
-      assert.equal(body.skus.length, 0);
-      assert.equal(body.bundleGroups[1].skus[0].retailPrice, 25);
-      assert.equal(body.bundleGroups[1].skus[0].id, undefined);
-    } else {
-      assert.equal(body.bundleGroups, undefined);
-      assert.equal(body.skus[0].id, '11');assert.equal(body.skus[1].bundleGroupId, '78');
+    assert.equal(body.bundleGroups, type === 'create' ? null : undefined);
+    assert.equal(body.skus.length, 2);
+    assert.equal(body.skus[1].retailPrice, 25);
+    assert.equal(body.skus[0].id, type === 'create' ? undefined : '11');
+  }
+});
+
+test('历史套装草稿无论新增、编辑或旧元数据形状都拒绝发布且无价格计算或提交请求', async () => {
+  for (const type of ['create', 'edit']) {
+    for (const data of [{ isBundleMode: true }, { bundleGroups: [{ id: '77', name: '上衣', skuList: [] }] },
+      { isBundleMode: false, bundleGroups: [{ id: '77', name: '上衣' }] }]) {
+      const env = harness({ type, manager: true, data });
+      await assert.rejects(env.publish(), /套装商品功能已下线/);
+      assert.equal(env.submissions.length, 0);
+      assert.equal(env.calls.some(call => call[0] === 'post'), false);
     }
   }
 });

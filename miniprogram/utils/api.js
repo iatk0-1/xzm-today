@@ -190,7 +190,9 @@ function buildRequestOptions(options) {
     method,
     data: options.data || {},
     idempotencyKey,
-    skipAuthRefresh: options.skipAuthRefresh === true
+    skipAuthRefresh: options.skipAuthRefresh === true,
+    activeRole: options.activeRole !== undefined ? options.activeRole
+      : (getStorage(config.USER_INFO_KEY).selectedRole || 'user')
   };
 }
 
@@ -199,7 +201,8 @@ function buildHeaders(options) {
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': token ? `Bearer ${token}` : '',
-    'X-Active-Role': options.url === '/auth/roles' ? '' : (getStorage(config.USER_INFO_KEY).selectedRole || '')
+    'X-Active-Role': options.url === '/auth/roles' ? ''
+      : (options.activeRole !== undefined ? options.activeRole : (getStorage(config.USER_INFO_KEY).selectedRole || 'user'))
   };
 
   if (options.idempotencyKey) {
@@ -239,6 +242,11 @@ async function requestWithRetry(options, retryState = {}) {
   if (res.statusCode === 401) {
     clearToken();
     throw normalizeApiError(res.data, { statusCode: 401, fallbackMessage: '登录已过期，请重新登录' });
+  }
+
+  if (res.statusCode === 403 && !options.url.startsWith('/iam/') && !authEndpoint && !options.skipAuthRefresh) {
+    const auth = require('./auth');
+    if (auth.refreshAfterDenied) await auth.refreshAfterDenied();
   }
 
   throw normalizeHttpError(res);
