@@ -1,6 +1,9 @@
 const api = require('./api');
 const auth = require('./auth');
 const { getErrorMessage } = require('./error');
+// 与档口管理相同的边缘范围、渐进速度和刷新间隔。
+const AUTO_SCROLL_EDGE = 72;
+const AUTO_SCROLL_INTERVAL = 32;
 
 const initialData = {
   homeEditing: false, homeEditorLoading: false, homeSaving: false, homeDirty: false,
@@ -142,42 +145,96 @@ const methods = {
         content: getErrorMessage(error, '首页商品保存失败，请重试'), showCancel: false });
     } finally { if (!this._pageClosed) this.setData({ homeSaving: false }); }
   },
-  onHomeEditorScroll(event) { this._homeScrollTop = event.detail.scrollTop || 0; },
+  onHomeEditorScroll(event) {
+    // 自动滚动由页面统一记账，迟到的 bindscroll 不能把位置倒退回去。
+    if (this._homeDrag && this._homeDrag.autoScrolled) return;
+    this._homeScrollTop = Math.max(0, event.detail.scrollTop || 0);
+    if (this._homeDrag) this.syncHomeDrag();
+  },
   startHomeDrag(event) {
     if (!this.canEditHome() || this._homeDrag) return;
     const id = String(event.currentTarget.dataset.id);
     const from = this.data.homeProducts.findIndex(item => String(item.id) === id);
     const touch = touchOf(event);
-    if (from < 0 || !touch || !Number.isFinite(touch.clientY)) return;
-    this._homeDrag = { id, from, identifier: touch.identifier, startY: touch.clientY,
-      clientY: touch.clientY, startScroll: this._homeScrollTop || 0, y: from * this.data.homeRowHeight };
+    if (from < 0) return;
+    const startY = touch && Number.isFinite(touch.clientY) ? touch.clientY : null;
+    const originY = from * this.data.homeRowHeight;
+    this._homeDrag = { id, from, identifier: touch && touch.identifier, startY, clientY: startY,
+      startScroll: this._homeScrollTop || 0, originY, y: originY, step: 0, bounds: null, autoScrolled: false };
     this.setData({ homeDragId: id });
-    this._homeDragTimer = setInterval(() => this.tickHomeDrag(), 50);
+    this.measureHomeDragBounds();
+    this._homeDragTimer = setInterval(() => this.tickHomeDrag(), AUTO_SCROLL_INTERVAL);
     if (wx.vibrateShort) wx.vibrateShort({ type: 'light', fail() {} });
+  },
+  measureHomeDragBounds() {
+    const drag = this._homeDrag;
+    if (!drag || typeof wx.createSelectorQuery !== 'function') return;
+    const query = wx.createSelectorQuery().in(this);
+    query.select('.home-editor-scroll').boundingClientRect();
+    query.select('.home-editor-scroll').scrollOffset();
+    query.select('.home-editor-area').boundingClientRect();
+    query.select('.home-editor-hint').boundingClientRect();
+    query.select('.bottom-tab-bar').boundingClientRect();
+    query.exec(results => {
+      if (this._pageClosed || this._homeDrag !== drag) return;
+      const [list, offset, area, hint, bottomBar] = results || [];
+      if (!list || !area || !list.height) return;
+      const scroll = offset && Number.isFinite(offset.scrollTop) ? Math.max(0, offset.scrollTop) : (this._homeScrollTop || 0);
+      this._homeScrollTop = scroll;
+      drag.startScroll = scroll;
+      drag.contentBase = area.top + scroll;
+      const bottom = Math.min(list.top + list.height, bottomBar ? bottomBar.top : this.getWindowSize().height);
+      if (bottom <= list.top) return;
+      drag.bounds = { top: list.top, bottom };
+      const padding = Math.max(0, area.top + scroll - list.top);
+      drag.maxScroll = Math.max(0, padding + area.height + (hint ? hint.height : 0) - list.height);
+      // 手动滚动后同步真实值，避免下一次目标恰好等于旧绑定值而不触发滚动。
+      this.setData({ homeEditorScrollTop: scroll });
+      this.syncHomeDrag();
+    });
   },
   moveHomeDrag(event) {
     const drag = this._homeDrag;
     if (!drag) return;
     const touch = touchOf(event, drag.identifier);
     if (!touch || !Number.isFinite(touch.clientY)) return;
+    if (drag.startY == null) {
+      drag.startY = touch.clientY;
+      drag.identifier = touch.identifier;
+    }
     drag.clientY = touch.clientY;
-    this.tickHomeDrag();
+    this.syncHomeDrag();
+  },
+  syncHomeDrag() {
+    const drag = this._homeDrag;
+    if (!drag || drag.startY == null) return;
+    const y = Math.max(0, Math.min((this.data.homeProducts.length - 1) * this.data.homeRowHeight,
+      drag.originY + drag.clientY - drag.startY + (this._homeScrollTop || 0) - drag.startScroll));
+    if (Math.abs(y - drag.y) >= 0.5) {
+      drag.y = y;
+      this.setData({ [`homeProducts[${drag.from}].y`]: y });
+    }
+    const bounds = drag.bounds;
+    if (!bounds) return;
+    const edge = Math.min(AUTO_SCROLL_EDGE, (bounds.bottom - bounds.top) / 3);
+    const down = drag.clientY - (bounds.bottom - edge);
+    const up = bounds.top + edge - drag.clientY;
+    drag.step = down > 0 ? 4 + 14 * Math.min(1, down / edge)
+      : up > 0 ? -(4 + 14 * Math.min(1, up / edge)) : 0;
   },
   tickHomeDrag() {
     const drag = this._homeDrag;
-    if (!drag) return;
-    const top = this.data.totalNavHeight + this.data.listTop;
-    const bottom = Math.min(top + this.data.listHeight, this.getWindowSize().height - 60);
-    let scroll = this._homeScrollTop || 0;
-    const delta = drag.clientY < top + 40 ? -14 : drag.clientY > bottom - 40 ? 14 : 0;
-    scroll = Math.max(0, Math.min(Math.max(0, this.data.homeEditorHeight - this.data.listHeight + 80), scroll + delta));
-    if (delta) {
-      this._homeScrollTop = scroll;
-      this.setData({ homeEditorScrollTop: scroll });
-    }
-    drag.y = Math.max(0, Math.min((this.data.homeProducts.length - 1) * this.data.homeRowHeight,
-      drag.from * this.data.homeRowHeight + drag.clientY - drag.startY + scroll - drag.startScroll));
-    this.setData({ [`homeProducts[${drag.from}].y`]: drag.y });
+    if (!drag || !drag.bounds || !drag.step) return;
+    const scroll = this._homeScrollTop || 0;
+    const delta = Math.max(0, Math.min(drag.maxScroll, scroll + drag.step)) - scroll;
+    const nextY = Math.max(0, Math.min((this.data.homeProducts.length - 1) * this.data.homeRowHeight, drag.y + delta));
+    const moved = nextY - drag.y;
+    if (Math.abs(moved) < 0.01) return;
+    // 行顶到内容首尾就停止；滚动和行位置一次更新，始终保持按住的那个点不变。
+    drag.autoScrolled = true;
+    drag.y = nextY;
+    this._homeScrollTop = scroll + moved;
+    this.setData({ homeEditorScrollTop: this._homeScrollTop, [`homeProducts[${drag.from}].y`]: nextY });
   },
   endHomeDrag(event) {
     const drag = this._homeDrag;
@@ -189,6 +246,20 @@ const methods = {
     products.splice(to, 0, item);
     this.clearHomeDrag();
     this.setHomeProducts(products, to !== drag.from);
+    this.revealHomeDragRow(to, drag);
+  },
+  revealHomeDragRow(index, drag) {
+    if (!drag.bounds) return;
+    const scroll = this._homeScrollTop || 0;
+    const rowTop = drag.contentBase - scroll + index * this.data.homeRowHeight;
+    const rowBottom = rowTop + this.data.homeRowHeight;
+    let next = scroll;
+    if (rowTop < drag.bounds.top) next += rowTop - drag.bounds.top;
+    else if (rowBottom > drag.bounds.bottom) next += rowBottom - drag.bounds.bottom;
+    next = Math.max(0, Math.min(drag.maxScroll, next));
+    if (Math.abs(next - scroll) < 0.5) return;
+    this._homeScrollTop = next;
+    this.setData({ homeEditorScrollTop: next });
   },
   clearHomeDrag() {
     if (this._homeDragTimer) clearInterval(this._homeDragTimer);

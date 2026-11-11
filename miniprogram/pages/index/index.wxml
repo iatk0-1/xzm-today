@@ -137,13 +137,14 @@
     </view>
   </scroll-view>
 
-  <scroll-view wx:else class="list-scroll home-editor-scroll" scroll-y="{{!homeDragId}}" scroll-top="{{homeEditorScrollTop}}" bindscroll="onHomeEditorScroll" style="height: {{listHeight}}px; margin-top: {{listTop}}px;">
+  <scroll-view wx:else class="list-scroll home-editor-scroll" scroll-y scroll-with-animation="{{false}}" scroll-top="{{homeEditorScrollTop}}" bindscroll="onHomeEditorScroll" style="height: {{listHeight}}px; margin-top: {{listTop}}px;">
     <view class="home-empty" wx:if="{{!homeProducts.length}}">暂无首页商品，点击“新增商品”挑选</view>
     <movable-area class="home-editor-area" style="height: {{homeEditorHeight}}px;">
-      <movable-view wx:for="{{homeProducts}}" wx:key="id" x="{{0}}" y="{{item.y}}" direction="vertical" disabled="{{true}}" animation="{{!homeDragId}}"
+      <movable-view wx:for="{{homeProducts}}" wx:key="id" x="{{0}}" y="{{item.y}}" direction="vertical" out-of-bounds="{{false}}" disabled="{{true}}" animation="{{homeDragId != item.id}}"
         class="home-editor-row {{homeDragId == item.id ? 'dragging' : ''}}" style="height: {{homeRowHeight}}px;"
-        data-id="{{item.id}}" bindtap="toggleHomeProduct" bindlongpress="startHomeDrag" bindtouchmove="moveHomeDrag" bindtouchend="endHomeDrag" bindtouchcancel="cancelHomeDrag">
+        data-id="{{item.id}}" bindtap="toggleHomeProduct" bindtouchmove="moveHomeDrag" bindtouchend="endHomeDrag" bindtouchcancel="cancelHomeDrag">
         <view class="home-row-check {{item.selected ? 'checked' : ''}}">{{item.selected ? '✓' : ''}}</view>
+        <view class="home-row-drag-handle" data-id="{{item.id}}" catchlongpress="startHomeDrag" catchtouchmove="moveHomeDrag" bindtouchend="endHomeDrag" bindtouchcancel="cancelHomeDrag" catchtap="stopPanelTouchMove" aria-label="长按拖动排序">⋮⋮</view>
         <image class="home-row-image" src="{{item.coverUrl}}" mode="aspectFill" lazy-load />
         <view class="home-row-info"><view class="home-row-name">{{item.name}}</view><view class="home-row-article">货号：{{item.articleNo || '未填写'}}</view></view>
         <view class="home-row-actions" catchlongpress="stopPanelTouchMove">
@@ -153,7 +154,7 @@
         </view>
       </movable-view>
     </movable-area>
-    <view class="home-editor-hint" wx:if="{{homeProducts.length}}">长按商品拖动排序，调整后点击保存</view>
+    <view class="home-editor-hint" wx:if="{{homeProducts.length}}">长按商品左侧 ⋮⋮ 拖动排序，调整后点击保存</view>
   </scroll-view>
 
   <!-- 自定义底部导航栏 -->

@@ -27,7 +27,7 @@ function setup(options = {}) {
       if (name.endsWith('/productManagementQuery')) return require('../../utils/productManagementQuery');
       throw new Error(name);
     }, module, Component(value) { definition = value; },
-    wx: { showToast() {}, vibrateShort() {}, showModal(value) { modals.push(value); } },
+    wx: { showToast() {}, vibrateShort() {}, showModal(value) { modals.push(value); }, ...(options.wx || {}) },
     setInterval(fn) { const id = timers.size + 1; timers.set(id, fn); return id; },
     clearInterval(id) { timers.delete(id); }, setTimeout, clearTimeout
   };
@@ -160,6 +160,116 @@ test('长按后拖动、松手落位，其他手指和取消手势不改顺序�
   assert.deepEqual(ids(p).slice(0, 3), ['2', '3', '1']);
   assert.equal(p.data.homeProducts[0].y, 0);
   assert.equal(timers.size, 0);
+});
+
+async function dragView(options = {}) {
+  const list = { top: 144, height: 600 };
+  const bottom = 650;
+  const pending = [];
+  const view = { scroll: options.scroll || 0, maxScroll: 1620 };
+  const env = setup({ wx: { createSelectorQuery() {
+    return { in() { return this; }, select() { return this; }, boundingClientRect() { return this; }, scrollOffset() { return this; },
+      exec(callback) {
+        const results = [{ ...list }, { scrollTop: view.scroll },
+          { top: list.top - view.scroll, height: 2100 }, { height: 120 }, { top: bottom }];
+        if (options.delayMeasure) pending.push(() => callback(results));
+        else callback(results);
+      } };
+  } } });
+  const p = env.page;
+  await p.toggleHomeEditor();
+  const originalSetData = p.setData.bind(p);
+  p.setData = patch => {
+    originalSetData(patch);
+    if (patch.homeEditorScrollTop == null) return;
+    const previous = view.scroll;
+    view.scroll = Math.max(0, Math.min(view.maxScroll, patch.homeEditorScrollTop));
+    // 真机滚动回调可能落后一帧，此时不能反过来覆盖主动滚动的位置。
+    p.onHomeEditorScroll({ detail: { scrollTop: options.lagScroll ? previous : view.scroll } });
+  };
+  p._homeScrollTop = options.staleScroll ? 0 : view.scroll;
+  return { ...env, view, list, bottom, pending,
+    start(index) {
+      const y = list.top + index * 84 - view.scroll + 42;
+      p.startHomeDrag(touch(String(index + 1), y));
+      return y;
+    },
+    rowTop() { return list.top + p._homeDrag.y - view.scroll; }
+  };
+}
+
+test('首页末行贴上沿持续滚到第一位，行到顶后停滚，松手完整露出且只修改草稿', async () => {
+  const env = await dragView({ scroll: 1620 }); const p = env.page;
+  env.start(24); p.moveHomeDrag(touch('25', 146));
+  for (let i = 0; i < 200 && p._homeDrag.y > 0; i++) {
+    const before = { y: p._homeDrag.y, scroll: env.view.scroll };
+    p.tickHomeDrag();
+    assert.ok(Math.abs((before.y - p._homeDrag.y) - (before.scroll - env.view.scroll)) < 0.001);
+    assert.equal(p._homeScrollTop, env.view.scroll);
+  }
+  assert.equal(p._homeDrag.y, 0);
+  const stopped = env.view.scroll;
+  for (let i = 0; i < 10; i++) p.tickHomeDrag();
+  assert.equal(env.view.scroll, stopped);
+  p.endHomeDrag(touch('25', 146, 1, true));
+  assert.equal(ids(p)[0], '25'); assert.equal(env.view.scroll, 0);
+  assert.equal(p.data.homeDirty, true); assert.equal(env.writes.length, 0);
+  assert.equal(env.timers.size, 0);
+});
+
+test('首页首行贴下沿持续滚到末位，松手落位避开底栏，旧滚动回调不带偏位置', async () => {
+  const env = await dragView({ lagScroll: true }); const p = env.page;
+  env.start(0); p.moveHomeDrag(touch('1', 648));
+  for (let i = 0; i < 200 && p._homeDrag.y < 2016; i++) {
+    p.tickHomeDrag(); assert.equal(p._homeScrollTop, env.view.scroll);
+  }
+  assert.equal(p._homeDrag.y, 2016);
+  p.moveHomeDrag(touch('1', 400));
+  const top = env.rowTop();
+  p.onHomeEditorScroll({ detail: { scrollTop: env.view.scroll - 100 } });
+  p.moveHomeDrag(touch('1', 400));
+  assert.equal(env.rowTop(), top);
+  assert.ok(Math.abs(env.rowTop() - (400 - 42)) < 0.5);
+  p.moveHomeDrag(touch('1', 648));
+  p.endHomeDrag(touch('1', 648, 1, true));
+  assert.equal(ids(p).at(-1), '1');
+  assert.ok(env.list.top + 2100 - env.view.scroll <= env.bottom + 0.5);
+  assert.equal(env.timers.size, 0);
+});
+
+test('开始拖动用真实滚动位置校准，停在边缘不动也持续滚，回到中间立即停止', async () => {
+  const env = await dragView({ scroll: 600, staleScroll: true }); const p = env.page;
+  env.start(8);
+  assert.equal(p._homeScrollTop, 600); assert.equal(p._homeDrag.startScroll, 600);
+  p.moveHomeDrag(touch('9', 150));
+  const timer = Array.from(env.timers.values())[0];
+  const before = env.view.scroll; timer(); timer();
+  assert.ok(env.view.scroll < before);
+  p.moveHomeDrag(touch('9', 400));
+  const middle = env.view.scroll; timer();
+  assert.equal(env.view.scroll, middle);
+  assert.ok(Math.abs(env.rowTop() - (400 - 42)) < 0.5);
+  p.cancelHomeDrag();
+  assert.equal(ids(p)[8], '9'); assert.equal(p.data.homeDirty, false);
+  assert.equal(env.timers.size, 0);
+});
+
+test('缺少长按坐标时首个移动建立基准，旧测量和取消手势不干扰下一次拖动', async () => {
+  const env = await dragView({ delayMeasure: true }); const p = env.page;
+  p.startHomeDrag(event({ id: '2' }));
+  p.moveHomeDrag(touch('2', 300)); assert.equal(p._homeDrag.y, 84);
+  p.moveHomeDrag(touch('2', 384)); assert.equal(p._homeDrag.y, 168);
+  p.cancelHomeDrag(); env.start(3);
+  env.pending[0](); assert.equal(p._homeDrag.bounds, null);
+  env.pending[1](); assert.equal(p._homeDrag.bounds.bottom, 650);
+  p.cancelHomeDrag(); assert.equal(ids(p)[1], '2'); assert.equal(env.timers.size, 0);
+});
+
+test('首页编辑列表沿用档口页的拖动手柄和原生滚动，手柄不会触发商品勾选', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../../pages/index/index.wxml'), 'utf8');
+  assert.match(source, /class="list-scroll home-editor-scroll" scroll-y scroll-with-animation="\{\{false\}\}"/);
+  assert.match(source, /class="home-row-drag-handle"[^>]*catchlongpress="startHomeDrag"[^>]*catchtouchmove="moveHomeDrag"[^>]*catchtap="stopPanelTouchMove"/);
+  assert.match(source, /bindtouchcancel="cancelHomeDrag"/);
 });
 
 test('非管理员没有读取入口，迟到的配置响应不会写入已卸载页面', async () => {
