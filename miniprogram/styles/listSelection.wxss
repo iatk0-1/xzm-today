@@ -1,0 +1,54 @@
+/* 固定在屏幕偏下方，虚线的位置作为选择范围的分界。 */
+.select-loaded-divider {
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: calc(160rpx + env(safe-area-inset-bottom));
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  color: #576b95;
+  font-size: 24rpx;
+  line-height: 36rpx;
+}
+.select-loaded-divider::before,
+.select-loaded-divider::after {
+  content: '';
+  flex: 1;
+  min-width: 20rpx;
+  border-top: 2rpx dashed #8898b2;
+}
+.select-loaded-divider text {
+  flex-shrink: 0;
+  padding: 12rpx 20rpx;
+  border-radius: 30rpx;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4rpx 16rpx rgba(31, 41, 51, 0.12);
+}
+
+/* 回到顶部固定在右下角，容器不挡住列表操作。 */
+.list-bottom-tools {
+  position: fixed;
+  right: 24rpx;
+  bottom: calc(24rpx + env(safe-area-inset-bottom));
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  background: transparent;
+  pointer-events: none;
+}
+.list-bottom-tools .back-to-top {
+  flex: 0 0 184rpx;
+  width: 184rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  margin: 0;
+  padding: 0;
+  background: #1f2933;
+  color: #fff;
+  border-radius: 36rpx;
+  font-size: 26rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, .18);
+  pointer-events: auto;
+}

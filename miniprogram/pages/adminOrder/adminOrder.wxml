@@ -2,9 +2,12 @@
 <!-- 原 adminOrder.wxml 已备份为 adminOrder.wxml.bak -->
 
 <!-- 新的基于产品维度的发货页面 -->
-<view class="container">
-  <!-- 筛选与发货操作区随页面滚动 -->
-  <view class="admin-order-header">
+<view class="container" bindtouchstart="onToolbarTouchStart">
+  <view class="collapsible-toolbar-space" style="{{toolbarPlaceholderHeight > 0 ? 'height:' + toolbarPlaceholderHeight + 'px;' : ''}}"></view>
+  <!-- 收起搜索筛选后，保留包含全选和发货按钮的整个操作模块。 -->
+  <view id="collapsible-toolbar" class="admin-order-header collapsible-toolbar">
+    <view class="collapsible-panel {{toolbarCollapseOffset === 0 ? 'is-expanded' : ''}} {{toolbarCollapseHeight > 0 && toolbarCollapseOffset >= toolbarCollapseHeight ? 'is-collapsed' : ''}}" style="{{toolbarSectionStyles[0]}}">
+    <view class="collapsible-panel-content">
     <view class="search-section">
       <view class="search-dismiss-mask" wx:if="{{searchActive}}" bindtap="onSearchConfirm"></view>
       <view class="search-box">
@@ -69,7 +72,9 @@
       </view>
     </view>
 
-    <!-- 工具栏：上排物流与全选，下排发货操作 -->
+    </view>
+    </view>
+    <!-- 全选所在的整个操作模块常驻。 -->
     <view class="toolbar">
       <view class="toolbar-row toolbar-info-row">
         <picker class="logistics-picker" range="{{logisticsAccounts}}" range-key="deliveryName" value="{{logisticsIndex}}" bindchange="onLogisticsChange">
@@ -141,6 +146,7 @@
                   <view class="item-name"><text user-select="{{true}}">{{item.productName}}</text></view>
                   <view class="item-sku"><text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text></view>
                   <view class="item-qty">总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}</view>
+                  <view class="user-remark-line" wx:if="{{item.remark}}"><text user-select="{{true}}">用户备注：{{item.remark}}</text></view>
                   <view class="item-after-sale admin-remark-line" catchtap="editAdminRemark" data-item="{{item}}">管理员备注：{{item.adminRemark || '点击添加'}}</view>
                   <view class="item-after-sale" wx:if="{{item.afterSaleQty > 0}}">{{item.afterSaleStatusText || '售后'}} {{item.afterSaleQty}} 件</view>
                   <view class="failed-unavailable" wx:if="{{!item.canShip}}">当前无可发数量</view>
@@ -203,6 +209,7 @@
                 <view class="item-name"><text user-select="{{true}}">{{item.productName}}</text></view>
                 <view class="item-sku"><text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text></view>
                 <view class="item-qty">总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}</view>
+                <view class="user-remark-line" wx:if="{{item.remark}}"><text user-select="{{true}}">用户备注：{{item.remark}}</text></view>
                 <view class="item-after-sale admin-remark-line" catchtap="editAdminRemark" data-item="{{item}}">管理员备注：{{item.adminRemark || '点击添加'}}</view>
                 <view class="item-after-sale" wx:if="{{item.afterSaleQty > 0}}">
                   <text>{{item.afterSaleStatusText || '售后'}} {{item.afterSaleQty}} 件</text>
@@ -279,7 +286,7 @@
       </view>
 
       <view class="order-items selectable-order-items">
-        <view class="order-item selectable-order-item" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{group.orderId}}" wx:for="{{group.items}}" wx:key="uniqueKey" wx:for-item="item" wx:for-index="itemIndex">
+        <view class="order-item selectable-order-item above-selection-item" bindtap="goToOrderDetail" bindtouchstart="onOrderTouchStart" bindtouchmove="onOrderTouchMove" bindtouchend="onOrderTouchEnd" bindtouchcancel="onOrderTouchCancel" data-order-id="{{group.orderId}}" wx:for="{{group.items}}" wx:key="uniqueKey" wx:for-item="item" wx:for-index="itemIndex" data-selection-key="{{item.uniqueKey}}">
           <!-- 售后占用后无可发数量：不可选、灰色 -->
           <block wx:if="{{!item.canShip}}">
             <view class="selection-column item-selection-column" catchtap="stopPendingShipEvent">
@@ -290,6 +297,7 @@
               <view class="item-name"><text user-select="{{true}}">{{item.productName}}</text></view>
               <view class="item-sku"><text user-select="{{true}}">{{item.skuSpec}} {{item.skuSize}}</text> <text class="refund-tag">{{item.afterSaleStatusText || '售后'}}</text></view>
               <view class="item-qty">售后 {{item.afterSaleQty || 0}} 件，暂无可发数量</view>
+              <view class="user-remark-line" wx:if="{{item.remark}}"><text user-select="{{true}}">用户备注：{{item.remark}}</text></view>
             </view>
           </block>
           <!-- 正常商品：可选、可编辑数量 -->
@@ -306,6 +314,7 @@
               <view class="item-qty">
                 总数：{{item.totalQty}}  已发：{{item.shippedQty}}  未发：{{item.unshippedQty}}
               </view>
+              <view class="user-remark-line" wx:if="{{item.remark}}"><text user-select="{{true}}">用户备注：{{item.remark}}</text></view>
               <view class="item-after-sale admin-remark-line" catchtap="editAdminRemark" data-item="{{item}}">管理员备注：{{item.adminRemark || '点击添加'}}</view>
               <view class="item-after-sale" wx:if="{{item.afterSaleQty > 0}}">
                 <text>{{item.afterSaleStatusText || '售后'}} {{item.afterSaleQty}} 件</text>
@@ -338,7 +347,12 @@
     </view>
   </view>
 
-  <button class="back-to-top" bindtap="backToTop">回到顶部</button>
+  <view class="list-bottom-tools">
+    <button class="back-to-top" bindtap="backToTop">回到顶部</button>
+  </view>
+  <view id="selection-divider" class="select-loaded-divider" wx:if="{{orderGroups.length > 0 && !loading && !loadingMore && !selectingAll}}" bindtap="selectLoadedItems">
+    <text>选中以上所有数据</text>
+  </view>
 
   <view class="modal" wx:if="{{showDateModal}}">
     <view class="modal-mask" bindtap="closeDateModal"></view>

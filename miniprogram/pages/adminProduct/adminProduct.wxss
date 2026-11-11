@@ -1,4 +1,7 @@
+@import "../../styles/collapsibleToolbar.wxss";
+@import "../../styles/listSelection.wxss";
 page { background-color: #f2f2f2; height: 100vh; display: flex; flex-direction: column; }
+.product-collapsible-toolbar { padding: 0; background: #fff; }
 .admin-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
 .admin-header {
@@ -40,9 +43,13 @@ page { background-color: #f2f2f2; height: 100vh; display: flex; flex-direction: 
 .filter-tag.active { color: #1a1a1a; font-weight: 800; box-shadow: inset 0 -4rpx 0 #1a1a1a; }
 
 .product-scroll-area {
+  height: 0; min-height: 0;
   flex: 1; padding: 16rpx; box-sizing: border-box; overflow-y: auto;
 }
 .product-scroll-area.with-batch-bar { padding-bottom: 20rpx; }
+.product-list-bottom-space { height: 120rpx; }
+.product-floating-tools.is-select-mode { bottom: calc(184rpx + env(safe-area-inset-bottom)); }
+.product-selection-divider { bottom: calc(288rpx + env(safe-area-inset-bottom)); }
 .empty-state { padding: 180rpx 0; text-align: center; color: #999; font-size: 26rpx; }
 
 .product-card {

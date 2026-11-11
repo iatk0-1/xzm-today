@@ -38,7 +38,7 @@ function loadPage(relative, timers = []) {
     require(name) {
       if (name.endsWith('/date')) return dateModule.exports;
       if (name.endsWith('/orderPaymentTimeout')) return require('../../utils/orderPaymentTimeout');
-      if (name.endsWith('/pageSync') || name.endsWith('/autoSearch')) return { wrap: page => page };
+      if (name.endsWith('/pageSync') || name.endsWith('/autoSearch') || name.endsWith('/collapsibleToolbar')) return { wrap: page => page };
       if (name.endsWith('/auth')) return { isAdmin: () => false, isStallManager: () => false };
       if (name.endsWith('/inventoryOperations')) return require('../../utils/inventoryOperations');
       return {};

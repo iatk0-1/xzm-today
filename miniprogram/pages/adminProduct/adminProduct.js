@@ -1,6 +1,8 @@
 const { dateTimestamp } = require('../../utils/date');
 const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
+const collapsibleToolbar = require('../../utils/collapsibleToolbar');
+const { getKeysAboveLine } = require('../../utils/selectAboveLine');
 // miniprogram/pages/adminProduct/adminProduct.js
 const api = require('../../utils/api');
 const productManagementQuery = require('../../utils/productManagementQuery');
@@ -11,7 +13,7 @@ const { isProductSoldOut } = require('../../utils/stock');
 const { cardTags, managedCardTags, loadCardTags } = require('../../utils/productCardTags');
 const { beijingParts, hasPendingSchedule } = require('../../utils/productSchedule');
 
-Page(autoSearch.wrap(integrateProductQuickEdit({
+Page(collapsibleToolbar.wrap(autoSearch.wrap(integrateProductQuickEdit({
   data: {
     draftCount: 0,
     products: [],
@@ -39,6 +41,9 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
     selectedProductIds: [],
     selectedCount: 0,
     allSelected: false,
+    selectingAll: false,
+    productScrollTop: 0,
+    batchBarHeight: 0,
     batchOperating: false,
     showProductSchedule: false
   },
@@ -73,6 +78,22 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
     this.clearScheduleRefresh();
   },
 
+  onReady() { this.measureBatchBar(); },
+  onResize() { this.measureBatchBar(); },
+  backToTop() {
+    // 内部 scroll-view 的 scroll-top 需要先同步当前位置，才能重复触发回顶。
+    this.setData({ productScrollTop: this._toolbarScrollTop || 0 },
+      () => this.setData({ productScrollTop: 0 }));
+  },
+  measureBatchBar() {
+    if (!this.data.selectMode || typeof wx.createSelectorQuery !== 'function') return;
+    const measure = () => wx.createSelectorQuery().in(this).select('.batch-bar').boundingClientRect(rect => {
+      if (rect && this.data.selectMode) this.setData({ batchBarHeight: rect.height });
+    }).exec();
+    if (typeof wx.nextTick === 'function') wx.nextTick(measure);
+    else measure();
+  },
+
   clearScheduleRefresh() {
     if (this._scheduleRefreshTimer) clearTimeout(this._scheduleRefreshTimer);
     this._scheduleRefreshTimer = null;
@@ -96,7 +117,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
   },
   async refreshDueScheduleProducts() {
     if (this._schedulePageVisible === false) return;
-    if (this.data.isLoading || this.data.batchOperating || this.data.showProductSchedule || this._scheduleRefreshInFlight) {
+    if (this.data.isLoading || this.data.selectingAll || this.data.batchOperating || this.data.showProductSchedule || this._scheduleRefreshInFlight) {
       this.planScheduleRefresh();
       return;
     }
@@ -147,7 +168,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
 
   // 滚动到底部加载更多（scroll-view 使用）
   loadMore: async function() {
-    if (!this.data.hasMore || this.data.isLoading) return;
+    if (!this.data.hasMore || this.data.isLoading || this.data.selectingAll) return;
     if (this._scheduleListNeedsRefill) {
       await this.refreshDueScheduleProducts();
       if (this._scheduleListNeedsRefill || !this.data.hasMore) return;
@@ -207,7 +228,11 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
   // 改造：从后端 API 加载商品列表（支持分页）
   loadProducts: async function(reset = true) {
     if (this._pageClosed) return;
-    if (reset) this._productQueryVersion = (this._productQueryVersion || 0) + 1;
+    if (reset) {
+      this._productQueryVersion = (this._productQueryVersion || 0) + 1;
+      this._productSelectionVersion = (this._productSelectionVersion || 0) + 1;
+      this.setData({ selectingAll: false });
+    }
     if (this.data.isLoading) {
       if (reset) this._pendingProductsReset = true;
       return;
@@ -238,7 +263,8 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
       await auth.ensureAuthenticated({ silent: true });
       if (this._pageClosed || version !== this._productQueryVersion) return;
       const pageSize = this.data.pageSize;
-      const res = await api.get('/products/query', this.getQueryParams());
+      const query = this.getQueryParams();
+      const res = await api.get('/products/query', query);
       if (this._pageClosed || version !== this._productQueryVersion) return;
 
       let list = (res.content || []).map(item => this.normalizeProduct(item))
@@ -255,6 +281,8 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
         hasMore: hasMore,
         isLoading: false
       });
+      this._loadedProductQuery = query;
+      this.refreshSelectionState();
       this.loadProductTags(list);
       if (reset) this._scheduleListNeedsRefill = false;
       this.planScheduleRefresh();
@@ -492,7 +520,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
       products: this.applySelectionToProducts(products, selectedProductIds),
       selectedProductIds,
       selectedCount: selectedProductIds.length,
-      allSelected: products.length > 0 && selectedInCurrentList === products.length
+      allSelected: !this.data.hasMore && products.length > 0 && selectedInCurrentList === products.length
     });
   },
 
@@ -525,10 +553,12 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
       this.setData({ selectMode: false });
       return;
     }
-    this.setData({ selectMode: true });
+    this.setData({ selectMode: true }, () => this.measureBatchBar());
   },
 
   clearSelection: function() {
+    this._productSelectionVersion = (this._productSelectionVersion || 0) + 1;
+    this.setData({ selectingAll: false });
     this.refreshSelectionState(this.data.products, []);
   },
 
@@ -551,6 +581,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
   },
 
   toggleProductId: function(id) {
+    if (this.data.selectingAll || this.data.batchOperating) return;
     const normalizedId = this.normalizeId(id);
     const selectedProductIds = this.data.selectedProductIds.slice();
     const currentIndex = selectedProductIds.indexOf(normalizedId);
@@ -562,28 +593,75 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
     this.refreshSelectionState(this.data.products, selectedProductIds);
   },
 
-  toggleSelectAllLoaded: function() {
-    if (this.data.products.length === 0) {
-      wx.showToast({ title: '暂无商品可选择', icon: 'none' });
+  toggleSelectAllLoaded: async function() {
+    if (!this.data.selectMode || this.data.isLoading || this.data.selectingAll || this.data.batchOperating) return;
+    if (this.data.allSelected) {
+      this.clearSelection();
       return;
     }
-
-    const visibleIds = this.data.products.map(item => this.normalizeId(item.id));
-    let selectedProductIds;
-    if (this.data.allSelected) {
-      selectedProductIds = this.data.selectedProductIds.filter(id => !visibleIds.includes(this.normalizeId(id)));
-    } else {
-      selectedProductIds = this.data.selectedProductIds.slice();
-      visibleIds.forEach(id => {
-        if (!selectedProductIds.includes(id)) {
-          selectedProductIds.push(id);
-        }
-      });
+    const version = (this._productSelectionVersion || 0) + 1;
+    this._productSelectionVersion = version;
+    // 全量查询开始后，先前的定时刷新和卡片标签响应不再覆盖当前列表。
+    const queryVersion = (this._productQueryVersion || 0) + 1;
+    this._productQueryVersion = queryVersion;
+    const query = { ...(this._loadedProductQuery || this.getQueryParams()), page: 1 };
+    const isCurrent = () => !this._pageClosed && this.data.selectMode
+      && version === this._productSelectionVersion && queryVersion === this._productQueryVersion;
+    this.setData({ selectingAll: true });
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      if (!isCurrent()) return;
+      const grouped = new Map();
+      let page = 1;
+      let hasMore = true;
+      while (hasMore) {
+        const result = await api.get('/products/query', { ...query, page });
+        if (!isCurrent()) return;
+        const content = result.content || [];
+        content.map(item => this.normalizeProduct(item))
+          .filter(item => query.status !== 'scheduled' || item.hasSchedule)
+          .forEach(item => grouped.set(this.normalizeId(item.id), item));
+        hasMore = result.hasNext !== undefined ? result.hasNext : content.length === query.size;
+        page += 1;
+      }
+      const products = [...grouped.values()];
+      await this.loadProductOwners(products);
+      if (!isCurrent()) return;
+      this._productQueryVersion = (this._productQueryVersion || 0) + 1;
+      this._loadedProductQuery = query;
+      this._scheduleListNeedsRefill = false;
+      this.setData({ page, hasMore: false });
+      this.refreshSelectionState(products, products.map(item => this.normalizeId(item.id)));
+      this.loadProductTags(products);
+      if (!products.length) wx.showToast({ title: '暂无商品可选择', icon: 'none' });
+    } catch (err) {
+      if (isCurrent()) wx.showToast({ title: getErrorMessage(err, '查询全部商品失败，请重试'), icon: 'none' });
+    } finally {
+      if (version === this._productSelectionVersion && !this._pageClosed) {
+        this.setData({ selectingAll: false });
+        this.measureBatchBar();
+        this.planScheduleRefresh();
+      }
     }
-    this.refreshSelectionState(this.data.products, selectedProductIds);
+  },
+
+  selectLoadedItems: async function() {
+    if (!this.data.selectMode || this.data.isLoading || this.data.selectingAll || this.data.batchOperating) return;
+    const version = this._productQueryVersion;
+    const selectionVersion = this._productSelectionVersion;
+    const keys = await getKeysAboveLine(this);
+    if (this._pageClosed || !this.data.selectMode || version !== this._productQueryVersion
+      || selectionVersion !== this._productSelectionVersion || this.data.isLoading || this.data.selectingAll || this.data.batchOperating) return;
+    const selectedIds = new Set(this.data.selectedProductIds.map(id => this.normalizeId(id)));
+    this.data.products.forEach(item => {
+      const id = this.normalizeId(item.id);
+      if (keys.has(id)) selectedIds.add(id);
+    });
+    this.refreshSelectionState(this.data.products, [...selectedIds]);
   },
 
   batchDelete: function() {
+    if (this.data.selectingAll) return;
     const selectedCount = this.data.selectedCount;
     if (selectedCount === 0) {
       wx.showToast({ title: '请先选择商品', icon: 'none' });
@@ -686,6 +764,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
   },
 
   openBatchSchedule() {
+    if (this.data.selectingAll) return;
     if (this.data.batchOperating) return;
     if (!this.data.selectedCount) {
       wx.showToast({ title: '请先选择商品', icon: 'none' });
@@ -738,6 +817,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
     this.confirmCancelSchedules([id], false);
   },
   batchCancelSchedules() {
+    if (this.data.selectingAll) return;
     if (!this.data.selectedCount) {
       wx.showToast({ title: '请先选择商品', icon: 'none' });
       return;
@@ -781,6 +861,7 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
   },
 
   batchSetStatus: function(e) {
+    if (this.data.selectingAll) return;
     const status = e.currentTarget.dataset.status;
     const selectedCount = this.data.selectedCount;
     if (selectedCount === 0) {
@@ -892,4 +973,4 @@ Page(autoSearch.wrap(integrateProductQuickEdit({
   submit: 'onSearchConfirm',
   field: 'searchKeyword',
   automatic: 'loadProducts'
-}));
+}), { scrollView: true, blockedFields: ['showRelationPicker', 'showProductSchedule', 'quickEditVisible'] }));

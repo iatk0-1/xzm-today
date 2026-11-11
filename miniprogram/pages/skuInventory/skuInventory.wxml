@@ -1,5 +1,8 @@
-<view class="container">
-  <view class="inventory-toolbar">
+<view class="container" bindtouchstart="onToolbarTouchStart">
+  <view class="collapsible-toolbar-space" style="{{toolbarPlaceholderHeight > 0 ? 'height:' + toolbarPlaceholderHeight + 'px;' : ''}}"></view>
+  <view id="collapsible-toolbar" class="inventory-toolbar collapsible-toolbar">
+    <view class="collapsible-panel {{toolbarCollapseOffset === 0 ? 'is-expanded' : ''}} {{toolbarCollapseHeight > 0 && toolbarCollapseOffset >= toolbarCollapseHeight ? 'is-collapsed' : ''}}" style="{{toolbarSectionStyles[0]}}">
+    <view class="collapsible-panel-content">
     <view wx:if="{{quantityRetryPending}}" class="operation-pending" bindtap="retryQuantityOperation">上次数量操作结果待确认，点此沿用原请求重试</view>
     <view wx:if="{{unbindReviewAvailable}}" class="operation-pending" bindtap="confirmPendingUnbindWaybill">面单取消响应丢失？在物流平台核实取消后，点此登记依据并续办原解绑</view>
     <view class="filter-bar">
@@ -38,10 +41,12 @@
         <button class="search-btn" bindtap="search">搜索</button>
       </view>
     </view>
+    </view>
+    </view>
     <view class="inventory-action-bar">
       <view class="select-all" bindtap="toggleSelectAll">
         <view class="inventory-checkbox {{allSelected ? 'checked' : ''}}"><text wx:if="{{allSelected}}">✓</text></view>
-        <text>全选</text>
+        <text>{{selectingAll ? '正在加载全部...' : '全选'}}</text>
       </view>
       <view class="selection-summary">
         <scroll-view class="selection-summary-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
@@ -58,7 +63,7 @@
     </view>
   </view>
   <view class="product-list">
-    <view class="product-item {{item.selected ? 'selected' : ''}}" wx:for="{{productList}}" wx:key="id">
+    <view class="product-item above-selection-item {{item.selected ? 'selected' : ''}}" wx:for="{{productList}}" wx:key="id" data-selection-key="{{item.id}}">
       <view class="product-select" catchtap="toggleProductSelection" data-id="{{item.id}}">
         <view class="inventory-checkbox {{item.selected ? 'checked' : ''}} {{!item.skus.length || batchReceiveSaving || batchRetryPending ? 'disabled' : ''}}"><text wx:if="{{item.selected}}">✓</text></view>
       </view>
@@ -99,6 +104,13 @@
     </view>
     <view class="empty-state" wx:if="{{!productList.length && !loading}}">暂无符合条件的商品</view>
     <view class="loading-state" wx:if="{{loading}}">加载中...</view>
+  </view>
+
+  <view class="list-bottom-tools">
+    <button class="back-to-top" bindtap="backToTop">回到顶部</button>
+  </view>
+  <view id="selection-divider" class="select-loaded-divider" wx:if="{{productList.length > 0 && !loading && !selectingAll}}" bindtap="selectLoadedItems">
+    <text>选中以上所有数据</text>
   </view>
 
   <view class="modal" wx:if="{{showBatchReceiveModal}}">

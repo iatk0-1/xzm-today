@@ -5,10 +5,12 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const orderNavigation = require('../../utils/orderNavigation');
+const collapsibleToolbar = require('../../utils/collapsibleToolbar');
+const { getKeysAboveLine } = require('../../utils/selectAboveLine');
 const { getExpressName } = require('../../utils/expressCompany');
 const BATCH_TASK_STORAGE = 'admin_order_active_batch_task';
 
-Page({
+Page(collapsibleToolbar.wrap({
   onOrderTouchStart: orderNavigation.onTouchStart,
   onOrderTouchMove: orderNavigation.onTouchMove,
   onOrderTouchEnd: orderNavigation.onTouchEnd,
@@ -734,6 +736,7 @@ Page({
         hasMore: Boolean(res.hasNext),
         page: nextPage
       });
+      this.measureCollapsibleToolbar();
       return true;
     }).catch(err => {
       if (requestVersion === this.pendingRequestVersion) {
@@ -799,6 +802,7 @@ Page({
         afterSaleSummary: item.afterSaleSummary || null,
         afterSaleStatus: item.afterSaleStatus,
         adminRemark: item.adminRemark || '',
+        remark: item.remark || '',
         canShip: unshippedQty > 0,
         shipQty: pendingItem ? Math.min(Number(pendingItem.shipQty) || 0, unshippedQty) : unshippedQty,
         selected: Boolean(pendingItem)
@@ -869,16 +873,30 @@ Page({
       }
     }
     
-    const orderGroups = this.data.orderGroups.map(group => ({
-      ...group,
-      selected: allSelected,
-      items: group.items.map(item => ({ ...item, selected: item.canShip ? allSelected : false }))
-    }));
+    this.setLoadedItemsSelected(allSelected);
+  },
+
+  selectLoadedItems: async function() {
+    if (this.data.selectingAll || this.data.loading || this.data.loadingMore) return;
+    const version = this.pendingRequestVersion;
+    const keys = await getKeysAboveLine(this);
+    if (version !== this.pendingRequestVersion || this.data.selectingAll || this.data.loading || this.data.loadingMore) return;
+    this.setLoadedItemsSelected(true, keys);
+  },
+
+  setLoadedItemsSelected: function(allSelected, keys = null) {
+    const orderGroups = this.data.orderGroups.map(group => {
+      const items = group.items.map(item => keys && !keys.has(String(item.uniqueKey)) ? item
+        : { ...item, selected: item.canShip ? allSelected : false });
+      const selectable = items.filter(item => item.canShip);
+      return { ...group, items, selected: selectable.length > 0 && selectable.every(item => item.selected) };
+    });
 
     this.updateSelectedItems(orderGroups);
   },
 
   toggleGroupSelect: function(e) {
+    if (this.data.selectingAll) return;
     const index = e.currentTarget.dataset.index;
     const group = this.data.orderGroups[index];
     
@@ -892,6 +910,7 @@ Page({
   },
 
   toggleItemSelect: function(e) {
+    if (this.data.selectingAll) return;
     const groupIndex = e.currentTarget.dataset.groupIndex;
     const itemIndex = e.currentTarget.dataset.itemIndex;
     
@@ -1945,4 +1964,5 @@ Page({
     const seconds = date.getSeconds().toString().padStart(2, '0');
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
-});
+}, { blockedFields: ['showDateModal', 'showSkuModal', 'showPreviewModal', 'showPendingShipList',
+  'showBatchProgress', 'showRecentBatchTasks', 'showFailedWaybills'] }));

@@ -1,4 +1,5 @@
-<view class="admin-wrapper">
+<view class="admin-wrapper" bindtouchstart="onToolbarTouchStart">
+  <view id="collapsible-toolbar" class="collapsible-toolbar product-collapsible-toolbar">
   <!-- 顶部操作栏 -->
   <view class="admin-header">
     <view class="page-title">商品管理台</view>
@@ -14,6 +15,8 @@
     </view>
   </view>
 
+  <view class="collapsible-panel {{toolbarCollapseOffset === 0 ? 'is-expanded' : ''}} {{toolbarCollapseHeight > 0 && toolbarCollapseOffset >= toolbarCollapseHeight ? 'is-collapsed' : ''}}" style="{{toolbarSectionStyles[0]}}">
+  <view class="collapsible-panel-content">
   <view class="product-toolbar">
     <view class="search-input-wrapper">
       <input class="search-input" placeholder="搜索名称、货号、档口或标签" value="{{searchKeyword}}" bindinput="onSearchInput" confirm-type="search" bindconfirm="onSearchConfirm" focus="{{searchFocus}}" />
@@ -53,14 +56,18 @@
     </view>
   </view>
 
-  <scroll-view scroll-y class="product-scroll-area {{selectMode ? 'with-batch-bar' : ''}}" enable-flex enhanced refresher-enabled="true" refresher-triggered="{{isRefreshing}}" refresher-background="#f2f2f2" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore">
+  </view>
+  </view>
+  </view>
+  <scroll-view id="admin-product-list" scroll-y scroll-top="{{productScrollTop}}" scroll-with-animation="{{true}}" class="product-scroll-area {{selectMode ? 'with-batch-bar' : ''}}" enable-flex enhanced refresher-enabled="true" refresher-triggered="{{isRefreshing}}" refresher-background="#f2f2f2" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore" bindscroll="onToolbarScroll">
+    <view class="collapsible-toolbar-space" style="{{toolbarPlaceholderHeight > 0 ? 'height:' + toolbarPlaceholderHeight + 'px;' : ''}}"></view>
 
     <view class="empty-state" wx:if="{{products.length === 0 && !isLoading}}">
       <view class="empty-text" wx:if="{{searchKeyword || activeStatus !== 'all' || selectedStall || selectedTag}}">没有找到符合条件的商品</view>
       <view class="empty-text" wx:else>系统里还没有任何商品</view>
     </view>
 
-    <view class="product-card {{item.selected ? 'selected' : ''}}" wx:for="{{products}}" wx:key="id">
+    <view class="product-card above-selection-item {{item.selected ? 'selected' : ''}}" wx:for="{{products}}" wx:key="id" data-selection-key="{{item.id}}">
 
       <view class="card-main" bindtap="handleProductTap" data-id="{{item.id}}">
         <view class="product-select" wx:if="{{selectMode}}" catchtap="toggleProductSelect" data-id="{{item.id}}">
@@ -126,7 +133,15 @@
       </view>
 
     </view>
+    <view class="product-list-bottom-space"></view>
   </scroll-view>
+
+  <view class="list-bottom-tools product-floating-tools {{selectMode ? 'is-select-mode' : ''}}" style="{{selectMode && batchBarHeight > 0 ? 'bottom:' + (batchBarHeight + 12) + 'px;' : ''}}">
+    <button class="back-to-top" bindtap="backToTop">回到顶部</button>
+  </view>
+  <view id="selection-divider" class="select-loaded-divider product-selection-divider" wx:if="{{selectMode && products.length > 0 && !isLoading && !selectingAll}}" style="{{batchBarHeight > 0 ? 'bottom:' + (batchBarHeight + 64) + 'px;' : ''}}" bindtap="selectLoadedItems">
+    <text>选中以上所有数据</text>
+  </view>
 
   <view class="relation-picker" wx:if="{{showRelationPicker}}">
     <view class="relation-picker-mask" catchtap="closeRelationPicker"></view>
@@ -149,7 +164,7 @@
       <view class="batch-count">已选 {{selectedCount}} 个</view>
       <view class="batch-selection-actions">
         <view class="batch-clear cancel-schedule {{selectedCount === 0 || batchOperating ? 'disabled' : ''}}" bindtap="batchCancelSchedules">取消定时</view>
-        <view class="batch-clear" bindtap="toggleSelectAllLoaded">{{allSelected ? '取消全选' : '全选当前列表'}}</view>
+        <view class="batch-clear {{selectingAll ? 'disabled' : ''}}" bindtap="toggleSelectAllLoaded">{{selectingAll ? '正在查询全部...' : (allSelected ? '取消全选' : '全选')}}</view>
         <view class="batch-clear {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="clearSelection">清空</view>
       </view>
     </view>

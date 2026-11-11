@@ -7,6 +7,7 @@ const api = require('../../utils/api');
 const orderPricing = require('../../utils/orderPricing');
 const auth = require('../../utils/auth');
 const config = require('../../utils/config');
+const { getKeysAboveLine } = require('../../utils/selectAboveLine');
 
 Page(autoSearch.wrap(pageSync.wrap({
   data: {
@@ -15,6 +16,10 @@ Page(autoSearch.wrap(pageSync.wrap({
     recommendList: [],
     pendingOrderList: [],
     loading: false,
+    selectingAll: false,
+    filterPanelHeight: 0,
+    filterCollapseOffset: 0,
+    toolbarPlaceholderHeight: 0,
     selectedCount: 0,
     totalQty: 0,
     totalCost: '0.00',
@@ -52,6 +57,56 @@ Page(autoSearch.wrap(pageSync.wrap({
     this.setData({ isStallManager: auth.isStallManager() });
     this.loadFilterOptions();
     if (!auth.isStallManager()) this.loadRecommendations();
+  },
+
+  onReady: function() {
+    this.measurePickingToolbar();
+  },
+
+  onResize: function() {
+    this.measurePickingToolbar();
+  },
+
+  measurePickingToolbar: function() {
+    if (typeof wx.createSelectorQuery !== 'function') return;
+    const measure = () => {
+      const query = wx.createSelectorQuery().in(this);
+      query.select('#picking-toolbar').boundingClientRect();
+      query.select('#picking-filter-content').boundingClientRect();
+      query.exec(results => {
+        const [toolbar, filters] = results || [];
+        if (!toolbar || !filters || filters.height <= 0) return;
+        const previousOffset = this.data.filterCollapseOffset;
+        this.setData({
+          filterPanelHeight: filters.height,
+          filterCollapseOffset: Math.min(previousOffset, filters.height),
+          // 占位始终保留完整高度，收放固定工具栏不会改变列表位置或触发反向滚动。
+          toolbarPlaceholderHeight: toolbar.height + previousOffset
+            + (this.data.filterPanelHeight > 0 ? filters.height - this.data.filterPanelHeight : 0)
+        });
+      });
+    };
+    if (typeof wx.nextTick === 'function') wx.nextTick(measure);
+    else measure();
+  },
+
+  onPageScroll: function(e) {
+    const scrollTop = Math.max(0, Number(e.scrollTop) || 0);
+    const previousTop = this._pickingScrollTop || 0;
+    this._pickingScrollTop = scrollTop;
+    if (this._pickingReturningToTop || scrollTop === 0) {
+      if (this.data.filterCollapseOffset !== 0) this.setData({ filterCollapseOffset: 0 });
+      if (scrollTop === 0) this._pickingReturningToTop = false;
+      return;
+    }
+    if (!this.data.filterPanelHeight || this.data.showOrderModal || this.data.showRefundModal || this.data.showCostModal) return;
+    const offset = Math.max(0, Math.min(this.data.filterPanelHeight,
+      this.data.filterCollapseOffset + scrollTop - previousTop));
+    if (offset !== this.data.filterCollapseOffset) this.setData({ filterCollapseOffset: offset });
+  },
+
+  onPickingTouchStart: function() {
+    this._pickingReturningToTop = false;
   },
 
   goToRelatedOrders: function(e) {
@@ -460,19 +515,22 @@ Page(autoSearch.wrap(pageSync.wrap({
     this.updateSelectedInfo();
 
     if (reset) {
+      this._recommendQueryVersion = (this._recommendQueryVersion || 0) + 1;
       this.setData({
         page: 1,
         recommendList: [],
         filteredList: [],
         hasMore: true,
-        allSelected: false
+        allSelected: false,
+        selectingAll: false
       });
     }
     
     if (!this.data.hasMore) return;
     
     this.setData({ loading: true });
-    const params = this.getQueryParams();
+    if (reset || !this._recommendQueryParams) this._recommendQueryParams = this.getQueryParams();
+    const params = { ...this._recommendQueryParams, page: this.data.page };
     try {
       await auth.ensureAuthenticated({ silent: true });
       // 调用分页搜索接口
@@ -501,11 +559,13 @@ Page(autoSearch.wrap(pageSync.wrap({
         loading: false
       });
       this.updateSelectedInfo();
+      return true;
     } catch (err) {
       if (requestId !== this._recommendRequestId) return;
       console.error('加载推荐拣货单失败:', err);
       wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
       this.setData({ loading: false });
+      return false;
     }
   },
 
@@ -524,16 +584,18 @@ Page(autoSearch.wrap(pageSync.wrap({
     }
     this.updateSelectedInfo();
     const selectable = this.data.filteredList.filter(item => Number(item.recommendQty) > 0);
-    this.setData({ allSelected: selectable.length > 0 && selectable.every(item => item.selected) });
+    this.setData({ allSelected: !this.data.hasMore && selectable.length > 0 && selectable.every(item => item.selected) });
   },
 
   onReachBottom: function() {
-    if (this.data.hasMore && !this.data.loading) {
+    if (this.data.hasMore && !this.data.loading && !this.data.selectingAll) {
       this.loadRecommendations(false);
     }
   },
 
   backToTop: function() {
+    this._pickingReturningToTop = (this._pickingScrollTop || 0) > 0;
+    this.setData({ filterCollapseOffset: 0 });
     wx.pageScrollTo({ scrollTop: 0, duration: 300 });
   },
 
@@ -543,7 +605,10 @@ Page(autoSearch.wrap(pageSync.wrap({
     this.setData({ 
       filterStatus: status,
       skuKeyword: ''
-    }, () => this.loadRecommendations(true));  // 重置并重新加载
+    }, () => {
+      this.measurePickingToolbar();
+      this.loadRecommendations(true);
+    });  // 重置并重新加载
   },
 
   // 按档口筛选
@@ -573,6 +638,7 @@ Page(autoSearch.wrap(pageSync.wrap({
 
   // 切换选中状态
   toggleSelect: function(e) {
+    if (this.data.selectingAll) return;
     const index = e.currentTarget.dataset.index;
     const item = this.data.filteredList[index];
     
@@ -589,20 +655,37 @@ Page(autoSearch.wrap(pageSync.wrap({
   },
 
   // 全选/取消全选
-  toggleSelectAll: function() {
+  toggleSelectAll: async function() {
+    if (this.data.loading || this.data.selectingAll) return;
     const newAllSelected = !this.data.allSelected;
-    const selectableItems = this.data.filteredList.filter(item => Number(item.recommendQty) > 0);
+    const version = this._recommendQueryVersion;
+    this.setData({ selectingAll: true });
+    try {
+      while (newAllSelected && this.data.hasMore) {
+        const loaded = await this.loadRecommendations(false);
+        if (!loaded || version !== this._recommendQueryVersion) return;
+      }
+      if (version !== this._recommendQueryVersion) return;
+      this.setLoadedItemsSelected(newAllSelected);
+    } finally {
+      if (version === this._recommendQueryVersion) this.setData({ selectingAll: false });
+    }
+  },
 
-    this.data.filteredList.forEach(item => {
-      if (Number(item.recommendQty) > 0) item.selected = newAllSelected;
-    });
-    
-    this.setData({
-      allSelected: newAllSelected && selectableItems.length > 0,
-      filteredList: this.data.filteredList,
-      recommendList: this.data.recommendList
-    });
-    
+  // 按悬浮虚线的实际位置选择，不请求后续分页。
+  selectLoadedItems: async function() {
+    if (this.data.loading || this.data.selectingAll) return;
+    const version = this._recommendRequestId;
+    const keys = await getKeysAboveLine(this);
+    if (version !== this._recommendRequestId || this.data.loading || this.data.selectingAll) return;
+    this.setLoadedItemsSelected(true, keys);
+  },
+
+  setLoadedItemsSelected: function(selected, keys = null) {
+    const recommendList = this.data.recommendList.map(item => keys && !keys.has(String(item.skuId)) ? item : ({
+      ...item, selected: Number(item.recommendQty) > 0 && selected
+    }));
+    this.setData({ recommendList, filteredList: recommendList });
     this.updateSelectedInfo();
   },
 
@@ -621,7 +704,7 @@ Page(autoSearch.wrap(pageSync.wrap({
     const selectable = this.data.filteredList.filter(item => Number(item.recommendQty) > 0);
     this.setData({ pendingOrderList, selectedCount: pendingOrderList.length,
       totalQty: pendingOrderList.reduce((sum, item) => sum + this.parseOrderQty(item.qty), 0),
-      allSelected: selectable.length > 0 && selectable.every(item => item.selected) });
+      allSelected: !this.data.hasMore && selectable.length > 0 && selectable.every(item => item.selected) });
   },
 
   // 图片加载失败处理

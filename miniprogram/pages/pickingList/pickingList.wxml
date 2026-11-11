@@ -1,6 +1,8 @@
 <!-- miniprogram/pages/pickingList/pickingList.wxml -->
 <page-meta page-style="{{showOrderModal || showRefundModal ? 'overflow: hidden;' : ''}}"></page-meta>
-<view class="container">
+<view class="container" bindtouchstart="onPickingTouchStart">
+  <view class="picking-toolbar-space" style="{{toolbarPlaceholderHeight > 0 ? 'height:' + toolbarPlaceholderHeight + 'px;' : ''}}"></view>
+  <view id="picking-toolbar" class="picking-toolbar">
   <!-- 顶部导航栏 -->
   <view class="header-bar">
     <view class="header-main">
@@ -11,6 +13,8 @@
   </view>
 
   <!-- 顶部筛选栏 -->
+  <view class="picking-filter-reveal {{filterPanelHeight > 0 && filterCollapseOffset >= filterPanelHeight ? 'is-collapsed' : ''}}" style="{{filterPanelHeight > 0 ? 'height:' + (filterPanelHeight - filterCollapseOffset) + 'px;' : ''}}">
+  <view id="picking-filter-content" class="picking-filter-content">
   <view class="filter-bar">
     <view class="filter-tabs">
       <view class="tab-item {{filterStatus === 'pending' ? 'active' : ''}}" bindtap="setFilter" data-status="pending">
@@ -53,24 +57,27 @@
     </view>
   </view>
 
+  </view>
+  </view>
   <!-- 操作栏 -->
   <view class="action-bar" wx:if="{{filterStatus === 'pending'}}">
     <view class="select-all" bindtap="toggleSelectAll">
       <view class="checkbox {{allSelected ? 'checked' : ''}}">
         <text wx:if="{{allSelected}}">✓</text>
       </view>
-      <text>全选</text>
+      <text>{{selectingAll ? '正在加载全部...' : '全选'}}</text>
     </view>
     <view class="selected-info {{selectedCount === 0 ? 'empty' : ''}}">
       <text wx:if="{{selectedCount > 0}}">待报 {{selectedCount}} 个 SKU，共 {{totalQty}} 件</text>
       <text wx:else>未选择商品</text>
     </view>
-    <button class="btn-order" bindtap="createPurchaseOrder" disabled="{{selectedCount === 0}}">去报单</button>
+    <button class="btn-order" bindtap="createPurchaseOrder" disabled="{{selectedCount === 0 || selectingAll}}">去报单</button>
+  </view>
   </view>
 
   <!-- 推荐列表 -->
   <view class="recommend-list">
-    <view class="recommend-item {{item.selected ? 'selected' : ''}} {{filterStatus === 'pending' && item.recommendQty > 0 ? 'has-refund has-checkbox' : ''}}" wx:for="{{recommendList}}" wx:key="skuId" bindtap="goToRelatedOrders" data-index="{{index}}">
+    <view class="recommend-item above-selection-item {{item.selected ? 'selected' : ''}} {{filterStatus === 'pending' && item.recommendQty > 0 ? 'has-refund has-checkbox' : ''}}" wx:for="{{recommendList}}" wx:key="skuId" bindtap="goToRelatedOrders" data-index="{{index}}" data-selection-key="{{item.skuId}}">
       <view class="item-checkbox" wx:if="{{filterStatus === 'pending' && item.recommendQty > 0}}" catchtap="toggleSelect" data-index="{{index}}">
         <view class="checkbox {{item.selected ? 'checked' : ''}}">
           <text wx:if="{{item.selected}}">✓</text>
@@ -137,7 +144,12 @@
     </view>
   </view>
 
-  <button class="back-to-top" bindtap="backToTop">回到顶部</button>
+  <view class="list-bottom-tools">
+    <button class="back-to-top" bindtap="backToTop">回到顶部</button>
+  </view>
+  <view id="selection-divider" class="select-loaded-divider" wx:if="{{filterStatus === 'pending' && recommendList.length > 0 && !loading && !selectingAll}}" bindtap="selectLoadedItems">
+    <text>选中以上所有数据</text>
+  </view>
 
   <view class="modal" wx:if="{{showRefundModal}}" catchtouchmove="stopModalTouchMove">
     <view class="modal-mask" bindtap="closeRefundModal"></view>

@@ -23,6 +23,7 @@ Module._load = originalLoad;
 function page() {
   const value = { ...config, data: JSON.parse(JSON.stringify(config.data)) };
   value.setData = (patch, callback) => { Object.assign(value.data, patch); if (callback) callback(); };
+  value.data.hasMore = false;
   value.data.productList = [
     { id: '1', name: '棉袄', coverUrl: '/cover.jpg', skus: [
       { id: '11', spec: '红色', size: 'M', imageUrl: '/red.jpg', shortageQty: 3 },
@@ -123,10 +124,11 @@ test('全0和负数小数等无效输入不提交，保留原输入供修正', a
   assert.equal(storage.size, 0);
 });
 
-test('翻页和换筛选保留已有选择及待入库，全选只操作当前加载商品', async () => {
+test('翻页和换筛选保留已有选择及待入库，取消全选只影响当前筛选商品', async () => {
   const inventory = page();inventory.toggleSelectAll();
   inventory.setCardReceiveQty('1', '11', 2);
   inventory.data.page = 2;
+  inventory.data.hasMore = true;
   handler = () => ({ content: [{ productId: '4', productName: '新商品', skuId: '41', qty: 0 }], hasNext: false });
   await inventory.loadProducts(false);
   assert.equal(inventory.data.selectedCount, 2);

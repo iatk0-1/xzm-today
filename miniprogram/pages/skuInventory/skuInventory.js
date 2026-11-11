@@ -1,9 +1,11 @@
 const { getErrorMessage } = require('../../utils/error');
 const autoSearch = require('../../utils/autoSearch');
+const collapsibleToolbar = require('../../utils/collapsibleToolbar');
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const quantityOperation = require('../../utils/quantityOperation');
 const { beijingParts } = require('../../utils/productSchedule');
+const { getKeysAboveLine } = require('../../utils/selectAboveLine');
 const inventoryTabFields = { shortage: 'shortageQty', stock: 'availableQty', abnormal: 'abnormalQty' };
 
 function normalizeSku(row) {
@@ -30,7 +32,7 @@ function batchQuantity(value) {
   return Number.isSafeInteger(qty) && qty <= 2147483647 ? qty : null;
 }
 
-Page(autoSearch.wrap({
+Page(collapsibleToolbar.wrap(autoSearch.wrap({
   data: {
     productList: [], loading: false, keyword: '', inventoryTab: 'all',
     inventoryTabs: [
@@ -45,7 +47,7 @@ Page(autoSearch.wrap({
     quantityRetryPending: false, unbindReviewAvailable: false,
     saving: false, showShippingModal: false, shippingLoading: false,
     shippingProducts: [], matching: false, canUseStockShipping: false,
-    selectedCount: 0, allSelected: false,
+    selectedCount: 0, allSelected: false, selectingAll: false,
     pendingReceiveItems: [], pendingReceiveTotal: 0, pendingReceiveProductCount: 0,
     showBatchReceiveModal: false, batchReceiveItems: [], batchReceiveSource: 'normal',
     batchReceiveTotal: 0, batchReceiveSkuCount: 0, batchReceiveSaving: false, batchRetryPending: false
@@ -69,7 +71,10 @@ Page(autoSearch.wrap({
     }
   },
   onReachBottom() {
-    if (this.data.hasMore && !this.data.loading) this.loadProducts(false);
+    if (this.data.hasMore && !this.data.loading && !this.data.selectingAll) this.loadProducts(false);
+  },
+  backToTop() {
+    wx.pageScrollTo({ scrollTop: 0, duration: 300 });
   },
   async loadFilterOptions() {
     try {
@@ -93,17 +98,25 @@ Page(autoSearch.wrap({
     const version = (this._listVersion || 0) + 1;
     this._listVersion = version;
     this.rememberReceiveProducts();
-    if (reset) this.setData({ page: 1, productList: [], hasMore: true, allSelected: false });
+    if (reset) {
+      this._inventoryQueryVersion = (this._inventoryQueryVersion || 0) + 1;
+      this.setData({ page: 1, productList: [], hasMore: true, allSelected: false, selectingAll: false });
+    }
     this.setData({ loading: true });
     try {
+      if (reset || !this._inventoryQueryParams) {
+        const query = { size: this.data.pageSize, tab: this.data.inventoryTab };
+        const keyword = this.data.keyword.trim();
+        if (keyword) query.keyword = keyword;
+        if (this.data.selectedStall !== '') query.stallId = this.data.selectedStall;
+        if (this.data.selectedTag !== '') query.tagId = this.data.selectedTag;
+        if (this.data.dateRange.startDate) query.startDate = this.data.dateRange.startDate;
+        if (this.data.dateRange.endDate) query.endDate = this.data.dateRange.endDate;
+        this._inventoryQueryParams = query;
+      }
+      const query = { ...this._inventoryQueryParams, page: this.data.page };
       await auth.ensureAuthenticated({ silent: true });
-      const query = { page: this.data.page, size: this.data.pageSize, tab: this.data.inventoryTab };
-      const keyword = this.data.keyword.trim();
-      if (keyword) query.keyword = keyword;
-      if (this.data.selectedStall !== '') query.stallId = this.data.selectedStall;
-      if (this.data.selectedTag !== '') query.tagId = this.data.selectedTag;
-      if (this.data.dateRange.startDate) query.startDate = this.data.dateRange.startDate;
-      if (this.data.dateRange.endDate) query.endDate = this.data.dateRange.endDate;
+      if (this._listVersion !== version) return;
       const result = await api.get('/sku-inventory/query', query);
       if (this._listVersion !== version) return;
       const existing = reset ? [] : this.data.productList;
@@ -121,11 +134,14 @@ Page(autoSearch.wrap({
         hasMore: Boolean(result.hasNext), loading: false
       });
       this.updateProductSelection();
+      this.measureCollapsibleToolbar();
+      return true;
     } catch (err) {
       if (this._listVersion !== version) return;
       console.error('加载仓库库存失败:', err);
       wx.showToast({ title: getErrorMessage(err, '加载库存失败'), icon: 'none' });
       this.setData({ loading: false });
+      return false;
     }
   },
   formatCalendarDate: function(date) {
@@ -274,23 +290,45 @@ Page(autoSearch.wrap({
     this.setData({
       productList: this.data.productList.map(product => this.inventoryProductView(product)),
       selectedCount: selected.length,
-      allSelected: selectable.length > 0 && selectable.every(product => product.selected),
+      allSelected: !this.data.hasMore && selectable.length > 0 && selectable.every(product => product.selected),
       pendingReceiveItems,
       pendingReceiveTotal: pendingReceiveItems.reduce((sum, item) => sum + item.qty, 0),
       pendingReceiveProductCount: new Set(pendingReceiveItems.map(item => String(item.productId))).size
     });
   },
   toggleProductSelection(e) {
-    if (this.data.batchReceiveSaving || this.data.batchRetryPending) return;
+    if (this.data.batchReceiveSaving || this.data.batchRetryPending || this.data.selectingAll) return;
     const id = e.currentTarget.dataset.id;
     this.setData({ productList: this.data.productList.map(product => String(product.id) === String(id)
       && product.skus.length ? { ...product, selected: !product.selected } : product) });
     this.updateProductSelection();
   },
-  toggleSelectAll() {
-    if (this.data.batchReceiveSaving || this.data.batchRetryPending) return;
+  async toggleSelectAll() {
+    if (this.data.batchReceiveSaving || this.data.batchRetryPending || this.data.loading || this.data.selectingAll) return;
     const selected = !this.data.allSelected;
-    this.setData({ productList: this.data.productList.map(product => ({ ...product, selected: selected && product.skus.length > 0 })) });
+    const version = this._inventoryQueryVersion;
+    this.setData({ selectingAll: true });
+    try {
+      while (selected && this.data.hasMore) {
+        const loaded = await this.loadProducts(false);
+        if (!loaded || version !== this._inventoryQueryVersion) return;
+      }
+      if (version !== this._inventoryQueryVersion) return;
+      this.setLoadedItemsSelected(selected);
+    } finally {
+      if (version === this._inventoryQueryVersion) this.setData({ selectingAll: false });
+    }
+  },
+  async selectLoadedItems() {
+    if (this.data.batchReceiveSaving || this.data.batchRetryPending || this.data.loading || this.data.selectingAll) return;
+    const version = this._listVersion;
+    const keys = await getKeysAboveLine(this);
+    if (version !== this._listVersion || this.data.batchReceiveSaving || this.data.batchRetryPending || this.data.loading || this.data.selectingAll) return;
+    this.setLoadedItemsSelected(true, keys);
+  },
+  setLoadedItemsSelected(selected, keys = null) {
+    this.setData({ productList: this.data.productList.map(product => keys && !keys.has(String(product.id)) ? product
+      : { ...product, selected: selected && product.skus.length > 0 }) });
     this.updateProductSelection();
   },
   setCardReceiveQty(productId, skuId, qty) {
@@ -620,4 +658,6 @@ Page(autoSearch.wrap({
     } catch (err) { wx.showToast({ title: getErrorMessage(err, '匹配发货订单失败'), icon: 'none' }); }
     finally { this.setData({ matching: false }); }
   },
-}, { input: 'onKeywordInput', submit: 'search', field: 'keyword' }));
+}, { input: 'onKeywordInput', submit: 'search', field: 'keyword' }), {
+  blockedFields: ['showDateModal', 'showBatchReceiveModal', 'showShippingModal']
+}));

@@ -87,7 +87,7 @@ function loadPage(name, { fail = false, detail = {}, get } = {}) {
         page.submitDraftProduct = data => page.data.editId
           ? write('put', '/products/' + page.data.editId, data) : write('post', '/products', data);
       } };
-      if (moduleName.endsWith('/autoSearch')) return { wrap: page => page };
+      if (moduleName.endsWith('/autoSearch') || moduleName.endsWith('/collapsibleToolbar')) return { wrap: page => page };
       if (moduleName.endsWith('/productManagementQuery')) return require('../../utils/productManagementQuery');
       if (moduleName.endsWith('/stock')) return require('../../utils/stock');
       if (moduleName.endsWith('/managerFinance')) return require('../../utils/managerFinance');

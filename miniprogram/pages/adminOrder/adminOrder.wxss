@@ -1,15 +1,19 @@
+@import "../../styles/listSelection.wxss";
+@import "../../styles/collapsibleToolbar.wxss";
 page { background-color: #f2f2f2; }
+.user-remark-line { margin-top: 8rpx; color: #576b95; font-size: 24rpx; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
 .item-image.refunded { opacity: 0.4; }
 .refund-tag { color: #e74c3c; font-size: 22rpx; margin-left: 8rpx; }
 .item-checkbox.disabled { background: #ddd; }
 .container {
   min-height: 100vh;
-  padding: 16rpx;
+  padding: 0 16rpx;
   padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
-.admin-order-header { width: 100%; min-width: 0; box-sizing: border-box; }
-.search-section { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; width: 100%; max-width: 100%; box-sizing: border-box; }
+.admin-order-header { position: static; width: 100%; min-width: 0; box-sizing: border-box; }
+.admin-order-header.collapsible-toolbar { position: fixed; background: #f2f2f2; }
+.search-section { position: static; background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; width: 100%; max-width: 100%; box-sizing: border-box; }
 .search-dismiss-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 950; }
 .search-box { position: relative; z-index: 951; }
 .search-input-wrapper { display: flex; gap: 12rpx; margin-bottom: 16rpx; }
@@ -125,6 +129,7 @@ page { background-color: #f2f2f2; }
 
 /* 发货工具栏固定两行，窄屏也不让按钮自行换行。 */
 .toolbar {
+  position: static;
   background: #fff; border-radius: 16rpx; padding: 16rpx 20rpx; margin-bottom: 16rpx;
   display: flex; flex-direction: column; gap: 12rpx;
   width: 100%; max-width: 100%; box-sizing: border-box;
@@ -179,12 +184,6 @@ page { background-color: #f2f2f2; }
 
 .order-list-container { width: 100%; box-sizing: border-box; }
 .order-list { background: transparent; border-radius: 0; overflow: visible; width: 100%; max-width: 100%; padding-bottom: 16rpx; box-sizing: border-box; }
-.back-to-top {
-  position: fixed; right: 24rpx; bottom: calc(24rpx + env(safe-area-inset-bottom)); z-index: 900;
-  width: 184rpx; height: 72rpx; line-height: 72rpx; margin: 0; padding: 0;
-  background: #1a1a1a; color: #fff; border-radius: 36rpx; font-size: 26rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, .18);
-}
 .order-group { background: #fff; border-radius: 16rpx; overflow: hidden; margin-bottom: 16rpx; width: 100%; max-width: 100%; box-sizing: border-box; }
 .order-group:last-child { margin-bottom: 0; }
 .order-header { display: flex; align-items: flex-start; padding: 20rpx; background: #fafafa; gap: 16rpx; width: 100%; max-width: 100%; box-sizing: border-box; }

@@ -1,31 +1,32 @@
 @import "../../styles/adminProductArticleNo.wxss";
+@import "../../styles/listSelection.wxss";
 /* miniprogram/pages/pickingList/pickingList.wxss */
 page {
   background: #f6f7f9;
 }
 
 .container {
-  padding: 16rpx;
+  padding: 0 16rpx;
   padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
-.back-to-top {
+/* 标题常驻顶部；筛选区随滚动收放，全选栏紧跟在筛选区后面。 */
+.picking-toolbar {
   position: fixed;
-  right: 24rpx;
-  bottom: calc(24rpx + env(safe-area-inset-bottom));
-  z-index: 900;
-  width: 184rpx;
-  height: 72rpx;
-  line-height: 72rpx;
-  margin: 0;
-  padding: 0;
-  background: #1f2933;
-  color: #fff;
-  border-radius: 36rpx;
-  font-size: 26rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, .18);
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  padding: 16rpx 16rpx 0;
+  background: #f6f7f9;
+  box-sizing: border-box;
 }
+.picking-toolbar-space { width: 100%; flex-shrink: 0; }
+.picking-filter-reveal { overflow: hidden; }
+.picking-filter-reveal.is-collapsed { pointer-events: none; }
+.picking-filter-content { padding-bottom: 14rpx; }
+.picking-filter-content .filter-bar { margin-bottom: 0; }
 
 /* 顶部导航栏 */
 .header-bar {

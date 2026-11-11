@@ -25,7 +25,7 @@ for (const [name, handler] of pages) {
     vm.runInNewContext(fs.readFileSync(filename, 'utf8'), {
       require(request) {
         if (request.endsWith('/orderNavigation')) return navigation;
-        if (request.endsWith('/pageSync') || request.endsWith('/autoSearch')) {
+        if (request.endsWith('/pageSync') || request.endsWith('/autoSearch') || request.endsWith('/collapsibleToolbar')) {
           return { wrap: config => config };
         }
         return {};
