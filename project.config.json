@@ -88,6 +88,10 @@
         "type": "folder"
       },
       {
+        "value": "pages/adminWish",
+        "type": "folder"
+      },
+      {
         "value": ".DS_Store",
         "type": "file"
       },

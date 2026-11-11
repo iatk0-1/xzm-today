@@ -117,6 +117,23 @@ test('自助开关关闭时仍可读取本人结算记录，但不能创建新�
   assert.match(env.page.data.error, /未开启自助提现/);
 });
 
+test('线下付款记录使用本人接口并可继续加载历史分页', async () => {
+  const settlementPath = '/stall-managers/offline-settlements/mine';
+  const env = harness({ get: (url, params, next) => url === settlementPath ? {
+    content: [{ id: String(params.page), amount: '20', paymentMethod: '转账' }], totalPages: 2
+  } : next(url) });
+  await env.page.onLoad();
+  await env.page.changeTab({ currentTarget: { dataset: { tab: 'settlements' } } });
+  assert.equal(env.page.data.rows[0].amountLabel, '20.00');
+  assert.equal(env.page.data.rows[0].paymentMethod, '转账');
+  assert.equal(env.page.data.hasNext, true);
+  await env.page.loadList(false);
+  assert.equal(env.page.data.rows.length, 2);
+  assert.equal(env.page.data.hasNext, false);
+  assert.deepEqual(env.calls.filter(call => call.url === settlementPath).map(call => call.params.page), [1, 2]);
+  assert.equal(env.writes.length, 0);
+});
+
 test('自助关闭不删除原申请编号，返回后自动查询原申请且不发起付款', async () => {
   const env = harness();
   const storageKey = 'managerWithdrawalRequest:' + env.user.userId;

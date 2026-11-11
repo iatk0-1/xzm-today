@@ -56,7 +56,6 @@ const requirements = {
   'pages/inventoryProductSelect/inventoryProductSelect': ['inventory'],
   'pages/pickingList/pickingList': ['picking'],
   'pages/purchaseOrders/purchaseOrders': ['purchase', 'picking'],
-  'pages/adminWish/adminWish': ['wishManage'],
   'pages/permissionMenus/index': ['menuConfig'],
   'pages/permissionRoles/index': ['roleManage'],
   'pages/permissionMembers/index': ['memberManage']

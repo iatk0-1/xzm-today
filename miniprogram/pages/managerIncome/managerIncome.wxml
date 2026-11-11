@@ -70,6 +70,7 @@
     <view class="tab {{tab === 'records' ? 'active' : ''}}" data-tab="records" bindtap="changeTab">佣金明细</view>
     <view class="tab {{tab === 'eligibility' ? 'active' : ''}}" data-tab="eligibility" bindtap="changeTab">逐交易结算资格</view>
     <view class="tab {{tab === 'sharing' ? 'active' : ''}}" data-tab="sharing" bindtap="changeTab">分账付款记录</view>
+    <view class="tab {{tab === 'settlements' ? 'active' : ''}}" data-tab="settlements" bindtap="changeTab">线下付款记录</view>
     <view class="tab {{tab === 'withdrawals' ? 'active' : ''}}" data-tab="withdrawals" bindtap="changeTab">历史商家转账</view>
   </scroll-view>
   <view wx:if="{{tab === 'requests'}}" class="card" wx:for="{{rows}}" wx:key="id">
@@ -123,6 +124,13 @@
     <view class="muted">分账单 {{item.outOrderNo}} · 接收结果 {{item.receiverResult || '待查询'}}</view>
     <view class="muted">{{item.updatedAt || item.createdAt}} · {{item.reason}}</view>
     <button disabled="{{busy}}" data-id="{{item.id}}" data-channel="PROFIT_SHARING" bindtap="query">查询原分账单</button>
+  </view>
+  <view wx:if="{{tab === 'settlements'}}" class="card" wx:for="{{rows}}" wx:key="id">
+    <view>¥{{item.amountLabel}} · {{item.reversed ? '已冲正' : '已付款'}}</view>
+    <view class="muted">付款时间 {{item.paidTimeLabel}}</view>
+    <view class="muted" wx:if="{{item.paymentMethod}}">付款方式 {{item.paymentMethod}}</view>
+    <view class="muted" wx:if="{{item.voucher}}">凭证 {{item.voucher}}</view>
+    <view class="muted" wx:if="{{item.reasonLabel}}">备注 {{item.reasonLabel}}</view>
   </view>
   <view wx:if="{{tab === 'withdrawals'}}" class="card" wx:for="{{rows}}" wx:key="id">
     <view>历史商家转账 ¥{{item.amount}} · {{item.statusLabel}}</view>

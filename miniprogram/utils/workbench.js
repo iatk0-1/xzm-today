@@ -19,7 +19,6 @@ const entries = [
   { id: 'shippingTemplates', label: '快递运费模板', url: '/pages/shippingTemplates/shippingTemplates', roles: ['admin'] },
   { id: 'productDrafts', label: '商品草稿', url: '/pages/productDrafts/index', roles: ['admin', 'stall_manager'] },
   { id: 'customerService', label: '客服管理', url: '/pages/customerServiceStaff/customerServiceStaff', roles: [] },
-  { id: 'wishManage', label: '心愿管理', url: '/pages/adminWish/adminWish', roles: [] },
   { id: 'purchase', label: '采购订单', url: '/pages/purchaseOrders/purchaseOrders', roles: [] },
   { id: 'homeProducts', label: '首页商品编排', url: '/pages/index/index', roles: [] },
   { id: 'menuConfig', label: '菜单配置', url: '/pages/permissionMenus/index', roles: [] },

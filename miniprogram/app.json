@@ -174,13 +174,6 @@
       ]
     },
     {
-      "name": "adminWish",
-      "root": "pages/adminWish",
-      "pages": [
-        "adminWish"
-      ]
-    },
-    {
       "name": "shipPartial",
       "root": "pages/shipPartial",
       "pages": [

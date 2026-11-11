@@ -173,7 +173,7 @@ Page(autoSearch.wrap({
   },
 
   editPurchaseProduct(e) {
-    if (this.data.purchaseBusy) return;
+    if (this.data.purchaseBusy || !auth.canAccessMenu('productManage')) return;
     const item = this.data.purchasePreview.find(row => String(row.skuId) === String(e.currentTarget.dataset.skuId));
     if (!item || item.productId == null) return wx.showToast({ title: '商品信息不完整，请刷新列表后重试', icon: 'none' });
     this._purchaseEditedProduct = item.productId;

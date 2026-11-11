@@ -131,6 +131,16 @@ test('直接访问、共享订单详情及未知页面均按菜单检查', () =>
   assert.equal(permissions.canVisit('pages/user/user'), true);
 });
 
+test('仅有心愿管理权限也能进入市集，工作台旧入口和旧路由已撤下', () => {
+  const permissions = loadPermissions({ canAccessMenu: code => code === 'wishManage' });
+  assert.equal(permissions.canVisit('pages/market/market'), true);
+  assert.equal(permissions.canVisit('pages/adminWish/adminWish'), false);
+  const workbench = require('../../utils/workbench');
+  assert.deepEqual(workbench.getOrderedEntries('role_wishes', ['wishManage'], [{ code: 'wishManage' }]), []);
+  const app = require('../../app.json');
+  assert.equal(app.subPackages.some(pkg => pkg.root === 'pages/adminWish'), false);
+});
+
 test('页面先刷新权限再加载业务，撤权后不运行旧页面业务回调', async () => {
   let allow = true;
   let loaded = 0;

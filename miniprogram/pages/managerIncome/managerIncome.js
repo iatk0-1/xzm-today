@@ -9,6 +9,7 @@ const LIST_PATHS = {
   records: '/stall-managers/commission-records/mine',
   eligibility: '/stall-managers/profit-sharing/eligibility/mine',
   sharing: '/stall-managers/profit-sharing/mine',
+  settlements: '/stall-managers/offline-settlements/mine',
   withdrawals: '/stall-managers/withdrawals/mine'
 };
 Page({
@@ -120,6 +121,7 @@ Page({
         : tab === 'records' ? finance.incomeRecordRow(row)
         : tab === 'eligibility' ? finance.incomeEligibilityRow(row)
         : tab === 'sharing' ? finance.profitSharingRow(row)
+        : tab === 'settlements' ? finance.managerDetailRow(row, 'settlements')
         : tab === 'withdrawals' ? finance.legacyTransferRow(row)
           : row);
       this.setData({ rows: reset ? rows : this.data.rows.concat(rows), page,

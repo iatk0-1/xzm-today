@@ -415,7 +415,7 @@ Page({
           orderItemId: item.id,
           qty: item.shipQty
         })),
-        orderIds: [parseInt(this.data.orderId)]
+        orderIds: [String(this.data.orderId)]
       });
 
       wx.hideLoading();
