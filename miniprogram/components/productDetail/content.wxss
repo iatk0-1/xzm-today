@@ -1198,3 +1198,5 @@
 
 /* 原生视频仅占实际画面区域，剩余空间显示白色。 */
 .banner-video-cell { display: flex; align-items: center; justify-content: center; background-color: #fff; }
+
+.sample-product-notice { display: block; margin-top: 16rpx; color: #d93025; font-size: 27rpx; line-height: 1.65; font-weight: 700; white-space: pre-wrap; word-break: break-all; }

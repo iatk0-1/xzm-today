@@ -54,7 +54,8 @@ test('旧商品和空文案使用完整默认须知，自定义文案保留原�
   assert.equal(notices.getPurchaseNotice(null), notices.DEFAULT_PURCHASE_NOTICE);
   assert.equal(notices.getPurchaseNotice('  '), notices.DEFAULT_PURCHASE_NOTICE);
   assert.equal(notices.getPurchaseNotice('第一行\n第二行'), '第一行\n第二行');
-  assert.ok(notices.DEFAULT_PURCHASE_NOTICE.startsWith('【下单即默认同意以下全部规则哦，介意勿拍！】\n'));
+  assert.ok(notices.DEFAULT_PURCHASE_NOTICE.startsWith('小程序内所有商品为档口报单代购'));
+  assert.ok(notices.DEFAULT_PURCHASE_NOTICE.includes('特殊货品，如样衣，瑕疵品等'));
   assert.ok(notices.DEFAULT_PURCHASE_NOTICE.endsWith('感谢理解🙏'));
 });
 

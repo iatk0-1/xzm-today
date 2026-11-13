@@ -197,3 +197,14 @@ test('草稿直接发布也提交优惠绑定，去除展示名称，清空选�
     }
   }
 });
+
+
+test('草稿直接发布保留样衣开关和本商品文案，开启后不允许空提示', async () => {
+  const env = harness({ data: { sampleProduct: true, sampleNotice: '这件样衣的专属提示' } });
+  await env.publish();
+  assert.equal(env.submissions[0].productData.sampleProduct, true);
+  assert.equal(env.submissions[0].productData.sampleNotice, '这件样衣的专属提示');
+  const invalid = harness({ data: { sampleProduct: true, sampleNotice: ' ' } });
+  await assert.rejects(invalid.publish(), /请填写样衣/);
+  assert.equal(invalid.submissions.length, 0);
+});

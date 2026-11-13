@@ -1,5 +1,6 @@
-const DEFAULT_PURCHASE_NOTICE = `【下单即默认同意以下全部规则哦，介意勿拍！】
-小程序内所有商品为档口报单代购，属于代购服务，排单货品，非质量问题不退不换，下单即代表阅读并同意全部规则！
+const DEFAULT_PURCHASE_NOTICE = `小程序内所有商品为档口报单代购，属于代购服务，排单货品，非质量问题不退不换，下单即代表阅读并同意全部规则！
+
+特殊货品，如样衣，瑕疵品等，会有明确提示信息，请仔细阅读规则后再下单，下单支付及锁定订单，不支持退换货！
 
 ✅ 售后总则
 衣服收到请第一时间开箱检查；下水、穿着、拆除吊牌，均无法售后。
@@ -63,4 +64,6 @@ function buildPurchaseNoticeSections(products) {
   }));
 }
 
-module.exports = { DEFAULT_PURCHASE_NOTICE, getPurchaseNotice, buildPurchaseNoticeSections };
+const DEFAULT_SAMPLE_NOTICE = '该商品为样衣/瑕疵品，下单支付后，不接受退换货！如需转单请联系客服协商处理。';
+
+module.exports = { DEFAULT_SAMPLE_NOTICE, DEFAULT_PURCHASE_NOTICE, getPurchaseNotice, buildPurchaseNoticeSections };

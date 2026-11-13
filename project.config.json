@@ -76,6 +76,10 @@
   "packOptions": {
     "ignore": [
       {
+        "value": "pages/chat",
+        "type": "folder"
+      },
+      {
         "value": "pages/liveRoomPublish",
         "type": "folder"
       },

@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function harness(file, { save, record, manager = false, product, promotions, useVideoCover, extractVideoCover } = {}) {
+function harness(file, { save, record, defaults = {}, manager = false, product, promotions, useVideoCover, extractVideoCover } = {}) {
   let definition;
   const events = [];
   const wx = {
@@ -20,6 +20,7 @@ function harness(file, { save, record, manager = false, product, promotions, use
   };
   const api = {
     get: async url => {
+      if (url === '/notice-defaults') return defaults;
       if (url === '/pricing-rules') return [];
       if (url.endsWith('/preference/mine')) return {};
       if (url === '/sizes/categories') return [{ id: '7', name: '默认尺码', sizes: [{ id: '8', name: '均码' }] }];
@@ -28,7 +29,11 @@ function harness(file, { save, record, manager = false, product, promotions, use
         skus: [{ id: '20', spec: '白', size: '均码', retailPrice: '20', costPrice: '10', stockMain: 5 }] };
       return [];
     },
-    post: async url => url.endsWith('/preview') ? { price: '20' } : {}
+    post: async url => url.endsWith('/preview') ? { price: '20' } : {},
+    put: async (url, body) => { events.push(['put', url, body]);
+      defaults[url.endsWith('/sample') ? 'sampleNotice' : 'purchaseNotice'] = body.content;
+      return defaults;
+    }
   };
   const draft = {
     createKey: require('../../utils/draft').createKey,
@@ -436,4 +441,40 @@ test('商品优惠回显、修改、草稿保存与恢复保留首单和互斥�
   await page.saveDraft();
   const saved = events.filter(e => e[0] === 'save').at(-1);
   assert.equal(saved[1].promotions.otherSchemeId, '102');
+});
+
+
+test('新增使用后台默认文案，样衣开关和提示参与草稿、恢复和退出保护，设默认单独写配置', async () => {
+  const defaults = { purchaseNotice: '全后台购买须知', sampleNotice: '全后台样衣提示' };
+  const { page, events } = harness('../../pages/admin/admin.js', { defaults });
+  await page.onLoad({});
+  assert.equal(page.data.purchaseNotice, defaults.purchaseNotice);
+  assert.equal(page.data.sampleNotice, defaults.sampleNotice);
+  assert.equal(page.data.sampleProduct, false);
+  assert.equal(page.hasUnsavedDraftChanges(), false);
+  page.toggleSampleProduct({ detail: { value: true } });
+  page.onInput({ currentTarget: { dataset: { field: 'sampleNotice' } }, detail: { value: '本商品修改后的样衣提示' } });
+  assert.equal(page.hasUnsavedDraftChanges(), true);
+  await page.saveDraft();
+  const saved = events.find(event => event[0] === 'save')[1];
+  assert.equal(saved.sampleProduct, true);
+  assert.equal(saved.sampleNotice, '本商品修改后的样衣提示');
+  await page.saveNoticeDefault({ currentTarget: { dataset: { kind: 'sample' } } });
+  assert.equal(events.find(event => event[0] === 'put')[1], '/notice-defaults/sample');
+  assert.equal(defaults.sampleNotice, '本商品修改后的样衣提示');
+  assert.equal(page.hasUnsavedDraftChanges(), false);
+  await page.restoreDraft({ sampleProduct: true, sampleNotice: '草稿自己的提示', purchaseNotice: '草稿规则' });
+  assert.equal(page.data.sampleNotice, '草稿自己的提示');
+  await page.saveNoticeDefault({ currentTarget: { dataset: { kind: 'purchase' } } });
+  assert.equal(defaults.purchaseNotice, '草稿规则');
+  assert.equal(events.filter(event => event[0] === 'put').length, 2);
+});
+
+test('编辑商品沿用已保存的提示，不被最新全后台默认文案覆盖', async () => {
+  const { page } = harness('../../pages/admin/admin.js', { defaults: { purchaseNotice: '新默认规则', sampleNotice: '新默认提示' },
+    product: { name: '样衣', purchaseNotice: '商品自己的购买须知', sampleProduct: true, sampleNotice: '商品自己的样衣提示', stallIds: [] } });
+  await page.onLoad({ editId: '10' });
+  assert.equal(page.data.sampleProduct, true);
+  assert.equal(page.data.sampleNotice, '商品自己的样衣提示');
+  assert.equal(page.data.purchaseNotice, '商品自己的购买须知');
 });

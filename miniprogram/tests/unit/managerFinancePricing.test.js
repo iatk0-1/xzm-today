@@ -312,6 +312,7 @@ test('负责人进入新增页不加载全局规则，选择档口后只展示�
     segments: [{ lower: 0, upper: null, formula: 'x+5' }] };
   const { page, calls } = pageHarness('../../pages/admin/admin.js', { manager: true,
     get: async url => {
+      if (url === '/notice-defaults') return {};
       if (url === '/stall-managers/stalls/mine') return [{ id: '2', name: '二档口' }];
       if (url === '/stall-managers/mine') return { active: true };
       if (url === '/stalls/2/pricing-rules') return [rule, { ...rule, id: '32', enabled: false }, { ...rule, id: '33', deleted: true }];

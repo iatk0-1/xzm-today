@@ -33,6 +33,7 @@
     <!-- <view class="shipping-info" wx:if="{{product.shippingInfo}}">{{product.shippingInfo}}</view> 发货时间暂时不写 -->
     <view class="detail-title">{{product.title}}</view>
     <view class="detail-price">¥ {{product.displayPrice || product.price}}</view>
+    <text class="sample-product-notice" wx:if="{{product.sampleProduct && product.sampleNotice}}">{{product.sampleNotice}}</text>
 
     <view class="product-options-row">
       <button class="consult-section consult-contact-button" size="mini" open-type="contact" bindcontact="handleCustomerServiceContact" session-from="product:{{product.id}}" show-message-card="true" send-message-title="{{product.title}}" send-message-path="/pages/detail/detail?id={{product.id}}" send-message-img="{{product.image}}">

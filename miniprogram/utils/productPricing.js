@@ -294,6 +294,7 @@ function integrateProductPricing(page, { allowAdminManualPricing = false, rememb
   page.onLoad = async function(options) {
     this._restoreEditorChoices = rememberEditorChoices && (!options || (!options.editId && !options.copyId && !options.productId && !options.convertFromLiveProductId));
     await originalOnLoad.call(this, options);
+    if (this._productLoadFailed) return;
     this.setData({ isAdmin: auth.isAdmin() });
     const savedChoices = this._restoreEditorChoices ? this.readEditorChoices() : {};
     if (!this._editorDraftRestored && typeof savedChoices.publishOnSale === 'boolean') {

@@ -26,6 +26,7 @@ async function buildProduct(record) {
   const editing = ['edit', 'live_edit'].includes(record.draftType);
   const manual = auth.isAdmin() && !auth.isStallManager() && !live;
   const stalls = data.selectedStalls || [];
+  if (data.sampleProduct && !String(data.sampleNotice || '').trim()) throw new Error('请填写样衣/瑕疵品提示信息');
   if (!String(data.title || '').trim()) throw new Error('请先填写商品名称');
   if (stalls.length > 1) throw new Error('商品最多只能选择一个档口');
   if (auth.isStallManager() && !stalls.length && !editing) throw new Error('请先选择分配给你的档口');
@@ -113,7 +114,8 @@ async function buildProduct(record) {
       relatedProductIds: (data.manualRelated || []).map(item => typeof item === 'object' ? item.id : item),
       shippingInfo: data.shippingInfo || null, description: data.description || null,
       fabricCare: data.fabricCare || null, sizeChartTip: data.sizeChartTip || null,
-      warmTips: data.warmTips || null, purchaseNotice: getPurchaseNotice(data.purchaseNotice)
+      warmTips: data.warmTips || null, purchaseNotice: getPurchaseNotice(data.purchaseNotice),
+      sampleProduct: data.sampleProduct === true, sampleNotice: data.sampleNotice || null
     } : {}) };
 }
 

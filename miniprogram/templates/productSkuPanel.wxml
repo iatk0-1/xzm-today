@@ -45,6 +45,8 @@
     </view>
   </view>
 
+  <scroll-view class="sku-sample-notice" wx:if="{{currentProduct.sampleProduct && currentProduct.sampleNotice}}" scroll-y="{{true}}" style="height: {{currentProduct.sampleNotice.length <= 26 ? 42 : (currentProduct.sampleNotice.length <= 52 ? 84 : 126)}}rpx;"><text>{{currentProduct.sampleNotice}}</text></scroll-view>
+
   <view class="sku-discount-entry" wx:if="{{promotionOffers.length}}" catchtap="openSkuPromotions">
     <view class="sku-discount-label">
       <view class="sku-title">优惠</view>

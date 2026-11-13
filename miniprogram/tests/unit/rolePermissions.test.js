@@ -114,13 +114,24 @@ test('工作台按服务端菜单过滤，排序缓存不能恢复旧权限', ()
     workbench.getStorageKey({ userId: 7, role: 'role_support' }));
 });
 
-function loadPermissions(auth, wx = {}) {
+function loadPermissions(auth, wx = {}, consent = { ensure: async () => true, isConfirmed: () => true }) {
   const module = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../utils/permissions.js'), 'utf8'), {
-    module, wx, require: name => name === './auth' ? auth : { getErrorMessage: (error, fallback) => error.message || fallback }
+    module, wx, require: name => name === './auth' ? auth : name === './purchaseConsent' ? consent : { getErrorMessage: (error, fallback) => error.message || fallback }
   });
   return module.exports;
 }
+
+test('须知校验期间遮罩拦点击，未同意时业务onLoad和onShow都不执行', async () => {
+  const calls = [];
+  const permissions = loadPermissions({ ensureAuthenticated: async () => {}, loadPermissionSnapshot: async () => {} }, {
+    showLoading: value => calls.push(['mask', value.mask]), hideLoading: () => calls.push(['unmask'])
+  }, { isConfirmed: () => false, ensure: async () => false });
+  const page = { ...permissions.wrap({ onLoad() { calls.push(['load']); }, onShow() { calls.push(['show']); } }),
+    route: 'pages/detail/detail' };
+  await Promise.all([page.onLoad({ id: '123' }), page.onShow()]);
+  assert.deepEqual(calls, [['mask', true], ['unmask']]);
+});
 
 test('直接访问、共享订单详情及未知页面均按菜单检查', () => {
   const permissions = loadPermissions({ canAccessMenu: code => code === 'shipping' });

@@ -1,5 +1,6 @@
 {
   "pages": [
+    "pages/purchaseConsent/purchaseConsent",
     "pages/index/index",
     "pages/messages/messages",
     "pages/customerServiceOrderDetail/customerServiceOrderDetail",

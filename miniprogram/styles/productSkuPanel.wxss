@@ -517,3 +517,5 @@ sku-panel
   font-weight: 800;
   margin-left: 12rpx;
 }
+
+.sku-sample-notice { display: block; flex-shrink: 0; margin: 0 0 20rpx; color: #d93025; font-size: 25rpx; font-weight: 700; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }

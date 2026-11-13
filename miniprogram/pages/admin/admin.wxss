@@ -956,3 +956,12 @@ line-height: 88rpx; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; }
 
 .editor-video-tap { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 .video-preview-box .editor-video-delete { position: absolute; top: 3px; right: 3px; width: 21px; height: 21px; line-height: 19px; text-align: center; color: #fff; background: rgba(0,0,0,.65); border-radius: 50%; font-size: 17px; z-index: 2; }
+
+.sample-product-row { display: flex; align-items: center; gap: 12rpx; margin-top: 20rpx; font-size: 27rpx; color: #333; }
+.sample-product-row switch { transform: scale(.8); transform-origin: left center; margin-right: -16rpx; }
+.sample-notice-input { margin-top: 18rpx; min-height: 150rpx; }
+.notice-default-actions { display: flex; justify-content: flex-end; margin-top: 16rpx; }
+.notice-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14rpx; }
+.notice-label-row .label { margin-bottom: 0; }
+.notice-default-button { margin: 0; padding: 0 20rpx; background: #f3f5f7; color: #263340; font-size: 24rpx; line-height: 56rpx; }
+.notice-default-button::after { border: none; }

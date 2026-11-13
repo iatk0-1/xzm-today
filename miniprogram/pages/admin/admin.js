@@ -13,7 +13,7 @@ const { integrateProductPricing } = require('../../utils/productPricing');
 const finance = require('../../utils/managerFinance');
 const { binding: promotionBinding, fromSelection: promotionsFromSelection } = require('../../utils/productPromotions');
 const { scheduleSummary } = require('../../utils/productSchedule');
-const { DEFAULT_PURCHASE_NOTICE, getPurchaseNotice } = require('../../utils/purchaseNotice');
+const { DEFAULT_SAMPLE_NOTICE, DEFAULT_PURCHASE_NOTICE, getPurchaseNotice } = require('../../utils/purchaseNotice');
 
 // 拖拽网格配置
 const ITEM_SIZE = 105;
@@ -47,6 +47,9 @@ const pageDefinition = {
     sizeChartTip: '',
     warmTips: '',
     purchaseNotice: DEFAULT_PURCHASE_NOTICE,
+    sampleProduct: false,
+    sampleNotice: DEFAULT_SAMPLE_NOTICE,
+    noticeDefaultSaving: false,
 
     title: '',
     articleNo: '',
@@ -157,6 +160,16 @@ const pageDefinition = {
       return;
     }
 
+    try {
+      const defaults = await api.get('/notice-defaults');
+      this._defaultPurchaseNotice = getPurchaseNotice(defaults.purchaseNotice);
+      this._defaultSampleNotice = defaults.sampleNotice || DEFAULT_SAMPLE_NOTICE;
+      if (!options.editId) this.setData({ purchaseNotice: this._defaultPurchaseNotice, sampleNotice: this._defaultSampleNotice });
+    } catch (err) {
+      this._productLoadFailed = true;
+      wx.showToast({ title: getErrorMessage(err, '默认提示加载失败，请重新打开商品页面'), icon: 'none' });
+      return;
+    }
     this.setData({ isStallManager: auth.isStallManager() });
     if (auth.isStallManager() || this.data.isStallScoped) {
       try {
@@ -313,6 +326,8 @@ const pageDefinition = {
         sizeChartTip: product.sizeChartTip || '',
         warmTips: product.warmTips || '',
         purchaseNotice: getPurchaseNotice(product.purchaseNotice),
+        sampleProduct: product.sampleProduct === true,
+        sampleNotice: product.sampleNotice || this._defaultSampleNotice || DEFAULT_SAMPLE_NOTICE,
         selectedStalls: [],
         selectedTags: [],
         lookbookImgs: product.lookbookImages || [],
@@ -546,6 +561,8 @@ const pageDefinition = {
         sizeChartTip: product.sizeChartTip || '',
         warmTips: product.warmTips || '',
         purchaseNotice: getPurchaseNotice(product.purchaseNotice),
+        sampleProduct: product.sampleProduct === true,
+        sampleNotice: product.sampleNotice || this._defaultSampleNotice || DEFAULT_SAMPLE_NOTICE,
         selectedStalls: [],
         selectedTags: [],
         lookbookImgs: product.lookbookImages || [],
@@ -1827,6 +1844,29 @@ const pageDefinition = {
     this.setData({ publishOnSale: !!e.detail.value });
   },
 
+  toggleSampleProduct(e) {
+    if (this._pricingSubmitting || this.data.draftSaving) return;
+    this.setData({ sampleProduct: !!e.detail.value });
+  },
+
+  async saveNoticeDefault(e) {
+    if (this.data.noticeDefaultSaving || this._pricingSubmitting || this.data.draftSaving) return;
+    const kind = e.currentTarget.dataset.kind;
+    const content = kind === 'sample' ? this.data.sampleNotice : this.data.purchaseNotice;
+    if (!String(content || '').trim()) {
+      wx.showToast({ title: '默认提示信息不能为空', icon: 'none' }); return;
+    }
+    this.setData({ noticeDefaultSaving: true });
+    try {
+      const result = await api.put('/notice-defaults/' + kind, { content });
+      this._defaultPurchaseNotice = result.purchaseNotice;
+      this._defaultSampleNotice = result.sampleNotice;
+      wx.showToast({ title: '已设为全后台默认', icon: 'success' });
+    } catch (error) {
+      wx.showToast({ title: getErrorMessage(error, '设置默认提示失败，请重试'), icon: 'none' });
+    } finally { this.setData({ noticeDefaultSaving: false }); }
+  },
+
   openProductSchedule() { this.setData({ showProductSchedule: true }); },
   closeProductSchedule() { this.setData({ showProductSchedule: false }); },
   confirmProductSchedule(e) {
@@ -1843,8 +1883,11 @@ const pageDefinition = {
   },
 
   submitProduct: async function() {
+    if (this.data.sampleProduct && !String(this.data.sampleNotice || '').trim()) {
+      wx.showToast({ title: '请填写样衣/瑕疵品提示信息', icon: 'none' }); return;
+    }
     const { mediaList, title, selectedStalls, selectedTags, skuList, lookbookImgs, detailImgs, manualRelated,
-            videoUrl, videoThumbPath, useVideoCover, shippingInfo, description, fabricCare, sizeChartTip, warmTips, purchaseNotice,
+            videoUrl, videoThumbPath, useVideoCover, shippingInfo, description, fabricCare, sizeChartTip, warmTips, purchaseNotice, sampleProduct, sampleNotice,
             publishOnSale, editId } = this.data;
 
     const schedule = this.data.productSchedule;
@@ -2000,6 +2043,8 @@ const pageDefinition = {
         sizeChartTip: sizeChartTip || null,
         warmTips: warmTips || null,
         purchaseNotice: getPurchaseNotice(purchaseNotice),
+        sampleProduct: sampleProduct === true,
+        sampleNotice: sampleNotice,
         sizeCategoryId: this.data.currentSizeCategoryId || null,
         skus: skus,
         bundleGroups: null
@@ -2644,6 +2689,8 @@ const pageDefinition = {
       sizeChartTip: data.sizeChartTip,
       warmTips: data.warmTips,
       purchaseNotice: data.purchaseNotice,
+      sampleProduct: data.sampleProduct,
+      sampleNotice: data.sampleNotice,
       mediaList: data.mediaList,
       lookbookImgs: data.lookbookImgs,
       detailImgs: data.detailImgs,
@@ -2730,7 +2777,9 @@ const pageDefinition = {
       fabricCare: safeGet(draftData, 'fabricCare', ''),
       sizeChartTip: safeGet(draftData, 'sizeChartTip', ''),
       warmTips: safeGet(draftData, 'warmTips', ''),
-      purchaseNotice: safeGet(draftData, 'purchaseNotice', DEFAULT_PURCHASE_NOTICE),
+      purchaseNotice: safeGet(draftData, 'purchaseNotice', this._defaultPurchaseNotice || DEFAULT_PURCHASE_NOTICE),
+      sampleProduct: safeGet(draftData, 'sampleProduct', false) === true,
+      sampleNotice: safeGet(draftData, 'sampleNotice', this._defaultSampleNotice || DEFAULT_SAMPLE_NOTICE),
       mediaList: mediaList,
       lookbookImgs: safeGet(draftData, 'lookbookImgs', []),
       detailImgs: safeGet(draftData, 'detailImgs', []),
@@ -2778,7 +2827,7 @@ const pageDefinition = {
       (d.selectedStalls && d.selectedStalls.length > 0) ||
       (d.selectedTags && d.selectedTags.length > 0) ||
       (d.colors && d.colors.length > 0) ||
-      d.description || d.fabricCare || d.sizeChartTip || d.warmTips ||
+      d.description || d.fabricCare || d.sizeChartTip || d.warmTips || d.sampleProduct ||
       (d.purchaseNotice && d.purchaseNotice !== DEFAULT_PURCHASE_NOTICE) ||
       (d.manualRelated && d.manualRelated.length > 0) ||
       (d.lookbookImgs && d.lookbookImgs.length > 0) ||

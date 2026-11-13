@@ -2,6 +2,7 @@ const auth = require('./auth');
 const { getErrorMessage } = require('./error');
 
 const requirements = {
+  'pages/purchaseConsent/purchaseConsent': [],
   'pages/index/index': ['browse', 'homeProducts'],
   'pages/search/search': ['browse'],
   'pages/detail/detail': ['browse', 'productManage', 'picking', 'productDrafts', 'myOrders', 'orderManage', 'shipping', 'afterSale', 'applications', 'sales', 'shippingSales', 'managers', 'catalog', 'inventory', 'wishManage', 'customerService'],
@@ -82,7 +83,7 @@ const actionRequirements = {
 
 function canVisit(route) {
   const normalized = String(route || '').replace(/^\//, '').split('?')[0];
-  if (normalized === 'pages/user/user') return true;
+  if (normalized === 'pages/user/user' || normalized === 'pages/purchaseConsent/purchaseConsent') return true;
   const required = requirements[normalized];
   return !!required && required.some(code => auth.canAccessMenu(code));
 }
@@ -123,17 +124,28 @@ function checkCurrentPage() {
 }
 
 async function authorize(page) {
-  await auth.ensureAuthenticated({ silent: true });
-  await auth.loadPermissionSnapshot();
-  applyPagePermissions(page);
-  if (!canVisit(page.route)) {
-    const error = new Error('当前角色无权访问该功能');
-    error.permissionDenied = true;
-    throw error;
+  const consent = require('./purchaseConsent');
+  const blocking = !consent.isConfirmed();
+  if (blocking && wx.showLoading) wx.showLoading({ title: '正在核对购买须知', mask: true });
+  try {
+    await auth.ensureAuthenticated({ silent: true });
+    await auth.loadPermissionSnapshot();
+    if (!await consent.ensure(page, page._consentOptions)) return false;
+    applyPagePermissions(page);
+    if (!canVisit(page.route)) {
+      const error = new Error('当前角色无权访问该功能');
+      error.permissionDenied = true;
+      throw error;
+    }
+    return true;
+  } finally {
+    if (blocking && wx.hideLoading) wx.hideLoading();
   }
 }
 
 function wrap(config) {
+  // 须知页独立恢复身份，避免拦截器递归跳转。
+  if (config.isPurchaseConsentPage) return config;
   const guarded = { ...config };
   const actions = new Set(Object.values(actionRequirements).flatMap(rules => Object.keys(rules)));
   for (const name of actions) {
@@ -156,12 +168,13 @@ function wrap(config) {
   return {
     ...guarded,
     onLoad(options) {
+      this._consentOptions = options || {};
       this._permissionLoading = authorize(this);
-      return this._permissionLoading.then(() => onLoad && onLoad.call(this, options)).catch(failure);
+      return this._permissionLoading.then(allowed => allowed && onLoad && onLoad.call(this, options)).catch(failure);
     },
     onShow() {
       const ready = this._permissionLoading || authorize(this);
-      return ready.then(() => onShow && onShow.call(this)).catch(failure).finally(() => {
+      return ready.then(allowed => allowed && onShow && onShow.call(this)).catch(failure).finally(() => {
         if (this._permissionLoading === ready) this._permissionLoading = null;
       });
     }

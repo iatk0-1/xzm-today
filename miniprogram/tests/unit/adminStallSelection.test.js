@@ -77,7 +77,7 @@ test('负责人再次发布自动恢复当天使用过且仍分配的档口，�
     saved: { date: today(), stalls: [{ id: '1', name: '旧名称' }, { id: 3, name: '已收回' }] }
   });
   await page.onLoad({});
-  assert.deepEqual(requests, ['/stall-managers/stalls/mine']);
+  assert.deepEqual(requests, ['/notice-defaults', '/stall-managers/stalls/mine']);
   assert.equal(page.data.selectedStalls.length, 1);
   assert.equal(page.data.selectedStalls[0].id, 1);
   assert.equal(page.data.selectedStalls[0].name, '新名称');
