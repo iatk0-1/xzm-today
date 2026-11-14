@@ -453,7 +453,7 @@
           <view class="batch-progress-meta" wx:if="{{task.summary.wechatPending > 0}}">其中 {{task.summary.wechatPending}} 个已发货包裹待同步微信</view>
           <view class="batch-progress-meta" wx:if="{{task.startedAtText}}">开始 {{task.startedAtText}}</view>
           <view class="batch-progress-meta" wx:if="{{task.finishedAtText}}">结束 {{task.finishedAtText}}</view>
-          <view class="task-card-bottom"><text class="task-id">{{task.source === 'AUTO_STOCK' ? '现货自动发货 · ' : ''}}任务 {{task.id}}</text><text class="copy-link">查看详情 ›</text></view>
+          <view class="task-card-bottom"><text class="task-id">{{task.simulated ? '模拟自动发货 · ' : (task.source === 'AUTO_STOCK' ? '现货自动发货 · ' : '')}}任务 {{task.id}}</text><text class="copy-link">查看详情 ›</text></view>
         </view>
         <view class="task-empty" wx:if="{{!historyLoading && !historyError && recentBatchTasks.length === 0}}">{{historyFilter === 'all' ? '暂无发货任务' : '暂无符合条件的任务'}}</view>
         <view class="task-load-more" wx:if="{{historyError}}" bindtap="loadMoreBatchTaskHistory">{{historyError}} · 点击重试</view>
@@ -471,7 +471,7 @@
     <view class="modal-content modal-large task-modal">
       <view class="task-modal-header"><text user-select="{{true}}" class="task-modal-title">{{viewingBatchHistory ? '任务详情' : '发货进度'}}</text><text user-select="{{true}}" class="task-status {{batchTask.isRunning ? 'running' : ''}}">{{batchTask.statusText}}</text></view>
       <view class="task-detail-overview">
-        <view class="task-id"><text user-select="{{true}}">{{batchTask.source === 'AUTO_STOCK' ? '现货自动发货 · ' : ''}}任务 {{batchTask.id}}</text></view>
+        <view class="task-id"><text user-select="{{true}}">{{batchTask.simulated ? '模拟自动发货 · ' : (batchTask.source === 'AUTO_STOCK' ? '现货自动发货 · ' : '')}}任务 {{batchTask.id}}</text></view>
         <view class="batch-progress-meta"><text user-select="{{true}}">创建 {{batchTask.createdAtText}}</text></view>
         <view class="batch-progress-meta" wx:if="{{batchTask.confirmedAtText}}"><text user-select="{{true}}">提交 {{batchTask.confirmedAtText}}</text></view>
         <view class="batch-progress-meta" wx:if="{{batchTask.startedAtText}}"><text user-select="{{true}}">开始 {{batchTask.startedAtText}}</text></view>
