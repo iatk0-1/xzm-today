@@ -48,6 +48,7 @@ const pageDefinition = {
     warmTips: '',
     purchaseNotice: DEFAULT_PURCHASE_NOTICE,
     sampleProduct: false,
+    autoShipment: false,
     sampleNotice: DEFAULT_SAMPLE_NOTICE,
     noticeDefaultSaving: false,
 
@@ -327,6 +328,7 @@ const pageDefinition = {
         warmTips: product.warmTips || '',
         purchaseNotice: getPurchaseNotice(product.purchaseNotice),
         sampleProduct: product.sampleProduct === true,
+        autoShipment: product.autoShipment === true,
         sampleNotice: product.sampleNotice || this._defaultSampleNotice || DEFAULT_SAMPLE_NOTICE,
         selectedStalls: [],
         selectedTags: [],
@@ -562,6 +564,7 @@ const pageDefinition = {
         warmTips: product.warmTips || '',
         purchaseNotice: getPurchaseNotice(product.purchaseNotice),
         sampleProduct: product.sampleProduct === true,
+        autoShipment: product.autoShipment === true,
         sampleNotice: product.sampleNotice || this._defaultSampleNotice || DEFAULT_SAMPLE_NOTICE,
         selectedStalls: [],
         selectedTags: [],
@@ -1846,7 +1849,12 @@ const pageDefinition = {
 
   toggleSampleProduct(e) {
     if (this._pricingSubmitting || this.data.draftSaving) return;
-    this.setData({ sampleProduct: !!e.detail.value });
+    const enabled = !!e.detail.value;
+    this.setData({ sampleProduct: enabled, ...(enabled ? { autoShipment: true } : {}) });
+  },
+
+  toggleAutoShipment(e) {
+    if (!this._pricingSubmitting && !this.data.draftSaving) this.setData({ autoShipment: !!e.detail.value });
   },
 
   async saveNoticeDefault(e) {
@@ -1887,7 +1895,7 @@ const pageDefinition = {
       wx.showToast({ title: '请填写样衣/瑕疵品提示信息', icon: 'none' }); return;
     }
     const { mediaList, title, selectedStalls, selectedTags, skuList, lookbookImgs, detailImgs, manualRelated,
-            videoUrl, videoThumbPath, useVideoCover, shippingInfo, description, fabricCare, sizeChartTip, warmTips, purchaseNotice, sampleProduct, sampleNotice,
+            videoUrl, videoThumbPath, useVideoCover, shippingInfo, description, fabricCare, sizeChartTip, warmTips, purchaseNotice, sampleProduct, sampleNotice, autoShipment,
             publishOnSale, editId } = this.data;
 
     const schedule = this.data.productSchedule;
@@ -2044,6 +2052,7 @@ const pageDefinition = {
         warmTips: warmTips || null,
         purchaseNotice: getPurchaseNotice(purchaseNotice),
         sampleProduct: sampleProduct === true,
+        autoShipment: autoShipment === true,
         sampleNotice: sampleNotice,
         sizeCategoryId: this.data.currentSizeCategoryId || null,
         skus: skus,
@@ -2690,6 +2699,7 @@ const pageDefinition = {
       warmTips: data.warmTips,
       purchaseNotice: data.purchaseNotice,
       sampleProduct: data.sampleProduct,
+      autoShipment: data.autoShipment,
       sampleNotice: data.sampleNotice,
       mediaList: data.mediaList,
       lookbookImgs: data.lookbookImgs,
@@ -2779,6 +2789,7 @@ const pageDefinition = {
       warmTips: safeGet(draftData, 'warmTips', ''),
       purchaseNotice: safeGet(draftData, 'purchaseNotice', this._defaultPurchaseNotice || DEFAULT_PURCHASE_NOTICE),
       sampleProduct: safeGet(draftData, 'sampleProduct', false) === true,
+      autoShipment: safeGet(draftData, 'autoShipment', false) === true,
       sampleNotice: safeGet(draftData, 'sampleNotice', this._defaultSampleNotice || DEFAULT_SAMPLE_NOTICE),
       mediaList: mediaList,
       lookbookImgs: safeGet(draftData, 'lookbookImgs', []),
@@ -2827,7 +2838,7 @@ const pageDefinition = {
       (d.selectedStalls && d.selectedStalls.length > 0) ||
       (d.selectedTags && d.selectedTags.length > 0) ||
       (d.colors && d.colors.length > 0) ||
-      d.description || d.fabricCare || d.sizeChartTip || d.warmTips || d.sampleProduct ||
+      d.description || d.fabricCare || d.sizeChartTip || d.warmTips || d.sampleProduct || d.autoShipment ||
       (d.purchaseNotice && d.purchaseNotice !== DEFAULT_PURCHASE_NOTICE) ||
       (d.manualRelated && d.manualRelated.length > 0) ||
       (d.lookbookImgs && d.lookbookImgs.length > 0) ||

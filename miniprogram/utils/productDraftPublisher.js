@@ -115,7 +115,7 @@ async function buildProduct(record) {
       shippingInfo: data.shippingInfo || null, description: data.description || null,
       fabricCare: data.fabricCare || null, sizeChartTip: data.sizeChartTip || null,
       warmTips: data.warmTips || null, purchaseNotice: getPurchaseNotice(data.purchaseNotice),
-      sampleProduct: data.sampleProduct === true, sampleNotice: data.sampleNotice || null
+      autoShipment: data.autoShipment === true, sampleProduct: data.sampleProduct === true, sampleNotice: data.sampleNotice || null
     } : {}) };
 }
 

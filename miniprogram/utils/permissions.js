@@ -124,27 +124,19 @@ function checkCurrentPage() {
 }
 
 async function authorize(page) {
-  const consent = require('./purchaseConsent');
-  const blocking = !consent.isConfirmed();
-  if (blocking && wx.showLoading) wx.showLoading({ title: '正在核对购买须知', mask: true });
-  try {
-    await auth.ensureAuthenticated({ silent: true });
-    await auth.loadPermissionSnapshot();
-    if (!await consent.ensure(page, page._consentOptions)) return false;
-    applyPagePermissions(page);
-    if (!canVisit(page.route)) {
-      const error = new Error('当前角色无权访问该功能');
-      error.permissionDenied = true;
-      throw error;
-    }
-    return true;
-  } finally {
-    if (blocking && wx.hideLoading) wx.hideLoading();
+  await auth.ensureAuthenticated({ silent: true });
+  await auth.loadPermissionSnapshot();
+  applyPagePermissions(page);
+  if (!canVisit(page.route)) {
+    const error = new Error('当前角色无权访问该功能');
+    error.permissionDenied = true;
+    throw error;
   }
+  return true;
 }
 
 function wrap(config) {
-  // 须知页独立恢复身份，避免拦截器递归跳转。
+  // 兼容旧须知入口，该页面仅跳转回正常业务页面。
   if (config.isPurchaseConsentPage) return config;
   const guarded = { ...config };
   const actions = new Set(Object.values(actionRequirements).flatMap(rules => Object.keys(rules)));
@@ -168,7 +160,6 @@ function wrap(config) {
   return {
     ...guarded,
     onLoad(options) {
-      this._consentOptions = options || {};
       this._permissionLoading = authorize(this);
       return this._permissionLoading.then(allowed => allowed && onLoad && onLoad.call(this, options)).catch(failure);
     },

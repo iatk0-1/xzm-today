@@ -478,3 +478,25 @@ test('编辑商品沿用已保存的提示，不被最新全后台默认文案�
   assert.equal(page.data.sampleNotice, '商品自己的样衣提示');
   assert.equal(page.data.purchaseNotice, '商品自己的购买须知');
 });
+
+
+test('样衣开启联动自动发货，两个开关之后可以独立修改，草稿保留独立选择', async () => {
+  const { page } = harness('../../pages/admin/admin.js');
+  await page.onLoad({});
+  assert.equal(page.data.autoShipment, false);
+  page.toggleSampleProduct({ detail: { value: true } });
+  assert.equal(page.data.sampleProduct, true);
+  assert.equal(page.data.autoShipment, true);
+  page.toggleAutoShipment({ detail: { value: false } });
+  assert.equal(page.data.sampleProduct, true);
+  assert.equal(page.data.autoShipment, false);
+  page.toggleSampleProduct({ detail: { value: false } });
+  page.toggleAutoShipment({ detail: { value: true } });
+  assert.equal(page.data.sampleProduct, false);
+  assert.equal(page.collectDraftData().autoShipment, true);
+  await page.restoreDraft({ sampleProduct: true, autoShipment: false });
+  assert.equal(page.data.autoShipment, false);
+  assert.equal(page.data.sampleProduct, true);
+  await page.restoreDraft({ title: '旧草稿', sampleProduct: true });
+  assert.equal(page.data.autoShipment, false);
+});

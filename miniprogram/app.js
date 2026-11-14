@@ -43,7 +43,6 @@ App({
   },
 
   onShow: function (options) {
-    require('./utils/purchaseConsent').invalidate();
     // 处理微信确认收货组件的回调
     // 组件通过 navigateBackMiniProgram 返回，结果在 referrerInfo 中
     var refInfo = options && options.referrerInfo;

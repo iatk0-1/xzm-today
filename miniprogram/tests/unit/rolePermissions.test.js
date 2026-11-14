@@ -122,15 +122,16 @@ function loadPermissions(auth, wx = {}, consent = { ensure: async () => true, is
   return module.exports;
 }
 
-test('须知校验期间遮罩拦点击，未同意时业务onLoad和onShow都不执行', async () => {
+test('购买须知停用后不阻止业务页面加载，保留正常身份权限检查', async () => {
   const calls = [];
-  const permissions = loadPermissions({ ensureAuthenticated: async () => {}, loadPermissionSnapshot: async () => {} }, {
-    showLoading: value => calls.push(['mask', value.mask]), hideLoading: () => calls.push(['unmask'])
-  }, { isConfirmed: () => false, ensure: async () => false });
-  const page = { ...permissions.wrap({ onLoad() { calls.push(['load']); }, onShow() { calls.push(['show']); } }),
-    route: 'pages/detail/detail' };
+  const permissions = loadPermissions({ ensureAuthenticated: async () => {}, loadPermissionSnapshot: async () => {},
+    canAccessMenu: () => true, getPermissionSnapshot: () => null }, {
+    showLoading: () => calls.push('mask'), hideLoading: () => calls.push('unmask')
+  }, { isConfirmed() { throw new Error('不应再检查须知'); }, ensure() { throw new Error('不应再拦截页面'); } });
+  const page = { ...permissions.wrap({ onLoad() { calls.push('load'); }, onShow() { calls.push('show'); } }),
+    route: 'pages/detail/detail', setData() {} };
   await Promise.all([page.onLoad({ id: '123' }), page.onShow()]);
-  assert.deepEqual(calls, [['mask', true], ['unmask']]);
+  assert.deepEqual(calls, ['load', 'show']);
 });
 
 test('直接访问、共享订单详情及未知页面均按菜单检查', () => {

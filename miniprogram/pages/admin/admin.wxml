@@ -77,8 +77,8 @@
     </view>
     <textarea class="input-box product-name-input" style="height: calc({{titleContentHeight}}px + 40rpx); max-height: {{titleMaxHeight}}px;" placeholder="例如：经典藏青百褶裙" value="{{title}}" bindinput="onInput" bindlinechange="onTitleLineChange" data-field="title" maxlength="140" adjust-position="{{true}}" adjust-keyboard-to="cursor" cursor-spacing="140"></textarea>
     <view class="sample-product-row">
-      <switch checked="{{sampleProduct}}" bindchange="toggleSampleProduct" color="#191919" disabled="{{draftSaving || _pricingSubmitting}}" />
-      <text>此商品为样衣/瑕疵品</text>
+      <view class="product-switch-item"><switch checked="{{sampleProduct}}" bindchange="toggleSampleProduct" color="#191919" disabled="{{draftSaving || _pricingSubmitting}}" /><text>此商品为样衣/瑕疵品</text></view>
+      <view class="product-switch-item"><switch checked="{{autoShipment}}" bindchange="toggleAutoShipment" color="#191919" disabled="{{draftSaving || _pricingSubmitting}}" /><text>自动发货</text></view>
     </view>
     <view wx:if="{{sampleProduct}}">
       <textarea class="textarea-box sample-notice-input" placeholder="请输入样衣/瑕疵品提示信息" value="{{sampleNotice}}" bindinput="onInput" data-field="sampleNotice" maxlength="4000" adjust-position="{{true}}" adjust-keyboard-to="cursor" cursor-spacing="140"></textarea>

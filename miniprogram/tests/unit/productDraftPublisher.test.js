@@ -208,3 +208,12 @@ test('草稿直接发布保留样衣开关和本商品文案，开启后不允�
   await assert.rejects(invalid.publish(), /请填写样衣/);
   assert.equal(invalid.submissions.length, 0);
 });
+
+
+test('草稿发布保留自动发货独立选择，不因样衣标记再次强制开启', async () => {
+  for (const autoShipment of [false, true]) {
+    const env = harness({ data: { sampleProduct: true, sampleNotice: '样衣提示', autoShipment } });
+    await env.publish();
+    assert.equal(env.submissions[0].productData.autoShipment, autoShipment);
+  }
+});

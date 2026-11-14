@@ -1,15 +1,1 @@
-<view class="consent-page">
-  <view class="consent-dialog" role="dialog" aria-label="购买须知">
-    <view class="consent-title">购买须知</view>
-    <view class="consent-subtitle">请仔细阅读全部内容，同意后进入小程序</view>
-    <scroll-view wx:if="{{ready}}" class="consent-scroll" scroll-y="{{true}}" scroll-top="{{scrollTop}}" lower-threshold="1" bindscrolltolower="onReadBottom" show-scrollbar="{{true}}">
-      <view class="consent-body">
-        <text class="consent-content" user-select="{{true}}">{{content}}</text>
-        <view class="consent-end">— 已到须知底部 —</view>
-      </view>
-    </scroll-view>
-    <view wx:else class="consent-scroll" />
-    <view class="consent-status" aria-live="polite">{{error || (!ready ? '正在加载购买须知…' : (remaining > 0 ? '请至少阅读5秒，还需' + remaining + '秒' : (!reachedBottom ? '请继续向下翻阅到最底部' : '已完成阅读，请点击同意')))}}</view>
-    <button class="consent-button" disabled="{{submitting || (!error && (!ready || remaining > 0 || !reachedBottom))}}" loading="{{submitting}}" bindtap="agree">我已阅读并同意</button>
-  </view>
-</view>
+<view />
