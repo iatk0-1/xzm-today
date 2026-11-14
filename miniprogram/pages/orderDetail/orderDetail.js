@@ -11,6 +11,7 @@ const orderNavigation = require('../../utils/orderNavigation');
 const { getExpressName } = require('../../utils/expressCompany');
 const customerServiceOrder = require('../../utils/customerServiceOrder');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
+const afterSaleEligibility = require('../../utils/afterSaleEligibility');
 
 Page(pageSync.wrap({
   onOrderTouchStart: orderNavigation.onTouchStart,
@@ -86,6 +87,7 @@ Page(pageSync.wrap({
       }
       const res = await api.get(`/orders/${orderId}`);
       Object.assign(res, promotionDisplay.orderAmounts(res));
+      Object.assign(res, afterSaleEligibility.applicationState(res));
       if (showLoading) wx.hideLoading();
       const pricing = (Number(res.priceRevision) > 0 || Number(res.promotionDiscount) > 0) ? await api.get(`/orders/${orderId}/pricing`) : null;
       if (pricing) (pricing.items || []).forEach(row => { row.unitPriceDisplay = (Number(row.settlementAmount) / Math.max(1, Number(row.qty || 1))).toFixed(2); });
@@ -542,6 +544,7 @@ Page(pageSync.wrap({
   },
 
   requestRefund: function() {
+    if (!afterSaleEligibility.canApply(this.data.order)) return;
     // 跳转到售后申请页面
     wx.navigateTo({
       url: `/pages/afterSaleApply/afterSaleApply?orderId=${this.data.order.id}`

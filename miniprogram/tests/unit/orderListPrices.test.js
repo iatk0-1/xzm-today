@@ -19,6 +19,7 @@ function setup(order) {
       if (name.endsWith('/auth')) return { ensureAuthenticated: async () => {} };
       if (name.endsWith('/skuPromotionDisplay')) return require('../../utils/skuPromotionDisplay');
       if (name.endsWith('/customerServiceOrder')) return require('../../utils/customerServiceOrder');
+      if (name.endsWith('/afterSaleEligibility')) return require('../../utils/afterSaleEligibility');
       if (name.endsWith('/error')) return require('../../utils/error');
       if (name.endsWith('/pageSync')) return { wrap: value => value,
         updateList: async (page, changes, options) => {

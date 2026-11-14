@@ -5,6 +5,7 @@ const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const refundChannels = require('../../utils/refundChannels');
 const { limitTextInput } = require('../../utils/textInputLimit');
+const afterSaleEligibility = require('../../utils/afterSaleEligibility');
 
 const DEFAULT_AFTER_SALE_REASON = '不想要了';
 
@@ -80,11 +81,11 @@ Page({
         return;
       }
 
-      // 检查订单状态是否允许售后
-      const allowedStatuses = ['stocking', 'paid', 'shipped', 'completed', 'partial_shipped'];
-      if (!allowedStatuses.includes(res.status)) {
-        wx.showToast({ title: '该订单状态无法申请售后', icon: 'none' });
-        setTimeout(() => wx.navigateBack(), 1500);
+      // 直接进入申请页时也检查状态和累计次数。
+      const blockedMessage = afterSaleEligibility.blockedMessage(res);
+      if (blockedMessage) {
+        wx.showModal({ title: '售后提示', content: blockedMessage, showCancel: false,
+          success: () => wx.navigateBack() });
         return;
       }
 

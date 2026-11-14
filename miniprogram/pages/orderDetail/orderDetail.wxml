@@ -215,7 +215,7 @@
     <view id="cancel-order-btn" class="btn-ghost" wx:if="{{canMyOrders && (order.status === 'pending')}}" bindtap="cancelOrder">取消订单</view>
 
     <view class="btn-solid" wx:if="{{canMyOrders && (order.canConfirmReceipt)}}" bindtap="confirmReceipt">确认收货</view>
-    <view class="btn-ghost" wx:if="{{canMyOrders && (order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped' || order.status === 'shipped' || order.status === 'completed')}}" bindtap="requestRefund">申请售后</view>
+    <view class="btn-ghost {{order.afterSaleExhausted ? 'after-sale-exhausted' : ''}}" wx:if="{{canMyOrders && order.afterSaleVisible}}" bindtap="requestRefund" aria-role="button" aria-disabled="{{order.afterSaleExhausted}}">申请售后</view>
   </view>
 
 </view>

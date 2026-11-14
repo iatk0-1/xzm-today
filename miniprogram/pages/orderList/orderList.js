@@ -9,6 +9,7 @@ const clipboard = require('../../utils/clipboard');
 const orderNavigation = require('../../utils/orderNavigation');
 const customerServiceOrder = require('../../utils/customerServiceOrder');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
+const afterSaleEligibility = require('../../utils/afterSaleEligibility');
 
 // 状态映射（前端中文 -> 后端英文）
 const STATUS_MAP = {
@@ -50,7 +51,7 @@ Page(pageSync.wrap({
   refreshOrder: async function(id) {
     await pageSync.updateList(this, [{ entity: 'orders', id: String(id) }], {
       entity: 'orders', field: 'orders', url: id => '/orders/' + id,
-      normalize: order => ({ ...order, items: promotionDisplay.orderItemPrices(order, null), statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status, createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt), customerServiceCard: customerServiceOrder.orderCard(order) }),
+      normalize: order => ({ ...order, ...afterSaleEligibility.applicationState(order), items: promotionDisplay.orderItemPrices(order, null), statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status, createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt), customerServiceCard: customerServiceOrder.orderCard(order) }),
       matches: order => !STATUS_MAP[this.data.currentTab] || STATUS_MAP[this.data.currentTab] === 'after_sale'
         || order.status === STATUS_MAP[this.data.currentTab]
     });
@@ -135,6 +136,7 @@ Page(pageSync.wrap({
       // 后端返回格式：{ items: [...], total: N, page: 1, size: 20 }
       const orders = (res.content || res.items || []).map(order => ({
         ...order,
+        ...afterSaleEligibility.applicationState(order),
         items: promotionDisplay.orderItemPrices(order, null),
         statusDisplay: STATUS_DISPLAY_MAP[order.status] || order.status,
         createdAtDisplay: this.formatTime(order.createdAt), latestShippedAtDisplay: this.formatTime(order.latestShippedAt),
@@ -228,6 +230,8 @@ Page(pageSync.wrap({
 
   requestRefund: function(e) {
     const orderId = e.currentTarget.dataset.id;
+    const order = (this.data.orders || []).find(item => String(item.id) === String(orderId));
+    if (!afterSaleEligibility.canApply(order)) return;
     wx.navigateTo({
       url: `/pages/afterSaleApply/afterSaleApply?orderId=${orderId}`
     });
