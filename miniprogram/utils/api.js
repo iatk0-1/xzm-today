@@ -230,6 +230,11 @@ async function requestWithRetry(options, retryState = {}) {
     return res.data;
   }
 
+  if (res.statusCode === 403 && res.data && res.data.code === 'USER_BLACKLISTED') {
+    require('./blacklistAccess').handleDenied();
+    throw normalizeHttpError(res);
+  }
+
   if (res.statusCode === 401
       && !retryState.authRecovered
       && !authEndpoint

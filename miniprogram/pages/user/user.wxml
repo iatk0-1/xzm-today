@@ -1,5 +1,6 @@
 <page-meta page-style="{{workbenchDraggingId ? 'overflow: hidden;' : ''}}"></page-meta>
 <view class="profile-container">
+  <view wx:if="{{isBlacklisted}}" class="blacklist-notice">当前账号已被移入黑名单，仅可使用信息和我页面。如有疑问请联系客服。</view>
 
   <view class="header-section" style="padding-top: {{navTop + navHeight + 20}}px;">
     <view class="user-info">
@@ -16,7 +17,7 @@
           {{phoneBinding ? '绑定中...' : '未绑定手机号，点击去绑定'}}
         </button>
         <view wx:else class="user-tag">未绑定手机号</view>
-        <view class="role-row" wx:if="{{hasMultipleRoles}}">
+        <view class="role-row" wx:if="{{hasMultipleRoles && !isBlacklisted}}">
           <view class="user-tag role-switch-btn" catchtap="switchRole">{{currentRoleLabel}}</view>
           <button size="mini" class="user-tag-btn role-switch-btn" catchtap="switchRole">切换</button>
         </view>
@@ -66,7 +67,7 @@
     </button>
   </view>
 
-  <view class="workbench-section" wx:if="{{workbenchItems.length > 0}}">
+  <view class="workbench-section" wx:if="{{workbenchItems.length > 0 && !isBlacklisted}}">
     <view class="workbench-header">
       <view class="workbench-title">工作台</view>
       <text class="workbench-hint">{{workbenchDraggingId ? '松手保存位置' : workbenchSaving ? '正在同步排序...' : '长按按钮可拖动排序'}}</text>

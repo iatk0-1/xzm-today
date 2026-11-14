@@ -337,7 +337,24 @@ function getPermissionSnapshot() {
 
 function canAccessMenu(code) {
   const snapshot = getPermissionSnapshot();
+  if (snapshot && snapshot.blacklisted) return code === 'messages' || code === 'profile';
   return !!(snapshot && snapshot.menus.some(menu => menu.enabled !== false && menu.code === code));
+}
+
+function isBlacklisted() {
+  const snapshot = getPermissionSnapshot();
+  return !!(snapshot && snapshot.blacklisted);
+}
+
+function markBlacklisted() {
+  const info = getUserInfo() || {};
+  const snapshot = getPermissionSnapshot();
+  if (snapshot) {
+    info.permissionSnapshot = { ...snapshot, blacklisted: true,
+      menus: snapshot.menus.filter(menu => ['messages', 'profile'].includes(menu.code)) };
+    info.permissionRevision = (info.permissionRevision || 0) + 1;
+    wx.setStorageSync(config.USER_INFO_KEY, info);
+  }
 }
 
 async function loadPermissionSnapshot() {
@@ -488,6 +505,8 @@ function ensureLogin() {
 }
 
 module.exports = {
+  isBlacklisted,
+  markBlacklisted,
   getRoleLabel,
   getPermissionSnapshot,
   canAccessMenu,

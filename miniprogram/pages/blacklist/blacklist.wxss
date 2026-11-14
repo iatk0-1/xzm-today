@@ -1,0 +1,22 @@
+page { background: #f6f6f6; }
+.blacklist-page { padding: 24rpx; padding-bottom: 60rpx; }
+.tabs { display: flex; gap: 24rpx; margin-bottom: 24rpx; }
+.tab { flex: 1; padding: 24rpx 10rpx; text-align: center; color: #666; border-bottom: 4rpx solid transparent; }
+.tab.active { color: #222; font-weight: 600; border-bottom-color: #222; }
+.search-row { display: flex; align-items: center; gap: 16rpx; }
+.search-row input { min-width: 0; flex: 1; background: #fff; border-radius: 12rpx; padding: 24rpx 18rpx; font-size: 26rpx; }
+.search-row button { margin: 0; flex-shrink: 0; }
+.hint, .summary { color: #888; font-size: 24rpx; line-height: 1.7; margin: 20rpx 0; }
+.user-card { padding: 28rpx; background: #fff; border-radius: 20rpx; margin-bottom: 20rpx; }
+.user-header { display: flex; align-items: center; gap: 18rpx; }
+.avatar { width: 80rpx; height: 80rpx; border-radius: 50%; flex-shrink: 0; }
+.user-info { flex: 1; min-width: 0; }
+.nickname { font-size: 30rpx; font-weight: 600; overflow-wrap: anywhere; }
+.meta { color: #777; font-size: 24rpx; line-height: 1.8; overflow-wrap: anywhere; }
+.status { font-size: 24rpx; color: #44805d; flex-shrink: 0; }
+.status.blocked { color: #bd433e; }
+.action { margin-top: 24rpx; background: #fff2f1; color: #b52c28; font-size: 26rpx; }
+.action.restore { background: #f3f3f3; color: #333; }
+.error { padding: 24rpx; color: #b52c28; font-size: 26rpx; }
+.empty, .loading { padding: 80rpx 20rpx; text-align: center; color: #888; font-size: 26rpx; }
+.more { font-size: 26rpx; }

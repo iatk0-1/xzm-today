@@ -117,7 +117,7 @@ test('工作台按服务端菜单过滤，排序缓存不能恢复旧权限', ()
 function loadPermissions(auth, wx = {}, consent = { ensure: async () => true, isConfirmed: () => true }) {
   const module = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../utils/permissions.js'), 'utf8'), {
-    module, wx, require: name => name === './auth' ? auth : name === './purchaseConsent' ? consent : { getErrorMessage: (error, fallback) => error.message || fallback }
+    module, wx, require: name => name === './auth' ? { isBlacklisted: () => false, ...auth } : name === './blacklistAccess' ? { ...require('../../utils/blacklistAccess'), watch() {}, stopWatching() {} } : name === './purchaseConsent' ? consent : { getErrorMessage: (error, fallback) => error.message || fallback }
   });
   return module.exports;
 }

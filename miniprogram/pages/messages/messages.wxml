@@ -16,7 +16,7 @@
       <view wx:if="{{contactUnreadCount > 0}}" class="unread-badge">{{contactUnreadLabel}}</view>
       <button class="conv-contact-button" open-type="contact" bindcontact="handleCustomerServiceContact" session-from="page:messages" aria-label="进入现在买客服会话"></button>
     </view>
-    <block wx:if="{{canServe}}">
+    <block wx:if="{{canServe && !isBlacklisted}}">
       <view wx:for="{{sessions}}" wx:key="id" class="conv-item" bindtap="goSession" data-id="{{item.id}}">
         <view class="conv-avatar-wrap"><image class="conv-avatar" src="{{item.avatarUrl || '/images/avatar.png'}}" mode="aspectFill"/></view>
         <view class="conv-body">

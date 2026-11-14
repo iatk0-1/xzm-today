@@ -1,3 +1,4 @@
+<block wx:if="{{pageAccessReady}}">
 <view class="market-wrapper">
 
   <!-- 排序栏独立于列表滚动区，始终停留在顶部。 -->
@@ -117,3 +118,5 @@
 </view>
 
 <product-entry-menu id="product-entry-menu" />
+
+</block>

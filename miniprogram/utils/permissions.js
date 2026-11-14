@@ -1,7 +1,9 @@
 const auth = require('./auth');
 const { getErrorMessage } = require('./error');
+const blacklist = require('./blacklistAccess');
 
 const requirements = {
+  'pages/blacklist/blacklist': ['blacklist'],
   'pages/purchaseConsent/purchaseConsent': [],
   'pages/index/index': ['browse', 'homeProducts'],
   'pages/search/search': ['browse'],
@@ -83,6 +85,7 @@ const actionRequirements = {
 
 function canVisit(route) {
   const normalized = String(route || '').replace(/^\//, '').split('?')[0];
+  if (auth.isBlacklisted()) return blacklist.allows(normalized);
   if (normalized === 'pages/user/user' || normalized === 'pages/purchaseConsent/purchaseConsent') return true;
   const required = requirements[normalized];
   return !!required && required.some(code => auth.canAccessMenu(code));
@@ -93,6 +96,7 @@ function applyPagePermissions(page) {
   const snapshot = auth.getPermissionSnapshot();
   const scoped = !!(snapshot && snapshot.currentRole.stallScoped);
   page.setData({
+    isBlacklisted: auth.isBlacklisted(),
     isStallScoped: scoped,
     canManageGlobalCatalog: !scoped && (access('productManage') || access('catalog')),
     canBrowse: access('browse'), canMarket: access('market') || access('wishManage'),
@@ -110,6 +114,7 @@ function applyPagePermissions(page) {
 }
 
 function deny() {
+  if (auth.isBlacklisted()) return blacklist.redirect();
   wx.showToast({ title: '当前角色无权访问该功能', icon: 'none' });
   wx.reLaunch({ url: '/pages/user/user' });
 }
@@ -132,6 +137,7 @@ async function authorize(page) {
     error.permissionDenied = true;
     throw error;
   }
+  page.setData({ pageAccessReady: true });
   return true;
 }
 
@@ -153,21 +159,37 @@ function wrap(config) {
   }
   const onLoad = config.onLoad;
   const onShow = config.onShow;
+  const onHide = config.onHide;
+  const onUnload = config.onUnload;
   const failure = error => {
     if (error.permissionDenied) deny();
     else wx.showToast({ title: getErrorMessage(error, '加载角色权限失败，请重新打开页面'), icon: 'none' });
   };
   return {
     ...guarded,
+    data: { ...config.data, pageAccessReady: false },
     onLoad(options) {
       this._permissionLoading = authorize(this);
       return this._permissionLoading.then(allowed => allowed && onLoad && onLoad.call(this, options)).catch(failure);
     },
     onShow() {
       const ready = this._permissionLoading || authorize(this);
-      return ready.then(allowed => allowed && onShow && onShow.call(this)).catch(failure).finally(() => {
+      return ready.then(allowed => {
+        if (!allowed) return;
+        blacklist.watch(this);
+        return onShow && onShow.call(this);
+      }).catch(failure).finally(() => {
         if (this._permissionLoading === ready) this._permissionLoading = null;
       });
+    },
+    onHide(...args) {
+      blacklist.stopWatching(this);
+      this.setData({ pageAccessReady: false });
+      return onHide && onHide.apply(this, args);
+    },
+    onUnload(...args) {
+      blacklist.stopWatching(this);
+      return onUnload && onUnload.apply(this, args);
     }
   };
 }

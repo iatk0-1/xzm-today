@@ -10,6 +10,8 @@
   </view>
   <view class="status-header">
     <view class="status-title">{{order.statusDisplay}}</view>
+    <button class="btn-admin-refund" wx:if="{{canManageOrders}}" bindtap="toggleBlacklist" disabled="{{blacklistSaving || !blacklistUsers[order.id]}}">{{blacklistUsers[order.id] ? (blacklistUsers[order.id].blacklisted ? '移出黑名单' : '移入黑名单') : '黑名单状态加载中'}}</button>
+    <button class="btn-admin-refund" wx:if="{{canManageOrders && blacklistLoadError}}" bindtap="refreshBlacklist">重试黑名单状态</button>
     <view class="peer-order-tag" wx:if="{{order.peerOrder}}">同行订单 · 不参与佣金</view>
     <button class="btn-admin-refund" wx:if="{{canManageOrders && order.status === 'pending'}}" bindtap="openPricePanel">修改价格</button>
     <view class="status-desc" wx:if="{{order.status === 'pending'}}">待支付</view>

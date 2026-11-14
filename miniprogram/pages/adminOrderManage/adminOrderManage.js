@@ -8,6 +8,7 @@ const orderPricing = require('../../utils/orderPricing');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const orderNavigation = require('../../utils/orderNavigation');
+const orderBlacklist = require('../../utils/orderBlacklist');
 
 // 状态映射（前端中文 -> 后端英文）
 const STATUS_MAP = {
@@ -40,6 +41,7 @@ Page(autoSearch.wrap(pageSync.wrap({
   onOrderTouchCancel: orderNavigation.onTouchCancel,
 
   data: {
+    blacklistUsers: {}, blacklistSaving: false, blacklistLoadError: false,
     pickingSkuId: '',
     pickingStatus: '',
     pickingProductName: '',
@@ -341,6 +343,7 @@ Page(autoSearch.wrap(pageSync.wrap({
         isLoading: false,
         isLoadingMore: false
       });
+      this.refreshBlacklist();
     } catch (err) {
       if (requestId !== this._ordersRequestId) return;
       wx.hideLoading();
@@ -349,6 +352,10 @@ Page(autoSearch.wrap(pageSync.wrap({
       this.setData({ isLoading: false, isLoadingMore: false });
     }
   },
+
+  onShow() { return this.refreshBlacklist(); },
+  refreshBlacklist() { return orderBlacklist.refresh(this); },
+  toggleBlacklist(event) { return orderBlacklist.toggle(this, event.currentTarget.dataset.id); },
 
   normalizeOrder: function(order) {
     const items = (order.items || []).map(item => ({

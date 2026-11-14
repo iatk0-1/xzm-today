@@ -497,3 +497,6 @@ page {
 }
 
 @import "../../styles/afterSaleEmbedded.wxss";
+
+.action-row { flex-wrap: wrap; }
+button.blacklist-button[disabled] { color: #999; }

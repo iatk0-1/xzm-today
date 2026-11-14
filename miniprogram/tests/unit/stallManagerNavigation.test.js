@@ -10,6 +10,7 @@ function loadPage(name, role) {
   const navigations = [];
   const toasts = [];
   const auth = {
+    isBlacklisted: () => false,
     getRoleLabel: code => ({ admin: '管理员', stall_manager: '档口负责人', user: '普通用户' }[code]),
     getPermissionSnapshot: () => ({ menus: require('../../utils/workbench').getOrderedEntries(role).map(entry => ({ code: entry.id, name: entry.label })) }),
     loadPermissionSnapshot: async () => {},
@@ -142,7 +143,7 @@ for (const role of ['admin', 'stall_manager', 'user']) {
     assert.match(workbenchTemplate, /wx:for="\{\{workbenchItems\}\}"/);
     assert.match(workbenchTemplate, /class="workbench-button" bindtap="goToWorkbench" data-entry="\{\{item.id\}\}"/);
     const buttons = visible ? Array.from(fixture.page.data.workbenchItems) : [];
-    assert.equal(buttons.length, role === 'admin' ? 17 : role === 'stall_manager' ? 5 : 0);
+    assert.equal(buttons.length, role === 'admin' ? 18 : role === 'stall_manager' ? 5 : 0);
     if (role === 'stall_manager') {
       assert.deepEqual(buttons.map(button => button.label), ['商品上下架管理', '拣货推荐', '销售数据', '我的佣金与结算', '商品草稿']);
     }

@@ -8,6 +8,7 @@ const quantityOperation = require('../../utils/quantityOperation');
 const auth = require('../../utils/auth');
 const clipboard = require('../../utils/clipboard');
 const orderNavigation = require('../../utils/orderNavigation');
+const orderBlacklist = require('../../utils/orderBlacklist');
 const { getExpressName } = require('../../utils/expressCompany');
 
 const pageSync = require('../../utils/pageSync');
@@ -18,6 +19,7 @@ Page(pageSync.wrap({
   onOrderTouchCancel: orderNavigation.onTouchCancel,
 
   data: {
+    blacklistUsers: {}, blacklistSaving: false, blacklistLoadError: false,
     showPricePanel: false,
     priceSaving: false,
     pricing: null,
@@ -69,7 +71,11 @@ Page(pageSync.wrap({
 
   onShow() {
     this.syncPendingShipmentUnbind();
+    this.refreshBlacklist();
   },
+
+  refreshBlacklist() { return orderBlacklist.refresh(this); },
+  toggleBlacklist() { return orderBlacklist.toggle(this, this.data.orderId); },
 
   async loadPricing() {
     this.setData({ promotionDetailsError: '' });
@@ -343,6 +349,7 @@ Page(pageSync.wrap({
         shipments: [],
         logisticsTraceMap: {}
       });
+      this.refreshBlacklist();
       if ((Number(order.priceRevision) > 0 || Number(order.promotionDiscount) > 0)) await this.loadPricing();
       else this.setData({ pricing: null, refundPayments: [], promotionRows: [], promotionDetailsError: '' });
       if (this._openPricingOnLoad && order.status === 'pending') {

@@ -10,6 +10,7 @@ const workbench = require('../../utils/workbench');
 
 Page({
   data: {
+    isBlacklisted: false,
     currentRoleLabel: '普通用户',
     availableRoles: [],
     hasMultipleRoles: false,
@@ -149,6 +150,7 @@ Page({
   },
 
   refreshWorkbenchOrder: async function() {
+    if (auth.isBlacklisted()) return;
     const info = auth.getUserInfo() || {};
     const scope = workbench.getStorageKey(info);
     if (!scope || this.data.workbenchSaving || this._workbenchDrag || this._workbenchHidden || typeof api.get !== 'function') return;

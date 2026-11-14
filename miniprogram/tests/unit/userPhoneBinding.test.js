@@ -8,6 +8,7 @@ function loadPage(cached, profile, canProfile = true) {
   let page;
   let stored = cached;
   const auth = {
+    isBlacklisted: () => false,
     canAccessMenu: () => canProfile,
     getRoleLabel: code => ({ admin: '管理员', user: '普通用户' }[code]),
     getPermissionSnapshot: () => ({ menus: [] }),

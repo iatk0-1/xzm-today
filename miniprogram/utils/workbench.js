@@ -18,6 +18,7 @@ const entries = [
   { id: 'applications', label: '用户申请审批管理', url: '/pages/adminChangeRequestManage/adminChangeRequestManage', roles: ['admin'] },
   { id: 'shippingTemplates', label: '快递运费模板', url: '/pages/shippingTemplates/shippingTemplates', roles: ['admin'] },
   { id: 'productDrafts', label: '商品草稿', url: '/pages/productDrafts/index', roles: ['admin', 'stall_manager'] },
+  { id: 'blacklist', label: '黑名单管理', url: '/pages/blacklist/blacklist', roles: ['admin'] },
   { id: 'customerService', label: '客服管理', url: '/pages/customerServiceStaff/customerServiceStaff', roles: [] },
   { id: 'purchase', label: '采购订单', url: '/pages/purchaseOrders/purchaseOrders', roles: [] },
   { id: 'homeProducts', label: '首页商品编排', url: '/pages/index/index', roles: [] },

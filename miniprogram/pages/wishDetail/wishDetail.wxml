@@ -1,3 +1,4 @@
+<block wx:if="{{pageAccessReady}}">
 <view class="wish-nav" wx:if="{{!productSheetVisible}}" style="padding-top: {{statusBarHeight}}px;">
   <view class="wish-nav-row"><view class="nav-back" bindtap="goBack" aria-role="button" aria-label="返回"><view class="back-arrow"></view></view></view>
 </view>
@@ -95,3 +96,5 @@
   <video id="wishFullscreenVideo" class="wish-fullscreen-video" src="{{wish.videoUrl}}" autoplay loop controls object-fit="contain" show-fullscreen-btn="{{false}}" catchtap="stopVideoTap" binderror="onWishVideoError" />
   <view class="wish-close-video" catchtap="closeVideoOverlay" style="top: {{statusBarHeight + 10}}px;">×</view>
 </view>
+
+</block>

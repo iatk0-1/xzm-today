@@ -200,6 +200,8 @@
         </view>
 
         <view class="action-row" wx:if="{{!pickingSkuId}}">
+          <button class="btn-ghost blacklist-button" wx:if="{{canManageOrders}}" catchtap="toggleBlacklist" data-id="{{item.id}}" disabled="{{blacklistSaving || !blacklistUsers[item.id]}}">{{blacklistUsers[item.id] ? (blacklistUsers[item.id].blacklisted ? '移出黑名单' : '移入黑名单') : '黑名单状态加载中'}}</button>
+          <view class="btn-ghost" wx:if="{{canManageOrders && blacklistLoadError}}" catchtap="refreshBlacklist">重试黑名单状态</view>
           <!-- 待付款 -->
           <view class="btn-ghost" wx:if="{{item.status === 'pending'}}" catchtap="editOrderPrice" data-id="{{item.id}}">改价</view>
           <view class="btn-ghost" wx:if="{{item.status === 'pending'}}" catchtap="cancelOrder" data-id="{{item.id}}">关闭订单</view>

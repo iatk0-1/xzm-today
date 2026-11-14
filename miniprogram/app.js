@@ -63,7 +63,9 @@ App({
     }
 
     // 热启动也要校验会话；静默恢复，避免每次回前台重复弹加载框。
-    this.ensureAuthenticated({ silent: true }).catch((err) => {
+    this.ensureAuthenticated({ silent: true }).then(() => auth.loadPermissionSnapshot()).then(() => {
+      require('./utils/permissions').checkCurrentPage();
+    }).catch((err) => {
       console.warn('热启动认证恢复失败:', err);
     });
   },

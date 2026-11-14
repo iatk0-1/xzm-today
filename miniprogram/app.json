@@ -20,6 +20,7 @@
     "pages/adminSales/adminSales"
   ],
   "subPackages": [
+    { "name": "blacklist", "root": "pages/blacklist", "pages": ["blacklist"] },
     {
       "name": "customerServiceChat",
       "root": "pages/customerServiceChat",

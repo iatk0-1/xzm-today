@@ -1,0 +1,28 @@
+<view class="blacklist-page">
+  <view class="tabs">
+    <view class="tab {{blacklistedOnly ? 'active' : ''}}" bindtap="selectTab" data-mode="blacklisted">已移入黑名单</view>
+    <view class="tab {{!blacklistedOnly ? 'active' : ''}}" bindtap="selectTab" data-mode="all">全部用户</view>
+  </view>
+  <view class="search-row">
+    <input value="{{keyword}}" maxlength="80" placeholder="搜索昵称、绑定手机号、用户ID" bindinput="inputSearch" bindconfirm="search" confirm-type="search" />
+    <button size="mini" bindtap="search" disabled="{{saving}}">搜索</button>
+  </view>
+  <view class="hint">按下单账号管理权限，绑定手机号与订单收件手机号可能不同。移入后仅保留信息和我页面。</view>
+  <view class="error" wx:if="{{error}}">{{error}}<text bindtap="search"> 点击重试</text></view>
+  <view class="summary" wx:if="{{!loading}}">共 {{total}} 位用户</view>
+  <view class="user-card" wx:for="{{users}}" wx:key="id">
+    <view class="user-header">
+      <image wx:if="{{item.avatarUrl}}" class="avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
+      <view class="user-info">
+        <view class="nickname">{{item.nickname || '微信用户'}}</view>
+        <view class="meta" user-select="true">用户ID：{{item.id}}</view>
+        <view class="meta" user-select="true">绑定手机：{{item.phone || '未绑定'}}</view>
+      </view>
+      <text class="status {{item.blacklisted ? 'blocked' : ''}}">{{item.blacklisted ? '黑名单' : '正常'}}</text>
+    </view>
+    <button class="action {{item.blacklisted ? 'restore' : ''}}" bindtap="toggleUser" data-id="{{item.id}}" disabled="{{saving || loading}}">{{item.blacklisted ? '移出黑名单' : '移入黑名单'}}</button>
+  </view>
+  <view class="empty" wx:if="{{!loading && !error && !users.length}}">{{blacklistedOnly ? '暂无黑名单用户，可切换到全部用户搜索并添加' : '没有找到匹配的用户'}}</view>
+  <view class="loading" wx:if="{{loading}}">加载中...</view>
+  <button class="more" wx:if="{{!loading && hasMore && users.length}}" bindtap="onReachBottom">加载更多</button>
+</view>
