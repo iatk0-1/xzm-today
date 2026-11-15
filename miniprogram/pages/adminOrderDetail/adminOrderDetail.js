@@ -10,10 +10,11 @@ const clipboard = require('../../utils/clipboard');
 const orderNavigation = require('../../utils/orderNavigation');
 const orderBlacklist = require('../../utils/orderBlacklist');
 const { getExpressName } = require('../../utils/expressCompany');
+const orderItemSpecChange = require('../../utils/orderItemSpecChange');
 
 const pageSync = require('../../utils/pageSync');
 Page(pageSync.wrap({
-  ...require('../../utils/orderItemSpecChange'),
+  ...orderItemSpecChange,
   onOrderTouchStart: orderNavigation.onTouchStart,
   onOrderTouchMove: orderNavigation.onTouchMove,
   onOrderTouchEnd: orderNavigation.onTouchEnd,

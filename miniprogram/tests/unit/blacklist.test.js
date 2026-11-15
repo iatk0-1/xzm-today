@@ -154,7 +154,12 @@ test('订单黑名单按钮使用下单账号并同步同账号其他订单，�
 test('四个受限页面均在授权完成前隐藏整页，包含商品详情浮层', () => {
   for (const route of ['index', 'market', 'detail', 'wishDetail']) {
     const source = fs.readFileSync(path.join(__dirname, '../../pages', route, route + '.wxml'), 'utf8').trim();
-    assert.ok(source.startsWith('<block wx:if="{{pageAccessReady}}">'));
+    if (source.includes('<page-meta')) {
+      assert.match(source, /^<page-meta\b/, 'page-meta 必须独立放在页面最前面，不能位于权限条件容器内');
+      assert.doesNotMatch(source.match(/^<page-meta\b[^>]*>/)[0], /wx:(?:if|elif|else|for)\b/);
+    }
+    const content = source.replace(/^<page-meta\b[^>]*>\s*<\/page-meta>\s*/, '');
+    assert.ok(content.startsWith('<block wx:if="{{pageAccessReady}}">'));
     assert.ok(source.endsWith('</block>'));
   }
 });

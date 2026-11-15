@@ -1,5 +1,5 @@
-<block wx:if="{{pageAccessReady}}">
 <page-meta page-style="{{showAllPanel || homeDragId || showHomeProductPicker ? 'overflow: hidden;' : ''}}"></page-meta>
+<block wx:if="{{pageAccessReady}}">
 <view class="container" style="padding-top: {{totalNavHeight}}px;">
 
   <view class="custom-nav-bar" style="padding-top: {{navTop}}px;">
