@@ -385,3 +385,13 @@ page { background-color: #f2f2f2; }
 .order-cost-panel .panel-actions button { flex: 1; font-size: 28rpx; }
 
 @import "../../styles/afterSaleEmbedded.wxss";
+.spec-change-button { margin: 16rpx 0 0; color: #167752; }
+.spec-change-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1200; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 30rpx; }
+.spec-change-panel { width: 100%; max-height: 85vh; overflow-y: auto; box-sizing: border-box; background: #fff; border-radius: 24rpx; padding: 32rpx; font-size: 28rpx; }
+.spec-change-title { font-weight: 600; font-size: 34rpx; margin-bottom: 24rpx; }
+.spec-change-note { color: #777; font-size: 25rpx; line-height: 1.7; margin: 18rpx 0; }
+.spec-change-picker { background: #f5f7f8; padding: 24rpx; border-radius: 12rpx; line-height: 1.6; }
+.spec-change-quantity { display: flex; align-items: center; justify-content: space-between; margin: 24rpx 0; }
+.spec-change-quantity input { width: 180rpx; padding: 14rpx; border: 1rpx solid #ddd; border-radius: 8rpx; text-align: center; }
+.spec-change-actions { display: flex; gap: 20rpx; margin-top: 24rpx; }
+.spec-change-actions button { flex: 1; font-size: 28rpx; }

@@ -13,12 +13,14 @@ const { getExpressName } = require('../../utils/expressCompany');
 
 const pageSync = require('../../utils/pageSync');
 Page(pageSync.wrap({
+  ...require('../../utils/orderItemSpecChange'),
   onOrderTouchStart: orderNavigation.onTouchStart,
   onOrderTouchMove: orderNavigation.onTouchMove,
   onOrderTouchEnd: orderNavigation.onTouchEnd,
   onOrderTouchCancel: orderNavigation.onTouchCancel,
 
   data: {
+    specChange: null, specSaving: false,
     blacklistUsers: {}, blacklistSaving: false, blacklistLoadError: false,
     showPricePanel: false,
     priceSaving: false,

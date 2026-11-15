@@ -1,3 +1,16 @@
+<view class="spec-change-mask" wx:if="{{specChange}}">
+  <view class="spec-change-panel">
+    <view class="spec-change-title">商品变更</view>
+    <view>{{specChange.name}}</view>
+    <view class="spec-change-note">原规格：{{specChange.oldSpec}} · 共 {{specChange.maxQty}} 件</view>
+    <picker range="{{specChange.options}}" range-key="label" value="{{specChange.index}}" bindchange="onSpecChangeSelection" disabled="{{specSaving}}">
+      <view class="spec-change-picker">新规格：{{specChange.options[specChange.index].label}} ▾</view>
+    </picker>
+    <view class="spec-change-quantity"><text>变更数量</text><input type="number" value="{{specChange.qty}}" bindinput="onSpecChangeQty" disabled="{{specSaving}}" /></view>
+    <view class="spec-change-note">支持部分数量变更，成交金额不变。原报单保留，原现货占用释放，新规格重新配货；配货不足的部分需要重新报单。</view>
+    <view class="spec-change-actions"><button bindtap="closeSpecChange" disabled="{{specSaving}}">取消</button><button type="primary" bindtap="saveSpecChange" loading="{{specSaving}}" disabled="{{specSaving}}">确认变更</button></view>
+  </view>
+</view>
 <view class="admin-detail-wrapper" wx:if="{{!isLoading && order}}">
   <view class="unbind-pending-banner" wx:if="{{pendingShipmentUnbind && canEditShipping}}">
     <view class="unbind-preview-title">有发货解绑等待确认</view>
@@ -75,6 +88,7 @@
           <text class="remark-tag">备注</text>
           <text class="remark-text copyable-text" user-select="{{true}}">{{item.remark}}</text>
         </view>
+        <button size="mini" class="spec-change-button" wx:if="{{canManageOrders && !isStallScoped && item.qty > 0 && !item.shippedQty && !item.frozenQty && (order.status === 'pending' || order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped')}}" catchtap="openSpecChange" data-index="{{itemIndex}}">商品变更</button>
         <view class="goods-remark admin-remark-row" wx:if="{{canEditOrderRecipient || item.adminRemark}}" catchtap="openAdminRemarkEditor" data-index="{{itemIndex}}">
           <text class="remark-tag admin-remark-tag">管理员备注</text>
           <text class="remark-text admin-remark-text">{{item.adminRemark || '点击添加'}}</text>
