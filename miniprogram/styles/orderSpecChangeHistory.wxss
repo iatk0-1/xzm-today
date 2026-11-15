@@ -1,0 +1,8 @@
+.spec-history .section-title { font-size: 30rpx; font-weight: 600; margin-bottom: 20rpx; }
+.spec-history-entry + .spec-history-entry { border-top: 1rpx solid #eee; padding-top: 24rpx; margin-top: 24rpx; }
+.spec-history-name { font-size: 28rpx; color: #333; margin-bottom: 16rpx; }
+.spec-history-row { display: flex; justify-content: space-between; gap: 24rpx; font-size: 26rpx; line-height: 1.8; }
+.spec-history-row text:first-child { color: #999; flex-shrink: 0; }
+.spec-history-row text:last-child { color: #555; text-align: right; word-break: break-all; }
+.spec-history-time { color: #999; font-size: 24rpx; margin-top: 12rpx; }
+.spec-history-error { color: #b55c22; font-size: 26rpx; line-height: 1.7; }

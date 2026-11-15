@@ -120,13 +120,14 @@
         <text class="money-label">{{order.status === 'pending' ? '线上待付' : '线上实付'}}</text>
         <text class="money-val final">¥ {{order.payAmount}}</text>
       </view>
-      <view class="money-row" wx:if="{{order.peerOrder || order.priceRevision > 0}}"><text class="money-label">线下已收</text><text class="money-val">¥ {{order.offlinePaidAmount}}</text></view>
-      <view class="money-row" wx:if="{{order.peerOrder || order.priceRevision > 0}}"><text class="money-label">成交总额</text><text class="money-val final">¥ {{order.settlementTotalDisplay}}</text></view>
+      <view class="money-row" wx:if="{{order.peerOrder || order.offlinePaidAmount > 0 || pricing.hasPriceAdjustment}}"><text class="money-label">线下已收</text><text class="money-val">¥ {{order.offlinePaidAmount}}</text></view>
+      <view class="money-row" wx:if="{{order.peerOrder || order.offlinePaidAmount > 0 || pricing.hasPriceAdjustment}}"><text class="money-label">成交总额</text><text class="money-val final">¥ {{order.settlementTotalDisplay}}</text></view>
       <button size="mini" wx:if="{{canManageOrders && order.shippingRefundStatus === 'failed'}}" bindtap="retryShippingRefund">重试运费退款</button>
     </view>
   </view>
 
-  <view class="info-card pricing-details" wx:if="{{pricing && order.priceRevision > 0}}">
+  <include src="../../templates/orderSpecChangeHistory.wxml" />
+  <view class="info-card pricing-details" wx:if="{{pricing && pricing.hasPriceAdjustment}}">
     <view class="section-title">实际成交分摊</view>
     <view class="price-item-line" wx:for="{{pricing.items}}" wx:key="orderItemId">
       <view class="price-item-info">
@@ -139,7 +140,7 @@
     </view>
     <view class="pricing-hint">按各SKU成本小计占比分摊成交额，运费单独计入订单。</view>
     <view class="price-history" wx:for="{{pricing.history}}" wx:key="revision">
-      <view>第 {{item.revision}} 次改价 · {{item.timeDisplay}}</view>
+      <view>第 {{item.adjustmentNumber}} 次改价 · {{item.timeDisplay}}</view>
       <view>线上 ¥{{item.beforeOnlineAmount}} → ¥{{item.onlineAmount}}；线下 ¥{{item.beforeOfflineAmount}} → ¥{{item.offlineAmount}}</view>
       <view>运费 ¥{{item.beforeShippingFee}} → ¥{{item.shippingFee}}</view>
       <view>原因：{{item.reason}} · 操作人 {{item.operatorId}}</view>

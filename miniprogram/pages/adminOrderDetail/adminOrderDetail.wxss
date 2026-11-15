@@ -395,3 +395,4 @@ page { background-color: #f2f2f2; }
 .spec-change-quantity input { width: 180rpx; padding: 14rpx; border: 1rpx solid #ddd; border-radius: 8rpx; text-align: center; }
 .spec-change-actions { display: flex; gap: 20rpx; margin-top: 24rpx; }
 .spec-change-actions button { flex: 1; font-size: 28rpx; }
+@import "../../styles/orderSpecChangeHistory.wxss";

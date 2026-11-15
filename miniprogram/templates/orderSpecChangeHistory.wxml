@@ -1,0 +1,11 @@
+<view class="info-card spec-history" wx:if="{{specChanges.length || specChangesError}}">
+  <view class="section-title">商品规格修改记录</view>
+  <view class="spec-history-error" wx:if="{{specChangesError}}" bindtap="retrySpecChanges">{{specChangesError}} · 点击重试</view>
+  <view class="spec-history-entry" wx:for="{{specChanges}}" wx:key="id">
+    <view class="spec-history-name">{{item.productName || '商品'}}</view>
+    <view class="spec-history-row"><text>原规格</text><text>{{item.sourceLabel}}</text></view>
+    <view class="spec-history-row"><text>修改后</text><text>{{item.targetLabel}}</text></view>
+    <view class="spec-history-row"><text>变更数量</text><text>{{item.qty}} 件</text></view>
+    <view class="spec-history-time">{{item.timeDisplay}}</view>
+  </view>
+</view>

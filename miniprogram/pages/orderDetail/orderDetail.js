@@ -12,6 +12,7 @@ const { getExpressName } = require('../../utils/expressCompany');
 const customerServiceOrder = require('../../utils/customerServiceOrder');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const afterSaleEligibility = require('../../utils/afterSaleEligibility');
+const specChangeHistory = require('../../utils/orderSpecChangeHistory');
 
 Page(pageSync.wrap({
   onOrderTouchStart: orderNavigation.onTouchStart,
@@ -20,6 +21,7 @@ Page(pageSync.wrap({
   onOrderTouchCancel: orderNavigation.onTouchCancel,
 
   data: {
+    specChanges: [], specChangesError: '', specChangesLoading: false,
     pricing: null,
     promotionRows: [], promotionExpanded: false,
     order: null,
@@ -112,6 +114,7 @@ Page(pageSync.wrap({
         order: res, customerServiceCard: customerServiceOrder.orderCard(res), isLoading: false });
 
       // 加载售后记录
+      specChangeHistory.load(this, api, orderId);
       this.loadAfterSaleRecords(orderId);
       this.loadChangeRequests(orderId);
 
@@ -137,6 +140,7 @@ Page(pageSync.wrap({
     }
   },
 
+  retrySpecChanges() { return specChangeHistory.load(this, api, this.data.order.id); },
   togglePromotionDetails: function() { this.setData({ promotionExpanded: !this.data.promotionExpanded }); },
 
   getOrderStatusDisplay: function(status) {

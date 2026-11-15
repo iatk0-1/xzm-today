@@ -1,3 +1,4 @@
+@import "../../styles/orderSpecChangeHistory.wxss";
 page { background-color: #f7f8fa; padding-bottom: calc(118rpx + env(safe-area-inset-bottom)); }
 .after-sale-tag {
   align-self: flex-start;

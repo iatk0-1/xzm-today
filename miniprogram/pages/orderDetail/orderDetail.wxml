@@ -84,7 +84,8 @@
     </view>
   </view>
 
-  <view class="info-card pricing-details" wx:if="{{pricing && order.priceRevision > 0}}">
+  <include src="../../templates/orderSpecChangeHistory.wxml" />
+  <view class="info-card pricing-details" wx:if="{{pricing && pricing.hasPriceAdjustment}}">
     <view class="section-title">订单改价明细</view>
     <view class="info-row"><text class="info-label">线上支付金额</text><text>¥ {{pricing.onlineAmount}}</text></view>
     <view class="info-row"><text class="info-label">线下实收</text><text>¥ {{pricing.offlineAmount}}</text></view>

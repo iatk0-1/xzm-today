@@ -21,6 +21,7 @@ function setup() {
       if (name.endsWith('/auth')) return { ensureAuthenticated: async () => {}, isAdmin: () => false };
       if (name.endsWith('/api')) return { get: async url => {
         reads.push(url);
+        if (url.endsWith('/spec-changes')) return [];
         if (url === '/after-sales/query') return { content: [] };
         if (url.endsWith('/change-requests')) return [];
         if (resolveOrder) return new Promise(resolveOrder);
@@ -47,7 +48,7 @@ test('超时订单仍为待付款时只静默核对一次，不循环请求或�
   assert.equal(env.intervals.size, 0, '已经超时不再启动每秒倒计时');
   await env.fireTimeouts();
   await env.fireTimeouts();
-  assert.deepEqual(env.reads, ['/orders/123', '/after-sales/query', '/orders/123/change-requests']);
+  assert.deepEqual(env.reads, ['/orders/123', '/orders/123/spec-changes', '/after-sales/query', '/orders/123/change-requests']);
   assert.equal(env.timeouts.size, 0);
   assert.equal(env.intervals.size, 0);
   assert.deepEqual(env.loading, []);
@@ -80,10 +81,10 @@ test('从客服返回详情时恢复倒计时，并根据实际时间核对超�
   env.page.data.order.createdAt = env.order.createdAt;
   env.page.onShow();
   await env.fireTimeouts();
-  assert.deepEqual(env.reads, ['/orders/123', '/after-sales/query', '/orders/123/change-requests']);
+  assert.deepEqual(env.reads, ['/orders/123', '/orders/123/spec-changes', '/after-sales/query', '/orders/123/change-requests']);
   env.page.onHide(); env.page.onShow();
   await env.fireTimeouts();
-  assert.equal(env.reads.length, 3, '同一次超时不因切回前台重复核对三个接口');
+  assert.equal(env.reads.length, 4, '同一次超时不因切回前台重复核对订单及关联记录');
 });
 
 test('超时核对请求在后台返回时不重启计时器', async () => {

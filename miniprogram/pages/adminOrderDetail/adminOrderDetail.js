@@ -11,6 +11,7 @@ const orderNavigation = require('../../utils/orderNavigation');
 const orderBlacklist = require('../../utils/orderBlacklist');
 const { getExpressName } = require('../../utils/expressCompany');
 const orderItemSpecChange = require('../../utils/orderItemSpecChange');
+const specChangeHistory = require('../../utils/orderSpecChangeHistory');
 
 const pageSync = require('../../utils/pageSync');
 Page(pageSync.wrap({
@@ -21,6 +22,7 @@ Page(pageSync.wrap({
   onOrderTouchCancel: orderNavigation.onTouchCancel,
 
   data: {
+    specChanges: [], specChangesError: '', specChangesLoading: false,
     specChange: null, specSaving: false,
     blacklistUsers: {}, blacklistSaving: false, blacklistLoadError: false,
     showPricePanel: false,
@@ -86,7 +88,10 @@ Page(pageSync.wrap({
       const pricing = await api.get(`/admin/orders-manage/orders/${this.data.orderId}/pricing`);
       pricing.items = attachArticleNos(pricing.items, this.data.order && this.data.order.items || []);
       if (pricing) (pricing.items || []).forEach(row => { row.unitPriceDisplay = (Number(row.settlementAmount) / Math.max(1, Number(row.qty || 1))).toFixed(2); });
-      pricing.history = (pricing.history || []).map(row => ({ ...row, timeDisplay: this.formatTime(row.createdAt) }));
+      const history = pricing.history || [];
+      pricing.hasPriceAdjustment = pricing.hasPriceAdjustment === true || history.length > 0;
+      pricing.history = history.map((row, index) => ({ ...row, adjustmentNumber: history.length - index,
+        timeDisplay: this.formatTime(row.createdAt) }));
       const refundPayments = Number(pricing.offlineAmount) > 0
         ? await api.get(`/admin/orders-manage/orders/${this.data.orderId}/refund-payments`) : [];
       const order = this.data.order;
@@ -359,6 +364,7 @@ Page(pageSync.wrap({
         this._openPricingOnLoad = false;
         await this.openPricePanel();
       }
+      specChangeHistory.load(this, api, this.data.orderId, true);
       this.loadAfterSaleRecords(this.data.orderId);
       if (['shipped', 'paid', 'partial_shipped', 'completed'].includes(order.status)) {
         this.loadShipmentInfo(this.data.orderId);
@@ -377,6 +383,7 @@ Page(pageSync.wrap({
     }
   },
 
+  retrySpecChanges() { return specChangeHistory.load(this, api, this.data.orderId, true); },
   togglePromotionDetails() { this.setData({ promotionExpanded: !this.data.promotionExpanded }); },
 
   getOrderStatusDisplay(status) {
