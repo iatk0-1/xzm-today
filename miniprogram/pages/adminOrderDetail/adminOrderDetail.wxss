@@ -14,18 +14,24 @@ page { background-color: #f2f2f2; }
   background: #fff; border-radius: 16rpx; padding: 32rpx 24rpx; margin-bottom: 16rpx; text-align: center;
 }
 .status-title { font-size: 36rpx; font-weight: 600; color: #1a1a1a; }
-.status-desc { font-size: 24rpx; color: #999; margin-top: 8rpx; }
+.status-actions { display: flex; align-items: stretch; gap: 16rpx; margin-top: 24rpx; }
 .btn-admin-refund {
-  margin-top: 24rpx;
-  width: 220rpx;
-  height: 64rpx;
-  line-height: 64rpx;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  min-height: 64rpx;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   border-radius: 8rpx;
   background: #1a1a1a;
   color: #fff;
   font-size: 26rpx;
-  padding: 0;
+  padding: 12rpx 16rpx;
 }
+.status-retry { margin: 16rpx auto 0; width: auto; }
 
 /* === 收件地址 === */
 .address-card { display: flex; align-items: flex-start; gap: 16rpx; }

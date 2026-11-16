@@ -23,22 +23,18 @@
   </view>
   <view class="status-header">
     <view class="status-title">{{order.statusDisplay}}</view>
-    <button class="btn-admin-refund" wx:if="{{canManageOrders}}" bindtap="toggleBlacklist" disabled="{{blacklistSaving || !blacklistUsers[order.id]}}">{{blacklistUsers[order.id] ? (blacklistUsers[order.id].blacklisted ? '移出黑名单' : '移入黑名单') : '黑名单状态加载中'}}</button>
-    <button class="btn-admin-refund" wx:if="{{canManageOrders && blacklistLoadError}}" bindtap="refreshBlacklist">重试黑名单状态</button>
     <view class="peer-order-tag" wx:if="{{order.peerOrder}}">同行订单 · 不参与佣金</view>
-    <button class="btn-admin-refund" wx:if="{{canManageOrders && order.status === 'pending'}}" bindtap="openPricePanel">修改价格</button>
-    <view class="status-desc" wx:if="{{order.status === 'pending'}}">待支付</view>
-    <view class="status-desc" wx:if="{{order.status === 'stocking'}}">备货中</view>
-    <view class="status-desc" wx:if="{{order.status === 'paid'}}">待发货</view>
-    <view class="status-desc" wx:if="{{order.status === 'partial_shipped'}}">部分已发货</view>
-    <view class="status-desc" wx:if="{{order.status === 'shipped'}}">已发货</view>
-    <view class="status-desc" wx:if="{{order.status === 'completed'}}">交易完成</view>
-    <button
-      class="btn-admin-refund"
-      wx:if="{{canRefundOrder && (order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped' || order.status === 'shipped' || order.status === 'completed')}}"
-      bindtap="openRefundPanel">
-      主动退款
-    </button>
+    <view class="status-actions" wx:if="{{canManageOrders || (canRefundOrder && (order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped' || order.status === 'shipped' || order.status === 'completed'))}}">
+      <button class="btn-admin-refund" wx:if="{{canManageOrders}}" bindtap="toggleBlacklist" disabled="{{blacklistSaving || !blacklistUsers[order.id]}}">{{blacklistUsers[order.id] ? (blacklistUsers[order.id].blacklisted ? '移出黑名单' : '移入黑名单') : '黑名单状态加载中'}}</button>
+      <button class="btn-admin-refund" wx:if="{{canManageOrders && order.status === 'pending'}}" bindtap="openPricePanel">修改价格</button>
+      <button
+        class="btn-admin-refund"
+        wx:if="{{canRefundOrder && (order.status === 'stocking' || order.status === 'paid' || order.status === 'partial_shipped' || order.status === 'shipped' || order.status === 'completed')}}"
+        bindtap="openRefundPanel">
+        主动退款
+      </button>
+    </view>
+    <button class="btn-admin-refund status-retry" wx:if="{{canManageOrders && blacklistLoadError}}" bindtap="refreshBlacklist">重试黑名单状态</button>
   </view>
 
   <view class="info-card address-card" wx:if="{{order.recipientName}}">
