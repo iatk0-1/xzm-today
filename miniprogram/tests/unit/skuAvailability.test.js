@@ -89,18 +89,50 @@ for (const kind of ['list', 'detail', 'embedded-half', 'embedded-full']) {
     assert.equal(productReads(env).length, 2);assert.equal(env.page.data.currentSkuFreeStockQty, 4);
     assert.equal(env.page.data.skuDataLoading, false);
   });
+
+  for (const [label, stock, otherStock] of [
+    ['现货不足', 5, 1], ['可售数量不足', 2, 1], ['所选规格售罄', 0, 1], ['全部规格售罄', 0, 0]
+  ]) test(`${kind}：结算返回后${label}仍保留原尺码和数量，再次购买不替换规格`, async () => {
+    let fresh = product([
+      sku({ skuId: 'S', color: '粉色', size: 'S', stock: 1, freeStockQty: 1 }),
+      sku({ skuId: 'M', color: '粉色', size: 'M', stock: 5, freeStockQty: 3 })
+    ]);
+    const env = harness(kind, { product: fresh, get: async () => ({ product: plain(fresh) }) });
+    await env.ready;
+    env.page.selectSize(event({ size: 'M' }));env.page.setPickedSkuQuantity('M', 3);
+    await env.page.buy();
+    assert.deepEqual(env.storage.get('checkoutItems').map(item => [item.skuId, item.selectedSize, item.count]), [['M', 'M', 3]]);
+    assert.equal(env.page.data.showSku, false);
+
+    fresh = product([
+      sku({ skuId: 'S', color: '粉色', size: 'S', stock: otherStock, freeStockQty: otherStock }),
+      sku({ skuId: 'M', color: '粉色', size: 'M', stock, freeStockQty: 0 })
+    ]);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await env.page.openSkuPanel(event({ product: env.page.data.currentProduct, action: 'buy' }));
+      assert.equal(env.page.data.showSku, true);
+      assert.equal(env.page.data.skuDataLoading, false);assert.equal(env.page.data.skuDataError, '');
+      assert.deepEqual(plain(env.page.data.pickedSkuItems.map(item => [item.skuId, item.size, item.count])), [['M', 'M', 3]]);
+      assert.deepEqual(env.storage.get(env.page._pickedDraftKey).quantities, { M: 3 });
+      await env.page.buy();
+      assert.equal(env.navigation.length, attempt + 2);
+      assert.deepEqual(env.storage.get('checkoutItems').map(item => [item.skuId, item.selectedSize, item.count]), [['M', 'M', 3]]);
+      assert.deepEqual(env.storage.get(env.page._pickedDraftKey).quantities, { M: 3 });
+      assert.equal(env.modals.length, 0, '返回及再次进入结算不增加提示');
+    }
+  });
 }
 
-test('规格刷新同步列表缓存、图片、价格、现货角标和对应件数，有限库存上限自动收敛', async () => {
+test('规格刷新同步库存、图片、价格和现货角标，不自动删减已选数量', async () => {
   let finish;
   const env = harness('list', { get: () => new Promise(resolve => { finish = resolve; }) });
   const initial = product();
   for (const field of ['productList', 'leftColumn', 'rightColumn', 'results', 'products', 'filteredProducts']) env.page.data[field] = [plain(initial)];
   env.page.setPickedSkuQuantity('11', 3);
   finish({ product: product([sku({ stock: 1, freeStockQty: 0, price: 30, imageUrl: 'new.jpg' })]) });await env.ready;
-  assert.equal(env.page.data.quantity, 1);assert.equal(env.page.data.pickedTotalPrice, '30.00');
+  assert.equal(env.page.data.quantity, 3);assert.equal(env.page.data.pickedTotalPrice, '90.00');
   assert.equal(env.page.data.currentSkuImage, 'new.jpg');assert.equal(env.page.data.sizeOptions[0].hasReadyStock, false);
-  assert.equal(env.storage.get(env.page._pickedDraftKey).quantities['11'], 1);
+  assert.equal(env.storage.get(env.page._pickedDraftKey).quantities['11'], 3);
   for (const field of ['productList', 'leftColumn', 'rightColumn', 'results', 'products', 'filteredProducts']) assert.equal(env.page.data[field][0].skuMatrix[0].freeStockQty, 0);
 });
 

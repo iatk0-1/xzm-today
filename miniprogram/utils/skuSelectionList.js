@@ -60,8 +60,12 @@ function normalizedProduct(product) {
       skus: (group.skus || []).map(sku => normalizedSku({ ...sku, ...byId.get(String(sku.skuId || sku.id)) })) })) };
 }
 
+function selectedQuantity(value) {
+  return Math.max(0, Math.min(2147483647, parseInt(value, 10) || 0));
+}
+
 function quantityFor(value, sku) {
-  const quantity = Math.max(0, Math.min(2147483647, parseInt(value, 10) || 0));
+  const quantity = selectedQuantity(value);
   if (!sku || isSkuSoldOut(sku)) return 0;
   return sku.unlimitedStock ? quantity : Math.min(quantity, Math.max(0, Number(sku.stock) || 0));
 }
@@ -229,8 +233,9 @@ const methods = {
     }));
     const cached = quantities ? { quantities } : drafts.readDraft(this._pickedDraftKey);
     this._pickedQuantities = {};
-    for (const [id, sku] of this._pickedSkus) {
-      const quantity = quantityFor(cached.quantities[id], sku);
+    for (const id of this._pickedSkus.keys()) {
+      // 刷新库存只更新展示，不自动删减用户已选数量；下单时由服务端校验库存。
+      const quantity = selectedQuantity(cached.quantities[id]);
       if (quantity > 0) this._pickedQuantities[id] = quantity;
     }
     this._pickedDraft = drafts.writeDraft(this._pickedDraftKey, this._pickedQuantities);
@@ -443,7 +448,7 @@ const methods = {
       this.setData({ showSku: false });
       return wx.showToast({ title: '该商品类型已下线', icon: 'none' });
     }
-    if (!product.id || product.offSale || product.soldOut) return;
+    if (!product.id || product.offSale || (product.soldOut && !this.data.pickedTotalCount)) return;
     if (!this._pickedSkus) return wx.showToast({ title: '请先重新打开商品选择规格', icon: 'none' });
     if (product.productType === 'live') {
       if (product.convertedToProductId) return wx.navigateTo({ url: '/pages/detail/detail?id=' + product.convertedToProductId });

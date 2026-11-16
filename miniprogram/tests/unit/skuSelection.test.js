@@ -610,7 +610,7 @@ for (const name of ['index', 'search', 'detail']) {
     assert.equal(page.data.pickedTotalCount, 4);
   });
 
-  test(`${name}：关闭再开及跨页面恢复缓存，使用最新库存和价格，账号互相隔离`, () => {
+  test(`${name}：关闭再开及跨页面保留已选数量，刷新库存和价格，账号互相隔离`, () => {
     const skus = [{ skuId: 1, color: '红色', size: 'M', stock: 10, price: 10 }];
     const page = createPage(name, skus);
     page.open();
@@ -619,14 +619,14 @@ for (const name of ['index', 'search', 'detail']) {
     assert.equal(page.data.quantity, 7);
     const restored = createPage(name, [{ ...skus[0], stock: 3, price: 12 }], undefined, true);
     restored.open();
-    assert.equal(restored.data.quantity, 3);
-    assert.equal(restored.data.pickedTotalPrice, '36.00');
+    assert.equal(restored.data.quantity, 7);
+    assert.equal(restored.data.pickedTotalPrice, '84.00');
     pickerAccount = 2;
     restored.open();
     assert.equal(restored.data.pickedTotalCount, 0);
     pickerAccount = 1;
     restored.open();
-    assert.equal(restored.data.quantity, 3);
+    assert.equal(restored.data.quantity, 7);
   });
 
   test(`${name}：多规格统一加购，失败保留清单且不重复提交，成功清空本地缓存`, async () => {

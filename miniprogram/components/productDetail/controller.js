@@ -581,7 +581,7 @@ function createProductDetailConfig() {
       wx.showToast({ title: '该商品类型已下线', icon: 'none' });
       return;
     }
-    if (!product.id || (!e.currentTarget.dataset.skuRefresh && (product.offSale || product.soldOut))) return;
+    if (!product.id || (!e.currentTarget.dataset.skuRefresh && product.offSale)) return;
     this.resetSkuQuantityEditing();
 
     this.setData({ isAdmin: !!auth.isAdmin() && auth.canAccessMenu('productManage'),
