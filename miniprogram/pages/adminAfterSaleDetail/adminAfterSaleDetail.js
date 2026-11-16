@@ -274,6 +274,7 @@ Page({
   getActionDisplay: function(action) {
     const map = {
       'apply': '用户申请',
+      'cancel': '用户撤销申请',
       'review_approve': '审核通过',
       'review_reject': '审核拒绝',
       'review_items': '商家审核',
