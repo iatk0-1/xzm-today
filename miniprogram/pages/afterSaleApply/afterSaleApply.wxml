@@ -171,7 +171,7 @@
       <text class="submit-label">申请退款 · 已选 {{selectedItems.length}} 项</text>
       <text class="submit-amount">¥ {{totalAmount || '0.00'}}</text>
     </view>
-    <view class="submit-btn {{selectedItems.length > 0 ? 'active' : ''}}" bindtap="submitAfterSale">提交申请</view>
+    <view class="submit-btn {{selectedItems.length > 0 ? 'active' : ''}}" bindtap="submitAfterSale" aria-role="button" aria-disabled="{{isSubmitting}}">{{isSubmitting ? '提交中…' : '提交申请'}}</view>
   </view>
 
   <!-- 加载中 -->

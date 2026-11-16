@@ -7,6 +7,7 @@ const clipboard = require('../../utils/clipboard');
 const refundChannels = require('../../utils/refundChannels');
 const afterSaleDisplay = require('../../utils/afterSaleDisplay');
 const promotionDisplay = require('../../utils/skuPromotionDisplay');
+const subscriptionMessages = require('../../utils/subscriptionMessages');
 
 const RETURN_EXPRESS_OPTIONS = [
   { code: 'ZTO', name: '中通' },
@@ -34,7 +35,8 @@ Page({
     returnExpressName: '',
     returnExpressNo: '',
     returnShippingError: '',
-    isSubmittingReturnShipping: false
+    isSubmittingReturnShipping: false,
+    isSubscribing: false
   },
 
   toggleOrderDetail: function() {
@@ -57,6 +59,8 @@ Page({
 
     try {
       await auth.ensureAuthenticated({ silent: true });
+      subscriptionMessages.loadConfig(api).then(config => { this._subscriptionConfig = config; });
+      subscriptionMessages.flush(api, wx).catch(() => {});
       const res = await api.get(`/after-sales/${this.data.afterSaleId}`);
       wx.hideLoading();
       const formatted = this.formatAfterSaleDetail(res);
@@ -75,6 +79,17 @@ Page({
       console.error('加载售后详情失败:', err);
       wx.showToast({ title: getErrorMessage(err, '加载失败'), icon: 'none' });
     }
+  },
+
+  subscribeAfterSale: async function() {
+    if (this.data.isSubscribing || !this.data.afterSaleId) return;
+    this.setData({ isSubscribing: true });
+    const scenes = this.data.afterSale && this.data.afterSale.status === 'pending' ? ['review', 'refund'] : ['refund'];
+    const attempt = subscriptionMessages.request(wx, this._subscriptionConfig, scenes);
+    try {
+      const results = await subscriptionMessages.persist(api, wx, this.data.afterSaleId, attempt);
+      wx.showToast({ title: Object.values(results).includes('accept') ? '提醒订阅已受理' : '未订阅提醒', icon: 'none' });
+    } finally { this.setData({ isSubscribing: false }); }
   },
 
   formatAfterSaleDetail: function(res) {

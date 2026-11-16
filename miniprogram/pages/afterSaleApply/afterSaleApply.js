@@ -6,6 +6,7 @@ const clipboard = require('../../utils/clipboard');
 const refundChannels = require('../../utils/refundChannels');
 const { limitTextInput } = require('../../utils/textInputLimit');
 const afterSaleEligibility = require('../../utils/afterSaleEligibility');
+const subscriptionMessages = require('../../utils/subscriptionMessages');
 
 const DEFAULT_AFTER_SALE_REASON = '不想要了';
 
@@ -41,7 +42,8 @@ Page({
     reasonOptions: REASON_OPTIONS,
     evidenceImages: [],
     evidenceUrls: '',
-    isLoading: true
+    isLoading: true,
+    isSubmitting: false
   },
 
   onLoad: function(options) {
@@ -88,6 +90,9 @@ Page({
           success: () => wx.navigateBack() });
         return;
       }
+
+      subscriptionMessages.loadConfig(api).then(config => { this._subscriptionConfig = config; });
+      subscriptionMessages.flush(api, wx).catch(() => {});
 
       const pricing = (Number(res.priceRevision) > 0 || Number(res.promotionDiscount) > 0) ? await api.get(`/orders/${orderId}/pricing`) : null;
       const pricingByItem = {};
@@ -580,6 +585,7 @@ Page({
 
   // 提交售后申请
   submitAfterSale: async function() {
+    if (this.data.isSubmitting) return;
     // 验证是否选择了商品
     if (this.data.selectedItems.length === 0) {
       wx.showToast({ title: '请选择要申请售后的商品', icon: 'none' });
@@ -595,48 +601,51 @@ Page({
     const reason = [this.data.reason, limitTextInput(this.data.reasonText).value]
       .map(value => String(value || '').trim()).filter(Boolean).join('\n') || DEFAULT_AFTER_SALE_REASON;
 
-    wx.showLoading({ title: '提交中...', mask: true });
+    const requestData = {
+      orderId: this.data.orderId,
+      reason: reason,
+      evidenceUrls: this.data.evidenceUrls,
+      refundQuoteToken: mixed ? this.data.refundQuote.token : null,
+      items: this.data.selectedItems.map(item => ({
+        orderItemId: item.orderItemId,
+        productId: item.productId,
+        qty: Number(item.selectedQty),
+        // 发货数量由后端按订单记录重算，这两个字段只为兼容旧客户端保留。
+        shippedQty: item.type === 'return_refund' ? Number(item.selectedQty) : 0,
+        unshippedQty: item.type === 'refund' ? Number(item.selectedQty) : 0,
+        refundAmount: Number(item.inputAmount),
+        afterSaleType: item.type
+      }))
+    };
 
+    const invalidItem = requestData.items.find(item => {
+      const sourceItem = this.data.splitItems.find(splitItem =>
+        splitItem.orderItemId === item.orderItemId && splitItem.type === item.afterSaleType
+      );
+      const maxQty = Number(sourceItem && sourceItem.qty) || 0;
+      const maxAmount = Number(sourceItem && sourceItem.maxRefundAmount) || 0;
+      const maxAmountByQty = Math.ceil(Number(sourceItem && sourceItem.salePrice) * item.qty * 100 - 0.000001) / 100;
+      return !Number.isInteger(item.qty) || item.qty < 1 || item.qty > maxQty
+        || !Number.isFinite(item.refundAmount) || item.refundAmount <= 0
+        || item.refundAmount > maxAmount
+        || item.refundAmount > maxAmountByQty;
+    });
+    if (invalidItem) {
+      wx.showToast({ title: '请填写正确的数量和退款金额', icon: 'none' });
+      return;
+    }
+
+    this.setData({ isSubmitting: true });
+    // 在第一个 await 之前直接由提交点击申请两个模板，无需用户额外点击订阅按钮。
+    const subscription = subscriptionMessages.request(wx, this._subscriptionConfig);
+    wx.showLoading({ title: '提交中...', mask: true });
     try {
       await auth.ensureAuthenticated({ silent: true });
-      const requestData = {
-        orderId: this.data.orderId,
-        reason: reason,
-        evidenceUrls: this.data.evidenceUrls,
-        refundQuoteToken: mixed ? this.data.refundQuote.token : null,
-        items: this.data.selectedItems.map(item => ({
-          orderItemId: item.orderItemId,
-          productId: item.productId,
-          qty: Number(item.selectedQty),
-          // 发货数量由后端按订单记录重算，这两个字段只为兼容旧客户端保留。
-          shippedQty: item.type === 'return_refund' ? Number(item.selectedQty) : 0,
-          unshippedQty: item.type === 'refund' ? Number(item.selectedQty) : 0,
-          refundAmount: Number(item.inputAmount),
-          afterSaleType: item.type
-        }))
-      };
-
-      const invalidItem = requestData.items.find(item => {
-        const sourceItem = this.data.splitItems.find(splitItem =>
-          splitItem.orderItemId === item.orderItemId && splitItem.type === item.afterSaleType
-        );
-        const maxQty = Number(sourceItem && sourceItem.qty) || 0;
-        const maxAmount = Number(sourceItem && sourceItem.maxRefundAmount) || 0;
-        const maxAmountByQty = Math.ceil(Number(sourceItem && sourceItem.salePrice) * item.qty * 100 - 0.000001) / 100;
-        return !Number.isInteger(item.qty) || item.qty < 1 || item.qty > maxQty
-          || !Number.isFinite(item.refundAmount) || item.refundAmount <= 0
-          || item.refundAmount > maxAmount
-          || item.refundAmount > maxAmountByQty;
-      });
-      if (invalidItem) {
-        wx.hideLoading();
-        wx.showToast({ title: '请填写正确的数量和退款金额', icon: 'none' });
-        return;
-      }
-
-      await api.post('/after-sales', requestData);
-
+      const created = await api.post('/after-sales', requestData);
       wx.hideLoading();
+      await subscriptionMessages.persist(api, wx, created && created.id, subscription)
+        .catch(() => console.warn('售后已提交，订阅结果暂未保存'));
+
       wx.showModal({
         title: '提交成功',
         content: '售后申请已提交，请等待审核',
@@ -655,6 +664,8 @@ Page({
         icon: 'none',
         duration: 2000
       });
+    } finally {
+      this.setData({ isSubmitting: false });
     }
   }
 });

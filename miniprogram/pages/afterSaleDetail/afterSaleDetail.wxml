@@ -139,6 +139,11 @@
     </view>
   </view>
 
+  <view class="section" wx:if="{{afterSale && afterSale.status !== 'cancelled' && afterSale.status !== 'rejected' && afterSale.status !== 'refunded'}}">
+    <view class="section-title">处理结果提醒</view>
+    <button size="mini" bindtap="subscribeAfterSale" loading="{{isSubscribing}}" disabled="{{isSubscribing}}">接收后续处理提醒</button>
+  </view>
+
   <!-- 加载中 -->
   <view class="loading-state" wx:if="{{isLoading}}">
     <view class="loading-spinner"></view>
