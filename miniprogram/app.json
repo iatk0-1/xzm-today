@@ -13,13 +13,22 @@
     "pages/editProfile/editProfile",
     "pages/orderList/orderList",
     "pages/orderDetail/orderDetail",
-    "pages/shipmentTraceDetail/shipmentTraceDetail",
     "pages/afterSaleApply/afterSaleApply",
     "pages/afterSaleDetail/afterSaleDetail",
     "pages/wishDetail/wishDetail",
     "pages/adminSales/adminSales"
   ],
   "subPackages": [
+    {
+      "name": "shipmentTraceDetail",
+      "root": "pages/shipmentTraceDetail",
+      "pages": ["shipmentTraceDetail"]
+    },
+    {
+      "name": "quickCheckout",
+      "root": "pages/quickCheckout",
+      "pages": ["quickCheckout"]
+    },
     { "name": "blacklist", "root": "pages/blacklist", "pages": ["blacklist"] },
     {
       "name": "customerServiceChat",

@@ -36,7 +36,8 @@ function loadPage(name, role) {
   let component;
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../components/productEntryMenu/index.js'), 'utf8'), {
     Component: value => { component = value; }, wx,
-    require: request => request.endsWith('/auth') ? auth : menuModule.exports
+    require: request => request.endsWith('/auth') ? auth
+      : request.endsWith('/quickOrder') ? require('../../utils/quickOrder') : menuModule.exports
   });
   const productMenu = { ...component.methods, data: { ...component.data },
     setData(patch) { Object.assign(this.data, patch); } };
@@ -87,6 +88,7 @@ for (const name of ['index', 'market', 'messages', 'user']) {
       assert.deepEqual(fixture.navigations, [], '点击加号不直接跳转');
       assert.deepEqual(fixture.toasts, role === 'user' ? ['无权限'] : []);
       if (role !== 'user') {
+        assert.equal(fixture.productMenu.data.canQuick, role === 'admin');
         fixture.productMenu.createProduct();
         assert.deepEqual(fixture.navigations, ['/pages/admin/admin']);
         assert.equal(fixture.productMenu.data.visible, false);

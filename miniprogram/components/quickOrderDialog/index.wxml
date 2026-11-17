@@ -1,0 +1,18 @@
+<view wx:if="{{visible}}" class="quick-mask" catchtap="close" catchtouchmove="block">
+  <view class="quick-dialog" catchtap="block" role="dialog" aria-label="快捷开单">
+    <view class="quick-title">快捷开单</view>
+    <view class="quick-row"><text>商品名称</text><input placeholder="请输入商品名称" maxlength="100" value="{{draft.name}}" data-field="name" bindinput="input" disabled="{{saving}}" /></view>
+    <view class="quick-row"><text>货号</text><input placeholder="请输入货号" maxlength="100" value="{{draft.articleNo}}" data-field="articleNo" bindinput="input" disabled="{{saving}}" /></view>
+    <view class="quick-label">商品图片 <text>{{images.length}} / 9</text></view>
+    <view class="quick-images">
+      <view class="quick-image" wx:for="{{images}}" wx:key="path"><image src="{{item.path}}" mode="aspectFill" /><text wx:if="{{!saving}}" class="quick-remove" data-index="{{index}}" catchtap="removeImage">×</text></view>
+      <view wx:if="{{images.length < 9}}" class="quick-add" bindtap="chooseImages">＋</view>
+    </view>
+    <view class="quick-prices">
+      <view><text>成本（元）</text><input type="digit" placeholder="0.00" value="{{draft.costPrice}}" data-field="costPrice" bindinput="input" disabled="{{saving}}" /></view>
+      <view><text>价格（元）</text><input type="digit" placeholder="0.00" value="{{draft.price}}" data-field="price" bindinput="input" disabled="{{saving}}" /></view>
+    </view>
+    <view class="quick-hint">库存1件，默认图片色 / 均码。商品价格仅商家可见，客户只需支付运费。</view>
+    <view class="quick-actions"><button bindtap="close" disabled="{{saving}}">取消</button><button class="quick-confirm" bindtap="save" loading="{{saving}}" disabled="{{saving}}">创建商品</button></view>
+  </view>
+</view>

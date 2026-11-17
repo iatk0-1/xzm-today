@@ -13,6 +13,7 @@ const customerServiceOrder = require('../../utils/customerServiceOrder');
 const customerServiceNavigation = require('../../utils/customerServiceNavigation');
 const afterSaleEligibility = require('../../utils/afterSaleEligibility');
 const specChangeHistory = require('../../utils/orderSpecChangeHistory');
+const quickOrder = require('../../utils/quickOrder');
 
 Page(pageSync.wrap({
   onOrderTouchStart: orderNavigation.onTouchStart,
@@ -25,6 +26,7 @@ Page(pageSync.wrap({
     pricing: null,
     promotionRows: [], promotionExpanded: false,
     order: null,
+    shippingSubscription: null,
     isLoading: true,
     countdownText: '',
     afterSaleRecords: [],
@@ -112,6 +114,12 @@ Page(pageSync.wrap({
       
       this.setData({ pricing, promotionRows: promotionDisplay.discountRows(pricing && pricing.promotions && pricing.promotions.applied),
         order: res, customerServiceCard: customerServiceOrder.orderCard(res), isLoading: false });
+      if (res.quickOrder && Number(res.payAmount) === 0) {
+        quickOrder.flushSubscriptions(api, wx);
+        api.get(`/quick-orders/orders/${orderId}/subscription-config`)
+          .then(config => { if (this.data.order && String(this.data.order.id) === String(orderId)) this.setData({ shippingSubscription: config }); })
+          .catch(() => {});
+      } else this.setData({ shippingSubscription: null });
 
       // 加载售后记录
       specChangeHistory.load(this, api, orderId);
@@ -141,6 +149,14 @@ Page(pageSync.wrap({
   },
 
   retrySpecChanges() { return specChangeHistory.load(this, api, this.data.order.id); },
+  subscribeShipping() {
+    if (this._subscribingShipping || !this.data.order || !this.data.shippingSubscription) return;
+    this._subscribingShipping = true;
+    const attempt = quickOrder.requestShippingSubscription(wx, this.data.shippingSubscription);
+    attempt.then(result => quickOrder.saveSubscription(api, wx, this.data.order.id, result)
+      .then(() => wx.showToast({ title: result && result.result === 'accept' ? '已订阅发货提醒' : '未订阅发货提醒', icon: 'none' })))
+      .finally(() => { this._subscribingShipping = false; });
+  },
   togglePromotionDetails: function() { this.setData({ promotionExpanded: !this.data.promotionExpanded }); },
 
   getOrderStatusDisplay: function(status) {
@@ -423,6 +439,7 @@ Page(pageSync.wrap({
   },
 
   goToProduct: function(e) {
+    if (this.data.order && this.data.order.quickOrder) return;
     if (!orderNavigation.canNavigate(this, e)) return;
     const id = e.currentTarget.dataset.productId;
     if (id) wx.navigateTo({ url: `/pages/detail/detail?id=${encodeURIComponent(id)}` });

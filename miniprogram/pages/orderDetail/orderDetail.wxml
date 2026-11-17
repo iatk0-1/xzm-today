@@ -46,7 +46,7 @@
           <text wx:if="{{item.afterSaleSummary.shipmentBlockedQty > 0}}"> · 可发 {{item.afterSaleSummary.canShipQty}}</text>
         </view>
         <view class="goods-price-row">
-          <view class="order-item-price-pair">
+          <view class="order-item-price-pair" wx:if="{{!order.quickOrder}}">
             <text class="price" wx:if="{{item.displayUnitPrice != null}}">￥{{item.displayUnitPrice}}</text><text class="price" wx:else>待加载</text>
             <text class="order-item-original-price" wx:if="{{item.showOriginalPrice}}">原价：￥{{item.originalUnitPrice}}</text>
           </view>
@@ -61,7 +61,7 @@
     </view>
 
     <view class="money-breakdown">
-      <view class="money-row">
+      <view class="money-row" wx:if="{{!order.quickOrder}}">
         <text class="money-label">商品合计</text>
         <text class="money-val">￥{{order.originalGoodsAmountText}}</text>
       </view>
@@ -85,7 +85,7 @@
   </view>
 
   <include src="../../templates/orderSpecChangeHistory.wxml" />
-  <view class="info-card pricing-details" wx:if="{{pricing && pricing.hasPriceAdjustment}}">
+  <view class="info-card pricing-details" wx:if="{{!order.quickOrder && pricing && pricing.hasPriceAdjustment}}">
     <view class="section-title">订单改价明细</view>
     <view class="info-row"><text class="info-label">线上支付金额</text><text>¥ {{pricing.onlineAmount}}</text></view>
     <view class="info-row"><text class="info-label">线下实收</text><text>¥ {{pricing.offlineAmount}}</text></view>
@@ -194,7 +194,7 @@
         </view>
         <view class="after-sale-info">
           <text class="after-sale-qty">数量：{{item.qty}}</text>
-          <text class="after-sale-amount">退款：¥ {{item.refundAmount}}</text>
+          <text class="after-sale-amount" wx:if="{{!order.quickOrder}}">退款：¥ {{item.refundAmount}}</text>
         </view>
         <view class="after-sale-reason" wx:if="{{item.reason}}">{{item.reason}}</view>
         <view class="after-sale-footer">
@@ -206,6 +206,7 @@
   </view>
 
   <view class="bottom-action-bar">
+    <view class="btn-ghost" wx:if="{{order.quickOrder && shippingSubscription.enabled && order.status !== 'cancelled' && order.status !== 'completed'}}" bindtap="subscribeShipping">订阅发货提醒</view>
     <button class="btn-ghost" open-type="contact" bindcontact="handleCustomerServiceContact"
       session-from="order:{{order.id}}" show-message-card="true"
       send-message-title="{{customerServiceCard.title}}"
@@ -216,7 +217,7 @@
     <view id="cancel-order-btn" class="btn-ghost" wx:if="{{canMyOrders && (order.status === 'pending')}}" bindtap="cancelOrder">取消订单</view>
 
     <view class="btn-solid" wx:if="{{canMyOrders && (order.canConfirmReceipt)}}" bindtap="confirmReceipt">确认收货</view>
-    <view class="btn-ghost {{order.afterSaleExhausted ? 'after-sale-exhausted' : ''}}" wx:if="{{canMyOrders && order.afterSaleVisible}}" bindtap="requestRefund" aria-role="button" aria-disabled="{{order.afterSaleExhausted}}">申请售后</view>
+    <view class="btn-ghost {{order.afterSaleExhausted ? 'after-sale-exhausted' : ''}}" wx:if="{{canMyOrders && !order.quickOrder && order.afterSaleVisible}}" bindtap="requestRefund" aria-role="button" aria-disabled="{{order.afterSaleExhausted}}">申请售后</view>
   </view>
 
 </view>

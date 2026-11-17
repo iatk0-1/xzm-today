@@ -35,7 +35,10 @@
   <view class="share-template-cancel" bindtap="closeShareTemplateSelector">取消</view>
 </view>
 
-<view class="floating-action-bar">
+<view class="floating-action-bar" wx:if="{{quickOrder}}">
+  <button class="btn-buy-half" open-type="share" data-product-share="{{true}}" data-template="single">分享专属结算卡片</button>
+</view>
+<view class="floating-action-bar" wx:else>
   <block wx:if="{{product.id && !product.offSale && !product.soldOut}}">
     <view class="btn-add-half" bindtap="openSkuPanel" data-action="cart">加入购物车</view>
     <view class="btn-buy-half" bindtap="openSkuPanel" data-action="buy">立即购买</view>

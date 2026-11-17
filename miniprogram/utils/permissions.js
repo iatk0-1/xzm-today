@@ -17,6 +17,7 @@ const requirements = {
   'pages/customerServiceOrderDetail/customerServiceOrderDetail': ['customerService'],
   'pages/cart/cart': ['cart'],
   'pages/checkout/checkout': ['cart'],
+  'pages/quickCheckout/quickCheckout': ['browse', 'myOrders'],
   'pages/editProfile/editProfile': ['profile'],
   'pages/orderList/orderList': ['myOrders'],
   'pages/orderDetail/orderDetail': ['myOrders', 'orderManage', 'shipping', 'afterSale', 'applications', 'picking', 'customerService'],
@@ -76,6 +77,7 @@ const actionRequirements = {
     retryShipmentUnbind: ['orderManage', 'shipping'], reviewShipmentUnbindWaybill: ['orderManage', 'shipping']
   },
   'pages/orderDetail/orderDetail': {
+    subscribeShipping: ['myOrders'],
     payOrder: ['myOrders'], cancelOrder: ['myOrders'], confirmReceipt: ['myOrders'],
     requestRefund: ['myOrders'], cancelAfterSale: ['myOrders'], submitChangeRequest: ['myOrders'],
     chooseAddressForChange: ['myOrders'], submitAddressChangeRequest: ['myOrders'], editItemRemark: ['myOrders'],

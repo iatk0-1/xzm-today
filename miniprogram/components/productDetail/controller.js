@@ -26,6 +26,7 @@ function createProductDetailConfig() {
     statusBarHeight: 20,
     navHeight: 64,
     product: {},
+    quickOrder: null,
     imagePaths: {},
     currentTab: 0,
     bannerImgs: [],
@@ -272,6 +273,14 @@ function createProductDetailConfig() {
       // 后端返回格式：{ product: {...}, skus: [...] }
       // product.skuMatrix: { skuId, color, size, price, stock }
       const product = normalizeProductImages(res.product || {});
+      let quickOrder = null;
+      if (require('../../utils/quickOrder').canManageQuickOrder(auth)) {
+        const quick = await api.get(`/quick-orders/products/${id}`);
+        if (version !== this._productVersion) return;
+        if (quick.quickOrder) quickOrder = quick;
+      }
+      this.setData({ quickOrder });
+      if (quickOrder && wx.hideShareMenu) wx.hideShareMenu({ menus: ['shareTimeline'] });
       const skuMatrix = product.skuMatrix || [];
 
       // 处理轮播图（封面 + 轮播图）
@@ -884,12 +893,13 @@ switchAuraTab(e) {
     this.setData({ showShareTemplates: false });
     return {
       title: product.name || product.title || '好物推荐',
-      path: id ? `/pages/detail/detail?id=${id}` : '/pages/index/index',
+      path: this.data.quickOrder ? `/pages/quickCheckout/quickCheckout?token=${this.data.quickOrder.token}` : (id ? `/pages/detail/detail?id=${id}` : '/pages/index/index'),
       imageUrl: this.data.shareImages[template] || product.coverUrl || product.image || ''
     };
   },
 
   onShareTimeline: function() {
+    if (this.data.quickOrder) return { title: '请通过专属订单卡片领取商品', query: '', imageUrl: this.data.product.coverUrl || '' };
     const { product } = this.data;
     const id = product.id || this._productId;
     const template = this.getShareTemplate();

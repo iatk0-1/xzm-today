@@ -3,12 +3,12 @@
     <view class="status-badge">{{afterSale.status === 'approved' ? '审核通过' : afterSale.statusDisplay}}</view>
     <view class="status-hint" wx:if="{{afterSale.statusHint}}">{{afterSale.statusHint}}</view>
     <view class="status-hint" wx:if="{{afterSale.status === 'cancelled' && afterSale.rejectReason}}">{{afterSale.rejectReason}}</view>
-    <view class="refund-caption">{{afterSale.refundAmountLabel}}</view>
-    <view class="refund-amount">¥{{afterSale.displayRefundAmount}}</view>
+    <view class="refund-caption" wx:if="{{!afterSale.quickOrder}}">{{afterSale.refundAmountLabel}}</view>
+    <view class="refund-amount" wx:if="{{!afterSale.quickOrder}}">¥{{afterSale.displayRefundAmount}}</view>
     <view class="status-meta">{{afterSale.typeDisplay}} · 共 {{afterSale.totalQty}} 件商品</view>
-    <view class="status-adjustment" wx:if="{{afterSale.hasAdjustedTotal}}">原申请 ¥{{afterSale.applicationRefundAmount}} · {{afterSale.applicationTotalQty}} 件</view>
+    <view class="status-adjustment" wx:if="{{!afterSale.quickOrder && afterSale.hasAdjustedTotal}}">原申请 ¥{{afterSale.applicationRefundAmount}} · {{afterSale.applicationTotalQty}} 件</view>
 
-    <view class="refund-channel-summary" wx:if="{{afterSale.showRefundBreakdown}}">
+    <view class="refund-channel-summary" wx:if="{{!afterSale.quickOrder && afterSale.showRefundBreakdown}}">
       <view class="channel-amounts">
         <view class="channel-row"><text>线上退款</text><text>¥{{afterSale.refundPayment.onlineAmount}}</text></view>
         <view class="channel-row" wx:if="{{afterSale.showOfflineRefund}}"><text>线下退款</text><text>¥{{afterSale.refundPayment.offlineAmount}}</text></view>
@@ -56,7 +56,7 @@
             <text>{{item.applicationType === 'refund' ? '仅退款' : '退货退款'}} · ×{{item.applicationQty}}</text>
           </view>
         </view>
-        <view class="item-refund">¥ {{item.applicationRefundAmount}}</view>
+        <view class="item-refund" wx:if="{{!afterSale.quickOrder}}">¥ {{item.applicationRefundAmount}}</view>
       </view>
     </view>
   </view>
@@ -115,7 +115,7 @@
             <text class="item-type" wx:if="{{item.afterSaleStatusDisplay}}">{{item.afterSaleStatusDisplay}}</text>
           </view>
         </view>
-        <view class="related-order-prices">
+        <view class="related-order-prices" wx:if="{{!afterSale.quickOrder}}">
           <text class="related-order-original-price" wx:if="{{item.showOriginalPrice}}">原价：￥{{item.originalUnitPrice}}</text>
           <text class="item-refund">{{item.displayUnitPrice != null ? '￥' + item.displayUnitPrice : '--'}}</text>
         </view>

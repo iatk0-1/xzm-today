@@ -1,0 +1,20 @@
+<view wx:if="{{pageAccessReady}}" class="quick-checkout">
+  <view wx:if="{{loading}}" class="state">正在加载订单…</view>
+  <view wx:elif="{{error}}" class="state"><view>{{error}}</view><button bindtap="load">重试</button></view>
+  <block wx:elif="{{product}}">
+    <view class="title">订单结算</view>
+    <view wx:if="{{product.preview}}" class="shipping-error">商家预览：请将专属卡片分享给客户下单</view>
+    <view class="card address" bindtap="chooseAddress">
+      <block wx:if="{{address}}"><view class="recipient">{{address.userName}}　{{address.telNumber}}</view><view>{{address.provinceName}}{{address.cityName}}{{address.countyName}}{{address.detailInfo}}</view></block>
+      <view wx:else class="empty-address">＋ 请选择微信收货地址</view>
+      <text class="arrow">›</text>
+    </view>
+    <view class="card">
+      <view class="product"><image src="{{product.coverUrl}}" mode="aspectFill" data-url="{{product.coverUrl}}" bindtap="previewImage" /><view><view class="name">{{product.name}}</view><view class="muted">图片色 / 均码</view><view class="muted">× 1件（现货）</view></view></view>
+      <scroll-view wx:if="{{product.images.length > 1}}" scroll-x class="images"><image wx:for="{{product.images}}" wx:key="*this" src="{{item}}" mode="aspectFill" data-url="{{item}}" bindtap="previewImage" /></scroll-view>
+    </view>
+    <view class="card fee"><text>运费</text><text wx:if="{{shippingLoading}}">计算中…</text><text wx:elif="{{shippingReady}}">{{shippingFee === '0.00' ? '免运费' : '¥ ' + shippingFee}}</text><text wx:else>选择地址后计算</text></view>
+    <view wx:if="{{shippingError}}" class="shipping-error" bindtap="refreshShipping">{{shippingError}} · 点击重试</view>
+    <view class="footer"><view>{{shippingReady ? (shippingFee === '0.00' ? '无需支付' : '应付运费 ¥ ' + shippingFee) : '请先选择收货地址'}}</view><button bindtap="submit" loading="{{submitting}}" disabled="{{product.preview || submitting || !shippingReady || shippingLoading}}">{{shippingReady && shippingFee !== '0.00' ? '支付运费并下单' : '提交订单'}}</button></view>
+  </block>
+</view>

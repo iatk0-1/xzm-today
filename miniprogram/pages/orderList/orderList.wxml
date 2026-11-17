@@ -65,7 +65,7 @@
             <view class="goods-sku" wx:else><text user-select="{{true}}">{{goods.productSpec || '图片色'}} / {{goods.productSize || '均码'}}</text></view>
             <view class="remark-badge" wx:if="{{goods.remark}}">{{goods.remark}}</view>
             <view class="goods-price-row">
-              <view class="order-item-price-pair">
+              <view class="order-item-price-pair" wx:if="{{!item.quickOrder}}">
                 <text class="price" wx:if="{{goods.displayUnitPrice != null}}">￥{{goods.displayUnitPrice}}</text><text class="price" wx:else>待加载</text>
                 <text class="order-item-original-price" wx:if="{{goods.showOriginalPrice}}">原价：￥{{goods.originalUnitPrice}}</text>
               </view>
@@ -121,7 +121,7 @@
           <view class="btn-ghost" wx:if="{{item.status === 'pending'}}" catchtap="cancelOrder" data-id="{{item.id}}">取消订单</view>
           <view class="btn-solid" wx:if="{{item.canConfirmReceipt}}" catchtap="confirmReceipt" data-id="{{item.id}}">确认收货</view>
           <view class="btn-ghost" wx:if="{{(item.status === 'partial_shipped' || item.status === 'shipped' || item.status === 'completed') && item.shipmentId}}" catchtap="viewLogistics" data-shipment-id="{{item.shipmentId}}" data-order-id="{{item.id}}">查看物流</view>
-          <view class="btn-ghost {{item.afterSaleExhausted ? 'after-sale-exhausted' : ''}}" wx:if="{{item.afterSaleVisible}}" catchtap="requestRefund" data-id="{{item.id}}" aria-role="button" aria-disabled="{{item.afterSaleExhausted}}">申请售后</view>
+          <view class="btn-ghost {{item.afterSaleExhausted ? 'after-sale-exhausted' : ''}}" wx:if="{{!item.quickOrder && item.afterSaleVisible}}" catchtap="requestRefund" data-id="{{item.id}}" aria-role="button" aria-disabled="{{item.afterSaleExhausted}}">申请售后</view>
         </view>
       </view>
 
