@@ -283,14 +283,8 @@ function createProductDetailConfig() {
       if (quickOrder && wx.hideShareMenu) wx.hideShareMenu({ menus: ['shareTimeline'] });
       const skuMatrix = product.skuMatrix || [];
 
-      // 处理轮播图（封面 + 轮播图）
-      let banners = [];
-      if (product.coverUrl) {
-        banners.push(product.coverUrl);
-      }
-      if (product.bannerImages && product.bannerImages.length > 0) {
-        banners = banners.concat(product.bannerImages);
-      }
+      // 兼容旧商品将封面同时存入轮播图的情况，保留上传顺序并去重。
+      const banners = [...new Set([product.coverUrl, ...(product.bannerImages || [])].filter(Boolean))];
 
       // 提取唯一颜色和尺码
       let colors = [];

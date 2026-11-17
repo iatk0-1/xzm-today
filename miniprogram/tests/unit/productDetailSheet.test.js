@@ -99,12 +99,27 @@ test('详情主图、正文和横滑图使用兼容地址，SKU 预览同步使�
     detailImages: [url], skuMatrix: [{ skuId: '2', imageUrl: url }]
   } }) });
   await instance.getProductDetail('1');
-  assert.deepEqual(plain(instance.data.bannerImgs), [safe, safe]);
+  assert.deepEqual(plain(instance.data.bannerImgs), [safe]);
   assert.deepEqual(plain(instance.data.lookbookImgs), [safe]);
   assert.deepEqual(plain(instance.data.detailImgs), [safe]);
   assert.equal(instance.data.product.skuMatrix[0].imageUrl, safe);
 });
 const tap = (dataset = {}) => ({ currentTarget: { dataset } });
+
+test('详情轮播兼容新旧快捷开单图片，去重后保持首图及多图上传顺序', async () => {
+  for (const bannerImages of [[], ['first.jpg'], ['second.jpg', 'third.jpg'],
+    ['first.jpg', 'second.jpg', 'third.jpg', 'second.jpg']]) {
+    const { instance } = setup('productDetail', { get: async () => ({ product: {
+      id: '1', coverUrl: 'first.jpg', bannerImages, skuMatrix: []
+    } }) });
+    await instance.getProductDetail('1');
+    const expected = bannerImages.includes('second.jpg')
+      ? ['first.jpg', 'second.jpg', 'third.jpg'] : ['first.jpg'];
+    assert.deepEqual(plain(instance.data.bannerImgs), expected);
+    assert.deepEqual(plain(instance.data.product.bannerImgs), expected);
+    assert.equal(instance.data.bannerImageModes.length, expected.length);
+  }
+});
 
 test('编辑悬浮按钮轻点及小抖动正常跳转，不受画廊防误触时间影响，拖动和取消不跳转', () => {
   for (const embedded of [false, true]) {

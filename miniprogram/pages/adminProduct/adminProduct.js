@@ -524,6 +524,11 @@ Page(collapsibleToolbar.wrap(autoSearch.wrap(integrateProductQuickEdit({
     });
   },
 
+  viewProduct: function(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.navigateTo({ url: `/pages/detail/detail?id=${encodeURIComponent(id)}` });
+  },
+
   // 改造：切换上下架状态
   toggleStatus: async function(e) {
     const id = e.currentTarget.dataset.id;
