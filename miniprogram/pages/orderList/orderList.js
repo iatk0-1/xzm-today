@@ -178,14 +178,20 @@ Page(pageSync.wrap({
   // 确认收货：优先调微信组件，不可用时降级弹框
   confirmReceipt: async function(e) {
     var orderId = e.currentTarget.dataset.id;
-    var order = (this.data.orders || []).find(function(o) { return o.id === orderId; });
+    var order = (this.data.orders || []).find(function(o) { return String(o.id) === String(orderId); });
     if (!order) return;
 
     var app = getApp();
+    if (order.payAmount != null && Number(order.payAmount) === 0 && !order.payTxnId) {
+      app.pendingConfirmOrderId = null;
+      this.fallbackConfirm(orderId);
+      return;
+    }
     app.pendingConfirmOrderId = orderId;
     var self = this;
 
     if (typeof wx.openBusinessView !== 'function') {
+      app.pendingConfirmOrderId = null;
       this.fallbackConfirm(orderId);
       return;
     }

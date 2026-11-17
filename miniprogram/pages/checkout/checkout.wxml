@@ -1,6 +1,11 @@
-<view class="checkout-wrapper" bindtap="closeShippingTip">
+<view wx:if="{{pageAccessReady}}" class="checkout-wrapper" bindtap="closeShippingTip">
   
   <view class="page-title">订单结算</view>
+
+  <view class="order-items-section" wx:if="{{quickOrderMode && quickLoading}}">正在加载订单…</view>
+  <view class="order-items-section" wx:elif="{{quickOrderMode && quickError}}"><view>{{quickError}}</view><button bindtap="loadQuickOrder">重试</button></view>
+  <block wx:else>
+  <view class="shipping-hint" wx:if="{{quickPreview}}">商家预览：请将专属卡片分享给客户下单</view>
 
   <view class="address-section" bindtap="chooseAddress">
     <view class="empty-address" wx:if="{{!address}}">
@@ -45,13 +50,13 @@
         </view>
         
         <view class="item-bottom">
-          <view class="order-item-price-pair">
+          <view class="order-item-price-pair" wx:if="{{!quickOrderMode}}">
             <text class="item-price" wx:if="{{goodsQuoteReady && item.displayUnitPrice != null}}">￥{{item.displayUnitPrice}}</text><text class="item-price" wx:else>{{shippingError ? '待计算' : '计算中…'}}</text>
             <text class="order-item-original-price" wx:if="{{goodsQuoteReady && item.showOriginalPrice}}">原价：￥{{item.originalUnitPrice}}</text>
           </view>
           <view class="item-count">× {{item.count}}{{item.bundleConfig && item.bundleConfig.length ? '套' : '件'}}<text wx:if="{{item.readyStockQty > 0}}">(含{{item.readyStockQty}}件现货)</text></view>
         </view>
-        <view class="item-remark">
+        <view class="item-remark" wx:if="{{!quickOrderMode}}">
           <input class="remark-input" placeholder="给这件商品加个备注..." value="{{item.remark}}" bindinput="onRemarkInput" data-index="{{index}}" maxlength="200" />
         </view>
       </view>
@@ -59,11 +64,11 @@
   </view>
 
   <view class="summary-section">
-    <view class="summary-row">
+    <view class="summary-row" wx:if="{{!quickOrderMode}}">
       <text class="sum-label">商品合计</text>
       <text class="sum-value">￥{{originalGoodsAmount}}</text>
     </view>
-    <block wx:if="{{goodsQuoteReady && discountAmount > 0}}">
+    <block wx:if="{{!quickOrderMode && goodsQuoteReady && discountAmount > 0}}">
     <view class="summary-row" bindtap="togglePromotionDetails" aria-label="{{promotionExpanded ? '收起优惠明细' : '展开优惠明细'}}">
       <text class="sum-label">优惠共减</text>
       <view class="order-promotion-value"><text class="sum-value promotion-deduction">{{goodsQuoteReady ? '-￥' + discountAmount : '计算中…'}}</text><text class="order-promotion-arrow {{promotionExpanded ? 'expanded' : ''}}">></text></view>
@@ -84,18 +89,18 @@
     </view>
     <view class="shipping-error" wx:if="{{shippingError}}" bindtap="refreshShippingQuote">{{shippingError}} · 点击重试</view>
     <view class="summary-row total-row">
-      <text class="sum-label">合计</text>
-      <text class="sum-value total-val">{{goodsQuoteReady ? '￥' + totalPrice : '待计算'}}</text>
+      <text class="sum-label">{{quickOrderMode ? '应付运费' : '合计'}}</text>
+      <text class="sum-value total-val">{{quickOrderMode ? (shippingReady ? (shippingFee === '0.00' ? '无需支付' : '￥' + shippingFee) : '待计算') : (goodsQuoteReady ? '￥' + totalPrice : '待计算')}}</text>
     </view>
   </view>
 
   <view class="bottom-pay-bar">
     <view class="pay-left">
       <view class="pay-total">
-        <text class="pay-label">合计</text>
-        <text class="pay-price">{{goodsQuoteReady ? '￥' + totalPrice : '待计算'}}</text>
+        <text class="pay-label">{{quickOrderMode ? '应付运费' : '合计'}}</text>
+        <text class="pay-price">{{quickOrderMode ? (shippingReady ? (shippingFee === '0.00' ? '无需支付' : '￥' + shippingFee) : '待计算') : (goodsQuoteReady ? '￥' + totalPrice : '待计算')}}</text>
       </view>
-      <view class="purchase-notice-agreement">
+      <view class="purchase-notice-agreement" wx:if="{{!quickOrderMode}}">
         <view class="agreement-toggle" bindtap="togglePurchaseNoticeAgreement">
           <view class="agreement-radio {{purchaseNoticeAgreed ? 'checked' : ''}}">{{purchaseNoticeAgreed ? '✓' : ''}}</view>
           <text>已阅读并同意</text>
@@ -103,8 +108,9 @@
         <text class="agreement-link" catchtap="openPurchaseNotice">购买须知</text>
       </view>
     </view>
-    <view class="btn-pay {{!orderCreated && (!purchaseNoticeAgreed || !purchaseNoticeReady || submitting || !shippingReady || !shippingAllowed) ? 'disabled' : ''}}" bindtap="submitOrder">{{submitting ? '支付处理中' : (orderCreated ? '查看订单并支付' : '立即支付')}}</view>
+    <view class="btn-pay {{submitting || quickPreview || (!orderCreated && ((!quickOrderMode && (!purchaseNoticeAgreed || !purchaseNoticeReady)) || !shippingReady || !shippingAllowed)) ? 'disabled' : ''}}" bindtap="submitOrder">{{submitting ? '订单处理中' : (orderCreated ? '查看订单' : (quickOrderMode ? (shippingReady && shippingFee === '0.00' ? '提交订单' : '支付运费并下单') : '立即支付'))}}</view>
   </view>
+  </block>
 
 </view>
 

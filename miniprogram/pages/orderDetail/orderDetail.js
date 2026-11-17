@@ -516,10 +516,16 @@ Page(pageSync.wrap({
 
     // 保存当前订单 ID，供 App.onShow 回调使用
     var app = getApp();
+    if (order.payAmount != null && Number(order.payAmount) === 0 && !order.payTxnId) {
+      app.pendingConfirmOrderId = null;
+      this.fallbackConfirmReceipt();
+      return;
+    }
     app.pendingConfirmOrderId = order.id;
 
     // 检查 wx.openBusinessView 是否可用（基础库 >= 2.6.0）
     if (typeof wx.openBusinessView !== 'function') {
+      app.pendingConfirmOrderId = null;
       this.fallbackConfirmReceipt();
       return;
     }

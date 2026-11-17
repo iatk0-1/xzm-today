@@ -887,7 +887,7 @@ switchAuraTab(e) {
     this.setData({ showShareTemplates: false });
     return {
       title: product.name || product.title || '好物推荐',
-      path: this.data.quickOrder ? `/pages/quickCheckout/quickCheckout?token=${this.data.quickOrder.token}` : (id ? `/pages/detail/detail?id=${id}` : '/pages/index/index'),
+      path: this.data.quickOrder ? `/pages/checkout/checkout?token=${this.data.quickOrder.token}` : (id ? `/pages/detail/detail?id=${id}` : '/pages/index/index'),
       imageUrl: this.data.shareImages[template] || product.coverUrl || product.image || ''
     };
   },

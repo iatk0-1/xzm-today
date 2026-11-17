@@ -10,6 +10,7 @@ const { buildPurchaseNoticeSections } = require('../../utils/purchaseNotice');
 
 Page({
   data: {
+    quickOrderMode: false, quickLoading: false, quickError: '', quickPreview: false, shippingSubscription: null,
     address: null,
     checkoutItems: [],
     checkoutDisplayItems: [],
@@ -28,7 +29,13 @@ Page({
     submitting: false
   },
 
-  onLoad: async function() {
+  onLoad: async function(options = {}) {
+    if (Object.prototype.hasOwnProperty.call(options, 'token')) {
+      this._quickToken = options.token;
+      this.setData({ quickOrderMode: true });
+      if (wx.hideShareMenu) wx.hideShareMenu();
+      return this.loadQuickOrder();
+    }
     try {
       await auth.ensureAuthenticated({ silent: true });
     } catch (err) {
@@ -50,6 +57,25 @@ Page({
       // 购物车结算模式，从后端获取选中商品
       await this.loadCartSelectedItems();
     }
+  },
+
+  loadQuickOrder: async function() {
+    this.setData({ quickLoading: true, quickError: '', checkoutItems: [], checkoutDisplayItems: [], shippingReady: false });
+    try {
+      await auth.ensureAuthenticated({ silent: true });
+      const product = await api.post('/quick-orders/' + encodeURIComponent(this._quickToken || '') + '/claim');
+      if (this._checkoutClosed) return;
+      if (product.available === false) throw new Error(product.message || '商品暂未就绪，请稍后重试');
+      if (product.orderId && !product.preview) { wx.redirectTo({ url: '/pages/orderDetail/orderDetail?id=' + product.orderId }); return; }
+      const items = [{ id: 'quick', name: product.name, coverUrl: product.coverUrl,
+        selectedColor: product.spec, selectedSize: product.size, count: 1, readyStockQty: 1 }];
+      this.setData({ checkoutItems: items, checkoutDisplayItems: items, itemQuantity: 1,
+        quickPreview: !!product.preview, shippingSubscription: product.subscription, goodsQuoteReady: true });
+      require('../../utils/quickOrder').flushSubscriptions(api, wx);
+      await this.refreshShippingQuote();
+    } catch (error) {
+      if (!this._checkoutClosed) this.setData({ quickError: getErrorMessage(error, '链接暂不可用，请稍后重试') });
+    } finally { if (!this._checkoutClosed) this.setData({ quickLoading: false }); }
   },
 
   loadLocalCheckoutItems: async function(items) {
@@ -245,9 +271,10 @@ Page({
 
   refreshShippingQuote: async function(options = {}) {
     const revision = this._quoteRevision = (this._quoteRevision || 0) + 1;
-    const refreshGoods = options.refreshGoods || !this._checkoutQuote;
+    const quick = this.data.quickOrderMode;
+    const refreshGoods = !quick && (options.refreshGoods || !this._checkoutQuote);
     if (refreshGoods) this._checkoutQuote = null;
-    this.recalculateGoods();
+    if (!quick) this.recalculateGoods();
     const { address, itemQuantity } = this.data;
     this.setData({ shippingReady: false, shippingAllowed: false, shippingError: '', goodsQuoteReady: !refreshGoods, promotionExpanded: false,
       shippingFee: '0.00', totalPrice: this.data.goodsAmount });
@@ -292,7 +319,7 @@ Page({
       const fee = Number(shipping && shipping.shippingFee || 0);
       if (!Number.isFinite(fee) || fee < 0) throw new Error('运费计算结果无效，请重试');
       this.setData({ goodsQuoteReady: true, shippingFee: fee.toFixed(2), shippingReady: !!address,
-        shippingAllowed: !!(shipping && shipping.allowed), totalPrice: ((Math.round(Number(quote.goodsAmount) * 100) + Math.round(fee * 100)) / 100).toFixed(2) });
+        shippingAllowed: !!(shipping && shipping.allowed), totalPrice: ((Math.round(Number(quick ? 0 : quote.goodsAmount) * 100) + Math.round(fee * 100)) / 100).toFixed(2) });
     } catch (error) {
       if (revision === this._quoteRevision) this.setData({ shippingError: getErrorMessage(error, '运费计算失败，请点击重试') });
     } finally {
@@ -344,7 +371,54 @@ Page({
   },
 
   submitOrder: function() {
+    if (this.data.quickOrderMode) return this.submitQuickOrder();
     return this.submitOrderInternal();
+  },
+
+  submitQuickOrder: function() {
+    if (this.data.submitting || this.data.quickPreview || this.data.quickLoading || this.data.quickError) return;
+    if (this._createdOrderId) { wx.redirectTo({ url: '/pages/orderDetail/orderDetail?id=' + this._createdOrderId }); return; }
+    if (!this.data.address || !this.data.shippingReady || !this.data.shippingAllowed || this.data.shippingLoading || !this.data.checkoutItems.length) {
+      wx.showToast({ title: this.data.address ? '请先确认运费' : '请选择收货地址', icon: 'none' }); return;
+    }
+    // 订阅必须在用户点击时直接申请，拒绝订阅也可继续下单。
+    const subscriptions = require('../../utils/quickOrder');
+    const grant = Number(this.data.shippingFee) === 0
+      ? subscriptions.requestShippingSubscription(wx, this.data.shippingSubscription) : Promise.resolve(null);
+    return this.finishQuickOrder(grant);
+  },
+
+  finishQuickOrder: async function(subscription) {
+    this.setData({ submitting: true });
+    let orderId;
+    try {
+      const grant = await subscription;
+      const address = this.data.address;
+      const order = await api.post('/quick-orders/' + encodeURIComponent(this._quickToken) + '/orders', {
+        recipientName: address.recipient, recipientPhone: address.phone, recipientProvince: address.province,
+        recipientCity: address.city, recipientDistrict: address.district, recipientDetail: address.detail,
+        expectedShippingFee: this.data.shippingFee
+      });
+      orderId = this._createdOrderId = order.id;
+      this.setData({ orderCreated: true });
+      await require('../../utils/quickOrder').saveSubscription(api, wx, orderId, grant);
+      if (order.requiresPayment) {
+        const payment = await api.post('/orders/' + orderId + '/pay/wechat');
+        if (!payment.paid) {
+          const packageValue = payment.package || payment.packageValue;
+          if (!packageValue) throw new Error('未能获取运费支付参数，请在订单中继续支付');
+          await new Promise((resolve, reject) => wx.requestPayment({ timeStamp: String(payment.timeStamp),
+            nonceStr: payment.nonceStr, package: packageValue, signType: payment.signType || 'RSA', paySign: payment.paySign,
+            success: resolve, fail: reject }));
+        }
+      } else wx.showToast({ title: '下单成功', icon: 'success' });
+      wx.redirectTo({ url: '/pages/orderDetail/orderDetail?id=' + orderId });
+    } catch (error) {
+      wx.showModal({ title: orderId ? '请核对订单状态' : '下单未完成',
+        content: getErrorMessage(error, orderId ? '运费支付未完成，请进入订单继续处理' : '请重新核对运费后重试'), showCancel: false,
+        success: () => { if (orderId) wx.redirectTo({ url: '/pages/orderDetail/orderDetail?id=' + orderId }); } });
+      if (!orderId) await this.refreshShippingQuote();
+    } finally { this.setData({ submitting: false }); }
   },
 
   submitOrderInternal: async function() {

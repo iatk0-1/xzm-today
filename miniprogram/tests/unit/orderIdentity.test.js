@@ -13,12 +13,13 @@ function loadPage(name, api = {}) {
   const copies = [];
   const businessViews = [];
   const app = {};
+  const modals = [];
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../pages', name, name + '.js'), 'utf8'), {
     console,
     Page(value) { definition = value; },
     getApp: () => app,
     wx: {
-      showLoading() {}, hideLoading() {}, showToast() {}, showModal() {},
+      showLoading() {}, hideLoading() {}, showToast() {}, showModal(value) { modals.push(value); },
       openBusinessView(value) { businessViews.push(value); }
     },
     require(request) {
@@ -31,7 +32,7 @@ function loadPage(name, api = {}) {
   });
   const page = { ...definition, data: JSON.parse(JSON.stringify(definition.data)) };
   page.setData = patch => Object.assign(page.data, patch);
-  return { page, copies, businessViews, app };
+  return { page, copies, businessViews, app, modals };
 }
 
 for (const [name, field, handler] of [
@@ -66,6 +67,24 @@ test('客服订单卡片改价前后标题中的订单编号保持一致', () =>
 });
 
 for (const name of ['orderDetail', 'orderList']) {
+  test(`${name} 零付款订单弹框确认后直接完成收货，不拉起微信支付订单组件`, async () => {
+    const posts = [], refreshed = [];
+    const { page, businessViews, app, modals } = loadPage(name, { post: async url => { posts.push(url); } });
+    const order = { id: orderId, status: 'shipped', quickOrder: true, payAmount: '0.00', payTxnId: null };
+    if (name === 'orderDetail') { page.data.order = order; page.loadOrderDetail = id => refreshed.push(id); }
+    else { page.data.orders = [order]; page.refreshOrder = id => refreshed.push(id); }
+    await page.confirmReceipt({ currentTarget: { dataset: { id: orderId } } });
+    assert.equal(businessViews.length, 0);
+    assert.equal(app.pendingConfirmOrderId, null);
+    assert.equal(modals[0].title, '确认收货');
+    modals[0].success({ confirm: false });
+    assert.equal(posts.length, 0);
+    modals[0].success({ confirm: true });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(posts, ['/orders/' + orderId + '/receive']);
+    assert.deepEqual(refreshed, [orderId]);
+  });
+
   test(`${name} 展示订单号的修正不影响微信确认收货使用新支付单号`, async () => {
     const { page, businessViews, app } = loadPage(name);
     const order = { id: orderId, outTradeNo: paymentNo, payTxnId: 'wx-test-txn', merchantId: 'test-merchant' };
@@ -77,6 +96,10 @@ for (const name of ['orderDetail', 'orderList']) {
     assert.equal(businessViews[0].extraData.transaction_id, 'wx-test-txn');
     assert.equal(app.pendingConfirmOrderId, orderId);
     assert.equal(order.id, orderId);
+    order.quickOrder = true;
+    order.payAmount = '8.00';
+    await page.confirmReceipt({ currentTarget: { dataset: { id: orderId } } });
+    assert.equal(businessViews.length, 2, '快捷单实际支付了运费时仍走微信收货流程');
   });
 }
 

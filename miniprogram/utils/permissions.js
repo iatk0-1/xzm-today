@@ -16,7 +16,7 @@ const requirements = {
   'pages/customerServiceStaff/customerServiceStaff': ['customerService'],
   'pages/customerServiceOrderDetail/customerServiceOrderDetail': ['customerService'],
   'pages/cart/cart': ['cart'],
-  'pages/checkout/checkout': ['cart'],
+  'pages/checkout/checkout': ['cart', 'browse', 'myOrders', 'productManage'],
   'pages/quickCheckout/quickCheckout': ['browse', 'myOrders'],
   'pages/editProfile/editProfile': ['profile'],
   'pages/orderList/orderList': ['myOrders'],
