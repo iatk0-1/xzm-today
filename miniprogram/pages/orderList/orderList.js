@@ -248,6 +248,11 @@ Page(pageSync.wrap({
     const orderId = e.currentTarget.dataset.id;
     try {
       const payRes = await api.post(`/orders/${orderId}/pay/wechat`);
+      if (payRes && payRes.paid === true) {
+        wx.showToast({ title: '支付成功', icon: 'success' });
+        this.refreshOrder(orderId);
+        return;
+      }
       // 后端返回字段是 package，不是 packageValue
       const packageValue = payRes.package || payRes.packageValue;
       if (payRes && packageValue) {

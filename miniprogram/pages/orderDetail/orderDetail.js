@@ -478,6 +478,11 @@ Page(pageSync.wrap({
     try {
       await auth.ensureAuthenticated({ silent: true });
       const payRes = await api.post(`/orders/${this.data.order.id}/pay/wechat`);
+      if (payRes && payRes.paid === true) {
+        wx.showToast({ title: '支付成功', icon: 'success' });
+        this.loadOrderDetail(this.data.order.id);
+        return;
+      }
       // 后端返回字段是 package，不是 packageValue
       const packageValue = payRes.package || payRes.packageValue;
       if (payRes && packageValue) {

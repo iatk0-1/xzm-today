@@ -503,6 +503,12 @@ Page({
       wx.showLoading({ title: '准备支付...', mask: true });
       const payRes = await api.post(`/orders/${orderId}/pay/wechat`);
 
+      if (payRes && payRes.paid === true) {
+        wx.showToast({ title: '支付成功!', icon: 'success' });
+        wx.redirectTo({ url: '/pages/orderDetail/orderDetail?id=' + orderId });
+        return;
+      }
+
       // 3. 拉起微信支付
       // 后端返回可能是 package (原始 JSON) 或 packageValue (JSON 序列化后)
       const packageValue = payRes.package || payRes.packageValue;
